@@ -1,0 +1,304 @@
+/* ==========================================================================
+   Inscription UEb — système de design commun
+   Identité : la forêt équatoriale d'Ebolowa (vert profond), le bleu et le
+   vert du sceau de l'université, une note d'or réservée aux temps forts.
+   Typographie : Source Serif 4 pour les titres (celle du quitus officiel),
+   Source Sans 3 pour l'interface.
+   ========================================================================== */
+
+:root {
+	/* Couleurs */
+	--foret-950: #0a1f16;
+	--foret-900: #0f2c1f;
+	--foret-800: #163d2b;
+	--foret-700: #1d5a38;
+	--vert: #2e7d32;
+	--vert-bandeau: #13351a; /* en-tête et pied de page, repris de la préinscription */
+	--vert-clair: #8bc34a;
+	--ciel: #378db7;
+	--ciel-fonce: #1f6f94;
+	--or: #e3a822;
+	--or-fonce: #9a6b00;
+	--papier: #f4f7f3;
+	--blanc: #ffffff;
+	--encre: #15231b;
+	--gris: #4f5d55;
+	--gris-clair: #7b887f;
+	--filet: #d9e2da;
+	--filet-fort: #bfccc2;
+	--danger: #b3261e;
+	--danger-fond: #fdecea;
+	--succes-fond: #e6f4e7;
+	--alerte-fond: #fff5d9;
+	--info-fond: #e7f2f8;
+
+	/* Typographie */
+	--f-titre: "Source Serif 4", Georgia, "Times New Roman", serif;
+	--f-texte: "Source Sans 3", "Segoe UI", Roboto, Arial, sans-serif;
+
+	/* Rayons : petits pour les champs, moyens pour les cartes, grands pour les panneaux */
+	--r-champ: 10px;
+	--r-carte: 16px;
+	--r-panneau: 28px;
+
+	/* Ombres teintées de vert plutôt que grises */
+	--ombre-1: 0 1px 2px rgba(15, 44, 31, .06), 0 2px 8px rgba(15, 44, 31, .05);
+	--ombre-2: 0 12px 32px -12px rgba(15, 44, 31, .22);
+	--ombre-3: 0 40px 80px -30px rgba(10, 31, 22, .5);
+
+	--ease-sortie: cubic-bezier(.16, 1, .3, 1);
+	--conteneur: 1200px;
+}
+
+/* ---------- Base ---------- */
+
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+body {
+	margin: 0;
+	font-family: var(--f-texte);
+	font-size: 1.0625rem;
+	line-height: 1.6;
+	color: var(--encre);
+	background: var(--papier);
+	-webkit-font-smoothing: antialiased;
+	text-rendering: optimizeLegibility;
+}
+img, svg { display: block; max-width: 100%; }
+h1, h2, h3, h4 { font-family: var(--f-titre); font-weight: 700; line-height: 1.15; margin: 0 0 .5em; letter-spacing: -.01em; text-wrap: balance; }
+h1 { font-size: clamp(2rem, 1.4rem + 2.6vw, 3.25rem); }
+h2 { font-size: clamp(1.6rem, 1.25rem + 1.5vw, 2.35rem); }
+h3 { font-size: 1.25rem; }
+p { margin: 0 0 1em; }
+a { color: var(--ciel-fonce); text-underline-offset: .18em; }
+a:hover { color: var(--foret-700); }
+:focus-visible { outline: 3px solid var(--or); outline-offset: 3px; border-radius: 4px; }
+::selection { background: rgba(139, 195, 74, .35); }
+
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.lien-evitement { position: absolute; left: 1rem; top: -4rem; z-index: 100; padding: .75rem 1rem; background: var(--or); color: var(--foret-950); font-weight: 700; border-radius: var(--r-champ); }
+.lien-evitement:focus { top: 1rem; }
+.conteneur { width: min(100% - 2.5rem, var(--conteneur)); margin-inline: auto; }
+.conteneur--etroit { width: min(100% - 2.5rem, 760px); margin-inline: auto; }
+.icone { flex: none; }
+
+/* ---------- Boutons ---------- */
+
+.btn {
+	--btn-fond: var(--foret-700);
+	--btn-texte: var(--blanc);
+	display: inline-flex; align-items: center; justify-content: center; gap: .55rem;
+	min-height: 48px; padding: .7rem 1.35rem;
+	font: 600 1rem/1.2 var(--f-texte);
+	color: var(--btn-texte); background: var(--btn-fond);
+	border: 2px solid transparent; border-radius: 999px;
+	text-decoration: none; cursor: pointer; white-space: nowrap;
+	transition: transform .2s var(--ease-sortie), background-color .2s, box-shadow .2s, color .2s;
+}
+.btn:hover { color: var(--btn-texte); transform: translateY(-1px); }
+.btn:active { transform: translateY(0) scale(.98); }
+.btn--primaire { --btn-fond: var(--foret-700); box-shadow: 0 10px 24px -10px rgba(29, 90, 56, .8); }
+.btn--primaire:hover { --btn-fond: var(--foret-800); }
+.btn--or { --btn-fond: var(--or); --btn-texte: var(--foret-950); box-shadow: 0 12px 30px -12px rgba(227, 168, 34, .9); }
+.btn--or:hover { --btn-fond: #efb52f; }
+.btn--clair { --btn-fond: var(--blanc); --btn-texte: var(--foret-900); }
+.btn--fantome { --btn-fond: transparent; --btn-texte: var(--foret-800); border-color: var(--filet-fort); }
+.btn--fantome:hover { --btn-fond: rgba(29, 90, 56, .06); border-color: var(--foret-700); }
+.btn--verre { --btn-fond: rgba(255, 255, 255, .1); --btn-texte: var(--blanc); border-color: rgba(255, 255, 255, .35); backdrop-filter: blur(6px); }
+.btn--verre:hover { --btn-fond: rgba(255, 255, 255, .18); }
+.btn--danger { --btn-fond: var(--danger); }
+.btn--sombre { --btn-fond: var(--vert-bandeau); box-shadow: 0 12px 24px -14px rgba(19, 53, 26, .9); }
+.btn--sombre:hover { --btn-fond: #1c4a26; }
+.btn--lien { --btn-fond: transparent; --btn-texte: var(--ciel-fonce); padding-inline: .25rem; min-height: 44px; }
+.btn--petit { min-height: 44px; padding: .5rem 1rem; font-size: .95rem; }
+.btn--large { width: 100%; }
+.btn:disabled { opacity: .45; cursor: not-allowed; transform: none; box-shadow: none; }
+.btn[aria-busy="true"] { pointer-events: none; opacity: .8; }
+.btn[aria-busy="true"]::after { content: ""; width: 1em; height: 1em; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: tourner .7s linear infinite; }
+@keyframes tourner { to { transform: rotate(360deg); } }
+
+/* ---------- En-tête du site : même vert que le pied de page ---------- */
+
+.site-entete { position: sticky; top: 0; z-index: 50; background: var(--vert-bandeau); color: #fff; box-shadow: 0 1px 0 rgba(0, 0, 0, .08), 0 8px 24px -16px rgba(10, 31, 22, .6); }
+.site-entete__rangee { display: flex; align-items: center; gap: 1.5rem; min-height: 72px; }
+.marque { display: flex; align-items: center; gap: .75rem; color: inherit; text-decoration: none; margin-right: auto; }
+.marque img { width: 44px; height: 44px; object-fit: contain; }
+.marque span { display: grid; line-height: 1.15; }
+.marque b { font-family: var(--f-titre); font-size: 1.05rem; }
+.marque small { font-size: .82rem; color: var(--gris); }
+.site-entete .marque { color: #fff; }
+.site-entete .marque img { background: #fff; border-radius: 50%; padding: 2px; }
+.site-entete .marque small { color: rgba(255, 255, 255, .92); }
+.site-nav { display: flex; gap: .25rem; }
+.site-nav a { padding: .55rem .9rem; border-radius: 999px; color: #fff; font-weight: 600; text-decoration: none; font-size: .98rem; transition: background-color .2s, color .2s; }
+.site-nav a:hover { background: rgba(255, 255, 255, .14); color: #fff; }
+.site-nav a[aria-current="page"] { background: #fff; color: var(--foret-900); }
+.site-actions { display: flex; align-items: center; gap: .6rem; }
+.site-entete .btn--fantome { --btn-texte: #fff; border-color: rgba(255, 255, 255, .6); }
+.site-entete .btn--fantome:hover { --btn-fond: rgba(255, 255, 255, .14); border-color: #fff; }
+.site-entete .btn--primaire { --btn-fond: #fff; --btn-texte: var(--foret-900); box-shadow: none; }
+.site-entete .btn--primaire:hover { --btn-fond: #eaf3ea; }
+.puce-compte { display: inline-flex; align-items: center; gap: .4rem; padding: .4rem .85rem; border-radius: 999px; background: rgba(255, 255, 255, .14); border: 1px solid rgba(255, 255, 255, .3); font-weight: 600; font-size: .9rem; color: #fff; }
+.menu-mobile { display: none; width: 48px; height: 48px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, .45); background: rgba(255, 255, 255, .12); color: #fff; align-items: center; justify-content: center; cursor: pointer; }
+.site-entete :focus-visible { outline-color: #fcd34d; }
+
+@media (max-width: 960px) {
+	.menu-mobile { display: inline-flex; }
+	.site-nav { position: absolute; inset: 100% 0 auto; flex-direction: column; padding: .75rem 1.25rem 1.25rem; background: var(--blanc); border-bottom: 1px solid var(--filet); box-shadow: var(--ombre-2); display: none; }
+	.site-nav.est-ouvert { display: flex; }
+	.site-nav a { color: var(--encre); padding: .85rem 1rem; }
+	.site-nav a:hover { background: var(--papier); color: var(--foret-800); }
+	.site-nav a[aria-current="page"] { background: var(--vert-bandeau); color: #fff; }
+	.site-actions .btn--fantome span, .site-actions .puce-compte { display: none; }
+}
+.seul-mobile { display: none; }
+@media (max-width: 560px) {
+	.seul-mobile { display: block; }
+	.site-entete:not(.site-entete--gestion) .site-actions { display: none; }
+	.marque small { display: none; }
+}
+
+/* ---------- Pied de page (identique au site de préinscription) ---------- */
+
+.site-footer { background: var(--vert-bandeau); color: rgba(255, 255, 255, .72); padding: 56px 0 28px; margin-top: 5rem; }
+.fgrid { display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr; gap: 36px; margin-bottom: 32px; }
+.site-footer h4 { font-family: var(--f-texte); color: #fff; font-size: .82rem; letter-spacing: .08em; text-transform: uppercase; margin: 0 0 1rem; }
+.site-footer ul { list-style: none; margin: 0; padding: 0; }
+.site-footer li { margin-bottom: .5rem; font-size: .92rem; }
+.site-footer a { color: inherit; text-decoration: none; }
+.site-footer a:hover { color: #d4a017; }
+.fbrand { display: flex; align-items: center; gap: 10px; }
+.fbrand img { height: 42px; width: auto; }
+.fbrand b { font-family: var(--f-titre); font-weight: 800; font-size: 1.2rem; color: #fff; }
+.fdesc { margin-top: 1rem; font-size: .92rem; }
+@media (max-width: 860px) {
+	.fgrid { grid-template-columns: 1fr; gap: 24px; }
+	.fgrid > div + div { padding-top: 20px; border-top: 1px solid rgba(255, 255, 255, .12); }
+	.site-footer h4 { font-size: .88rem; margin-bottom: .75rem; }
+	.site-footer li { margin-bottom: .7rem; font-size: .96rem; }
+}
+
+/* ---------- Alertes ---------- */
+
+.alerte { display: flex; gap: .75rem; align-items: flex-start; padding: .9rem 1.1rem; border-radius: var(--r-champ); border: 1px solid; margin-bottom: 1rem; font-weight: 500; }
+.alerte p { margin: 0; }
+.alerte .icone { margin-top: .15rem; }
+.alerte--succes { background: var(--succes-fond); border-color: #b9dcbb; color: #1b4d1e; }
+.alerte--erreur { background: var(--danger-fond); border-color: #f2b8b3; color: #7f1d18; }
+.alerte--alerte { background: var(--alerte-fond); border-color: #f0d68a; color: #5c4200; }
+.alerte--info { background: var(--info-fond); border-color: #b8d8e8; color: #134c66; }
+
+/* ---------- Champs ---------- */
+
+.formulaire { display: grid; gap: 1.15rem; }
+.formulaire__rangee { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.15rem; }
+@media (max-width: 640px) { .formulaire__rangee { grid-template-columns: 1fr; } }
+/* align-content : sans lui, une colonne plus haute (aide, erreur) étire les lignes
+   de l'autre champ de la rangée et décale son libellé et sa saisie. */
+.champ { display: grid; align-content: start; gap: .4rem; margin: 0; padding: 0; border: 0; min-width: 0; }
+.champ label, .champ legend { font-weight: 600; font-size: .98rem; color: var(--encre); padding: 0; }
+.facultatif { font-weight: 400; color: var(--gris); }
+/* .champ__select est inclus pour lui-même : employé hors d'un .champ — dans une
+   cellule de tableau, par exemple — le select retombait sinon sur le widget
+   natif du navigateur, sans bordure ni fond. */
+.champ input, .champ select,
+.champ__select select {
+	width: 100%; min-height: 52px; padding: .75rem 1rem;
+	font: 500 1.02rem var(--f-texte); color: var(--encre);
+	background: var(--blanc); border: 1.5px solid var(--filet-fort); border-radius: var(--r-champ);
+	transition: border-color .15s, box-shadow .15s;
+}
+.champ input::placeholder { color: var(--gris-clair); font-weight: 400; }
+.champ input:hover, .champ select:hover, .champ__select select:hover { border-color: var(--gris-clair); }
+.champ input:focus, .champ select:focus, .champ__select select:focus { outline: none; border-color: var(--foret-700); box-shadow: 0 0 0 4px rgba(46, 125, 50, .16); }
+.champ input[readonly] { background: var(--papier); color: var(--gris); }
+.champ__aide { margin: 0; font-size: .9rem; color: var(--gris); }
+.champ__erreur { margin: 0; display: flex; gap: .35rem; align-items: center; font-size: .92rem; font-weight: 600; color: var(--danger); }
+.champ--invalide input, .champ--invalide select { border-color: var(--danger); }
+.champ--invalide input:focus { box-shadow: 0 0 0 4px rgba(179, 38, 30, .15); }
+.champ__select { position: relative; }
+.champ__select select { appearance: none; padding-right: 2.75rem; cursor: pointer; }
+.champ__select .icone { position: absolute; right: 1rem; top: 50%; translate: 0 -50%; pointer-events: none; color: var(--gris); }
+.champ__mdp { position: relative; }
+.champ__mdp input { padding-right: 3.5rem; }
+.champ__voir { position: absolute; right: .3rem; top: 50%; translate: 0 -50%; width: 44px; height: 44px; display: grid; place-items: center; border: 0; background: transparent; color: var(--gris); border-radius: 8px; cursor: pointer; }
+.champ__voir:hover { color: var(--foret-800); background: var(--papier); }
+/* Champ avec icône (paramètre « icone » de ueb_champ) */
+.champ__boite { position: relative; }
+.champ__boite input, .champ__boite select { padding-left: 3.25rem; }
+.champ__icone { position: absolute; left: 6px; top: 50%; translate: 0 -50%; width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; background: rgba(19, 53, 26, .08); color: var(--vert-bandeau); pointer-events: none; transition: background-color .2s; }
+/* Couleur posée sur le SVG lui-même, sans transition : Chrome ne repeint pas toujours un
+   trait « currentColor » pendant une transition, l'icône restait foncée sur fond foncé. */
+.champ__boite:focus-within .champ__icone, .champ__boite:focus-within .champ__icone .icone { background: var(--vert-bandeau); color: var(--blanc); }
+.champ__boite:focus-within .champ__icone .icone { background: none; }
+.champ--invalide .champ__icone { background: var(--danger-fond); color: var(--danger); }
+
+.segments__liste { display: flex; gap: .6rem; flex-wrap: wrap; }
+.segments__option { position: relative; flex: 1 1 8rem; }
+.segments__option input { position: absolute; opacity: 0; inset: 0; cursor: pointer; }
+.segments__option span { display: flex; align-items: center; justify-content: center; min-height: 52px; padding: .6rem 1rem; white-space: nowrap; border: 1.5px solid var(--filet-fort); border-radius: var(--r-champ); background: var(--blanc); font-weight: 600; transition: all .15s; }
+.segments__option input:checked + span { border-color: var(--foret-700); background: rgba(46, 125, 50, .08); color: var(--foret-800); box-shadow: inset 0 0 0 1px var(--foret-700); }
+.segments__option input:focus-visible + span { outline: 3px solid var(--or); outline-offset: 2px; }
+
+/* Aperçu dynamique (type d'identifiant, montant en lettres) */
+.apercu { display: flex; align-items: center; gap: .45rem; font-size: .9rem; color: var(--foret-700); font-weight: 600; margin: 0; }
+.apercu:empty { display: none; }
+.apercu--erreur { color: var(--danger); }
+
+/* ---------- Cartes, badges ---------- */
+
+.carte { background: var(--blanc); border: 1px solid var(--filet); border-radius: var(--r-carte); box-shadow: var(--ombre-1); }
+.carte__corps { padding: clamp(1.25rem, 1rem + 1vw, 2rem); }
+
+.badge { display: inline-flex; align-items: center; gap: .45rem; padding: .3rem .8rem; border-radius: 999px; font-size: .88rem; font-weight: 700; white-space: nowrap; }
+.badge i { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+.badge--genere { background: var(--alerte-fond); color: #6b4d00; }
+.badge--recu_envoye { background: var(--info-fond); color: #134c66; }
+.badge--verifie { background: var(--succes-fond); color: #1b5e20; }
+.badge--rejete { background: var(--danger-fond); color: #8c1d18; }
+
+/* ---------- Pages d'application (espace étudiant, gestion) ---------- */
+
+.page-app { padding: clamp(2rem, 1.5rem + 2vw, 3.5rem) 0 0; }
+.page-app__entete { display: flex; align-items: flex-end; justify-content: space-between; gap: 1.5rem; flex-wrap: wrap; margin-bottom: 2rem; }
+.page-app__entete h1 { margin: 0; font-size: clamp(1.8rem, 1.4rem + 1.6vw, 2.6rem); }
+.page-app__sous-titre { color: var(--gris); margin: .4rem 0 0; max-width: 60ch; }
+.fil { display: inline-flex; align-items: center; gap: .35rem; font-weight: 600; color: var(--gris); text-decoration: none; margin-bottom: .75rem; }
+.fil:hover { color: var(--foret-800); }
+
+/* ---------- Tableaux (gestion) ---------- */
+
+.tableau-conteneur { overflow-x: auto; border: 1px solid var(--filet); border-radius: var(--r-carte); background: var(--blanc); }
+.tableau { width: 100%; border-collapse: collapse; font-size: .96rem; }
+.tableau th { text-align: left; font-weight: 700; font-size: .85rem; color: var(--gris); background: var(--papier); padding: .8rem 1rem; border-bottom: 1px solid var(--filet); white-space: nowrap; }
+.tableau td { padding: .85rem 1rem; border-bottom: 1px solid var(--filet); vertical-align: middle; }
+.tableau tr:last-child td { border-bottom: 0; }
+.tableau tbody tr:hover { background: #fafcfa; }
+.tableau .num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* ---------- Fenêtre de confirmation ---------- */
+
+.fenetre { border: 0; padding: 0; border-radius: var(--r-carte); box-shadow: var(--ombre-3); max-width: min(92vw, 440px); }
+.fenetre::backdrop { background: rgba(10, 31, 22, .55); backdrop-filter: blur(3px); }
+.fenetre[open] { animation: fenetre-entree .25s var(--ease-sortie); }
+@keyframes fenetre-entree { from { opacity: 0; transform: translateY(12px) scale(.97); } }
+.fenetre__contenu { padding: 1.75rem; }
+.fenetre__titre { font-size: 1.35rem; }
+.fenetre__texte { color: var(--gris); }
+.fenetre__actions { display: flex; justify-content: flex-end; gap: .6rem; margin-top: 1.5rem; flex-wrap: wrap; }
+
+/* ---------- Animations Remotion ---------- */
+
+.animation { position: relative; aspect-ratio: 16 / 10; max-width: 100%; }
+.animation__scene { position: absolute; inset: 0; }
+.animation__pause { position: absolute; right: .75rem; bottom: .75rem; width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; border: 1px solid rgba(255, 255, 255, .35); background: rgba(10, 31, 22, .55); color: var(--blanc); cursor: pointer; opacity: 0; transition: opacity .2s; backdrop-filter: blur(6px); }
+.animation.est-pret .animation__pause { opacity: .85; }
+.animation__pause:hover, .animation__pause:focus-visible { opacity: 1; }
+.animation .icone-lecture { display: none; }
+.animation.est-en-pause .icone-pause { display: none; }
+.animation.est-en-pause .icone-lecture { display: block; }
+.animation--statut { aspect-ratio: 1200 / 220; }
+
+@media (prefers-reduced-motion: reduce) {
+	*, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+}

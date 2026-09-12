@@ -1,0 +1,169 @@
+<?php
+/**
+ * Adresses propres et aiguillage vers les gabarits de templates/.
+ *
+ *   /connexion                        connexion étudiant
+ *   /creer-mon-compte                 création de compte
+ *   /mon-espace                       tableau de bord étudiant
+ *   /mon-espace/quitus                nouveau quitus (?id= pour modifier)
+ *   /mon-espace/quitus/{numero}/pdf   téléchargement du PDF
+ *   /mon-espace/recus/{numero}        reçus bancaires d'un quitus
+ *   /mon-espace/securite              identifiants et mot de passe
+ *   /recu/{id}                        affichage protégé d'un reçu
+ *   /verifier/{code}                  vérification publique (QR code)
+ *
+ * Le back-office, lui, tient dans deux Pages WordPress : « Espace scolarité »
+ * et « Administration » (gabarits page-scolarite.php et page-administration.php).
+ *
+ * Les formulaires postent un champ « ueb_action » traité ici avant tout
+ * affichage, puis redirigent (Post/Redirect/Get).
+ *
+ * @package Inscription_UEB
+ */
+
+defined( 'ABSPATH' ) || exit;
+
+const UEB_INSC_ROUTES_VERSION = '6';
+
+function ueb_regles_reecriture() {
+	return array(
+		'^connexion/?$'                                  => 'index.php?ueb_page=connexion',
+		'^creer-mon-compte/?$'                           => 'index.php?ueb_page=creer-compte',
+		'^deconnexion/?$'                                => 'index.php?ueb_page=deconnexion',
+		'^mon-espace/?$'                                 => 'index.php?ueb_page=espace',
+		'^mon-espace/quitus/?$'                          => 'index.php?ueb_page=quitus',
+		'^mon-espace/quitus/([A-Za-z0-9-]+)/pdf/?$'      => 'index.php?ueb_page=quitus-pdf&ueb_arg=$matches[1]',
+		'^mon-espace/recus/([A-Za-z0-9-]+)/?$'           => 'index.php?ueb_page=recus&ueb_arg=$matches[1]',
+		'^mon-espace/securite/?$'                        => 'index.php?ueb_page=securite',
+		'^recu/([0-9]+)/?$'                              => 'index.php?ueb_page=recu&ueb_arg=$matches[1]',
+		'^verifier/([A-Za-z0-9]+)/?$'                    => 'index.php?ueb_page=verifier&ueb_arg=$matches[1]',
+	);
+}
+
+add_action( 'init', function () {
+	foreach ( ueb_regles_reecriture() as $motif => $cible ) {
+		add_rewrite_rule( $motif, $cible, 'top' );
+	}
+	/* Mise à jour des règles au premier affichage après un changement :
+	   la requête web tourne sous l'utilisateur d'Apache, qui peut écrire .htaccess. */
+	if ( get_option( 'ueb_insc_routes_version' ) !== UEB_INSC_ROUTES_VERSION && ! wp_doing_ajax() && ! defined( 'WP_CLI' ) && 'cli' !== PHP_SAPI ) {
+		global $wp_rewrite;
+		if ( '/%postname%/' !== get_option( 'permalink_structure' ) ) {
+			$wp_rewrite->set_permalink_structure( '/%postname%/' );
+		}
+		/* save_mod_rewrite_rules() n'est chargée que dans l'admin. */
+		require_once ABSPATH . 'wp-admin/includes/file.php';
+		require_once ABSPATH . 'wp-admin/includes/misc.php';
+		flush_rewrite_rules( true );
+		update_option( 'ueb_insc_routes_version', UEB_INSC_ROUTES_VERSION );
+	}
+} );
+
+add_filter( 'query_vars', function ( $vars ) {
+	$vars[] = 'ueb_page';
+	$vars[] = 'ueb_arg';
+	return $vars;
+} );
+
+/** URL d'une page du site : ueb_url( 'mon-espace/securite' ). */
+function ueb_url( $chemin = '' ) {
+	return home_url( '/' . ltrim( $chemin, '/' ) . ( '' === $chemin ? '' : '/' ) );
+}
+
+/* Pages réservées aux étudiants connectés / aux visiteurs non connectés. */
+const UEB_PAGES_ETUDIANT = array( 'espace', 'quitus', 'quitus-pdf', 'recus', 'securite' );
+const UEB_PAGES_INVITE   = array( 'connexion', 'creer-compte' );
+/* Les deux espaces du back-office sont des Pages WordPress (gabarits
+   page-scolarite.php et page-administration.php) : elles vérifient
+   elles-mêmes la capacité du compte connecté. */
+
+add_action( 'template_redirect', function () {
+	$page = get_query_var( 'ueb_page' );
+
+	/* 1. Formulaires postés */
+	if ( 'POST' === ( $_SERVER['REQUEST_METHOD'] ?? '' ) && ! empty( $_POST['ueb_action'] ) ) {
+		ueb_traiter_action( sanitize_key( $_POST['ueb_action'] ) );
+	}
+
+	if ( ! $page ) {
+		return;
+	}
+
+	/* 2. Contrôle d'accès */
+	$compte = ueb_compte_courant();
+	if ( in_array( $page, UEB_PAGES_ETUDIANT, true ) ) {
+		if ( ! $compte ) {
+			ueb_flash( 'info', 'Connecte-toi pour accéder à ton espace.' );
+			ueb_rediriger( ueb_url( 'connexion' ) );
+		}
+		if ( $compte->doit_changer_mdp && 'securite' !== $page ) {
+			ueb_flash( 'alerte', "Ton mot de passe a été réinitialisé par l'administration : choisis-en un nouveau pour continuer." );
+			ueb_rediriger( ueb_url( 'mon-espace/securite' ) );
+		}
+	}
+	if ( in_array( $page, UEB_PAGES_INVITE, true ) && $compte ) {
+		ueb_rediriger( ueb_url( 'mon-espace' ) );
+	}
+
+	/* 3. Pages sans gabarit HTML */
+	switch ( $page ) {
+		case 'deconnexion':
+			ueb_deconnecter();
+			ueb_flash( 'succes', 'Tu es déconnecté.' );
+			ueb_rediriger( ueb_url( 'connexion' ) );
+		case 'quitus-pdf':
+			ueb_telecharger_quitus( $compte, get_query_var( 'ueb_arg' ) );
+			exit;
+		case 'recu':
+			ueb_servir_recu( $compte, (int) get_query_var( 'ueb_arg' ) );
+			exit;
+	}
+} );
+
+/* 4. Gabarit correspondant à la page */
+add_filter( 'template_include', function ( $template ) {
+	$page = get_query_var( 'ueb_page' );
+	if ( $page ) {
+		$fichier = UEB_INSC_DIR . '/templates/' . $page . '.php';
+		if ( is_file( $fichier ) ) {
+			status_header( 200 );
+			return $fichier;
+		}
+	}
+	return $template;
+} );
+
+/* Les pages virtuelles ne sont pas des 404 pour WordPress. */
+add_filter( 'pre_handle_404', function ( $preempt, $query ) {
+	return $query->get( 'ueb_page' ) ? true : $preempt;
+}, 10, 2 );
+
+/** Aiguille une action postée vers son traitement, après contrôle CSRF. */
+function ueb_traiter_action( $action ) {
+	$traitements = array(
+		'connexion'           => 'ueb_action_connexion',
+		'creer_compte'        => 'ueb_action_creer_compte',
+		'changer_mdp'         => 'ueb_action_changer_mdp',
+		'changer_identifiant' => 'ueb_action_changer_identifiant',
+		'enregistrer_quitus'  => 'ueb_action_enregistrer_quitus',
+		'envoyer_recus'       => 'ueb_action_envoyer_recus',
+		'supprimer_recu'      => 'ueb_action_supprimer_recu',
+		'gestion_statut'      => 'ueb_action_gestion_statut',
+		'gestion_reinit_mdp'  => 'ueb_action_gestion_reinit_mdp',
+		'gestion_bloquer'     => 'ueb_action_gestion_bloquer',
+		'gestion_creer_etudiant' => 'ueb_action_gestion_creer_etudiant',
+		'gestion_creer_agent' => 'ueb_action_gestion_creer_agent',
+		'gestion_agent_mdp'   => 'ueb_action_gestion_agent_mdp',
+		'gestion_agent_etat'  => 'ueb_action_gestion_agent_etat',
+		'gestion_agent_modifier'  => 'ueb_action_gestion_agent_modifier',
+		'gestion_agent_supprimer' => 'ueb_action_gestion_agent_supprimer',
+	);
+	if ( ! isset( $traitements[ $action ] ) ) {
+		return;
+	}
+	if ( ! ueb_verifier_csrf() ) {
+		ueb_flash( 'erreur', 'Ta session a expiré. Recommence, s’il te plaît.' );
+		ueb_rediriger( wp_get_referer() ?: home_url( '/' ) );
+	}
+	call_user_func( $traitements[ $action ] );
+}
