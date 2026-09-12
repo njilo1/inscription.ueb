@@ -17,6 +17,7 @@ const UEB_UNIVERSITE = array(
 	'bp'    => 'BP 118 Ebolowa',
 	'tel'   => '+237 6 76 29 54 88',
 	'email' => 'info@unv-ebolowa.cm',
+	'couleur' => '#1E3A8A', /* identité de l'université, sur le quitus */
 	'logo'  => 'ueb.png',
 );
 
@@ -68,39 +69,39 @@ function ueb_etablissements() {
 		'FSJP'   => array(
 			'fr' => 'Faculté des Sciences Juridiques et Politiques', 'en' => 'Faculty of Law and Political Science',
 			'tel' => null, 'email' => null, 'bp' => 'BP 118 Ebolowa',
-			'compte' => '00272771301', 'cle' => '88', 'couleur' => '#1e3a6e', 'ville' => 'Ebolowa',
+			'compte' => '00272771301', 'cle' => '88', 'couleur' => '#8B1E1E', 'ville' => 'Ebolowa',
 		),
 		'FSEG'   => array(
 			'fr' => 'Faculté des Sciences Économiques et de Gestion', 'en' => 'Faculty of Economics and Management',
 			'tel' => null, 'email' => null, 'bp' => 'BP 118 Ebolowa',
-			'compte' => '00272770501', 'cle' => '63', 'couleur' => '#3b7d34', 'ville' => 'Ebolowa',
+			'compte' => '00272770501', 'cle' => '63', 'couleur' => '#16803C', 'ville' => 'Ebolowa',
 		),
 		'FALSH'  => array(
 			'fr' => 'Faculté des Arts, Lettres et Sciences Humaines', 'en' => 'Faculty of Arts, Letters and Human Sciences',
 			'tel' => null, 'email' => null, 'bp' => 'BP 118 Ebolowa',
-			'compte' => '00272772501', 'cle' => '77', 'couleur' => '#6a4520', 'ville' => 'Ebolowa',
+			'compte' => '00272772501', 'cle' => '77', 'couleur' => '#6A1B6D', 'ville' => 'Ebolowa',
 		),
 		'FMSP'   => array(
 			'fr' => 'Faculté de Médecine et des Sciences Pharmaceutiques', 'en' => 'Faculty of Medicine and Pharmaceutical Sciences',
 			'tel' => null, 'email' => null, 'bp' => 'Sangmélima',
-			'compte' => '00272768902', 'cle' => '84', 'couleur' => '#9b2335', 'ville' => 'Sangmélima',
+			'compte' => '00272768902', 'cle' => '84', 'couleur' => '#0077B6', 'ville' => 'Sangmélima',
 		),
 		'ENSET'  => array(
 			'fr' => "École Normale Supérieure d'Enseignement Technique", 'en' => 'Higher Technical Teacher Training College',
 			'tel' => null, 'email' => null, 'bp' => 'BP 118 Ebolowa',
-			'compte' => '00272770701', 'cle' => '45', 'couleur' => '#4f6a1c', 'ville' => 'Ebolowa',
+			'compte' => '00272770701', 'cle' => '45', 'couleur' => '#006B3C', 'ville' => 'Ebolowa',
 		),
 		'ISABEE' => array(
 			'fr' => "Institut Supérieur d'Agriculture, du Bois, de l'Eau et de l'Environnement",
 			'en' => 'Higher Institute of Agriculture, Forestry, Water and Environment',
 			'tel' => '694 19 36 07 / 677 07 97 47', 'email' => 'contact@isabee.cm', 'bp' => 'BP 118 Ebolowa',
-			'compte' => '00272771401', 'cle' => '79', 'couleur' => '#2f6f2a', 'ville' => 'Ebolowa',
+			'compte' => '00272771401', 'cle' => '79', 'couleur' => '#3A7D44', 'ville' => 'Ebolowa',
 		),
 		'ESTLC'  => array(
 			'fr' => 'École Supérieure de Transport, de Logistique et de Commerce',
 			'en' => 'Higher School of Transport, Logistics and Commerce',
 			'tel' => null, 'email' => 'estlc@estlc.unv-ebolowa.cm', 'bp' => 'BP 22 Ambam',
-			'compte' => '00272768601', 'cle' => '40', 'couleur' => '#17804a', 'ville' => 'Ambam',
+			'compte' => '00272768601', 'cle' => '40', 'couleur' => '#4E7F1D', 'ville' => 'Ambam',
 		),
 		'ENSTMO' => array(
 			'fr' => 'École Nationale Supérieure des Sciences et Techniques Maritimes et Océaniques',

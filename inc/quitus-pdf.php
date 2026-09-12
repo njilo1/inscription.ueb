@@ -88,6 +88,7 @@ function ueb_pdf_couleurs( $hex ) {
 	$etab = ueb_pdf_rvb( $hex );
 	return array(
 		'etab'   => $etab,
+		'ueb'    => ueb_pdf_rvb( UEB_UNIVERSITE['couleur'] ),
 		'fond'   => ueb_pdf_teinte( $etab, 0.06 ),
 		'encre'  => array( 27, 36, 51 ),
 		'gris'   => array( 91, 100, 114 ),
@@ -181,7 +182,7 @@ function ueb_pdf_lignes_entete( $langue, $etab, array $c ) {
 		array( 'type' => 'txt', 'texte' => $fr ? 'RÉPUBLIQUE DU CAMEROUN' : 'REPUBLIC OF CAMEROON', 'famille' => 'uebserifb', 'style' => '', 'taille' => 7, 'espacement' => 0.15, 'couleur' => $c['encre'] ),
 		array( 'type' => 'txt', 'texte' => $fr ? 'Paix – Travail – Patrie' : 'Peace – Work – Fatherland', 'famille' => 'uebserifi', 'style' => '', 'taille' => 6.4, 'couleur' => $c['gris'] ),
 		array( 'type' => 'sep' ),
-		array( 'type' => 'txt', 'texte' => mb_strtoupper( $fr ? UEB_UNIVERSITE['fr'] : UEB_UNIVERSITE['en'] ), 'famille' => 'uebserifb', 'style' => '', 'taille' => 8.2, 'espacement' => 0.14, 'couleur' => $c['encre'] ),
+		array( 'type' => 'txt', 'texte' => mb_strtoupper( $fr ? UEB_UNIVERSITE['fr'] : UEB_UNIVERSITE['en'] ), 'famille' => 'uebserifb', 'style' => '', 'taille' => 8.2, 'espacement' => 0.14, 'couleur' => $c['ueb'] ),
 		array( 'type' => 'sep' ),
 		array( 'type' => 'txt', 'texte' => mb_strtoupper( $etab[ $langue ] ), 'famille' => $fr ? 'uebserifb' : 'uebserifbi', 'style' => '', 'taille' => $long ? 6.9 : 8.4, 'espacement' => 0.05, 'couleur' => $c['etab'] ),
 	);
