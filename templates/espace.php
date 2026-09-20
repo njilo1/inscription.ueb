@@ -11,23 +11,49 @@
 defined( 'ABSPATH' ) || exit;
 
 $compte = ueb_compte_courant();
+$vue = sanitize_key( $_GET['vue'] ?? '' );
+$vue = in_array( $vue, array( 'quitus', 'recus' ), true ) ? $vue : '';
 $quitus = ueb_quitus_du_compte( $compte->id );
+$recus_compte = ueb_recus_du_compte( $compte->id );
+$recus_par_annee = array();
+foreach ( $recus_compte as $recu ) {
+	$recus_par_annee[ $recu->annee_academique ][] = $recu;
+}
 $annee  = ueb_annee_academique();
+$dossiers = ueb_dossiers_quitus( $quitus );
+$par_annee = array( $annee['code'] => array() );
+foreach ( $dossiers as $dossier ) {
+	$par_annee[ $dossier['principal']->annee_academique ][] = $dossier;
+}
+krsort( $par_annee, SORT_STRING );
+$actuels = $par_annee[ $annee['code'] ];
+$telechargement = ueb_telechargement_a_demarrer( $compte );
+$bienvenue = ueb_bienvenue_a_afficher( $compte );
 
 /* Avancement d'un quitus : nombre d'étapes franchies sur quatre. */
 $avancement = static fn( $q ) => array( 'genere' => 1, 'rejete' => 2, 'recu_envoye' => 3, 'verifie' => 4 )[ $q->statut ] ?? 1;
 
-/* Quitus à suivre en priorité : à corriger, puis à payer, puis en vérification, sinon le plus récent. */
+/* Suivre uniquement l'année en cours, en tenant compte des deux paiements. */
 $focus = null;
-foreach ( array( 'rejete', 'genere', 'recu_envoye' ) as $statut ) {
-	foreach ( $quitus as $q ) {
-		if ( $statut === $q->statut ) {
-			$focus = $q;
+$dossier_focus = null;
+foreach ( array( 'rejete', 'genere', 'recu_envoye', 'verifie' ) as $statut ) {
+	foreach ( $actuels as $dossier ) {
+		if ( $statut === $dossier['statut'] ) {
+			$dossier_focus = $dossier;
+			$focus = clone $dossier['principal'];
+			$focus->statut = $dossier['statut'];
+			$focus->montant = $dossier['total'];
+			foreach ( $dossier['paiements'] as $paiement ) {
+				if ( $paiement->statut === $statut ) {
+					$paiement_focus = $paiement;
+					$focus->motif_rejet = $paiement->motif_rejet;
+					break;
+				}
+			}
 			break 2;
 		}
 	}
 }
-$focus = $focus ?: ( $quitus[0] ?? null );
 
 /* Chiffres de l'année en cours. */
 $de_lannee = array_filter( $quitus, static fn( $q ) => $annee['code'] === $q->annee_academique );
@@ -38,11 +64,11 @@ $attente   = array_sum( array_map( static fn( $q ) => in_array( $q->statut, arra
 $preinscription = $compte->numero_dossier ? ueb_preinscription_par_dossier( $compte->numero_dossier ) : null;
 $prenom         = trim( (string) ( $quitus[0]->prenom ?? ( $preinscription->prenom ?? '' ) ) );
 $prenom         = $prenom ? mb_convert_case( strtok( $prenom, ' ' ), MB_CASE_TITLE ) : '';
-$etab_focus     = ueb_etablissement( $focus->etablissement ?? ( $preinscription->etablissement ?? '' ) );
+$etab_focus     = ueb_etablissement( $focus->etablissement ?? ( $quitus[0]->etablissement ?? ( $preinscription->etablissement ?? '' ) ) );
 
 /* Les quatre étapes ; $en_cours va de 1 à 4, 5 quand tout est fait. */
 $etapes   = array(
-	array( 'titre' => 'Quitus généré', 'texte' => 'Télécharge-le et imprime la page : elle compte 4 coupons.' ),
+	array( 'titre' => 'Quitus généré', 'texte' => 'Tes documents sont réunis dans un PDF. Chaque quitus compte 4 coupons ; les fiches CMS accompagnent le quitus médical.' ),
 	array( 'titre' => 'Tamponné et payé', 'texte' => 'Fais-le tamponner à la scolarité, puis paie à la ' . UEB_BANQUE['nom'] . '.' ),
 	array( 'titre' => 'Reçu envoyé', 'texte' => 'Envoie ici la photo de ton reçu bancaire.' ),
 	array( 'titre' => 'Vérifié', 'texte' => 'La scolarité contrôle les originaux et valide ton paiement.' ),
@@ -50,12 +76,11 @@ $etapes   = array(
 $en_cours = $focus ? array( 'genere' => 2, 'rejete' => 3, 'recu_envoye' => 4, 'verifie' => 5 )[ $focus->statut ] : 1;
 
 $url_nouveau = ueb_url( 'mon-espace/quitus' );
-$url_pdf     = $focus ? ueb_url( 'mon-espace/quitus/' . $focus->numero . '/pdf' ) : '';
-$url_recus   = $focus ? ueb_url( 'mon-espace/recus/' . $focus->numero ) : '';
+$url_recus   = $focus ? ueb_url( 'mon-espace/recus/' . $paiement_focus->numero ) : '';
 
 /* Texte et actions de la prochaine étape selon l'état du quitus suivi. */
 if ( ! $focus ) {
-	$prochaine = array( 'titre' => 'Prépare ton premier quitus', 'texte' => 'Choisis ton établissement, vérifie tes informations et indique le montant de la tranche que tu paies. Ton quitus est prêt tout de suite en PDF.' );
+	$prochaine = array( 'titre' => $quitus ? 'Prépare ton inscription ' . $annee['libelle'] : 'Prépare ton premier quitus', 'texte' => 'Choisis ton établissement, vérifie tes informations et choisis la tranche que tu paies. Le total et les documents sont préparés selon ta situation.' );
 } elseif ( 'genere' === $focus->statut ) {
 	$prochaine = array( 'titre' => 'Fais tamponner ton quitus, puis paie', 'texte' => 'Imprime ton quitus, fais-le tamponner à la scolarité de ton établissement et paie à la ' . UEB_BANQUE['nom'] . '. Envoie ensuite ici la photo de ton reçu.' );
 } elseif ( 'rejete' === $focus->statut ) {
@@ -80,7 +105,7 @@ $lien_tel = static function ( $numero ) {
 	return 'tel:+' . ( str_starts_with( $chiffres, '237' ) ? $chiffres : '237' . $chiffres );
 };
 
-ueb_page_debut( array( 'titre' => 'Mon espace', 'variante' => 'espace' ) );
+ueb_page_debut( array( 'titre' => $vue ? ( 'quitus' === $vue ? 'Mes quitus' : 'Mes reçus' ) : 'Mon espace', 'variante' => 'espace', 'classe' => $vue ? 'espace--vue-' . $vue : '' ) );
 ?>
 <main id="contenu" class="espace">
 	<section class="espace__bandeau">
@@ -89,20 +114,19 @@ ueb_page_debut( array( 'titre' => 'Mon espace', 'variante' => 'espace' ) );
 				<p class="espace__annee">Inscriptions <?php echo esc_html( $annee['libelle'] ); ?></p>
 				<h1><?php echo esc_html( $prenom ? 'Bonjour ' . $prenom : 'Bonjour' ); ?></h1>
 				<?php if ( $etab_focus ) : ?>
-					<p class="espace__etab"><img src="<?php echo esc_url( ueb_logo_url( $etab_focus['sigle'] ) ); ?>" alt="" width="34" height="34"><?php echo esc_html( $etab_focus['fr'] ); ?></p>
+					<p class="espace__etab"><img src="<?php echo esc_url( ueb_logo_url( $etab_focus['sigle'] ) ); ?>" alt="" width="34" height="34"><?php echo esc_html( $etab_focus['sigle'] ); ?></p>
 				<?php else : ?>
 					<p class="espace__etab">Ton espace pour préparer tes quitus et envoyer tes reçus.</p>
 				<?php endif; ?>
 			</div>
-			<a class="btn btn--clair" href="<?php echo esc_url( $url_nouveau ); ?>"><?php echo ueb_icone( 'plus', 18 ); ?>Nouveau quitus</a>
 		</div>
 
 		<?php if ( $de_lannee ) : ?>
 			<div class="conteneur">
 				<dl class="espace__chiffres">
 					<div>
-						<dt>Quitus <?php echo esc_html( $annee['libelle'] ); ?></dt>
-						<dd><?php echo count( $de_lannee ); ?></dd>
+						<dt>Dossiers <?php echo esc_html( $annee['libelle'] ); ?></dt>
+						<dd><?php echo count( $actuels ); ?></dd>
 					</div>
 					<div>
 						<dt>Paiement vérifié</dt>
@@ -124,6 +148,13 @@ ueb_page_debut( array( 'titre' => 'Mon espace', 'variante' => 'espace' ) );
 
 	<div class="conteneur espace__grille">
 		<?php ueb_afficher_flash(); ?>
+		<?php if ( $telechargement ) : ?>
+			<div class="telechargement-pret" data-telechargement-auto>
+				<?php echo ueb_icone( 'telecharger', 22 ); ?>
+				<p><strong>Ton PDF est prêt.</strong> <span data-telechargement-message>Le téléchargement va démarrer. Tu peux aussi utiliser le bouton ci-contre.</span></p>
+				<a class="btn btn--fantome btn--petit" data-telechargement-lien download="quitus-<?php echo esc_attr( $telechargement->numero ); ?>.pdf" href="<?php echo esc_url( ueb_url( 'mon-espace/quitus/' . $telechargement->numero . '/pdf' ) ); ?>">Télécharger le PDF</a>
+			</div>
+		<?php endif; ?>
 
 		<details class="reglages">
 			<summary class="reglages__bouton"><?php echo ueb_icone( 'reglages', 18 ); ?><span>Réglages</span><?php echo ueb_icone( 'chevron', 16, 'reglages__chevron' ); ?></summary>
@@ -198,57 +229,75 @@ ueb_page_debut( array( 'titre' => 'Mon espace', 'variante' => 'espace' ) );
 						<?php elseif ( $propose_tranche_2 ) : ?>
 							<a class="btn btn--primaire" href="<?php echo esc_url( $url_nouveau ); ?>"><?php echo ueb_icone( 'plus', 18 ); ?>Préparer la tranche 2</a>
 						<?php endif; ?>
-						<a class="btn btn--fantome" href="<?php echo esc_url( $url_pdf ); ?>" target="_blank" rel="noopener"><?php echo ueb_icone( 'telecharger', 18 ); ?>Télécharger le PDF</a>
 					<?php endif; ?>
 				</div>
 			</div>
 		</section>
 
-		<?php if ( $quitus ) : ?>
+		<div class="espace-modules">
+			<section class="espace-module carte" id="mes-quitus">
+			<a class="espace-module__carte espace-module__carte--quitus" href="<?php echo esc_url( add_query_arg( 'vue', 'quitus', ueb_url( 'mon-espace' ) ) ); ?>">
+					<span class="espace-module__voile"></span><span class="espace-module__contenu"><b>Documents d’inscription</b><strong>Mes quitus <em><?php echo count( $dossiers ); ?></em></strong><span class="espace-module__ouvrir">Ouvrir mes quitus</span></span>
+			</a>
+			<?php if ( 'quitus' === $vue ) : ?>
+			<div class="espace-module__panneau">
 			<section class="mes-quitus" aria-labelledby="mes-quitus-titre">
-				<h2 id="mes-quitus-titre">Mes quitus <span><?php echo count( $quitus ); ?></span></h2>
-				<ul class="mes-quitus__liste">
-					<?php foreach ( $quitus as $q ) :
-						$etab  = ueb_etablissement( $q->etablissement );
-						$faites = $avancement( $q );
-						?>
-						<li class="quitus-ligne carte" id="quitus-<?php echo esc_attr( $q->numero ); ?>">
-							<img src="<?php echo esc_url( ueb_logo_url( $q->etablissement ) ); ?>" alt="" width="44" height="44">
-							<div class="quitus-ligne__infos">
-								<h3><?php echo esc_html( $etab['fr'] ?? $q->etablissement ); ?></h3>
-								<p>N° <b><?php echo esc_html( $q->numero ); ?></b>, du <?php echo esc_html( mysql2date( 'j F Y', $q->date_creation ) ); ?></p>
+				<header class="mes-quitus__entete">
+					<div><a class="fil" href="<?php echo esc_url( ueb_url( 'mon-espace' ) ); ?>"><?php echo ueb_icone( 'fleche-g', 16 ); ?>Retour à mon espace</a><p class="mes-quitus__repere">Documents d’inscription</p><h2 id="mes-quitus-titre">Mes quitus <span><?php echo count( $dossiers ); ?></span></h2>
+				<p>Tous tes documents réunis dans un PDF par dossier, classés par année académique.</p></div>
+				<a class="btn btn--fantome btn--petit" href="<?php echo esc_url( $url_nouveau ); ?>"><?php echo ueb_icone( 'plus', 18 ); ?>Nouveau quitus</a>
+			</header>
+			<?php foreach ( $par_annee as $annee_code => $dossiers_annee ) :
+				$en_cours_annee = $annee_code === $annee['code'];
+				?>
+				<details class="quitus-annee" data-annee="<?php echo esc_attr( $annee_code ); ?>" <?php echo $en_cours_annee ? 'open' : ''; ?>>
+					<summary>
+						<span class="quitus-annee__date"><?php echo esc_html( str_replace( '-', ' – ', $annee_code ) ); ?></span>
+						<span class="quitus-annee__etat"><?php echo $en_cours_annee ? 'Année en cours' : 'Archives'; ?></span>
+						<span class="quitus-annee__compte"><?php echo count( $dossiers_annee ); ?> dossier<?php echo count( $dossiers_annee ) > 1 ? 's' : ''; ?></span>
+						<?php echo ueb_icone( 'chevron', 18 ); ?>
+					</summary>
+					<div class="quitus-annee__contenu">
+						<?php if ( $dossiers_annee ) : ?>
+							<ul class="mes-quitus__liste">
+								<?php foreach ( $dossiers_annee as $dossier ) { require UEB_INSC_DIR . '/templates/composants/quitus-dossier.php'; } ?>
+							</ul>
+						<?php else : ?>
+							<div class="mes-quitus__vide">
+								<h3><?php echo $quitus ? 'Une nouvelle année commence' : 'Ton premier dossier commence ici'; ?></h3>
+								<p>Aucun quitus pour <?php echo esc_html( $annee['libelle'] ); ?>. Choisis ta formation, ton niveau et ta tranche pour préparer tes documents.</p>
+								<a class="btn btn--primaire" href="<?php echo esc_url( $url_nouveau ); ?>">M’inscrire pour <?php echo esc_html( $annee['libelle'] ); ?><?php echo ueb_icone( 'fleche', 18 ); ?></a>
 							</div>
-							<dl class="quitus-ligne__chiffres">
-								<?php if ( 'medicaux' === ( $q->type ?? 'droits' ) ) : ?>
-									<div><dt>Type</dt><dd>Frais médicaux</dd></div>
-								<?php else : ?>
-									<div><dt>Tranche</dt><dd><?php echo esc_html( 3 === (int) $q->tranche ? '1 et 2' : (int) $q->tranche ); ?></dd></div>
-								<?php endif; ?>
-								<div><dt>Montant</dt><dd><?php echo esc_html( ueb_formater_montant( $q->montant ) ); ?> FCFA</dd></div>
-							</dl>
-							<?php echo ueb_badge_statut( $q->statut ); // phpcs:ignore -- échappé dans la fonction ?>
-							<div class="quitus-ligne__jauge" aria-hidden="true">
-								<?php for ( $n = 1; $n <= 4; $n++ ) : ?>
-									<span class="<?php echo $n <= $faites ? ( 'rejete' === $q->statut && $n === $faites ? 'est-bloquee' : 'est-faite' ) : ''; ?>"></span>
-								<?php endfor; ?>
-							</div>
-							<?php if ( 'rejete' === $q->statut && $q->motif_rejet ) : ?>
-								<p class="quitus-ligne__motif alerte alerte--erreur"><?php echo ueb_icone( 'alerte', 18 ); ?><span><b>Motif :</b> <?php echo esc_html( $q->motif_rejet ); ?></span></p>
-							<?php endif; ?>
-							<div class="quitus-ligne__actions">
-								<a class="btn btn--fantome btn--petit" href="<?php echo esc_url( ueb_url( 'mon-espace/quitus/' . $q->numero . '/pdf' ) ); ?>" target="_blank" rel="noopener"><?php echo ueb_icone( 'telecharger', 16 ); ?>PDF</a>
-								<?php if ( ueb_quitus_accepte_recus( $q ) || $q->nb_recus ) : ?>
-									<a class="btn btn--fantome btn--petit" href="<?php echo esc_url( ueb_url( 'mon-espace/recus/' . $q->numero ) ); ?>"><?php echo ueb_icone( 'recu', 16 ); ?><?php echo $q->nb_recus ? sprintf( 'Mes reçus (%d)', (int) $q->nb_recus ) : 'Envoyer mon reçu'; ?></a>
-								<?php endif; ?>
-								<?php if ( ueb_quitus_modifiable( $q ) ) : ?>
-									<a class="btn btn--lien btn--petit" href="<?php echo esc_url( add_query_arg( 'id', $q->id, $url_nouveau ) ); ?>"><?php echo ueb_icone( 'crayon', 16 ); ?>Modifier</a>
-								<?php endif; ?>
-							</div>
-						</li>
-					<?php endforeach; ?>
-				</ul>
-			</section>
-		<?php endif; ?>
+						<?php endif; ?>
+					</div>
+				</details>
+			<?php endforeach; ?>
+			<p class="mes-quitus__note"><?php echo ueb_icone( 'fichier', 16 ); ?>Tes dossiers restent disponibles d’une année à l’autre.</p>
+		</section>
+			</div>
+			<?php endif; ?>
+		</section>
+
+			<section class="espace-module carte" id="mes-recus">
+			<a class="espace-module__carte espace-module__carte--recus" href="<?php echo esc_url( add_query_arg( 'vue', 'recus', ueb_url( 'mon-espace' ) ) ); ?>">
+					<span class="espace-module__voile"></span><span class="espace-module__contenu"><b>Suivi des paiements</b><strong>Mes reçus <em><?php echo count( $recus_compte ); ?></em></strong><span class="espace-module__ouvrir">Ouvrir mes reçus</span></span>
+			</a>
+			<?php if ( 'recus' === $vue ) : ?>
+			<div class="espace-module__panneau espace-module__panneau--recus">
+				<a class="fil mes-recus__retour" href="<?php echo esc_url( ueb_url( 'mon-espace' ) ); ?>"><?php echo ueb_icone( 'fleche-g', 16 ); ?>Retour à mon espace</a>
+				<?php if ( ! $recus_par_annee ) : ?>
+					<div class="mes-recus__vide"><h2>Aucun reçu envoyé</h2><p>Après ton paiement, envoie une photo ou un scan depuis le quitus concerné. Tu retrouveras ici une copie téléchargeable et son statut.</p></div>
+				<?php else : foreach ( $recus_par_annee as $recus_annee => $liste_recus ) : ?>
+					<section class="mes-recus__annee" aria-labelledby="recus-<?php echo esc_attr( $recus_annee ); ?>"><h2 id="recus-<?php echo esc_attr( $recus_annee ); ?>"><?php echo esc_html( str_replace( '-', ' – ', $recus_annee ) ); ?> <small><?php echo count( $liste_recus ); ?> reçu<?php echo count( $liste_recus ) > 1 ? 's' : ''; ?></small></h2><ul class="mes-recus__liste">
+						<?php foreach ( $liste_recus as $recu ) : $statut = $recu->statut_quitus; $statut_libelle = 'verifie' === $statut ? 'Validé par la scolarité' : ( 'rejete' === $statut ? 'À corriger' : 'En cours de vérification' ); ?>
+							<li class="mes-recus__item"><a class="mes-recus__telecharger" href="<?php echo esc_url( ueb_url( 'recu/' . $recu->id ) ); ?>" target="_blank" rel="noopener" download><?php echo ueb_icone( 'telecharger', 18 ); ?><span>Télécharger</span></a><div><strong><?php echo esc_html( $recu->nom_original ); ?></strong><small><?php echo esc_html( mysql2date( 'j F Y à H:i', $recu->date_envoi ) ); ?> · <?php echo esc_html( $recu->numero ); ?></small></div><span class="mes-recus__statut mes-recus__statut--<?php echo esc_attr( $statut ); ?>"><?php echo esc_html( $statut_libelle ); ?></span></li>
+						<?php endforeach; ?></ul></section>
+				<?php endforeach; endif; ?>
+			</div>
+			<?php endif; ?>
+		</section>
+		</div>
+		<?php if ( $bienvenue ) { ueb_message_bienvenue(); } ?>
 	</div>
 </main>
 <?php

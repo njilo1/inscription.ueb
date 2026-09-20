@@ -16,6 +16,7 @@ $etab     = ueb_etablissement( $q->etablissement );
 $recus    = ueb_recus_du_quitus( $q->id );
 $restants = max( 0, UEB_RECUS_MAX_FICHIERS - count( $recus ) );
 $ouvert   = ueb_quitus_accepte_recus( $q );
+$dossier = ueb_dossier_du_quitus( $q );
 
 ueb_page_debut( array( 'titre' => 'Reçus du quitus ' . $q->numero, 'variante' => 'espace' ) );
 ?>
@@ -31,6 +32,19 @@ ueb_page_debut( array( 'titre' => 'Reçus du quitus ' . $q->numero, 'variante' =
 		</header>
 
 		<?php ueb_afficher_flash(); ?>
+		<?php if ( $dossier && count( $dossier['paiements'] ) > 1 ) : ?>
+			<nav class="recus-paiements" aria-label="Choisir le paiement du dossier">
+				<p>Choisis le paiement correspondant à ton reçu. Chaque reçu est envoyé séparément.</p>
+				<div>
+					<?php foreach ( $dossier['paiements'] as $paiement ) : ?>
+						<a href="<?php echo esc_url( ueb_url( 'mon-espace/recus/' . $paiement->numero ) ); ?>" <?php echo (int) $paiement->id === (int) $q->id ? 'aria-current="page"' : ''; ?>>
+							<strong><?php echo esc_html( ueb_libelle_type_quitus( $paiement->type ) ); ?></strong>
+							<span><?php echo esc_html( ueb_formater_montant( $paiement->montant ) ); ?> FCFA · <?php echo esc_html( UEB_STATUTS_QUITUS[ $paiement->statut ]['libelle'] ); ?></span>
+						</a>
+					<?php endforeach; ?>
+				</div>
+			</nav>
+		<?php endif; ?>
 		<?php if ( 'rejete' === $q->statut && $q->motif_rejet ) : ?>
 			<div class="alerte alerte--erreur"><?php echo ueb_icone( 'alerte', 20 ); ?><p><b>Motif de la scolarité :</b> <?php echo esc_html( $q->motif_rejet ); ?> Envoie un nouveau reçu lisible.</p></div>
 		<?php elseif ( 'verifie' === $q->statut ) : ?>

@@ -8,6 +8,119 @@
 	const $ = (sel, racine = document) => racine.querySelector(sel);
 	const $$ = (sel, racine = document) => [...racine.querySelectorAll(sel)];
 
+	/* ---------- Confidentialité : défilement continu, message de première visite ---------- */
+	const confidentialite = $("[data-confidentialite]");
+	if (confidentialite) {
+		const mouvement = matchMedia("(prefers-reduced-motion: reduce)");
+		const actualiser = () => {
+			confidentialite.classList.toggle("est-anime", !mouvement.matches);
+		};
+		mouvement.addEventListener("change", actualiser);
+		actualiser();
+		const entete = $("[data-entete]");
+		if (entete && "ResizeObserver" in window) {
+			new ResizeObserver(() => document.documentElement.style.setProperty("--hauteur-entete", entete.offsetHeight + "px")).observe(entete);
+		}
+	}
+	const bienvenue = $("[data-bienvenue]");
+	const copierTexte = async (texte) => {
+		if (navigator.clipboard?.writeText) {
+			await navigator.clipboard.writeText(texte);
+			return;
+		}
+		const zone = document.createElement("textarea");
+		zone.value = texte;
+		zone.setAttribute("readonly", "");
+		zone.style.position = "fixed";
+		zone.style.opacity = "0";
+		document.body.append(zone);
+		zone.select();
+		if (!document.execCommand("copy")) throw new Error("Copie indisponible");
+		zone.remove();
+	};
+	$$('[data-copier-mot-de-passe]').forEach((bouton) => {
+		bouton.addEventListener("click", async () => {
+			const libelle = $("span", bouton);
+			try {
+				await copierTexte(bouton.dataset.copierMotDePasse);
+				if (libelle) libelle.textContent = "Copié";
+				bouton.classList.add("est-copie");
+				setTimeout(() => { if (libelle) libelle.textContent = "Copier le mot de passe"; bouton.classList.remove("est-copie"); }, 2200);
+			} catch {
+				if (libelle) libelle.textContent = "Sélectionne le mot de passe";
+			}
+		});
+	});
+	$$("[data-ouvrir-agent-mdp]").forEach((bouton) => {
+		const dialog = document.getElementById(bouton.getAttribute("data-ouvrir-agent-mdp"));
+		if (!dialog) return;
+		bouton.addEventListener("click", (event) => {
+			event.preventDefault();
+			if (typeof dialog.showModal === "function") dialog.showModal();
+			else dialog.setAttribute("open", "");
+		});
+		$("[data-fermer-agent-mdp]", dialog)?.addEventListener("click", (event) => {
+			event.preventDefault();
+			if (typeof dialog.close === "function") dialog.close();
+			else dialog.removeAttribute("open");
+		});
+		dialog.addEventListener("click", (event) => {
+			if (event.target !== dialog) return;
+			if (typeof dialog.close === "function") dialog.close();
+			else dialog.removeAttribute("open");
+		});
+	});
+	if (bienvenue && typeof bienvenue.showModal === "function") {
+		bienvenue.addEventListener("close", () => {
+			const contenu = $("#contenu");
+			contenu?.setAttribute("tabindex", "-1");
+			contenu?.focus({ preventScroll: true });
+		});
+		bienvenue.showModal();
+	}
+
+	/* Une redirection après enregistrement affiche le dossier et démarre son PDF.
+	   Le lien reste disponible si le navigateur bloque le téléchargement ou si le réseau échoue. */
+	const telechargement = $("[data-telechargement-auto]");
+	if (telechargement) {
+		const lien = $("[data-telechargement-lien]", telechargement);
+		const message = $("[data-telechargement-message]", telechargement);
+		message.setAttribute("role", "status");
+		const demarrer = async () => {
+			const controle = new AbortController();
+			const delai = setTimeout(() => controle.abort(), 30000);
+			try {
+				message.textContent = "Téléchargement du PDF en cours…";
+				const reponse = await fetch(lien.href, { credentials: "same-origin", cache: "no-store", signal: controle.signal });
+				if (!reponse.ok || !reponse.headers.get("Content-Type")?.includes("application/pdf")) throw new Error("PDF indisponible");
+				const fichier = await reponse.blob();
+				const url = URL.createObjectURL(fichier);
+				const a = document.createElement("a");
+				a.href = url;
+				a.download = lien.download || "mes-quitus.pdf";
+				document.body.append(a);
+				a.click();
+				a.remove();
+				setTimeout(() => URL.revokeObjectURL(url), 60000);
+				message.textContent = "Le PDF a été transmis au navigateur. S’il ne se télécharge pas, utilise le bouton Télécharger le PDF.";
+			} catch {
+				message.textContent = "Le téléchargement automatique n’a pas abouti. Tes documents sont enregistrés : utilise le bouton Télécharger le PDF pour réessayer.";
+			} finally {
+				clearTimeout(delai);
+			}
+		};
+		demarrer();
+	}
+
+	// Une ancre vers un dossier ouvre aussi l'année archivée qui le contient.
+	const ouvrirDossier = () => {
+		const cible = document.getElementById(location.hash.slice(1));
+		const annee = cible?.closest(".quitus-annee");
+		if (annee) annee.open = true;
+	};
+	ouvrirDossier();
+	addEventListener("hashchange", ouvrirDossier);
+
 	/* ---------- Menu mobile ---------- */
 	const boutonMenu = $("[data-menu-mobile]");
 	if (boutonMenu) {
@@ -163,45 +276,109 @@
 		if (lettres && lireMontant()) lettres.textContent = enLettres(lireMontant());
 	}
 
-	/* ---------- Récapitulatif au bas du formulaire du quitus ---------- */
+	/* ---------- Formation, tarifs imposés et récapitulatif du paiement ---------- */
 	const formQuitus = $("[data-quitus]");
 	const donneesEtabs = $("#donnees-etablissements");
 	if (formQuitus && donneesEtabs) {
 		const etabs = JSON.parse(donneesEtabs.textContent);
+		const config = JSON.parse($("#donnees-paiement").textContent);
 		const logo = $("[data-recap-logo]");
-		const champType = $("[data-type-quitus]", formQuitus);
-		const champSituation = $("[name=situation]", formQuitus);
-		const montantFixe = $("[data-montant-fixe]");
-		let fraisMedicaux = {};
-		try {
-			fraisMedicaux = JSON.parse($("#frais-medicaux")?.textContent || "{}");
-		} catch {
-			/* pas de frais médicaux déclarés */
+		const filiere = $("[name=filiere_id]", formQuitus);
+		const situation = $("select[name=situation]", formQuitus);
+		const medicalSeul = formQuitus.dataset.type === "medicaux";
+		const champsCms = $$("[data-cms-champ]", formQuitus);
+		champsCms.forEach((champ) => {
+			const label = champ.labels[0];
+			if (!$(".facultatif", label)) {
+				const mention = document.createElement("span");
+				mention.className = "facultatif";
+				mention.textContent = " (facultatif)";
+				label.appendChild(mention);
+			}
+		});
+		let dernierEtab;
+		let derniereFormation = filiere.value;
+		const montantProfessionnel = new Map();
+		if (config.formations.find((f) => String(f.id) === filiere.value)?.type_formation === "pro") {
+			montantProfessionnel.set(filiere.value, champMontant.value);
 		}
+		const texte = (selecteur, valeur) => {
+			const cible = $(selecteur);
+			if (cible && cible.textContent !== valeur) cible.textContent = valeur;
+		};
 		const maj = () => {
-			/* Le type pilote l'affichage : tranches pour les droits, situation et montant fixe pour le médical. */
-			const type = champType ? champType.value : "droits";
-			const medical = type === "medicaux";
-			formQuitus.dataset.type = type;
-
-			const choix = $("input[name=etablissement]:checked", formQuitus);
-			const e = choix ? etabs[choix.value] : null;
-			$("[data-recap-etab]").textContent = e ? e.fr : "À choisir";
+			const etablissement = $("input[name=etablissement]:checked", formQuitus)?.value || "";
+			if (etablissement !== dernierEtab) {
+				const selection = filiere.value;
+				const liste = config.formations.filter((f) => f.etablissement === etablissement);
+				filiere.replaceChildren(new Option(etablissement ? (liste.length ? "Choisir une filière…" : "Aucune filière disponible") : "Choisis d’abord ton établissement", ""));
+				liste.forEach((f) => filiere.add(new Option((f.choix ? `Choix ${f.choix} — ` : "") + f.libelle, String(f.id))));
+				filiere.value = liste.some((f) => String(f.id) === selection) ? selection : "";
+				dernierEtab = etablissement;
+			}
+			const formation = config.formations.find((f) => String(f.id) === filiere.value);
+			const tranche = $("input[name=tranche]:checked", formQuitus);
+			const classique = formation?.type_formation === "classique";
+			if (derniereFormation !== filiere.value) {
+				champMontant.value = montantProfessionnel.get(filiere.value) || "";
+				derniereFormation = filiere.value;
+			}
+			champMontant.readOnly = !formation || classique || medicalSeul;
+			if (classique) champMontant.value = tranche ? formater(config.droitsClassiques / (tranche.value === "3" ? 1 : 2)) : "";
+			else if (formation) montantProfessionnel.set(filiere.value, champMontant.value);
+			texte("#champ-montant-aide", classique
+				? "Formation classique : 50 000 FCFA par an, en deux tranches de 25 000 FCFA. Montant fixé automatiquement."
+				: formation ? "Pour une formation professionnelle, indique le montant communiqué par ton établissement." : "Choisis une filière pour connaître les modalités de paiement.");
+			const frais = situation.value === "nouveau" ? 0 : (config.medicalInclus ? (config.montantsMedicaux[situation.value] || 0) : 0);
+			const cmsRequis = medicalSeul || (config.medicalInclus && situation.value !== "nouveau");
+			champsCms.forEach((champ) => {
+				champ.required = cmsRequis;
+				$(".facultatif", champ.labels[0]).hidden = cmsRequis;
+			});
+			texte("[data-cms-aide]", cmsRequis
+				? "Pour tes fiches CMS, complète ton email, ton adresse et les trois coordonnées de ton contact d’urgence ci-dessous."
+				: "Ces coordonnées sont facultatives pour ce paiement : aucune fiche CMS n’est à générer.");
+			const droits = medicalSeul ? 0 : lireMontant();
+			const pret = medicalSeul || Boolean(formation && tranche && droits);
+			const total = droits + frais;
+			texte("[data-montant-fixe]", formater(frais) + " FCFA");
+			texte("[data-montant-lettres]", droits ? enLettres(droits) : "");
+			texte("[data-total-paiement]", pret ? formater(total) + " FCFA" : "—");
+			texte("[data-detail-paiement]", pret
+				? (medicalSeul ? "" : formater(droits) + " FCFA de droits universitaires + ") + formater(frais) + " FCFA de frais médicaux."
+				: "Choisis ta formation et ta tranche pour afficher le total.");
+			texte("[data-note-medicale]", situation.value === "nouveau"
+				? "Aucun frais médical supplémentaire : cette situation est considérée comme une nouvelle inscription."
+				: config.medicalInclus ? "Les frais médicaux sont payables en une seule fois pour l’année en cours, sur le compte des services centraux."
+				: `Les frais médicaux figurent déjà sur ton quitus ${config.medicalExistant.numero}${config.medicalExistant.statut === "verifie" ? " (paiement vérifié)" : " (paiement à régler ou à faire vérifier)"} : ils ne sont pas ajoutés à cette tranche.`);
+			const e = etabs[etablissement];
+			texte("[data-recap-etab]", e ? e.fr : "À choisir");
 			logo.hidden = !e;
 			if (e) logo.src = e.logo;
-
-			const frais = medical ? fraisMedicaux[champSituation?.value] : 0;
-			if (montantFixe) montantFixe.textContent = frais ? formater(frais) + " FCFA" : "—";
-			const n = medical ? frais : lireMontant();
-			$("[data-recap-montant]").textContent = n ? formater(n) + " FCFA" : "—";
-
-			const tranche = $("input[name=tranche]:checked", formQuitus);
-			$("[data-recap-tranche]").textContent = medical ? "Paiement unique" : tranche ? tranche.closest("label").textContent.trim() : "—";
-			const recapType = $("[data-recap-type]");
-			if (recapType && champType) recapType.textContent = champType.options[champType.selectedIndex].text;
+			texte("[data-recap-montant]", pret ? formater(medicalSeul ? frais : droits) + " FCFA" : "—");
+			texte("[data-recap-medicaux]", formater(frais) + " FCFA");
+			texte("[data-recap-total]", pret ? formater(total) + " FCFA" : "—");
+			texte("[data-recap-formation]", formation?.libelle || "À choisir");
+			const niveau = $("[name=parcours]", formQuitus);
+			texte("[data-recap-niveau]", niveau?.value ? niveau.options[niveau.selectedIndex].text : "À choisir");
+			texte("[data-recap-tranche]", medicalSeul ? "Paiement unique" : tranche ? tranche.closest("label").textContent.trim() : "—");
+			const medicalDocuments = $$("[data-document-medical]");
+			medicalDocuments.forEach((element) => { element.hidden = frais === 0; });
+			const pages = frais === 0 ? 1 : 4;
+			texte("[data-document-pages]", String(pages));
+			texte("[data-document-pages-suffix]", pages > 1 ? "s" : "");
 		};
 		formQuitus.addEventListener("input", maj);
 		formQuitus.addEventListener("change", maj);
+		const telephoneUrgence = $("[name=numero_urgence]", formQuitus);
+		telephoneUrgence.addEventListener("input", () => telephoneUrgence.setCustomValidity(""));
+		formQuitus.addEventListener("submit", (ev) => {
+			if (ev.submitter?.name === "actualiser_paiement") return;
+			const numero = telephoneUrgence.value.replace(/\D+/g, "");
+			telephoneUrgence.setCustomValidity(numero && !/^(237)?6\d{8}$/.test(numero)
+				? "Saisis un numéro camerounais à 9 chiffres, avec ou sans +237." : "");
+			if (!formQuitus.reportValidity()) ev.preventDefault();
+		});
 		maj();
 	}
 
@@ -265,11 +442,21 @@
 
 	/* ---------- Envoi : bouton occupé, résumé d'erreurs mis au point ---------- */
 	$$("form[data-formulaire]").forEach((form) => {
-		form.addEventListener("submit", () => {
+		form.addEventListener("submit", (ev) => {
+			if (ev.defaultPrevented) return;
 			const bouton = $("button[type=submit]", form);
 			if (bouton) setTimeout(() => bouton.setAttribute("aria-busy", "true"), 0);
 		});
 	});
-	$("[data-resume-erreurs]")?.focus();
-	$(".champ--invalide input, .champ--invalide select")?.focus({ preventScroll: false });
+	const resumeErreurs = $("[data-resume-erreurs]");
+	if (resumeErreurs) resumeErreurs.focus();
+	else $(".champ--invalide input, .champ--invalide select")?.focus({ preventScroll: false });
+	$$("[data-lien-erreur]").forEach((lien) => lien.addEventListener("click", (ev) => {
+		const cible = document.getElementById(lien.hash.slice(1));
+		if (!cible) return;
+		ev.preventDefault();
+		const groupe = cible.closest("details");
+		if (groupe) groupe.open = true;
+		(cible.matches("input, select, textarea") ? cible : $("input:not(:disabled), select:not(:disabled)", cible) || cible).focus();
+	}));
 })();

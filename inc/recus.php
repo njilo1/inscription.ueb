@@ -28,7 +28,7 @@ function ueb_dossier_recus() {
 		wp_mkdir_p( $base );
 	}
 	if ( ! file_exists( $garde ) ) {
-		file_put_contents( $garde, "Require all denied\nDeny from all\n" );
+		file_put_contents( $garde, "Options -Indexes\nRequire all denied\nDeny from all\n" );
 		file_put_contents( $base . '/index.php', "<?php // Silence.\n" );
 	}
 	return $base;
@@ -37,6 +37,21 @@ function ueb_dossier_recus() {
 function ueb_recus_du_quitus( $quitus_id ) {
 	global $wpdb;
 	return $wpdb->get_results( $wpdb->prepare( 'SELECT * FROM ueb_insc_recus WHERE quitus_id = %d ORDER BY date_envoi', $quitus_id ) );
+}
+
+/** Tous les reçus d'un étudiant, avec leur quitus et leur statut de suivi. */
+function ueb_recus_du_compte( $compte_id ) {
+	global $wpdb;
+	return $wpdb->get_results( $wpdb->prepare(
+		"SELECT r.*, q.numero, q.type AS type_quitus, q.montant AS montant_quitus,
+		        q.annee_academique, q.etablissement, q.statut AS statut_quitus,
+		        q.parcours, q.departement
+		   FROM ueb_insc_recus r
+		   JOIN ueb_insc_quitus q ON q.id = r.quitus_id
+		  WHERE r.compte_id = %d
+		  ORDER BY q.annee_academique DESC, r.date_envoi DESC, r.id DESC",
+		$compte_id
+	) );
 }
 
 function ueb_quitus_accepte_recus( $quitus ) {
@@ -210,16 +225,21 @@ function ueb_servir_recu( $compte, $id ) {
 	global $wpdb;
 	$recu = $wpdb->get_row( $wpdb->prepare( 'SELECT * FROM ueb_insc_recus WHERE id = %d', $id ) );
 	$autorise = $recu && ( ( $compte && (int) $recu->compte_id === (int) $compte->id ) || current_user_can( 'manage_options' ) );
-	$chemin   = $recu ? ueb_dossier_recus() . '/' . $recu->fichier : '';
-	if ( ! $autorise || ! is_file( $chemin ) ) {
+	$base     = realpath( ueb_dossier_recus() );
+	$nom      = $recu ? basename( (string) $recu->fichier ) : '';
+	$chemin   = $base && $recu && $nom === (string) $recu->fichier ? $base . DIRECTORY_SEPARATOR . $nom : '';
+	$chemin_reel = $chemin ? realpath( $chemin ) : false;
+	if ( ! $autorise || ! $chemin_reel || dirname( $chemin_reel ) !== $base || ! is_file( $chemin_reel ) ) {
 		status_header( 404 );
 		wp_die( 'Reçu introuvable.', 'Reçu introuvable', array( 'response' => 404 ) );
 	}
+	$type_mime = in_array( (string) $recu->type_mime, UEB_RECUS_TYPES, true ) ? (string) $recu->type_mime : 'application/octet-stream';
 	nocache_headers();
-	header( 'Content-Type: ' . $recu->type_mime );
-	header( 'Content-Length: ' . filesize( $chemin ) );
-	header( 'Content-Disposition: inline; filename="recu-' . $recu->id . ( 'application/pdf' === $recu->type_mime ? '.pdf' : '.jpg' ) . '"' );
+	header( 'Content-Type: ' . $type_mime );
+	header( 'Content-Length: ' . filesize( $chemin_reel ) );
+	header( 'Content-Disposition: inline; filename="recu-' . (int) $recu->id . ( 'application/pdf' === $type_mime ? '.pdf' : '.jpg' ) . '"' );
 	header( 'X-Content-Type-Options: nosniff' );
+	header( 'X-Download-Options: noopen' );
 	header( "Content-Security-Policy: default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; sandbox" );
-	readfile( $chemin );
+	readfile( $chemin_reel );
 }

@@ -1,0 +1,19 @@
+{
+  "pdf_individuels_valides": 18,
+  "etablissements": 9,
+  "pages_par_pdf_individuel": 1,
+  "coupons_par_page": 4,
+  "pages_recueil": 18,
+  "signets_recueil_valides": 18,
+  "identites_demo_distinctes": 9,
+  "verifications": [
+    "Format A4",
+    "Quatre destinataires",
+    "Identités et numéros source",
+    "Montants",
+    "RIB par type",
+    "Titres et modalités",
+    "Recueil identique aux PDF individuels",
+    "Rendu des 18 pages"
+  ]
+}

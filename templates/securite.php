@@ -14,11 +14,12 @@ $formulaire = $saisie['formulaire'] ?? '';
 
 ueb_page_debut( array( 'titre' => 'Sécurité du compte', 'variante' => 'espace' ) );
 ?>
-<main id="contenu" class="page-app">
+<main id="contenu" class="page-app securite-page">
 	<div class="conteneur conteneur--moyen">
 		<a class="fil" href="<?php echo esc_url( ueb_url( 'mon-espace' ) ); ?>"><?php echo ueb_icone( 'fleche-g', 18 ); ?>Mon espace</a>
 		<header class="page-app__entete">
 			<div>
+				<p class="securite-page__eyebrow">Espace étudiant · Protection du compte</p>
 				<h1>Sécurité du compte</h1>
 				<p class="page-app__sous-titre">Tes identifiants de connexion et ton mot de passe.</p>
 			</div>

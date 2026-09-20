@@ -91,7 +91,7 @@ function ueb_page_debut( array $args = array() ) {
 }
 
 function ueb_page_fin( $variante = 'simple' ) {
-	if ( ! in_array( $variante, array( 'auth', 'gestion', 'bo' ), true ) ) {
+	if ( ! in_array( $variante, array( 'auth', 'gestion', 'bo', 'espace' ), true ) ) {
 		ueb_pied_site();
 	}
 	ueb_fenetre_confirmation();
@@ -112,7 +112,7 @@ function ueb_marque() {
 	?>
 	<a class="marque" href="<?php echo esc_url( home_url( '/' ) ); ?>">
 		<img src="<?php echo esc_url( ueb_logo_url( 'UEB' ) ); ?>" alt="" width="44" height="44">
-		<span><b><?php echo esc_html( UEB_UNIVERSITE['fr'] ); ?></b><small>Inscriptions <?php echo esc_html( $annee['libelle'] ); ?></small></span>
+			<span><b><?php echo esc_html( UEB_UNIVERSITE['fr'] ); ?></b></span>
 	</a>
 	<?php
 }
@@ -122,13 +122,14 @@ function ueb_entete_site( $variante ) {
 	$page   = get_query_var( 'ueb_page' );
 	?>
 	<header class="site-entete site-entete--<?php echo esc_attr( $variante ); ?>" data-entete>
+		<?php if ( $compte && 'espace' === $variante ) { ueb_bandeau_confidentialite(); } ?>
 		<div class="conteneur site-entete__rangee">
 			<?php ueb_marque(); ?>
 
 			<?php /* Sur l'écran de connexion, personne n'est connecté : ni pastille de compte vide, ni bouton « Déconnexion » — la navigation publique suffit. */ ?>
 			<?php if ( 'gestion' === $variante && is_user_logged_in() ) : ?>
 				<nav class="site-nav" aria-label="Administration">
-					<a href="<?php echo esc_url( ueb_url_scolarite() ); ?>" <?php echo is_page_template( 'page-scolarite.php' ) ? 'aria-current="page"' : ''; ?>>Espace scolarité</a>
+					<?php if ( ! ueb_est_admin_ueb() ) : ?><a href="<?php echo esc_url( ueb_url_scolarite() ); ?>" <?php echo is_page_template( 'page-scolarite.php' ) ? 'aria-current="page"' : ''; ?>>Espace scolarité</a><?php endif; ?>
 					<?php if ( ueb_est_admin_ueb() ) : ?>
 						<a href="<?php echo esc_url( ueb_url_administration() ); ?>" <?php echo is_page_template( 'page-administration.php' ) ? 'aria-current="page"' : ''; ?>>Administration</a>
 					<?php endif; ?>
@@ -143,7 +144,7 @@ function ueb_entete_site( $variante ) {
 				   de scolarité vers l'espace des étudiants. */ ?>
 			<?php elseif ( $compte ) : ?>
 				<nav class="site-nav" id="site-nav" aria-label="Mon espace">
-					<a href="<?php echo esc_url( ueb_url( 'mon-espace' ) ); ?>" <?php echo in_array( $page, array( 'espace', 'recus' ), true ) ? 'aria-current="page"' : ''; ?>>Mes quitus</a>
+					<a href="<?php echo esc_url( ueb_url( 'mon-espace' ) ); ?>" <?php echo in_array( $page, array( 'espace', 'recus' ), true ) ? 'aria-current="page"' : ''; ?>>Mon espace</a>
 					<a href="<?php echo esc_url( ueb_url( 'mon-espace/quitus' ) ); ?>" <?php echo 'quitus' === $page ? 'aria-current="page"' : ''; ?>>Nouveau quitus</a>
 					<a href="<?php echo esc_url( ueb_url( 'mon-espace/securite' ) ); ?>" <?php echo 'securite' === $page ? 'aria-current="page"' : ''; ?>>Sécurité</a>
 					<a class="seul-mobile" href="<?php echo esc_url( ueb_url( 'deconnexion' ) ); ?>">Déconnexion</a>
@@ -169,6 +170,34 @@ function ueb_entete_site( $variante ) {
 			<?php endif; ?>
 		</div>
 	</header>
+	<?php
+}
+
+/** Rappel privé : une seule lecture accessible, défilement visuel contrôlable. */
+function ueb_bandeau_confidentialite() {
+	$message = 'Ton espace étudiant est privé. Ne partage ton mot de passe avec personne. En cas de problème, rapproche-toi de la cellule informatique de ton établissement pour le faire réinitialiser.';
+	?>
+	<div class="confidentialite" data-confidentialite>
+		<div class="conteneur confidentialite__ligne">
+			<?php echo ueb_icone( 'cadenas', 16 ); ?>
+			<p class="sr"><?php echo esc_html( $message ); ?></p>
+			<div class="confidentialite__fenetre" aria-hidden="true"><div class="confidentialite__ruban"><span><?php echo esc_html( $message ); ?></span><span class="confidentialite__copie"><?php echo esc_html( $message ); ?></span></div></div>
+		</div>
+	</div>
+	<?php
+}
+
+function ueb_message_bienvenue() {
+	?>
+	<dialog class="bienvenue" data-bienvenue aria-labelledby="bienvenue-titre" aria-describedby="bienvenue-texte">
+		<div class="bienvenue__entete"><?php echo ueb_icone( 'bouclier', 28 ); ?><span>Ton compte est créé</span></div>
+		<h2 id="bienvenue-titre">Bienvenue dans ton espace privé</h2>
+		<p id="bienvenue-texte"><strong>Ne partage ton mot de passe avec personne.</strong> Il protège tes informations personnelles, tes documents et le suivi de ton inscription.</p>
+		<p>En cas d’oubli ou de problème, rapproche-toi de la <strong>cellule informatique de ton établissement</strong> pour le faire réinitialiser.</p>
+		<p class="bienvenue__conseil">Sur un appareil partagé, pense à te déconnecter après chaque visite.</p>
+		<form method="dialog"><button class="btn btn--primaire" autofocus>J’ai compris, accéder à mon espace<?php echo ueb_icone( 'fleche', 18 ); ?></button></form>
+	</dialog>
+	<noscript><aside class="alerte alerte--info"><p>Bienvenue ! Ton espace est privé : ne partage ton mot de passe avec personne. En cas de problème, contacte la cellule informatique de ton établissement.</p></aside></noscript>
 	<?php
 }
 
@@ -409,8 +438,10 @@ function ueb_carte_chiffre( $valeur, $libelle, $icone = '', $variante = '', arra
 function ueb_bo_barre( $espace, array $liens, array $pied = array() ) {
 	$utilisateur = wp_get_current_user();
 	$nom         = $utilisateur->display_name ? $utilisateur->display_name : $utilisateur->user_login;
+	$role        = ueb_est_admin_ueb() ? 'Administrateur' : ( ueb_est_cellule() ? 'Cellule informatique' : ( ueb_est_scolarite() ? 'Scolarité' : 'Compte gestion' ) );
+	$role_classe = sanitize_html_class( strtolower( str_replace( ' ', '-', remove_accents( $role ) ) ) );
 	?>
-	<aside class="bo-sidebar">
+	<aside class="bo-sidebar bo-sidebar--<?php echo esc_attr( $role_classe ); ?>">
 		<a class="bo-marque" href="<?php echo esc_url( home_url( '/' ) ); ?>">
 			<img src="<?php echo esc_url( ueb_logo_url( 'UEB' ) ); ?>" alt="" width="38" height="38">
 			<span class="bo-marque__texte">
@@ -434,7 +465,7 @@ function ueb_bo_barre( $espace, array $liens, array $pied = array() ) {
 				<span class="bo-compte__avatar" aria-hidden="true"><?php echo esc_html( mb_substr( $nom, 0, 1 ) ); ?></span>
 				<span class="bo-compte__meta">
 					<span class="bo-compte__nom"><?php echo esc_html( $nom ); ?></span>
-					<span class="bo-compte__role"><?php echo esc_html( ueb_est_admin_ueb() ? 'Administrateur' : 'Scolarité' ); ?></span>
+					<span class="bo-compte__role"><?php echo esc_html( $role ); ?></span>
 				</span>
 			</div>
 			<a class="bo-sortie" href="<?php echo esc_url( wp_logout_url( home_url( '/' ) ) ); ?>"><?php echo ueb_icone( 'sortie', 16 ); ?>Déconnexion</a>
@@ -624,7 +655,7 @@ function ueb_champ( array $a ) {
 /** Groupe de boutons radio présenté en segments (sexe, tranche). */
 function ueb_choix_segments( $nom, $legende, array $options, $valeur, $erreur = '' ) {
 	?>
-	<fieldset class="champ segments<?php echo $erreur ? ' champ--invalide' : ''; ?>">
+	<fieldset id="champ-<?php echo esc_attr( $nom ); ?>" tabindex="-1" class="champ segments<?php echo $erreur ? ' champ--invalide' : ''; ?>">
 		<legend><?php echo esc_html( $legende ); ?></legend>
 		<div class="segments__liste">
 			<?php foreach ( $options as $val => $lib ) : ?>

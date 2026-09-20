@@ -24,7 +24,7 @@ define( 'UEB_INSC_VERSION', '1.0.0' );
 define( 'UEB_INSC_DIR', get_template_directory() );
 define( 'UEB_INSC_URI', get_template_directory_uri() );
 
-foreach ( array( 'config', 'db-schema', 'session', 'routes', 'roles', 'comptes', 'nombres', 'quitus', 'quitus-pdf', 'recus', 'gestion', 'assets', 'vues', 'landing' ) as $ueb_module ) {
+foreach ( array( 'config', 'db-schema', 'session', 'routes', 'roles', 'comptes', 'nombres', 'inscription', 'quitus', 'quitus-pdf', 'recus', 'gestion', 'assets', 'vues', 'landing' ) as $ueb_module ) {
 	require_once UEB_INSC_DIR . '/inc/' . $ueb_module . '.php';
 }
 
@@ -39,3 +39,10 @@ add_action( 'wp_head', function () {
 		echo '<meta name="robots" content="noindex,nofollow">' . "\n";
 	}
 }, 1 );
+
+add_action( 'send_headers', function () {
+	header( 'X-Content-Type-Options: nosniff' );
+	header( 'X-Frame-Options: SAMEORIGIN' );
+	header( 'Referrer-Policy: strict-origin-when-cross-origin' );
+	header( 'Permissions-Policy: camera=(), microphone=(), geolocation=()' );
+} );

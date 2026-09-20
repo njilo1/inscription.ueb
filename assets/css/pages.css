@@ -140,6 +140,55 @@
 .espace__grille > :nth-child(4) { animation-delay: .18s; }
 @keyframes espace-entree { from { opacity: 0; transform: translateY(10px); } }
 
+/* Accès principaux : les détails sont regroupés derrière deux cartes illustrées. */
+.espace-modules { display: grid; grid-template-columns: repeat(2, minmax(0, 340px)); justify-content: center; gap: 1rem; }
+.variante-espace:not(.espace--vue-quitus) .etape, .espace--vue-recus .etape, .espace--vue-quitus .reglages, .espace--vue-recus .reglages,
+.espace--vue-quitus #mes-recus, .espace--vue-recus #mes-quitus { display: none; }
+.espace--vue-quitus .espace-modules, .espace--vue-recus .espace-modules { display: block; }
+.espace--vue-quitus .espace-module__carte, .espace--vue-recus .espace-module__carte { aspect-ratio: auto; min-height: 180px; }
+.mes-recus__retour { display: inline-flex; margin: 1rem 1.25rem 0; }
+.espace-module { overflow: hidden; border-radius: 18px; }
+.espace-module { animation: carte-entree .55s var(--ease-sortie) both; transition: transform .22s var(--ease-sortie), box-shadow .22s ease; }
+.espace-module:nth-child(2) { animation-delay: .08s; }
+.espace-module:hover { transform: translateY(-4px); box-shadow: 0 16px 30px -20px rgba(10, 31, 22, .8); }
+.espace-module__carte { position: relative; aspect-ratio: 1 / 1; min-height: 0; display: flex; align-items: flex-start; padding: 1.35rem; color: var(--blanc); isolation: isolate; cursor: pointer; background-size: cover; background-position: center; text-decoration: none; transition: background-size .45s var(--ease-sortie), filter .3s ease; }
+.espace-module__carte--quitus { background-color: var(--vert-bandeau); background-image: url('../images/cards/quitus-card-ueb.png'); background-size: 90% 90%; background-repeat: no-repeat; background-position: center; }
+.espace-module__carte--recus { background-image: url('../images/cards/recus-card-ueb.png'); }
+.espace-module__voile { position: absolute; inset: 0; z-index: -1; background: linear-gradient(115deg, rgba(10,31,22,.94), rgba(19,53,26,.65) 55%, rgba(10,31,22,.25)); transition: opacity .35s ease, background-position .45s var(--ease-sortie); }
+.espace-module__carte--recus .espace-module__voile { background: linear-gradient(115deg, rgba(15,44,31,.94), rgba(31,111,148,.52) 60%, rgba(15,44,31,.2)); }
+.espace-module__carte::after { content: ""; position: absolute; inset: 0; z-index: -1; border: 1px solid rgba(255,255,255,.18); border-radius: inherit; opacity: 0; transform: scale(.96); transition: opacity .3s ease, transform .45s var(--ease-sortie); pointer-events: none; }
+.espace-module__contenu { display: flex; flex-direction: column; gap: .4rem; width: 100%; height: 100%; max-width: 34rem; padding-top: .2rem; }
+.espace-module__contenu b { font-size: .78rem; letter-spacing: .1em; text-transform: uppercase; color: rgba(255,255,255,.78); }
+.espace-module__contenu strong { display: flex; align-items: center; gap: .45rem; font: 700 clamp(1.75rem, 1.2rem + 1.5vw, 2.35rem) var(--f-titre); }
+.espace-module__contenu em { display: inline-grid; place-items: center; min-width: 30px; height: 30px; padding: 0 .45rem; border-radius: 999px; background: rgba(255,255,255,.17); font: 700 .9rem var(--f-texte); font-style: normal; }
+.espace-module__contenu small { max-width: 48ch; font-size: .98rem; line-height: 1.45; color: rgba(255,255,255,.9); }
+.espace-module__ouvrir { display: inline-flex; align-items: center; gap: .35rem; margin-top: auto; font-weight: 700; }
+.espace-module__ouvrir .icone { transition: translate .2s var(--ease-sortie); }
+.espace-module__carte:hover .espace-module__ouvrir .icone, .espace-module__carte:focus-visible .espace-module__ouvrir .icone { translate: 4px 0; }
+.espace-module__carte:hover, .espace-module__carte:focus-visible { filter: saturate(1.08); }
+.espace-module__carte--quitus:hover, .espace-module__carte--quitus:focus-visible { background-size: 96% 96%; }
+.espace-module__carte:hover .espace-module__voile, .espace-module__carte:focus-visible .espace-module__voile { opacity: .86; }
+.espace-module__carte:hover::after, .espace-module__carte:focus-visible::after { opacity: 1; transform: scale(1); }
+.espace-module__panneau { padding: 0; background: var(--papier); }
+.espace-module__carte:focus-visible { outline: 3px solid var(--or); outline-offset: -6px; }
+.mes-recus__vide { padding: clamp(1.5rem, 4vw, 3rem); }
+.mes-recus__vide h2 { margin-bottom: .35rem; }
+.mes-recus__vide p { max-width: 58ch; color: var(--gris); }
+.mes-recus__annee { padding: 1.25rem clamp(1rem, 3vw, 2rem); }
+.mes-recus__annee + .mes-recus__annee { border-top: 1px solid var(--filet); }
+.mes-recus__annee h2 { display: flex; align-items: center; gap: .6rem; margin: 0 0 .75rem; font-size: 1.45rem; }
+.mes-recus__annee h2 small { font: 600 .8rem var(--f-texte); color: var(--gris); }
+.mes-recus__liste { display: grid; gap: .6rem; margin: 0; padding: 0; list-style: none; }
+.mes-recus__item { display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-items: center; gap: .75rem; padding: .75rem; border: 1px solid var(--filet); border-radius: 10px; background: var(--blanc); }
+.mes-recus__item strong, .mes-recus__item small { display: block; overflow-wrap: anywhere; }
+.mes-recus__item strong { font-size: .92rem; }
+.mes-recus__item small { margin-top: .15rem; color: var(--gris); font-size: .8rem; }
+.mes-recus__telecharger { display: inline-flex; align-items: center; gap: .3rem; min-height: 42px; padding: .45rem .65rem; border-radius: 8px; color: var(--foret-800); background: var(--succes-fond); font-weight: 700; text-decoration: none; }
+.mes-recus__statut { padding: .3rem .55rem; border-radius: 999px; font-size: .76rem; font-weight: 700; text-align: center; }
+.mes-recus__statut--verifie { color: #14532d; background: #dcfce7; }
+.mes-recus__statut--recu_envoye, .mes-recus__statut--genere { color: #854d0e; background: #fef3c7; }
+.mes-recus__statut--rejete { color: #991b1b; background: #fee2e2; }
+
 /* Réglages : un bouton qui déplie le compte et les contacts dans une carte */
 .reglages { justify-self: end; width: 100%; max-width: 100%; }
 .reglages__bouton { display: flex; align-items: center; gap: .5rem; min-height: 44px; margin-left: auto; padding: 0 1rem; width: fit-content; border: 1.5px solid var(--filet-fort); border-radius: 999px; background: var(--blanc); color: var(--foret-800); font-weight: 600; cursor: pointer; list-style: none; transition: border-color .2s, color .2s, background-color .2s; }
@@ -180,29 +229,108 @@
 .etape .alerte { margin: .25rem 0 0; }
 .etape__actions { display: flex; flex-wrap: wrap; gap: .6rem; margin-top: .5rem; }
 
-/* Mes quitus */
-.mes-quitus h2 { margin-bottom: .85rem; font-size: 1.35rem; }
-.mes-quitus h2 span { display: inline-grid; place-items: center; min-width: 26px; height: 26px; padding: 0 .45rem; margin-left: .1rem; border-radius: 999px; background: rgba(19, 53, 26, .08); font: 700 .85rem var(--f-texte); color: var(--vert-bandeau); vertical-align: middle; }
-.mes-quitus__liste { list-style: none; margin: 0; padding: 0; display: grid; gap: .75rem; }
-.quitus-ligne { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto auto; grid-template-areas: "logo infos chiffres statut" "jauge jauge jauge jauge" "motif motif motif motif" "actions actions actions actions"; align-items: center; gap: .85rem 1.25rem; padding: 1rem 1.25rem; transition: transform .2s var(--ease-sortie), box-shadow .2s; }
-.quitus-ligne:hover { transform: translateY(-2px); box-shadow: var(--ombre-2); }
-/* Avancement du quitus, en quatre segments */
-.quitus-ligne__jauge { grid-area: jauge; display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
-.quitus-ligne__jauge span { height: 4px; border-radius: 999px; background: var(--filet); }
-.quitus-ligne__jauge span.est-faite { background: var(--vert-bandeau); }
-.quitus-ligne__jauge span.est-bloquee { background: var(--danger); }
-.quitus-ligne > img { grid-area: logo; width: 44px; height: 44px; object-fit: contain; }
-.quitus-ligne__infos { grid-area: infos; min-width: 0; }
-.quitus-ligne__infos h3 { margin: 0 0 .1rem; font-size: 1.05rem; }
-.quitus-ligne__infos p { margin: 0; font-size: .9rem; color: var(--gris); }
-.quitus-ligne__infos b { color: var(--encre); font-variant-numeric: tabular-nums; }
-.quitus-ligne__chiffres { grid-area: chiffres; display: flex; gap: 1.5rem; margin: 0; }
-.quitus-ligne__chiffres div { display: grid; }
-.quitus-ligne__chiffres dt { font-size: .8rem; color: var(--gris); }
-.quitus-ligne__chiffres dd { margin: 0; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.quitus-ligne > .badge { grid-area: statut; justify-self: end; }
-.quitus-ligne__motif { grid-area: motif; margin: 0; }
-.quitus-ligne__actions { grid-area: actions; display: flex; flex-wrap: wrap; gap: .5rem; padding-top: .85rem; border-top: 1px solid var(--filet); }
+/* Mes quitus : un module, des années, puis un dossier par PDF. */
+.mes-quitus { min-width: 0; overflow: hidden; }
+.mes-quitus__entete { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1.25rem; }
+.mes-quitus__repere { margin: 0 0 .35rem; color: var(--foret-700); font-size: .8rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.mes-quitus h2 { margin: 0 0 .4rem; font-size: 1.8rem; }
+.mes-quitus h2 span { display: inline-grid; place-items: center; min-width: 28px; height: 28px; padding: 0 .4rem; border-radius: 999px; background: var(--papier); font: 700 .9rem var(--f-texte); vertical-align: middle; }
+.mes-quitus__entete p:last-child { max-width: 58ch; margin: 0; color: var(--gris); font-size: .95rem; }
+.mes-quitus__entete > .btn { flex: none; }
+.quitus-annee { border-top: 1px solid var(--filet); }
+.quitus-annee > summary { list-style: none; display: flex; align-items: center; gap: .75rem; padding: 1.1rem clamp(1rem, 3vw, 2rem); cursor: pointer; transition: background-color .2s; }
+.quitus-annee > summary::-webkit-details-marker { display: none; }
+.quitus-annee > summary:hover { background: var(--papier); }
+.quitus-annee__date { font-family: var(--f-titre); font-weight: 700; font-size: 1.4rem; color: var(--foret-900); font-variant-numeric: tabular-nums; }
+.quitus-annee__etat { padding: .15rem .65rem; background: var(--papier); color: var(--gris); border-radius: 6px; font-size: .8rem; font-weight: 600; }
+.quitus-annee[open] .quitus-annee__etat { color: var(--foret-900); background: var(--succes-fond); }
+.quitus-annee__compte { margin-left: auto; color: var(--gris); font-size: .9rem; }
+.quitus-annee > summary > .icone { transition: rotate .24s var(--ease-sortie); }
+.quitus-annee[open] > summary > .icone { rotate: 180deg; }
+.quitus-annee__contenu { padding: 0 clamp(.65rem, 2vw, 1.5rem) 1.5rem; background: var(--papier); }
+.quitus-annee[open] > summary { background: var(--papier); }
+.quitus-annee[open] .quitus-annee__contenu { animation: espace-entree .32s var(--ease-sortie); }
+.mes-quitus__liste { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); align-items: start; gap: 1rem; }
+.dossier-quitus { min-width: 0; width: 100%; max-width: 420px; padding: 1rem 1rem .4rem; border: 1px solid var(--filet); border-radius: 12px; background: var(--blanc); scroll-margin-top: calc(var(--hauteur-entete, 120px) + 16px); transition: border-color .2s, box-shadow .2s; }
+.dossier-quitus:hover, .dossier-quitus:focus-within { border-color: var(--filet-fort); box-shadow: var(--ombre-1); }
+.dossier-quitus:target { border-color: var(--foret-700); }
+.dossier-quitus__entete { display: flex; align-items: center; gap: .65rem; }
+.dossier-quitus__entete > img { width: 36px; height: 36px; object-fit: contain; flex: none; }
+.dossier-quitus__entete > div { min-width: 0; flex: 1; }
+.dossier-quitus__entete h3 { margin: 0 0 .2rem; font-size: 1rem; line-height: 1.3; text-wrap: pretty; }
+.dossier-quitus__entete p { margin: 0; font-size: .8rem; color: var(--gris); overflow-wrap: anywhere; }
+.dossier-quitus__infos { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: .5rem 1rem; margin: .75rem 0; }
+.dossier-quitus__infos > :first-child { grid-column: 1 / -1; }
+.dossier-quitus__infos dt, .dossier-quitus__total dt { color: var(--gris); font-size: .8rem; }
+.dossier-quitus__infos dd { margin: .1rem 0 0; font-size: 1rem; font-weight: 600; line-height: 1.3; overflow-wrap: anywhere; }
+.dossier-quitus__bilan { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .4rem .6rem; margin-bottom: .75rem; padding-top: .5rem; border-top: 1px solid var(--filet); }
+.dossier-quitus__total { margin: 0; }
+.dossier-quitus__total dd { margin: 0; font-size: 1.4rem; line-height: 1.3; font-weight: 700; color: var(--foret-900); font-variant-numeric: tabular-nums; }
+.dossier-quitus__total small { font: 600 .8rem var(--f-texte); }
+.dossier-quitus__paiements { list-style: none; padding: 0; margin: 0; border-block: 1px solid var(--filet); }
+.dossier-quitus__paiements li { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: .35rem .5rem; padding: .7rem 0; }
+.dossier-quitus__paiements .badge { grid-column: 1 / -1; justify-self: start; }
+.dossier-quitus__paiements li + li { border-top: 1px dashed var(--filet); }
+.dossier-quitus__paiements strong { font-size: .9rem; font-weight: 600; }
+.dossier-quitus__paiements span:not(.badge) { display: block; font-size: .8rem; color: var(--gris); overflow-wrap: anywhere; }
+.dossier-quitus__paiements b { font-size: .92rem; font-variant-numeric: tabular-nums; }
+.dossier-quitus__motif { grid-column: 1 / -1; margin: 0; padding: .5rem .75rem; border-radius: 6px; color: var(--danger); background: var(--danger-fond); font-size: .9rem; overflow-wrap: anywhere; }
+.dossier-quitus__suivi { display: flex; flex-direction: column; align-items: flex-start; gap: .6rem; margin: .8rem 0; font-size: .85rem; color: var(--gris); }
+.dossier-quitus__suivi > span { flex: 1; }
+.dossier-quitus__jauge { display: flex; width: 110px; flex: none; gap: 4px; }
+.dossier-quitus__jauge i { height: 4px; flex: 1; border-radius: 2px; background: var(--filet); }
+.dossier-quitus__jauge .est-faite { background: var(--foret-700); }
+.dossier-quitus__jauge .est-bloquee { background: var(--danger); }
+.dossier-quitus__actions { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.45fr); gap: .5rem; }
+.dossier-quitus__actions .btn { min-height: 44px; min-width: 0; padding: .55rem .5rem; gap: .35rem; font-size: .875rem; line-height: 1.3; white-space: normal; box-shadow: none; border-radius: 8px; }
+.dossier-quitus__actions [data-dossier-pdf], .dossier-quitus__actions [data-dossier-pdf] + [data-dossier-recus] { grid-column: 1 / -1; }
+.dossier-quitus__details { margin-top: .5rem; border-top: 1px solid var(--filet); }
+.dossier-quitus__details > summary { display: flex; align-items: center; justify-content: space-between; gap: .5rem; min-height: 44px; color: var(--foret-800); font-size: .85rem; font-weight: 600; cursor: pointer; list-style: none; }
+.dossier-quitus__details > summary::-webkit-details-marker { display: none; }
+.dossier-quitus__details > summary:hover { color: var(--foret-700); }
+.dossier-quitus__details > summary > .icone { transition: rotate .2s var(--ease-sortie); }
+.dossier-quitus__details[open] > summary > .icone { rotate: 180deg; }
+.dossier-quitus__date, .dossier-quitus__format { margin: 0 0 .65rem; color: var(--gris); font-size: .8rem; }
+.dossier-quitus__verrou { margin: .85rem 0 0; color: var(--gris); font-size: .84rem; }
+.mes-quitus__note { display: flex; gap: .5rem; align-items: center; margin: 0; padding: 1rem clamp(1rem, 3vw, 2rem); border-top: 1px solid var(--filet); font-size: .88rem; color: var(--gris); }
+.mes-quitus__vide { padding: 1rem .5rem; }
+.mes-quitus__vide p { max-width: 65ch; color: var(--gris); }
+.mes-quitus__vide .btn { white-space: normal; }
+.telechargement-pret { display: flex; align-items: center; gap: .9rem; padding: 1rem 1.25rem; border: 1px solid var(--filet-fort); border-radius: 12px; background: var(--blanc); color: var(--foret-900); }
+.telechargement-pret p { margin: 0; flex: 1; font-size: .95rem; }
+.telechargement-pret strong { display: block; }
+.telechargement-pret .btn { flex: none; }
+.recus-paiements { margin-bottom: 1.5rem; }
+.recus-paiements > p { color: var(--gris); font-size: .95rem; }
+.recus-paiements > div { display: flex; flex-wrap: wrap; gap: .75rem; }
+.recus-paiements a { display: grid; flex: 1 1 230px; gap: .25rem; padding: 1rem; border: 1px solid var(--filet-fort); border-radius: 12px; text-decoration: none; color: var(--encre); background: var(--blanc); }
+.recus-paiements a[aria-current] { border-color: var(--foret-700); box-shadow: inset 0 -3px var(--foret-700); background: var(--succes-fond); }
+.recus-paiements a:hover { border-color: var(--foret-700); }
+.recus-paiements span { font-size: .9rem; color: var(--gris); }
+@media (max-width: 800px) {
+	.mes-quitus__entete { align-items: flex-start; flex-direction: column; }
+}
+@media (max-width: 760px) and (min-width: 521px) {
+	.espace-modules { grid-template-columns: minmax(0, 320px); }
+}
+@media (max-width: 520px) {
+	.espace-modules { grid-template-columns: minmax(0, 290px); justify-content: center; }
+	.espace-module__carte { aspect-ratio: 1 / 1; min-height: 0; padding: 1.15rem; }
+	.mes-recus__item { grid-template-columns: auto minmax(0,1fr); }
+	.mes-recus__statut { grid-column: 2; justify-self: start; }
+	.quitus-annee > summary { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .35rem .5rem; }
+	.quitus-annee__etat { justify-self: start; grid-column: 1; grid-row: 2; }
+	.quitus-annee__compte { grid-row: 2; grid-column: 2; }
+	.quitus-annee > summary > .icone { grid-row: 1; grid-column: 2; justify-self: end; }
+	.telechargement-pret { flex-wrap: wrap; }
+	.telechargement-pret .btn { width: 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+	.espace__grille > *, .espace-module, .securite-pile > .section-form, .quitus-annee[open] .quitus-annee__contenu { animation: none; }
+	.espace-module, .espace-module:hover, .securite-pile > .section-form, .securite-pile > .section-form:hover { transform: none; transition: none; }
+	.espace-module__carte, .espace-module__carte::after, .espace-module__voile { transition: none; }
+	.quitus-annee > summary > .icone, .dossier-quitus, .dossier-quitus__details > summary > .icone { transition: none; }
+}
 
 /* Encadrés des réglages */
 .encart { padding: 0; }
@@ -222,6 +350,8 @@
 .encart__contacts a:hover { color: var(--vert-bandeau); text-decoration: underline; }
 
 @media (max-width: 640px) {
+	.administration-agent-form { grid-template-columns: 1fr; }
+	.administration-agent-form > .securite-form__actions { grid-column: auto; }
 	.espace__bandeau .btn--clair { width: 100%; }
 	/* Les chiffres passent sur deux lignes : les filets verticaux n'ont plus de sens */
 	.espace__chiffres { gap: .9rem 1.75rem; }
@@ -231,7 +361,6 @@
 	.etapes li { grid-template-columns: 36px minmax(0, 1fr); column-gap: .8rem; padding: 0 0 1.1rem; }
 	.etapes li::before { top: 40px; bottom: 4px; left: 17px; right: auto; width: 2px; height: auto; }
 	.etapes__puce { grid-row: span 2; margin: 0; }
-	.quitus-ligne { grid-template-columns: 44px minmax(0, 1fr); grid-template-areas: "logo infos" "chiffres statut" "jauge jauge" "motif motif" "actions actions"; padding: 1rem; }
 }
 
 /* ---------- Formulaire du quitus ----------
@@ -284,23 +413,87 @@
 .quitus-note .icone, .quitus-montant-fixe .icone { flex: none; margin-top: .15rem; color: var(--vert-bandeau); }
 .quitus-montant-fixe b { color: var(--encre); font-variant-numeric: tabular-nums; }
 
+/* Total discret, dans la continuité du bordereau universitaire. */
+.paiement-total { border-top: 1px solid var(--filet); padding-top: 1rem; color: var(--encre); }
+.paiement-total p { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .3rem 1rem; margin: 0; font-size: 1rem; }
+.paiement-total strong { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.paiement-total .paiement-total__detail { display: block; margin-top: .3rem; color: var(--gris); font-size: .9rem; }
+.quitus-form input[readonly] { background: var(--papier); color: var(--encre); }
+.quitus-form select:disabled { opacity: 1; color: var(--gris); background: var(--papier); }
+.quitus-form .etab-choix__option:has(input:disabled) { opacity: .45; }
+.quitus-form .etab-choix__option:has(input:disabled) .etab-choix__carte { cursor: default; }
+.quitus-form .champ__select { min-width: 0; }
+.quitus-form select { text-overflow: ellipsis; }
+.quitus-cms { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--filet); }
+.quitus-cms h3 { margin: 0; color: var(--foret-800); font-size: 1.1rem; }
+.quitus-cms__corps { padding-top: .85rem; }
+.quitus-erreurs > div { min-width: 0; }
+.quitus-erreurs ul { margin: .5rem 0 0; padding-left: 1.2rem; }
+.quitus-erreurs li + li { margin-top: .4rem; }
+.quitus-erreurs a { color: inherit; text-decoration: underline; text-underline-offset: .15em; }
+
 /* Montant, récapitulatif et génération */
 .champ-montant { display: grid; gap: .4rem; align-content: start; }
-.quitus-final { display: grid; gap: 1rem; padding: clamp(1.25rem, 1rem + 1vw, 1.75rem); }
-.quitus-final__titre { margin: 0; font-size: 1.3rem; }
-.quitus-recap { display: flex; flex-wrap: wrap; gap: .9rem 2.5rem; margin: 0; padding: 1rem 1.1rem; border-radius: var(--r-champ); background: var(--papier); }
-.quitus-recap div { display: grid; gap: .15rem; min-width: 0; }
-.quitus-recap dt { font-size: .82rem; color: var(--gris); }
-.quitus-recap dd { display: flex; align-items: center; gap: .45rem; margin: 0; font-weight: 700; font-variant-numeric: tabular-nums; }
-.quitus-recap dd img { flex: none; width: 26px; height: 26px; object-fit: contain; }
-.quitus-final__note { display: flex; gap: .5rem; margin: 0; font-size: .92rem; color: var(--gris); }
-.quitus-final__note .icone { flex: none; color: var(--vert-bandeau); }
-.quitus-final__actions { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; }
-.quitus-final__actions .btn--large { flex: 1 1 16rem; width: auto; }
+/* La dernière carte reprend la composition d'un dossier : récapitulatif et pièces jointes. */
+.quitus-final { padding: 0; }
+.quitus-final__entete { padding: clamp(1.25rem, 3vw, 2rem) clamp(1.25rem, 3vw, 2rem) 1.35rem; }
+.quitus-final__repere { margin: 0 0 .5rem; color: var(--foret-700); font-size: .75rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+.quitus-final__titre { margin: 0; font-size: clamp(1.45rem, 1.1rem + .8vw, 1.8rem); line-height: 1.2; text-wrap: balance; }
+.quitus-final__intro { margin: .55rem 0 0; color: var(--gris); font-size: .95rem; }
+.quitus-final__corps { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: clamp(1.25rem, 3vw, 2.25rem); padding: 0 clamp(1.25rem, 3vw, 2rem) 1.75rem; }
+.quitus-final__resume { min-width: 0; }
+.quitus-final__etablissement { display: flex; align-items: center; gap: .85rem; padding-bottom: 1.1rem; }
+.quitus-final__etablissement img { flex: none; width: 44px; height: 44px; object-fit: contain; }
+.quitus-final__etablissement img[hidden] { display: none; }
+.quitus-final__etablissement div { display: grid; min-width: 0; gap: .2rem; }
+.quitus-final__etablissement span { color: var(--gris); font-size: .8rem; }
+.quitus-final__etablissement strong { font-size: 1.05rem; font-weight: 650; line-height: 1.35; overflow-wrap: anywhere; }
+.quitus-recap { display: grid; gap: .65rem; margin: 0; }
+.quitus-recap > div { display: grid; grid-template-columns: minmax(5rem, .65fr) minmax(0, 1.6fr); align-items: baseline; gap: .35rem 1rem; }
+.quitus-recap dt { color: var(--gris); font-size: .9rem; line-height: 1.4; }
+.quitus-recap dd { margin: 0; font-size: .93rem; font-weight: 600; line-height: 1.45; overflow-wrap: anywhere; }
+.quitus-recap--montants { margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--filet); }
+.quitus-recap--montants > div { grid-template-columns: minmax(0, 1fr) auto; }
+.quitus-recap--montants dd { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.quitus-recap .quitus-recap__total { margin-top: .15rem; padding-top: .8rem; border-top: 1px solid var(--filet); }
+.quitus-recap__total dt, .quitus-recap__total dd { color: var(--foret-900); font-size: 1.05rem; font-weight: 700; }
 
+.quitus-document { align-self: start; min-width: 0; padding: 1.35rem 1.5rem; border-radius: var(--r-champ); background: var(--vert-bandeau); color: var(--blanc); }
+.quitus-document__entete { display: flex; align-items: center; gap: .9rem; padding-bottom: 1.15rem; }
+.quitus-document__feuille { display: grid; justify-items: center; gap: .15rem; flex: none; color: var(--blanc); }
+.quitus-document__feuille > span { font-size: .65rem; font-weight: 700; letter-spacing: .1em; }
+.quitus-document__entete h3 { margin: 0; color: var(--blanc); font: 650 1.1rem/1.3 var(--f-texte); }
+.quitus-document__entete p { margin: .3rem 0 0; font-size: .85rem; color: var(--blanc); }
+.quitus-document__liste { display: grid; gap: 0; list-style: none; margin: 0; padding: 0; }
+.quitus-document__liste li { display: flex; align-items: baseline; justify-content: space-between; gap: .8rem; padding: .8rem 0; border-top: 1px solid rgba(255, 255, 255, .2); }
+.quitus-document__liste li > div { display: grid; gap: .2rem; min-width: 0; }
+.quitus-document__liste strong { font-size: .95rem; font-weight: 600; }
+.quitus-document__liste li > div > span { color: rgba(255, 255, 255, .8); font-size: .83rem; line-height: 1.45; }
+.quitus-document__pages { flex: none; padding-top: .1rem; font-size: .8rem; font-variant-numeric: tabular-nums; color: rgba(255, 255, 255, .8); }
+.quitus-document__note { margin: .7rem 0 0; color: rgba(255, 255, 255, .8); font-size: .8rem; line-height: 1.5; }
+
+.quitus-final__pied { display: flex; justify-content: space-between; align-items: center; gap: 1rem 2rem; padding: 1.25rem clamp(1.25rem, 3vw, 2rem); border-top: 1px solid var(--filet); background: var(--papier); border-radius: 0 0 var(--r-carte) var(--r-carte); }
+.quitus-final__pied > p { max-width: 38ch; margin: 0; color: var(--gris); font-size: .85rem; line-height: 1.5; }
+.quitus-final__actions { display: flex; flex: none; align-items: center; gap: 1.2rem; }
+.quitus-final__generer { min-height: 50px; border-radius: var(--r-champ); }
+.quitus-final .quitus-final__generer, .quitus-final .quitus-final__generer:hover { box-shadow: none; }
+.quitus-final__annuler { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; color: var(--gris); font-size: .9rem; }
+
+@media (max-width: 800px) {
+	.quitus-final__corps { grid-template-columns: minmax(0, 1fr); }
+	.quitus-final__pied { flex-wrap: wrap; }
+	.quitus-final__pied > p { max-width: none; }
+	.quitus-final__actions { width: 100%; }
+	.quitus-final__generer { flex: 1; }
+}
 @media (max-width: 560px) {
 	.etab-choix { gap: .6rem; }
-	.quitus-final__actions .btn { width: 100%; }
+	.quitus-final__corps { gap: 1.35rem; padding-bottom: 1.25rem; }
+	.quitus-final__titre { max-width: 23ch; }
+	.quitus-document { padding: 1.15rem; }
+	.quitus-final__actions { flex-direction: column; gap: .35rem; }
+	.quitus-final__generer { width: 100%; white-space: normal; }
+	.quitus-final__annuler { min-width: 80px; }
 }
 
 /* ---------- Back-office : barre latérale, chiffres et graphiques ---------- */
@@ -359,6 +552,18 @@
 .bo-contenu .page-app__entete { align-items: flex-start; margin-bottom: 0; }
 .bo-contenu .page-app__entete h1 { font-size: clamp(1.45rem, 1.2rem + .8vw, 1.9rem); letter-spacing: -.015em; }
 .bo-contenu .page-app__sous-titre { margin-top: .2rem; font-size: .9rem; }
+.bo-securite { width: min(100%, 720px); margin-inline: auto; overflow: hidden; border: 1px solid rgba(19, 53, 26, .14); border-radius: 18px; box-shadow: 0 22px 48px -32px rgba(10, 31, 22, .75); }
+.bo-securite .section-form__entete { padding: 1.25rem 1.5rem; background: linear-gradient(110deg, rgba(244,247,243,.98), #fff); }
+.bo-securite .section-form__num { width: 42px; height: 42px; border-radius: 12px; background: var(--vert-bandeau); box-shadow: 0 8px 18px -12px rgba(10,31,22,.9); }
+.bo-securite .section-form__entete h2 { font-size: 1.35rem; }
+.bo-securite .section-form__entete p { font-size: .9rem; }
+.bo-securite .section-form__corps { padding: clamp(1.25rem, 2vw, 1.75rem); background: #fff; }
+.bo-securite-form { width: min(100%, 500px); margin-inline: auto; gap: .9rem; }
+.bo-securite-form .champ input { min-height: 46px; padding-block: .58rem; font-size: .96rem; }
+.bo-securite-form .securite-form__actions { padding-top: .3rem; }
+.bo-securite-form .btn { min-height: 46px; border-radius: 10px; }
+.bo-cellule-creation form > .champ { width: min(100%, 470px); }
+.bo-cellule-creation form > .champ input[type="email"] { max-width: 470px; }
 
 /* Entrée échelonnée des grilles de cartes : un cran de 45 ms, plafonné à six
    — au-delà, on attend sans raison que la dernière carte daigne apparaître. */
@@ -428,13 +633,14 @@
    sans carte orpheline en dernière rangée, et les noms longs respirent. */
 .bo-etabs { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 270px), 1fr)); gap: .9rem; }
 .bo-etab { position: relative; display: grid; gap: .1rem; padding: 1.1rem 1.2rem; border-radius: var(--r-carte); background: var(--blanc); border: 1px solid var(--filet); box-shadow: var(--ombre-1); color: var(--encre); text-decoration: none; overflow: hidden; transition: transform .2s var(--ease-sortie), box-shadow .2s, border-color .2s; }
-.bo-etab::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 4px; background: var(--etab); }
 .bo-etab:hover { transform: translateY(-2px); box-shadow: var(--ombre-2); border-color: var(--gris-clair); color: var(--encre); }
 /* Même traitement que les tuiles : un chiffre isolé reste en police d'interface,
    en chiffres proportionnels (tabular-nums est réservé aux colonnes alignées). */
-.bo-etab b { font: 600 1.9rem/1.05 var(--f-texte); letter-spacing: -.01em; }
-.bo-etab__sigle { font-weight: 700; font-size: .95rem; color: var(--vert-bandeau); }
-.bo-etab__nom { font-size: .86rem; color: var(--gris); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.bo-etab > b { font: 600 1.9rem/1.05 var(--f-texte); letter-spacing: -.01em; }
+.bo-etab__sigle { display: inline-flex; align-items: center; width: fit-content; padding: .18rem .5rem; border-radius: 999px; background: color-mix(in srgb, var(--etab) 12%, #fff); font-weight: 700; font-size: .95rem; color: var(--etab); }
+.bo-etab__niveaux { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .45rem .7rem; margin-top: .45rem; color: var(--gris); font-size: .84rem; line-height: 1.35; font-variant-numeric: tabular-nums; }
+.bo-etab__niveaux span { min-width: 0; white-space: nowrap; }
+.bo-etab__niveaux b { color: var(--encre); font-weight: 700; }
 .bo-etab__note { font-size: .78rem; color: var(--gris-clair); }
 
 /* Grille de douze colonnes : chaque figure prend l'empan qu'appelle sa forme,
@@ -543,9 +749,38 @@
 
 /* ---------- Sécurité du compte ---------- */
 
+.securite-page { background: radial-gradient(circle at 92% 0%, rgba(227, 168, 34, .09), transparent 25rem); }
+.securite-page .conteneur--moyen { position: relative; }
+.securite-page .page-app__entete { align-items: flex-start; margin-bottom: 1.35rem; padding: clamp(1.35rem, 2.5vw, 2rem); border: 1px solid rgba(19, 53, 26, .1); border-radius: 20px; background: linear-gradient(135deg, rgba(255,255,255,.98), rgba(244,247,243,.86)); box-shadow: 0 18px 42px -32px rgba(10, 31, 22, .7); }
+.securite-page__eyebrow { margin: 0 0 .45rem; color: var(--or-fonce); font-size: .75rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+.securite-page .page-app__entete h1 { letter-spacing: -.025em; }
+.securite-page .page-app__sous-titre { max-width: 48ch; margin: .4rem 0 0; color: var(--gris); }
+.securite-page .quitus-contexte { gap: .65rem; margin-bottom: 1.5rem; }
+.securite-page .quitus-contexte li { flex: 1 1 180px; min-height: 48px; padding: .55rem .8rem; border-color: rgba(19, 53, 26, .12); box-shadow: 0 5px 16px -14px rgba(10, 31, 22, .8); }
+.securite-page .quitus-contexte .icone { color: var(--or-fonce); }
 .securite-pile { display: grid; gap: 1.25rem; }
+.administration-agent-form { width: min(100%, 780px); grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+.administration-agent-form > .formulaire__rangee { display: contents; }
+.administration-agent-form > .champ { max-width: none; }
+.administration-agent-form > .securite-form__actions { grid-column: 1 / -1; }
+.securite-pile > .section-form { border: 1px solid rgba(19, 53, 26, .12); box-shadow: 0 14px 34px -28px rgba(10, 31, 22, .9); animation: carte-entree .5s var(--ease-sortie) both; transition: transform .22s var(--ease-sortie), box-shadow .22s ease, border-color .22s ease; }
+.securite-pile > .section-form:nth-child(2) { animation-delay: .08s; }
+.securite-pile > .section-form:nth-child(3) { animation-delay: .16s; }
+.securite-pile > .section-form:hover { transform: translateY(-3px); border-color: rgba(29, 90, 56, .32); box-shadow: 0 20px 38px -24px rgba(10, 31, 22, .72); }
+.securite-page .section-form__entete { background: linear-gradient(90deg, rgba(244,247,243,.95), rgba(255,255,255,.98)); }
+.securite-page .section-form__num { width: 40px; height: 40px; border-radius: 12px; background: var(--vert-bandeau); box-shadow: inset 0 0 0 1px rgba(255,255,255,.15), 0 8px 18px -12px rgba(10,31,22,.9); }
+.securite-page .section-form__entete h2 { font-size: 1.35rem; }
+.securite-page .fiche { margin-bottom: .75rem; }
+.securite-page .formulaire__titre { color: var(--foret-900); letter-spacing: -.01em; }
+.securite-page .securite-form__actions .btn { min-height: 46px; border-radius: 10px; }
+.securite-page .securite-form { width: min(100%, 460px); }
+.securite-page .securite-form .champ input { max-width: 460px; }
 .section-form__num .icone { color: currentColor; }
-.securite-form { margin-top: 1.25rem; }
+.securite-form { width: min(100%, 500px); margin-top: 1.25rem; }
+.securite-form .champ input, .securite-form .champ select { min-height: 44px; padding-block: .52rem; font-size: .95rem; }
+.securite-form .champ input[type="password"] { max-width: 460px; }
+.securite-form .formulaire__rangee { gap: .85rem; }
+.section-form__corps > form.formulaire:not(.quitus-form), .section-form__corps > .formulaire:not(.quitus-form) { max-width: 680px; }
 .securite-form__actions { display: flex; flex-wrap: wrap; gap: .75rem; margin-top: .25rem; }
 .securite-conseils { list-style: none; margin: 0; padding: 0; display: grid; gap: .9rem; }
 .securite-conseils li { display: flex; align-items: flex-start; gap: .75rem; color: var(--gris); line-height: 1.5; }
@@ -613,6 +848,38 @@
 .compteur--genere b { color: var(--or-fonce); }
 .filtres { display: flex; flex-wrap: wrap; align-items: end; gap: 1rem; padding: 1.1rem; margin-bottom: 1.25rem; }
 .filtres .champ { flex: 1 1 14rem; }
+.filtres--quitus { width: min(100%, 720px); gap: .75rem; padding: .9rem 1rem; border: 1px solid rgba(19, 53, 26, .12); border-radius: 14px; box-shadow: 0 12px 28px -24px rgba(10, 31, 22, .75); }
+.filtres--quitus .champ { flex: 0 1 500px; }
+.filtres--quitus .champ label { margin-left: .15rem; font-size: .82rem; letter-spacing: .02em; }
+.filtres--quitus input[type="search"] { min-height: 46px; border-radius: 11px; padding-inline: .85rem; background: #fff; }
+.filtres--quitus input[type="search"]:focus { border-color: var(--foret-700); box-shadow: 0 0 0 4px rgba(46, 125, 50, .14); }
+.filtres--quitus .btn { min-height: 46px; border-radius: 11px; }
+@media (max-width: 620px) {
+	.filtres--quitus .champ { flex-basis: 100%; }
+	.filtres--quitus .btn { width: 100%; }
+}
+
+/* Cellule informatique : les formulaires restent compacts et lisibles dans
+   le grand espace du back-office, sans étirer les champs sur toute la ligne. */
+.cellule-page .espace-connexion .formulaire { width: min(100%, 340px); margin-inline: auto; }
+.cellule-page .filtres { width: min(100%, 760px); }
+.cellule-page .filtres .champ { flex: 0 1 32rem; max-width: 520px; }
+.cellule-page .section-form__corps > .formulaire > form,
+.cellule-page .section-form__corps > form.formulaire { width: min(100%, 620px); }
+.cellule-page .section-form__corps > .formulaire .champ input,
+.cellule-page .section-form__corps > .formulaire .champ select,
+.cellule-page .section-form__corps > form.formulaire .champ input,
+.cellule-page .section-form__corps > form.formulaire .champ select { min-height: 46px; padding: .6rem .8rem .6rem 3.25rem; font-size: .95rem; }
+.cellule-page .section-form__corps > .formulaire .champ input,
+.cellule-page .section-form__corps > .formulaire .champ select { padding-left: 3.25rem; }
+.cellule-page .section-form__corps > .formulaire .formulaire__rangee { grid-template-columns: minmax(0, 1.2fr) minmax(150px, .8fr); gap: .85rem; }
+.cellule-page .section-form__corps > .formulaire .securite-form__actions,
+.cellule-page .section-form__corps > form.formulaire .securite-form__actions { margin-top: .1rem; }
+@media (max-width: 700px) {
+	.cellule-page .section-form__corps > .formulaire .formulaire__rangee { grid-template-columns: 1fr; }
+	.cellule-page .filtres { align-items: stretch; }
+	.cellule-page .filtres .champ { max-width: none; flex-basis: 100%; }
+}
 .pastille-etab { display: inline-block; padding: .2rem .6rem; border-radius: 999px; background: color-mix(in srgb, var(--etab) 12%, #fff); color: var(--etab); font-weight: 700; font-size: .85rem; }
 .pagination { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: 1.25rem; }
 .pagination a { min-width: 44px; min-height: 44px; display: grid; place-items: center; border-radius: 10px; border: 1px solid var(--filet); background: var(--blanc); text-decoration: none; font-weight: 600; color: var(--encre); }
@@ -635,8 +902,38 @@
 .tableau td.actions-ligne > form + form { margin-left: .25rem; }
 /* En cellule de tableau, un champ de 52 px alourdirait chaque ligne. */
 .actions-ligne .champ__select select { min-height: 40px; padding: .4rem 2.4rem .4rem .7rem; font-size: .92rem; }
-.actions-ligne .champ__select .icone { right: .6rem; }
+.actions-ligne .champ__select > .icone { right: .6rem; }
+
+/* Convention commune aux formulaires de sécurité de chaque espace. */
+.securite-form, .bo-securite-form { width: min(100%, 520px); margin-inline: auto; gap: 1rem; }
+.securite-form .champ input, .securite-form .champ select,
+.bo-securite-form .champ input, .bo-securite-form .champ select,
+.cellule-page .securite-form .champ input, .cellule-page .securite-form .champ select { width: 100%; max-width: none; min-height: 48px; padding: .65rem 1rem .65rem 3.25rem; font-size: .96rem; }
+.securite-form .formulaire__rangee, .bo-securite-form .formulaire__rangee { grid-template-columns: 1fr; gap: 1rem; }
+.securite-form__actions { align-items: center; }
+.bo-agent-mdp input { min-height: 44px; padding: .6rem .75rem; font-size: .95rem; }
+.securite-form .champ__mdp, .bo-securite-form .champ__mdp { position: relative; display: block; width: 100%; }
+.securite-form .champ__mdp input, .bo-securite-form .champ__mdp input { padding-right: 3.5rem; }
+.securite-form .champ__voir, .bo-securite-form .champ__voir { z-index: 2; right: .25rem; width: 42px; height: 42px; }
+@media (max-width: 640px) {
+	.securite-form .formulaire__rangee, .bo-securite-form .formulaire__rangee { grid-template-columns: 1fr; }
+}
+.bo-agent-mdp { width: min(92vw, 420px); padding: 0; border: 0; border-radius: var(--r-carte); background: var(--blanc); box-shadow: var(--ombre-3); color: var(--encre); }
+.bo-agent-mdp:not([open]) { display: none; }
+.bo-agent-mdp::backdrop { background: rgba(10, 31, 22, .55); backdrop-filter: blur(3px); }
+.bo-agent-mdp[open] { animation: fenetre-entree .25s var(--ease-sortie); }
+.bo-agent-mdp h2 { margin: 0; padding: 1.35rem 1.35rem .25rem; font-size: 1.25rem; }
+.bo-agent-mdp > p { margin: 0; padding: 0 1.35rem 1rem; color: var(--gris); font-size: .92rem; }
+.bo-agent-mdp > form { display: grid; gap: .65rem; padding: 0 1.35rem 1.35rem; text-align: left; }
+.bo-agent-mdp label { display: grid; gap: .25rem; color: var(--gris); font-size: .78rem; font-weight: 600; }
+.bo-agent-mdp input { width: 100%; min-height: 38px; padding: .4rem .55rem; border: 1px solid var(--filet-fort); border-radius: 8px; font: inherit; }
+.bo-agent-mdp__actions { display: flex; justify-content: flex-end; gap: .5rem; margin-top: .35rem; }
+.tableau td.actions-ligne > .bo-agent-mdp:not([open]) { display: none; }
+.tableau td.actions-ligne > .bo-agent-mdp[open] { display: block; }
 .provisoire { display: flex; gap: 1rem; padding: 1.25rem; margin-bottom: 1.25rem; border-color: #f0d68a; background: var(--alerte-fond); }
 .provisoire .icone { color: var(--or-fonce); flex: none; }
 .provisoire p { margin: 0 0 .35rem; }
 .provisoire__mdp { font-family: ui-monospace, "Cascadia Mono", Menlo, monospace; font-size: 1.6rem; font-weight: 700; letter-spacing: .12em; color: var(--foret-900); user-select: all; }
+.provisoire__copier { margin-top: .15rem; }
+.provisoire__copier.est-copie { border-color: var(--vert); color: var(--vert); background: var(--succes-fond); }
+.bo-agent-mdp input { min-height: 44px; padding: .6rem .75rem; font-size: .95rem; }

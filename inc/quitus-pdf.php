@@ -38,7 +38,7 @@ function ueb_telecharger_quitus( $compte, $numero ) {
 function ueb_envoyer_pdf_quitus( $quitus ) {
 	$pdf = ueb_generer_pdf_quitus( $quitus );
 	nocache_headers();
-	$pdf->Output( 'quitus-' . $quitus->numero . '.pdf', 'I' );
+	$pdf->Output( 'quitus-' . $quitus->numero . '.pdf', 'D' );
 	exit;
 }
 
@@ -46,12 +46,11 @@ function ueb_envoyer_pdf_quitus( $quitus ) {
 function ueb_generer_pdf_quitus( $quitus ) {
 	require_once UEB_INSC_DIR . '/lib/tcpdf/tcpdf.php';
 
-	$etab = ueb_etablissement( $quitus->etablissement );
 	$pdf  = new TCPDF( 'P', 'mm', 'A4', true, 'UTF-8', false );
 	$pdf->SetCreator( 'Plateforme d’inscription — ' . UEB_UNIVERSITE['fr'] );
 	$pdf->SetAuthor( UEB_UNIVERSITE['fr'] );
 	$pdf->SetTitle( 'Quitus ' . $quitus->numero );
-	$pdf->SetSubject( 'Quitus de paiement des droits universitaires ' . str_replace( '-', ' – ', $quitus->annee_academique ) );
+	$pdf->SetSubject( ueb_libelle_type_quitus( $quitus->type ?? 'droits' ) . ' — ' . str_replace( '-', ' – ', $quitus->annee_academique ) );
 	$pdf->setFontSubsetting( false );
 	$pdf->setPrintHeader( false );
 	$pdf->setPrintFooter( false );
@@ -59,8 +58,34 @@ function ueb_generer_pdf_quitus( $quitus ) {
 	$pdf->SetAutoPageBreak( false );
 	$pdf->setCellPaddings( 0, 0, 0, 0 );
 	$pdf->setCellHeightRatio( 1.12 );
-	$pdf->AddPage();
+	ueb_pdf_page_quitus( $pdf, $quitus );
+	$medical = 'medicaux' === ( $quitus->type ?? 'droits' ) ? $quitus : ueb_medical_du_dossier( $quitus );
+	if ( $medical ) {
+		if ( 'droits' === ( $quitus->type ?? 'droits' ) ) {
+			ueb_pdf_page_quitus( $pdf, $medical );
+		}
+		require_once UEB_INSC_DIR . '/inc/cms-pdf.php';
+		$compte = ueb_compte_par_id( $medical->compte_id );
+		$d = array(
+			'libelle_identifiant' => 'matricule' === $medical->type_identifiant ? 'Matricule' : 'N° Dossier',
+			'numero_dossier' => $medical->identifiant,
+			'nom' => $medical->nom,
+			'prenom' => $medical->prenom,
+			'date_naissance' => $medical->date_naissance,
+			'sexe' => $medical->sexe,
+			'telephone' => $compte->telephone ?? '',
+			'email' => $medical->email ?? '', 'adresse' => $medical->adresse ?? '', 'nom_urgence' => $medical->nom_urgence ?? '', 'numero_urgence' => $medical->numero_urgence ?? '', 'adresse_urgence' => $medical->adresse_urgence ?? '',
+		);
+		ueb_cms_page_medicale( $pdf, $d );
+		ueb_cms_page_examen( $pdf );
+	}
+	return $pdf;
+}
 
+/** Ajoute une page contenant les quatre coupons d'un seul paiement. */
+function ueb_pdf_page_quitus( TCPDF $pdf, $quitus ) {
+	$etab = ueb_etablissement( $quitus->etablissement );
+	$pdf->AddPage();
 	$c = ueb_pdf_couleurs( $etab['couleur'] );
 	for ( $i = 0; $i < 4; $i++ ) {
 		$y = UEB_PDF_MARGE_Y + $i * ( UEB_PDF_HAUTEUR + UEB_PDF_INTERVALLE );
@@ -69,7 +94,6 @@ function ueb_generer_pdf_quitus( $quitus ) {
 			ueb_pdf_ligne_coupe( $pdf, $y + UEB_PDF_HAUTEUR + UEB_PDF_INTERVALLE / 2 );
 		}
 	}
-	return $pdf;
 }
 
 /* ---------- Couleurs ---------- */
@@ -179,13 +203,26 @@ function ueb_pdf_lignes_entete( $langue, $etab, array $c ) {
 	$fr   = 'fr' === $langue;
 	$long = mb_strlen( $etab[ $langue ] ) > 44;
 	return array(
-		array( 'type' => 'txt', 'texte' => $fr ? 'RÉPUBLIQUE DU CAMEROUN' : 'REPUBLIC OF CAMEROON', 'famille' => 'uebserifb', 'style' => '', 'taille' => 7, 'espacement' => 0.15, 'couleur' => $c['encre'] ),
-		array( 'type' => 'txt', 'texte' => $fr ? 'Paix – Travail – Patrie' : 'Peace – Work – Fatherland', 'famille' => 'uebserifi', 'style' => '', 'taille' => 6.4, 'couleur' => $c['gris'] ),
+		array( 'type' => 'txt', 'texte' => $fr ? 'RÉPUBLIQUE DU CAMEROUN' : 'REPUBLIC OF CAMEROON', 'famille' => 'uebserifb', 'style' => '', 'taille' => 7, 'espacement' => 0.15, 'couleur' => $c['etab'] ),
+		array( 'type' => 'txt', 'texte' => $fr ? 'Paix – Travail – Patrie' : 'Peace – Work – Fatherland', 'famille' => 'uebserifi', 'style' => '', 'taille' => 6.4, 'couleur' => $c['etab'] ),
 		array( 'type' => 'sep' ),
-		array( 'type' => 'txt', 'texte' => mb_strtoupper( $fr ? UEB_UNIVERSITE['fr'] : UEB_UNIVERSITE['en'] ), 'famille' => 'uebserifb', 'style' => '', 'taille' => 8.2, 'espacement' => 0.14, 'couleur' => $c['ueb'] ),
+		array( 'type' => 'txt', 'texte' => mb_strtoupper( $fr ? UEB_UNIVERSITE['fr'] : UEB_UNIVERSITE['en'] ), 'famille' => 'uebserifb', 'style' => '', 'taille' => 8.2, 'espacement' => 0.14, 'couleur' => $c['etab'] ),
 		array( 'type' => 'sep' ),
 		array( 'type' => 'txt', 'texte' => mb_strtoupper( $etab[ $langue ] ), 'famille' => $fr ? 'uebserifb' : 'uebserifbi', 'style' => '', 'taille' => $long ? 6.9 : 8.4, 'espacement' => 0.05, 'couleur' => $c['etab'] ),
 	);
+}
+
+/** Contenu court aligné sur le QR du site de préinscription. */
+function ueb_pdf_contenu_qr( $q ) {
+	$etab = ueb_etablissement( $q->etablissement );
+	$nom  = trim( $q->nom . ' ' . $q->prenom );
+	$nom_ascii = iconv( 'UTF-8', 'ASCII//TRANSLIT//IGNORE', $nom );
+	$nom  = false === $nom_ascii ? $nom : $nom_ascii;
+	return 'Quitus inscription ' . $q->annee_academique . "\n"
+		. 'Dossier : ' . $q->identifiant . "\n"
+		. 'Nom : ' . mb_strtoupper( $nom ) . "\n"
+		. ( $etab && ! empty( $etab['sigle'] ) ? 'Etab : ' . $etab['sigle'] . "\n" : '' )
+		. 'Montant : ' . (int) $q->montant . ' FCFA';
 }
 
 function ueb_pdf_coupon( TCPDF $pdf, $q, array $etab, array $c, $libelle_coupon, $x0, $y0 ) {
@@ -284,11 +321,12 @@ function ueb_pdf_coupon( TCPDF $pdf, $q, array $etab, array $c, $libelle_coupon,
 	$wReg    = $Wi - $wQr - 3.5;
 	ueb_pdf_registre( $pdf, $q, $c, $xi, $y, $wReg, $hCorps );
 
-	$tQr  = 18.5;
+	/* Utiliser l'espace disponible et garder une marge blanche de quatre modules. */
+	$tQr  = min( $wQr, $hCorps - 5.2 );
 	$xQr  = $xi + $wReg + 3.5 + ( $wQr - $tQr ) / 2;
 	$yQr  = $y + ( $hCorps - $tQr - 5.2 ) / 2;
-	$pdf->write2DBarcode( ueb_url_verification( $q ), 'QRCODE,M', $xQr, $yQr, $tQr, $tQr, array(
-		'border' => false, 'padding' => 0, 'fgcolor' => $c['encre'], 'bgcolor' => false,
+	$pdf->write2DBarcode( ueb_pdf_contenu_qr( $q ), 'QRCODE,L', $xQr, $yQr, $tQr, $tQr, array(
+		'border' => false, 'padding' => 4, 'fgcolor' => array( 0, 0, 0 ), 'bgcolor' => array( 255, 255, 255 ),
 	), 'N' );
 	$pdf->SetFont( 'uebsans', '', 6.2 );
 	$pdf->SetTextColorArray( $c['gris'] );

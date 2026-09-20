@@ -1,6 +1,6 @@
 <?php
 /**
- * Vérification publique d'un quitus (adresse encodée dans le QR code).
+ * Vérification publique d'un quitus (liens et anciens QR codes).
  * N'affiche que le nécessaire pour authentifier le document.
  *
  * @package Inscription_UEB

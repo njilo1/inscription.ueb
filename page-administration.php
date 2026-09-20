@@ -23,17 +23,20 @@ if ( isset( $_POST['ueb_connexion_admin'] ) ) {
 	if ( ! isset( $_POST['ueb_connexion_nonce'] ) || ! wp_verify_nonce( $_POST['ueb_connexion_nonce'], 'ueb_connexion_admin' ) ) {
 		$erreur_connexion = 'Ta session a expiré. Recommence.';
 	} else {
-		$utilisateur = wp_signon( array(
-			'user_login'    => sanitize_text_field( wp_unslash( $_POST['identifiant'] ?? '' ) ),
-			'user_password' => $_POST['mot_de_passe'] ?? '',
-			'remember'      => true,
+		$identifiant = sanitize_text_field( wp_unslash( $_POST['identifiant'] ?? '' ) );
+		$utilisateur = ueb_connexion_gestion_bloquee( $identifiant ) ? new WP_Error( 'ueb_rate_limited' ) : wp_signon( array(
+			'user_login'    => $identifiant,
+			'user_password' => (string) wp_unslash( $_POST['mot_de_passe'] ?? '' ),
+			'remember'      => false,
 		), is_ssl() );
 		if ( is_wp_error( $utilisateur ) ) {
+			ueb_noter_echec_gestion( $identifiant );
 			$erreur_connexion = 'Identifiant ou mot de passe incorrect.';
 		} elseif ( ! user_can( $utilisateur, 'manage_options' ) ) {
 			wp_logout();
 			$erreur_connexion = "Ce compte n'est pas administrateur.";
 		} else {
+			ueb_reinitialiser_echecs_gestion( $identifiant );
 			wp_safe_redirect( get_permalink() );
 			exit;
 		}
@@ -51,6 +54,7 @@ if ( $autorise ) {
 	$chiffres       = ueb_gestion_chiffres( $annee['code'], $focus );
 	$stats          = ueb_gestion_stats( $annee['code'], $focus );
 	$etudiants_etab = ueb_gestion_etudiants_par_etab( $annee['code'] );
+	$niveaux_etab   = ueb_gestion_niveaux_par_etab( $annee['code'] );
 	$prov     = $_SESSION['ueb_mdp_agent'] ?? null;
 	unset( $_SESSION['ueb_mdp_agent'] );
 	if ( 'scolarites' === $vue ) {
@@ -101,7 +105,6 @@ ueb_page_debut( array( 'titre' => 'Administration', 'variante' => $autorise ? 'b
 				array(
 					array( 'url' => $ici(), 'libelle' => 'Tableau de bord', 'icone' => 'tampon', 'actif' => 'bord' === $vue && ! $focus ),
 					array( 'url' => $ici( array( 'vue' => 'scolarites' ) ), 'libelle' => 'Scolarités', 'icone' => 'bouclier', 'actif' => 'scolarites' === $vue ),
-					array( 'url' => ueb_url_scolarite(), 'libelle' => 'Espace scolarité', 'icone' => 'recu' ),
 				),
 				array(
 					'titre' => UEB_UNIVERSITE['fr'],
@@ -126,8 +129,9 @@ ueb_page_debut( array( 'titre' => 'Administration', 'variante' => $autorise ? 'b
 						<div class="provisoire carte" role="status">
 							<?php echo ueb_icone( 'cle', 26 ); ?>
 							<div>
-								<p>Mot de passe provisoire pour <b><?php echo esc_html( $prov['compte'] ); ?></b> — à communiquer maintenant, il ne sera plus affiché :</p>
-								<p class="provisoire__mdp"><?php echo esc_html( $prov['mdp'] ); ?></p>
+								<p>Mot de passe initial pour <b><?php echo esc_html( $prov['compte'] ); ?></b> — à communiquer à l’établissement, il ne sera plus affiché :</p>
+							<p class="provisoire__mdp"><?php echo esc_html( $prov['mdp'] ); ?></p>
+							<button type="button" class="btn btn--fantome btn--petit provisoire__copier" data-copier-mot-de-passe="<?php echo esc_attr( $prov['mdp'] ); ?>"><?php echo ueb_icone( 'fichier', 16 ); ?><span>Copier le mot de passe</span></button>
 								<p class="champ__aide">L'agent se connecte ensuite sur l'espace scolarité.</p>
 							</div>
 						</div>
@@ -142,7 +146,7 @@ ueb_page_debut( array( 'titre' => 'Administration', 'variante' => $autorise ? 'b
 							</div>
 						</header>
 						<div class="section-form__corps formulaire">
-							<form class="formulaire" method="post" action="<?php echo esc_url( ueb_url_administration() ); ?>" data-formulaire novalidate>
+							<form class="formulaire administration-agent-form" method="post" action="<?php echo esc_url( ueb_url_administration() ); ?>" data-formulaire novalidate>
 								<?php ueb_champ_csrf(); ?>
 								<input type="hidden" name="ueb_action" value="gestion_creer_agent">
 								<div class="formulaire__rangee">
@@ -151,6 +155,7 @@ ueb_page_debut( array( 'titre' => 'Administration', 'variante' => $autorise ? 'b
 									ueb_champ( array( 'nom' => 'nom', 'libelle' => 'Nom de l’agent', 'icone' => 'utilisateur', 'requis' => false, 'attrs' => array( 'placeholder' => 'Nom et prénom', 'autocomplete' => 'off' ) ) );
 									?>
 								</div>
+								<?php ueb_champ( array( 'nom' => 'mot_de_passe', 'libelle' => 'Mot de passe initial', 'type' => 'password', 'icone' => 'cadenas', 'aide' => '8 caractères minimum, avec une lettre et un chiffre.', 'attrs' => array( 'autocomplete' => 'new-password', 'minlength' => 8 ) ) ); ?>
 								<div class="formulaire__rangee">
 									<?php
 									ueb_champ( array( 'nom' => 'email', 'libelle' => 'Adresse e-mail', 'type' => 'email', 'icone' => 'courriel', 'requis' => false, 'aide' => 'Utile pour récupérer un mot de passe oublié.', 'attrs' => array( 'autocomplete' => 'off' ) ) );
@@ -194,13 +199,20 @@ ueb_page_debut( array( 'titre' => 'Administration', 'variante' => $autorise ? 'b
 									</td>
 									<td class="num"><?php echo esc_html( $agent->user_registered ? mysql2date( 'd/m/Y', $agent->user_registered ) : '—' ); ?></td>
 									<td><?php echo $suspendu ? '<span class="badge badge--rejete"><i></i>Suspendu</span>' : '<span class="badge badge--verifie"><i></i>Actif</span>'; ?></td>
-									<td class="actions-ligne">
-										<form method="post" action="<?php echo esc_url( ueb_url_administration() ); ?>" data-confirmer="Réinitialiser le mot de passe de <?php echo esc_attr( $agent->user_login ); ?> ?">
-											<?php ueb_champ_csrf(); ?>
-											<input type="hidden" name="ueb_action" value="gestion_agent_mdp">
-											<input type="hidden" name="agent_id" value="<?php echo (int) $agent->ID; ?>">
-											<button class="btn btn--fantome btn--petit" type="submit"><?php echo ueb_icone( 'cle', 16 ); ?>Mot de passe</button>
-										</form>
+					<td class="actions-ligne">
+						<button class="btn btn--fantome btn--petit" type="button" data-ouvrir-agent-mdp="agent-mdp-<?php echo (int) $agent->ID; ?>"><?php echo ueb_icone( 'cle', 16 ); ?>Mot de passe</button>
+						<dialog class="bo-agent-mdp" id="agent-mdp-<?php echo (int) $agent->ID; ?>" aria-labelledby="agent-mdp-titre-<?php echo (int) $agent->ID; ?>">
+							<h2 id="agent-mdp-titre-<?php echo (int) $agent->ID; ?>">Nouveau mot de passe</h2>
+							<p>Définis le mot de passe que l’agent utilisera pour se connecter à la scolarité.</p>
+							<form method="post" action="<?php echo esc_url( ueb_url_administration() ); ?>">
+								<?php ueb_champ_csrf(); ?>
+								<input type="hidden" name="ueb_action" value="gestion_agent_mdp">
+								<input type="hidden" name="agent_id" value="<?php echo (int) $agent->ID; ?>">
+								<label><span>Nouveau mot de passe</span><input type="password" name="mot_de_passe" minlength="8" autocomplete="new-password" required></label>
+								<label><span>Confirmer</span><input type="password" name="mot_de_passe_confirmation" minlength="8" autocomplete="new-password" required></label>
+								<div class="bo-agent-mdp__actions"><button class="btn btn--lien btn--petit" type="button" data-fermer-agent-mdp>Annuler</button><button class="btn btn--primaire btn--petit" type="submit">Enregistrer</button></div>
+							</form>
+						</dialog>
 										<form method="post" action="<?php echo esc_url( ueb_url_administration() ); ?>" data-confirmer="<?php echo $suspendu ? 'Rétablir l’accès de cet agent ?' : 'Suspendre l’accès de cet agent ? Son compte est conservé.'; ?>">
 											<?php ueb_champ_csrf(); ?>
 											<input type="hidden" name="ueb_action" value="gestion_agent_etat">
@@ -278,7 +290,11 @@ ueb_page_debut( array( 'titre' => 'Administration', 'variante' => $autorise ? 'b
 							<a class="bo-etab" href="<?php echo $ici( array( 'etab' => $sigle ) ); ?>" style="--etab: <?php echo esc_attr( $etab['couleur'] ); ?>">
 								<b><?php echo (int) ( $etudiants_etab[ $sigle ] ?? 0 ); ?></b>
 								<span class="bo-etab__sigle"><?php echo esc_html( $sigle ); ?></span>
-								<span class="bo-etab__nom"><?php echo esc_html( $etab['fr'] ); ?></span>
+								<span class="bo-etab__niveaux" aria-label="Effectifs par niveau">
+									<?php foreach ( UEB_NIVEAUX_INSCRIPTION as $niveau => $libelle ) : ?>
+										<span><b><?php echo esc_html( $niveau ); ?></b> : <?php echo esc_html( number_format( (int) ( $niveaux_etab[ $sigle ][ $niveau ] ?? 0 ), 0, ',', ' ' ) ); ?></span>
+									<?php endforeach; ?>
+								</span>
 								<span class="bo-etab__note">étudiants inscrits</span>
 							</a>
 						<?php endforeach; ?>

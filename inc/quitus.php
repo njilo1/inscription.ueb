@@ -52,7 +52,7 @@ function ueb_quitus_du_compte( $compte_id ) {
 	global $wpdb;
 	return $wpdb->get_results( $wpdb->prepare(
 		'SELECT q.*, (SELECT COUNT(*) FROM ueb_insc_recus r WHERE r.quitus_id = q.id) AS nb_recus
-		   FROM ueb_insc_quitus q WHERE q.compte_id = %d ORDER BY q.date_creation DESC',
+		   FROM ueb_insc_quitus q WHERE q.compte_id = %d ORDER BY q.date_creation DESC, q.id DESC',
 		$compte_id
 	) );
 }
@@ -78,7 +78,11 @@ function ueb_quitus_par_code( $code ) {
 }
 
 function ueb_quitus_modifiable( $quitus ) {
-	return 'genere' === $quitus->statut;
+	if ( 'genere' !== $quitus->statut || $quitus->annee_academique !== ueb_annee_academique()['code'] ) {
+		return false;
+	}
+	$medical = ueb_medical_du_dossier( $quitus );
+	return ! $medical || 'genere' === $medical->statut;
 }
 
 function ueb_nationalites() {
@@ -102,7 +106,10 @@ function ueb_valeurs_initiales_quitus( $compte ) {
 	), ARRAY_A );
 	if ( $dernier ) {
 		/* Le type, le montant et la tranche se choisissent à chaque quitus. */
-		unset( $dernier['montant'], $dernier['tranche'], $dernier['type'] );
+		unset( $dernier['montant'], $dernier['tranche'], $dernier['type'], $dernier['quitus_droits_id'] );
+		if ( $dernier['annee_academique'] !== ueb_annee_academique()['code'] ) {
+			unset( $dernier['situation'] );
+		}
 		return $dernier;
 	}
 	if ( $compte->numero_dossier ) {
@@ -114,9 +121,15 @@ function ueb_valeurs_initiales_quitus( $compte ) {
 				'prenom'         => $pre->prenom,
 				'date_naissance' => $pre->date_naissance,
 				'lieu_naissance' => $pre->lieu_naissance,
+				'email'          => $pre->email,
+				'adresse'        => $pre->adresse,
+				'nom_urgence'    => $pre->nom_urgence,
+				'numero_urgence' => $pre->numero_urgence,
+				'adresse_urgence'=> $pre->adresse_urgence,
 				'sexe'           => $pre->sexe,
 				'nationalite'    => $pre->nationalite,
 				'departement'    => $pre->filiere,
+				'filiere_id'     => $pre->filiere_1_id,
 				'parcours'       => $pre->niveau,
 			);
 		}
@@ -129,9 +142,9 @@ function ueb_valeurs_initiales_quitus( $compte ) {
 /**
  * @return array{0: array, 1: array} valeurs nettoyées, erreurs par champ
  */
-function ueb_valider_quitus( array $post ) {
+function ueb_valider_quitus( array $post, array $contexte ) {
 	$texte = static function ( $cle ) use ( $post ) {
-		return trim( preg_replace( '/\s+/u', ' ', sanitize_text_field( wp_unslash( $post[ $cle ] ?? '' ) ) ) );
+		return trim( preg_replace( '/\s+/u', ' ', sanitize_text_field( wp_unslash( is_scalar( $post[ $cle ] ?? '' ) ? (string) ( $post[ $cle ] ?? '' ) : '' ) ) ) );
 	};
 	$v = array(
 		'etablissement'  => strtoupper( $texte( 'etablissement' ) ),
@@ -144,6 +157,13 @@ function ueb_valider_quitus( array $post ) {
 		'nationalite'    => $texte( 'nationalite' ),
 		'departement'    => $texte( 'departement' ),
 		'parcours'       => $texte( 'parcours' ),
+		'email'          => $texte( 'email' ),
+		'adresse'        => $texte( 'adresse' ),
+		'nom_urgence'    => $texte( 'nom_urgence' ),
+		'numero_urgence' => ueb_normaliser_telephone( $texte( 'numero_urgence' ) ) ?? $texte( 'numero_urgence' ),
+		'adresse_urgence'=> $texte( 'adresse_urgence' ),
+		'filiere_id'     => (int) $texte( 'filiere_id' ),
+		'situation'      => $contexte['situation_verrouillee'] ? $contexte['situation'] : $texte( 'situation' ),
 		'montant'        => (int) preg_replace( '/\D+/', '', $texte( 'montant' ) ),
 		'tranche'        => (int) $texte( 'tranche' ),
 	);
@@ -177,11 +197,33 @@ function ueb_valider_quitus( array $post ) {
 	if ( ! in_array( $v['nationalite'], ueb_nationalites(), true ) ) {
 		$e['nationalite'] = 'Choisis ta nationalité dans la liste.';
 	}
-	if ( mb_strlen( $v['departement'] ) < 2 ) {
-		$e['departement'] = 'Saisis ton département ou ta filière.';
+	$cms_requis = ueb_fiches_cms_requises( $contexte, $v['situation'], $v['type'] );
+	if ( ( $cms_requis || '' !== $v['email'] ) && ! is_email( $v['email'] ) ) {
+		$e['email'] = 'Saisis une adresse email valide pour les documents CMS.';
 	}
-	if ( mb_strlen( $v['parcours'] ) < 2 ) {
-		$e['parcours'] = 'Saisis ton cycle, niveau et parcours (exemple : L2 TIC).';
+	if ( ( $cms_requis || '' !== $v['adresse'] ) && mb_strlen( $v['adresse'] ) < 3 ) {
+		$e['adresse'] = 'Saisis ton adresse complète.';
+	}
+	if ( ( $cms_requis || '' !== $v['nom_urgence'] ) && mb_strlen( $v['nom_urgence'] ) < 2 ) {
+		$e['nom_urgence'] = 'Saisis la personne à contacter en cas d’urgence.';
+	}
+	if ( ( $cms_requis || '' !== $v['numero_urgence'] ) && ! ueb_normaliser_telephone( $v['numero_urgence'] ) ) {
+		$e['numero_urgence'] = 'Saisis un numéro camerounais à 9 chiffres, avec ou sans +237.';
+	}
+	if ( ( $cms_requis || '' !== $v['adresse_urgence'] ) && mb_strlen( $v['adresse_urgence'] ) < 3 ) {
+		$e['adresse_urgence'] = 'Saisis l’adresse de la personne à contacter.';
+	}
+	$formation = $contexte['formations'][ $v['filiere_id'] ] ?? null;
+	if ( ! $formation || $formation->etablissement !== $v['etablissement'] ) {
+		$e['filiere_id'] = $contexte['nouveau'] ? 'Choisis une des filières de ta préinscription dans cet établissement.' : 'Choisis une filière rattachée à cet établissement.';
+	} else {
+		$v['departement'] = $formation->libelle;
+	}
+	if ( ! isset( UEB_NIVEAUX_INSCRIPTION[ $v['parcours'] ] ) ) {
+		$e['parcours'] = 'Choisis ton niveau dans la liste.';
+	}
+	if ( 'nouveau' !== $v['situation'] && ! isset( UEB_FRAIS_MEDICAUX[ $v['situation'] ] ) ) {
+		$e['situation'] = 'Choisis Nouveau, une réinscription sans interruption ou une reprise après réactivation.';
 	}
 	if ( ! isset( UEB_TYPES_QUITUS[ $v['type'] ] ) ) {
 		$v['type'] = 'droits';
@@ -189,19 +231,16 @@ function ueb_valider_quitus( array $post ) {
 	}
 	if ( 'medicaux' === $v['type'] ) {
 		/* Frais de visite médicale : paiement unique, montant fixé par la situation déclarée. */
-		$situation    = $texte( 'situation' );
 		$v['tranche'] = 0;
-		if ( ! isset( UEB_FRAIS_MEDICAUX[ $situation ] ) ) {
-			$e['situation'] = 'Indique ta situation : elle détermine le montant.';
-		} else {
-			$v['montant'] = UEB_FRAIS_MEDICAUX[ $situation ]['montant'];
-		}
+		$v['montant'] = UEB_FRAIS_MEDICAUX[ $v['situation'] ]['montant'] ?? 0;
 	} else {
-		if ( $v['montant'] < UEB_MONTANT_MIN || $v['montant'] > UEB_MONTANT_MAX ) {
+		$calcul = ueb_calculer_paiement( $formation, $v['tranche'], $v['montant'], $v['situation'], $contexte );
+		$v['montant'] = $calcul['droits'];
+		if ( $v['montant'] < UEB_MONTANT_MIN || $v['montant'] > UEB_MONTANT_MAX || ( $formation && 'pro' === $formation->type_formation && ! preg_match( '/^\d[\d\s]*$/u', $texte( 'montant' ) ) ) ) {
 			$e['montant'] = sprintf( 'Montant entre %s et %s FCFA.', ueb_formater_montant( UEB_MONTANT_MIN ), ueb_formater_montant( UEB_MONTANT_MAX ) );
 		}
-		if ( ! in_array( $v['tranche'], array( 1, 2, 3 ), true ) ) {
-			$e['tranche'] = 'Indique la ou les tranches que tu paies.';
+		if ( ! isset( $contexte['tranches'][ $v['tranche'] ] ) ) {
+			$e['tranche'] = 'Choisis une tranche disponible. Pour une tranche déjà préparée, utilise le quitus existant dans ton espace.';
 		}
 	}
 	foreach ( array( 'nom' => 100, 'prenom' => 150, 'lieu_naissance' => 150, 'departement' => 150, 'parcours' => 150 ) as $cle => $max ) {
@@ -221,13 +260,16 @@ function ueb_valider_quitus( array $post ) {
  */
 function ueb_prochain_numero_quitus( $sigle, array $annee, $type = 'droits' ) {
 	global $wpdb;
-	$wpdb->query( $wpdb->prepare(
+	$ok = $wpdb->query( $wpdb->prepare(
 		'INSERT INTO ueb_insc_sequence (etablissement, annee_academique, type, dernier) VALUES (%s, %s, %s, LAST_INSERT_ID(1))
 		 ON DUPLICATE KEY UPDATE dernier = LAST_INSERT_ID(dernier + 1)',
 		$sigle,
 		$annee['code'],
 		$type
 	) );
+	if ( false === $ok ) {
+		throw new RuntimeException( 'Numérotation du quitus impossible : ' . $wpdb->last_error );
+	}
 	$rang   = (int) $wpdb->get_var( 'SELECT LAST_INSERT_ID()' );
 	$marque = 'medicaux' === $type ? '-M' : '';
 	return sprintf( '%s%s-%02d%02d-%06d', $sigle, $marque, $annee['debut'] % 100, $annee['fin'] % 100, $rang );
@@ -235,99 +277,108 @@ function ueb_prochain_numero_quitus( $sigle, array $annee, $type = 'droits' ) {
 
 /* ---------- Enregistrement ---------- */
 
+/** Enregistre les deux quitus ensemble, sous verrou du compte, ou aucun. */
 function ueb_action_enregistrer_quitus() {
 	global $wpdb;
 	$compte = ueb_compte_courant();
 	if ( ! $compte ) {
 		ueb_rediriger( ueb_url( 'connexion' ) );
 	}
-	$annee  = ueb_annee_academique();
-	$id     = (int) ( $_POST['quitus_id'] ?? 0 );
-	$existant = null;
-	if ( $id ) {
-		$existant = ueb_quitus_par_id( $id );
-		if ( ! $existant || (int) $existant->compte_id !== (int) $compte->id ) {
-			ueb_rediriger( ueb_url( 'mon-espace' ) );
-		}
-		if ( ! ueb_quitus_modifiable( $existant ) ) {
-			ueb_flash( 'erreur', "Ce quitus n'est plus modifiable : des reçus ont déjà été envoyés." );
-			ueb_rediriger( ueb_url( 'mon-espace' ) );
-		}
-	}
-
-	list( $v, $erreurs ) = ueb_valider_quitus( $_POST );
-
-	/* La visite médicale est déjà réglée avec les frais de préinscription de l'année. */
-	if ( 'medicaux' === $v['type'] && ueb_preinscrit_cette_annee( $compte ) ) {
-		$erreurs['type'] = 'Ta visite médicale est déjà comprise dans tes frais de préinscription de cette année : tu n’as pas de quitus médical à générer.';
-	}
-
-	/* Doublons : un seul quitus médical par an, et pour les droits un seul par
-	   tranche (« les deux tranches » couvre la 1 et la 2). */
-	if ( empty( $erreurs['type'] ) && 'medicaux' === $v['type'] ) {
-		$doublon = $wpdb->get_var( $wpdb->prepare(
-			"SELECT numero FROM ueb_insc_quitus
-			  WHERE compte_id = %d AND annee_academique = %s AND type = 'medicaux' AND statut <> 'rejete' AND id <> %d",
-			$compte->id, $annee['code'], $id
-		) );
-		if ( $doublon ) {
-			$erreurs['type'] = "Tu as déjà un quitus de frais médicaux pour cette année ($doublon). Modifie-le plutôt que d’en créer un autre.";
-		}
-	} elseif ( empty( $erreurs['tranche'] ) && empty( $erreurs['type'] ) ) {
-		$tranches = 3 === $v['tranche'] ? array( 1, 2, 3 ) : array( $v['tranche'], 3 );
-		$marques  = implode( ', ', array_fill( 0, count( $tranches ), '%d' ) );
-		$doublon  = $wpdb->get_row( $wpdb->prepare(
-			"SELECT numero, tranche FROM ueb_insc_quitus
-			  WHERE compte_id = %d AND annee_academique = %s AND type = 'droits' AND tranche IN ($marques) AND statut <> 'rejete' AND id <> %d", // phpcs:ignore -- marques = suite de %d
-			array_merge( array( $compte->id, $annee['code'] ), $tranches, array( $id ) )
-		) );
-		if ( $doublon ) {
-			$erreurs['tranche'] = sprintf(
-				'Tu as déjà un quitus pour « %s » (%s). Modifie-le plutôt que d’en créer un autre.',
-				ueb_libelle_tranche( $doublon->tranche ),
-				$doublon->numero
-			);
-		}
-	}
-
+	$annee = ueb_annee_academique();
+	$id = (int) ( $_POST['quitus_id'] ?? 0 );
+	$actualiser = '1' === ( $_POST['actualiser_paiement'] ?? '' );
 	$retour = ueb_url( 'mon-espace/quitus' ) . ( $id ? '?id=' . $id : '' );
+	$erreurs = array();
+	$v = array();
+	$numero = '';
+	try {
+		if ( false === $wpdb->query( 'START TRANSACTION' ) || ! $wpdb->get_var( $wpdb->prepare( 'SELECT id FROM ueb_insc_comptes WHERE id = %d FOR UPDATE', $compte->id ) ) ) {
+			throw new RuntimeException( 'Verrouillage du compte impossible.' );
+		}
+		$existant = $id ? ueb_quitus_par_id( $id ) : null;
+		if ( $id && ( ! $existant || (int) $existant->compte_id !== (int) $compte->id || ! ueb_quitus_modifiable( $existant ) ) ) {
+			$erreurs['general'] = 'Ce quitus ne peut plus être modifié. Consulte les documents et les reçus dans ton espace.';
+		} elseif ( $existant && ! empty( $existant->quitus_droits_id ) ) {
+			$erreurs['general'] = 'Modifie le quitus des droits universitaires associé pour mettre à jour ce dossier médical.';
+		} else {
+			$contexte = ueb_contexte_inscription( $compte, $existant );
+			$post = $_POST;
+			// Le type est choisi par le parcours, jamais par une valeur modifiée dans le navigateur.
+			$post['type'] = $existant->type ?? 'droits';
+			list( $v, $erreurs ) = ueb_valider_quitus( $post, $contexte );
+			if ( 'medicaux' === $v['type'] && $contexte['nouveau'] ) {
+				$erreurs['general'] = 'La visite médicale est déjà comprise dans ta préinscription de cette année.';
+			}
+		}
+		if ( $erreurs || $actualiser ) {
+			$wpdb->query( 'ROLLBACK' );
+		} else {
+			$donnees = $v + array(
+				'identifiant' => ueb_identifiant_compte( $compte ),
+				'type_identifiant' => $compte->matricule ? 'matricule' : 'dossier',
+			);
+			if ( $existant ) {
+				$numero = $existant->etablissement === $v['etablissement'] ? $existant->numero : ueb_prochain_numero_quitus( $v['etablissement'], $annee, $v['type'] );
+				$ok = $wpdb->update( 'ueb_insc_quitus', $donnees + array( 'numero' => $numero ), array( 'id' => $id ) );
+			} else {
+				$numero = ueb_prochain_numero_quitus( $v['etablissement'], $annee, 'droits' );
+				$ok = $wpdb->insert( 'ueb_insc_quitus', $donnees + array(
+					'numero' => $numero,
+					'code_verif' => bin2hex( random_bytes( 10 ) ),
+					'compte_id' => $compte->id,
+					'annee_academique' => $annee['code'],
+				) );
+				$id = (int) $wpdb->insert_id;
+			}
+			if ( false === $ok ) {
+				throw new RuntimeException( $wpdb->last_error );
+			}
+		if ( 'droits' === $v['type'] && $contexte['medical_inclus'] && 'nouveau' !== $v['situation'] ) {
+				$medical = $contexte['medical'];
+				$donnees['type'] = 'medicaux';
+				$donnees['tranche'] = 0;
+				$donnees['montant'] = UEB_FRAIS_MEDICAUX[ $v['situation'] ]['montant'];
+				$donnees['quitus_droits_id'] = $id;
+				if ( $medical ) {
+					if ( $medical->etablissement !== $v['etablissement'] ) {
+						$donnees['numero'] = ueb_prochain_numero_quitus( $v['etablissement'], $annee, 'medicaux' );
+					}
+					$ok = $wpdb->update( 'ueb_insc_quitus', $donnees, array( 'id' => $medical->id ) );
+				} else {
+					$ok = $wpdb->insert( 'ueb_insc_quitus', $donnees + array(
+						'numero' => ueb_prochain_numero_quitus( $v['etablissement'], $annee, 'medicaux' ),
+						'code_verif' => bin2hex( random_bytes( 10 ) ),
+						'compte_id' => $compte->id,
+						'annee_academique' => $annee['code'],
+					) );
+				}
+				if ( false === $ok ) {
+					throw new RuntimeException( $wpdb->last_error );
+				}
+			}
+			if ( false === $wpdb->query( 'COMMIT' ) ) {
+				throw new RuntimeException( $wpdb->last_error );
+			}
+		}
+	} catch ( Throwable $exception ) {
+		$wpdb->query( 'ROLLBACK' );
+		error_log( '[inscription-ueb] Enregistrement du dossier impossible : ' . $exception->getMessage() );
+		$erreurs['general'] = 'Les documents n’ont pas pu être enregistrés. Réessaie dans un instant.';
+	}
+	if ( $actualiser && empty( $erreurs['general'] ) ) {
+		ueb_memoriser_saisie( $v, array() );
+		ueb_rediriger( $retour . '#section-paiement' );
+	}
 	if ( $erreurs ) {
 		ueb_memoriser_saisie( $v, $erreurs );
 		ueb_rediriger( $retour );
 	}
-
-	$donnees = $v + array(
-		'identifiant'      => ueb_identifiant_compte( $compte ),
-		'type_identifiant' => $compte->matricule ? 'matricule' : 'dossier',
-	);
-
-	if ( $existant ) {
-		/* Changer d'établissement ou de type change la série : nouveau numéro. */
-		if ( $existant->etablissement !== $v['etablissement'] || ( $existant->type ?? 'droits' ) !== $v['type'] ) {
-			$donnees['numero'] = ueb_prochain_numero_quitus( $v['etablissement'], $annee, $v['type'] );
-		}
-		$wpdb->update( 'ueb_insc_quitus', $donnees, array( 'id' => $existant->id ) );
-		$numero = $donnees['numero'] ?? $existant->numero;
-		ueb_flash( 'succes', "Quitus $numero mis à jour. Télécharge la nouvelle version." );
-	} else {
-		$numero = ueb_prochain_numero_quitus( $v['etablissement'], $annee, $v['type'] );
-		$ok     = $wpdb->insert( 'ueb_insc_quitus', $donnees + array(
-			'numero'           => $numero,
-			'code_verif'       => bin2hex( random_bytes( 10 ) ),
-			'compte_id'        => $compte->id,
-			'annee_academique' => $annee['code'],
-		) );
-		if ( ! $ok ) {
-			error_log( '[inscription-ueb] Enregistrement du quitus impossible : ' . $wpdb->last_error );
-			ueb_memoriser_saisie( $v, array( 'general' => "Le quitus n'a pas pu être enregistré. Réessaie dans un instant." ) );
-			ueb_rediriger( $retour );
-		}
-		ueb_flash( 'succes', "Quitus $numero prêt. Télécharge-le, fais-le tamponner à ton établissement puis paie à la banque." );
-	}
+	$_SESSION['ueb_telechargement'] = array( 'compte_id' => (int) $compte->id, 'numero' => $numero );
+	ueb_flash( 'succes', 'Tes documents sont enregistrés dans Mes quitus. Fais tamponner chaque quitus avant le paiement à la banque.' );
 	ueb_rediriger( ueb_url( 'mon-espace' ) . '#quitus-' . $numero );
 }
 
-/** URL publique de vérification, encodée dans le QR code. */
+/** URL publique de vérification, conservée pour les liens et les anciens QR codes. */
 function ueb_url_verification( $quitus ) {
 	return ueb_url( 'verifier/' . $quitus->code_verif );
 }

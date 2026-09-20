@@ -23,7 +23,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-const UEB_INSC_ROUTES_VERSION = '6';
+const UEB_INSC_ROUTES_VERSION = '7';
 
 function ueb_regles_reecriture() {
 	return array(
@@ -35,6 +35,7 @@ function ueb_regles_reecriture() {
 		'^mon-espace/quitus/([A-Za-z0-9-]+)/pdf/?$'      => 'index.php?ueb_page=quitus-pdf&ueb_arg=$matches[1]',
 		'^mon-espace/recus/([A-Za-z0-9-]+)/?$'           => 'index.php?ueb_page=recus&ueb_arg=$matches[1]',
 		'^mon-espace/securite/?$'                        => 'index.php?ueb_page=securite',
+		'^cellule-informatique/?$'                       => 'index.php?ueb_page=cellule',
 		'^recu/([0-9]+)/?$'                              => 'index.php?ueb_page=recu&ueb_arg=$matches[1]',
 		'^verifier/([A-Za-z0-9]+)/?$'                    => 'index.php?ueb_page=verifier&ueb_arg=$matches[1]',
 	);
@@ -77,13 +78,18 @@ const UEB_PAGES_INVITE   = array( 'connexion', 'creer-compte' );
    page-scolarite.php et page-administration.php) : elles vérifient
    elles-mêmes la capacité du compte connecté. */
 
-add_action( 'template_redirect', function () {
-	$page = get_query_var( 'ueb_page' );
-
-	/* 1. Formulaires postés */
+/* Les formulaires du back-office postent sur des Pages WordPress. Leurs
+   actions doivent être traitées avant les redirections canoniques de
+   WordPress, sinon une action peut finir dans le tableau de bord WP au lieu
+   de revenir dans l'espace scolarité. */
+add_action( 'init', function () {
 	if ( 'POST' === ( $_SERVER['REQUEST_METHOD'] ?? '' ) && ! empty( $_POST['ueb_action'] ) ) {
 		ueb_traiter_action( sanitize_key( $_POST['ueb_action'] ) );
 	}
+}, 20 );
+
+add_action( 'template_redirect', function () {
+	$page = get_query_var( 'ueb_page' );
 
 	if ( ! $page ) {
 		return;
@@ -92,6 +98,7 @@ add_action( 'template_redirect', function () {
 	/* 2. Contrôle d'accès */
 	$compte = ueb_compte_courant();
 	if ( in_array( $page, UEB_PAGES_ETUDIANT, true ) ) {
+		nocache_headers();
 		if ( ! $compte ) {
 			ueb_flash( 'info', 'Connecte-toi pour accéder à ton espace.' );
 			ueb_rediriger( ueb_url( 'connexion' ) );
@@ -152,7 +159,9 @@ function ueb_traiter_action( $action ) {
 		'gestion_reinit_mdp'  => 'ueb_action_gestion_reinit_mdp',
 		'gestion_bloquer'     => 'ueb_action_gestion_bloquer',
 		'gestion_creer_etudiant' => 'ueb_action_gestion_creer_etudiant',
+		'gestion_creer_cellule' => 'ueb_action_gestion_creer_cellule',
 		'gestion_creer_agent' => 'ueb_action_gestion_creer_agent',
+		'gestion_changer_mdp_personnel' => 'ueb_action_gestion_changer_mdp_personnel',
 		'gestion_agent_mdp'   => 'ueb_action_gestion_agent_mdp',
 		'gestion_agent_etat'  => 'ueb_action_gestion_agent_etat',
 		'gestion_agent_modifier'  => 'ueb_action_gestion_agent_modifier',

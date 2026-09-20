@@ -19,8 +19,8 @@ function ueb_est_gestionnaire() {
 }
 
 function ueb_exiger_gestionnaire() {
-	if ( ! ueb_est_gestionnaire() ) {
-		wp_die( 'Action réservée à l’administration et aux scolarités.', 'Accès refusé', array( 'response' => 403 ) );
+	if ( ! is_user_logged_in() || ! ueb_est_scolarite() || ! current_user_can( UEB_CAP_GESTION ) || ueb_agent_suspendu() ) {
+		wp_die( 'Action réservée à la scolarité de l’établissement.', 'Accès refusé', array( 'response' => 403 ) );
 	}
 }
 
@@ -28,6 +28,49 @@ function ueb_exiger_admin() {
 	if ( ! ueb_est_admin_ueb() ) {
 		wp_die( 'Action réservée aux administrateurs.', 'Accès refusé', array( 'response' => 403 ) );
 	}
+}
+
+/** Accès aux opérations réservées à la cellule informatique. */
+function ueb_exiger_comptes() {
+	if ( ! ueb_est_gestionnaire_comptes() ) {
+		wp_die( 'Action réservée à la cellule informatique.', 'Accès refusé', array( 'response' => 403 ) );
+	}
+}
+
+/** Seule la scolarité de l'établissement peut créer sa cellule informatique. */
+function ueb_exiger_scolarite() {
+	if ( ! is_user_logged_in() || ! ueb_est_scolarite() || ! current_user_can( UEB_CAP_GESTION ) || ! ueb_etab_agent() ) {
+		wp_die( 'Action réservée à la scolarité de l’établissement.', 'Accès refusé', array( 'response' => 403 ) );
+	}
+}
+
+function ueb_action_gestion_creer_cellule() {
+	ueb_exiger_scolarite();
+	$retour = add_query_arg( 'vue', 'cellule', ueb_url_scolarite() );
+	$cellule = ueb_creer_cellule(
+		sanitize_text_field( wp_unslash( $_POST['login'] ?? '' ) ),
+		sanitize_text_field( wp_unslash( $_POST['nom'] ?? '' ) ),
+		sanitize_email( wp_unslash( $_POST['email'] ?? '' ) ),
+		ueb_etab_agent()
+	);
+	if ( is_wp_error( $cellule ) ) {
+		ueb_flash( 'erreur', $cellule->get_error_message() );
+		ueb_rediriger( $retour );
+	}
+	list( $id, $provisoire ) = $cellule;
+	$_SESSION['ueb_mdp_cellule'] = array( 'compte' => get_userdata( $id )->user_login, 'mdp' => $provisoire );
+	ueb_flash( 'succes', 'Compte de cellule informatique créé.' );
+	ueb_rediriger( $retour );
+}
+
+/** Vérifie qu'un compte étudiant possède un quitus dans l'établissement courant. */
+function ueb_compte_dans_etab( $compte_id, $etab ) {
+	global $wpdb;
+	return ! $etab || (bool) $wpdb->get_var( $wpdb->prepare(
+		' SELECT id FROM ueb_insc_quitus WHERE compte_id = %d AND etablissement = %s LIMIT 1',
+		(int) $compte_id,
+		$etab
+	) );
 }
 
 /** Un agent de scolarité n'agit que sur les quitus de son établissement. */
@@ -156,6 +199,24 @@ function ueb_gestion_etudiants_par_etab( $annee_code ) {
 		$annee_code
 	) ) as $ligne ) {
 		$par_etab[ $ligne->etablissement ] = (int) $ligne->n;
+	}
+	return $par_etab;
+}
+
+/** Effectifs étudiants par établissement et par niveau d'inscription. */
+function ueb_gestion_niveaux_par_etab( $annee_code ) {
+	global $wpdb;
+	$par_etab = array();
+	$lignes   = $wpdb->get_results( $wpdb->prepare(
+		"SELECT etablissement, UPPER(TRIM(parcours)) AS niveau, COUNT(DISTINCT compte_id) AS n
+		   FROM ueb_insc_quitus
+		  WHERE annee_academique = %s AND TRIM(parcours) <> ''
+		  GROUP BY etablissement, niveau
+		  ORDER BY etablissement ASC, niveau ASC",
+		$annee_code
+	) );
+	foreach ( (array) $lignes as $ligne ) {
+		$par_etab[ $ligne->etablissement ][ $ligne->niveau ] = (int) $ligne->n;
 	}
 	return $par_etab;
 }
@@ -343,10 +404,10 @@ function ueb_mot_de_passe_provisoire() {
 
 function ueb_action_gestion_reinit_mdp() {
 	global $wpdb;
-	ueb_exiger_gestionnaire();
+	ueb_exiger_comptes();
 	$compte = ueb_compte_par_id( (int) ( $_POST['compte_id'] ?? 0 ) );
-	$retour = add_query_arg( array( 'vue' => 'comptes', 'qc' => sanitize_text_field( wp_unslash( $_POST['q'] ?? '' ) ) ), ueb_url_scolarite() );
-	if ( ! $compte ) {
+	$retour = add_query_arg( array( 'vue' => 'comptes', 'qc' => sanitize_text_field( wp_unslash( $_POST['q'] ?? '' ) ) ), ueb_url_comptes() );
+	if ( ! $compte || ! ueb_compte_dans_etab( $compte->id, ueb_etab_agent() ) ) {
 		ueb_rediriger( $retour );
 	}
 	$provisoire = ueb_mot_de_passe_provisoire();
@@ -366,8 +427,8 @@ function ueb_action_gestion_reinit_mdp() {
  */
 function ueb_action_gestion_creer_etudiant() {
 	global $wpdb;
-	ueb_exiger_gestionnaire();
-	$retour      = add_query_arg( 'vue', 'comptes', ueb_url_scolarite() );
+	ueb_exiger_comptes();
+	$retour      = add_query_arg( 'vue', 'comptes', ueb_url_comptes() );
 	$identifiant = ueb_normaliser_identifiant( wp_unslash( $_POST['identifiant'] ?? '' ) );
 	$type        = ueb_type_identifiant( $identifiant );
 	$tel_saisi   = sanitize_text_field( wp_unslash( $_POST['telephone'] ?? '' ) );
@@ -406,10 +467,10 @@ function ueb_action_gestion_creer_etudiant() {
 
 function ueb_action_gestion_bloquer() {
 	global $wpdb;
-	ueb_exiger_gestionnaire();
+	ueb_exiger_comptes();
 	$compte = ueb_compte_par_id( (int) ( $_POST['compte_id'] ?? 0 ) );
-	$retour = add_query_arg( array( 'vue' => 'comptes', 'qc' => sanitize_text_field( wp_unslash( $_POST['q'] ?? '' ) ) ), ueb_url_scolarite() );
-	if ( $compte ) {
+	$retour = add_query_arg( array( 'vue' => 'comptes', 'qc' => sanitize_text_field( wp_unslash( $_POST['q'] ?? '' ) ) ), ueb_url_comptes() );
+	if ( $compte && ueb_compte_dans_etab( $compte->id, ueb_etab_agent() ) ) {
 		$nouveau = 'actif' === $compte->statut ? 'bloque' : 'actif';
 		$wpdb->update( 'ueb_insc_comptes', array( 'statut' => $nouveau, 'version_session' => (int) $compte->version_session + 1 ), array( 'id' => $compte->id ) );
 		ueb_flash( 'succes', 'bloque' === $nouveau ? 'Compte suspendu : l’étudiant est déconnecté.' : 'Compte réactivé.' );
@@ -426,7 +487,8 @@ function ueb_action_gestion_creer_agent() {
 		sanitize_text_field( wp_unslash( $_POST['login'] ?? '' ) ),
 		sanitize_text_field( wp_unslash( $_POST['nom'] ?? '' ) ),
 		sanitize_email( wp_unslash( $_POST['email'] ?? '' ) ),
-		sanitize_text_field( wp_unslash( $_POST['etablissement'] ?? '' ) )
+		sanitize_text_field( wp_unslash( $_POST['etablissement'] ?? '' ) ),
+		trim( (string) wp_unslash( $_POST['mot_de_passe'] ?? '' ) )
 	);
 	if ( is_wp_error( $agent ) ) {
 		ueb_flash( 'erreur', $agent->get_error_message() );
@@ -438,16 +500,51 @@ function ueb_action_gestion_creer_agent() {
 	ueb_rediriger( $retour );
 }
 
+/** Permet à un agent connecté de remplacer son mot de passe WordPress. */
+function ueb_action_gestion_changer_mdp_personnel() {
+	if ( ! is_user_logged_in() || ( ! ueb_est_scolarite() && ! ueb_est_cellule() ) || ueb_agent_suspendu() ) {
+		wp_die( 'Action réservée aux personnels autorisés.', 'Accès refusé', array( 'response' => 403 ) );
+	}
+	$retour = ueb_est_cellule() ? ueb_url_cellule() : add_query_arg( 'vue', 'securite', ueb_url_scolarite() );
+	$user = wp_get_current_user();
+	$actuel = (string) ( $_POST['mot_de_passe_actuel'] ?? '' );
+	$nouveau = (string) ( $_POST['mot_de_passe_nouveau'] ?? '' );
+	$confirmation = (string) ( $_POST['mot_de_passe_confirmation'] ?? '' );
+	if ( ! wp_check_password( $actuel, $user->user_pass, $user->ID ) ) {
+		ueb_flash( 'erreur', 'Le mot de passe actuel est incorrect.' );
+	} elseif ( ( $erreur = ueb_erreur_mot_de_passe( $nouveau, $user->user_login ) ) ) {
+		ueb_flash( 'erreur', $erreur );
+	} elseif ( $nouveau !== $confirmation ) {
+		ueb_flash( 'erreur', 'La confirmation ne correspond pas au nouveau mot de passe.' );
+	} else {
+		wp_set_password( $nouveau, $user->ID );
+		ueb_flash( 'succes', 'Mot de passe modifié. Reconnecte-toi avec ton nouveau mot de passe.' );
+		wp_logout();
+	}
+	ueb_rediriger( $retour );
+}
+
 function ueb_action_gestion_agent_mdp() {
 	ueb_exiger_admin();
 	$retour = ueb_url_administration();
 	$id     = (int) ( $_POST['agent_id'] ?? 0 );
-	if ( ! ueb_est_agent( $id ) ) {
+	$agent  = get_userdata( $id );
+	$mot_de_passe = trim( (string) wp_unslash( $_POST['mot_de_passe'] ?? '' ) );
+	$confirmation = trim( (string) wp_unslash( $_POST['mot_de_passe_confirmation'] ?? '' ) );
+	if ( ! $agent || ! ueb_est_agent( $id ) ) {
 		ueb_rediriger( $retour );
 	}
-	$provisoire = ueb_mot_de_passe_provisoire();
-	wp_set_password( $provisoire, $id );
-	$_SESSION['ueb_mdp_agent'] = array( 'compte' => get_userdata( $id )->user_login, 'mdp' => $provisoire );
+	if ( ( $erreur = ueb_erreur_mot_de_passe( $mot_de_passe, $agent->user_login ) ) ) {
+		ueb_flash( 'erreur', $erreur );
+		ueb_rediriger( $retour );
+	}
+	if ( $mot_de_passe !== $confirmation ) {
+		ueb_flash( 'erreur', 'La confirmation ne correspond pas au nouveau mot de passe.' );
+		ueb_rediriger( $retour );
+	}
+	wp_set_password( $mot_de_passe, $id );
+	$_SESSION['ueb_mdp_agent'] = array( 'compte' => $agent->user_login, 'mdp' => $mot_de_passe );
+	ueb_flash( 'succes', 'Mot de passe mis à jour pour ' . $agent->user_login . '.' );
 	ueb_rediriger( $retour );
 }
 
@@ -504,18 +601,21 @@ function ueb_action_gestion_agent_supprimer() {
 
 /** Après connexion, un gestionnaire arrive directement sur son espace. */
 add_filter( 'login_redirect', function ( $url, $demande, $utilisateur ) {
-	if ( $demande ) {
-		return $url; /* il venait d'une page précise : on l'y ramène */
+	if ( $utilisateur instanceof WP_User && user_can( $utilisateur, UEB_CAP_COMPTES ) && ueb_est_cellule( $utilisateur->ID ) ) {
+		return ueb_url_cellule();
 	}
 	if ( $utilisateur instanceof WP_User && user_can( $utilisateur, UEB_CAP_GESTION ) && ! user_can( $utilisateur, 'manage_options' ) ) {
 		return ueb_url_scolarite();
+	}
+	if ( $demande ) {
+		return $url; /* les comptes étudiants et les administrateurs gardent la destination demandée */
 	}
 	return $url;
 }, 10, 3 );
 
 /* PDF d'un quitus depuis l'espace scolarité : ?quitus={id}&pdf=1 */
 add_action( 'template_redirect', function () {
-	if ( ! isset( $_GET['pdf'], $_GET['quitus'] ) || ! is_page_template( 'page-scolarite.php' ) || ! ueb_est_gestionnaire() ) {
+	if ( ! isset( $_GET['pdf'], $_GET['quitus'] ) || ! is_page_template( 'page-scolarite.php' ) || ! is_user_logged_in() || ! ueb_est_scolarite() || ! current_user_can( UEB_CAP_GESTION ) || ueb_agent_suspendu() ) {
 		return;
 	}
 	$quitus = ueb_quitus_par_id( (int) $_GET['quitus'] );

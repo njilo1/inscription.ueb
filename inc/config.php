@@ -51,9 +51,12 @@ const UEB_TYPES_QUITUS = array(
    Les nouveaux étudiants ne paient pas : la visite est comprise dans les
    frais de préinscription. */
 const UEB_FRAIS_MEDICAUX = array(
-	'ancien'  => array( 'montant' => 3000, 'libelle' => 'Ancien étudiant, non préinscrit cette année' ),
-	'reprise' => array( 'montant' => 5000, 'libelle' => 'Reprise après une interruption' ),
+	'ancien'  => array( 'montant' => 3000, 'libelle' => 'Réinscription sans interruption' ),
+	'reprise' => array( 'montant' => 5000, 'libelle' => 'Reprise après réactivation du matricule' ),
 );
+
+const UEB_DROITS_CLASSIQUES = 50000;
+const UEB_NIVEAUX_INSCRIPTION = array( 'L1' => 'L1 — Licence 1', 'L2' => 'L2 — Licence 2', 'L3' => 'L3 — Licence 3', 'M1' => 'M1 — Master 1', 'M2' => 'M2 — Master 2' );
 
 /**
  * Les neuf établissements. « couleur » est la couleur d'identité utilisée

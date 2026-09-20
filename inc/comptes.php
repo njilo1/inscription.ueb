@@ -63,6 +63,8 @@ function ueb_preinscription_par_dossier( $dossier ) {
 	global $wpdb;
 	return $wpdb->get_row( $wpdb->prepare(
 		"SELECT p.numero_dossier, p.nom, p.prenom, p.date_naissance, p.lieu_naissance, p.sexe,
+		        p.email, p.adresse, p.nom_urgence, p.numero_urgence, p.adresse_urgence,
+		        p.filiere_1_id, p.filiere_2_id, p.filiere_3_id,
 		        n.nom AS nationalite, f.code AS etablissement, fi.libelle AS filiere, nv.code AS niveau
 		   FROM ueb_preinscriptions p
 		   LEFT JOIN ueb_nationalites n ON n.id = p.nationalite_id
@@ -111,8 +113,15 @@ function ueb_connecter( $compte ) {
 }
 
 function ueb_deconnecter() {
-	unset( $_SESSION['ueb_compte_id'], $_SESSION['ueb_version_session'] );
+	unset( $_SESSION['ueb_compte_id'], $_SESSION['ueb_version_session'], $_SESSION['ueb_bienvenue'], $_SESSION['ueb_telechargement'] );
 	session_regenerate_id( true );
+}
+
+/** Conseil de confidentialité, uniquement lors de l'arrivée après création du compte. */
+function ueb_bienvenue_a_afficher( $compte ) {
+	$id = (int) ( $_SESSION['ueb_bienvenue'] ?? 0 );
+	unset( $_SESSION['ueb_bienvenue'] );
+	return $id === (int) $compte->id;
 }
 
 /* ---------- Règles ---------- */
@@ -140,6 +149,22 @@ function ueb_trop_d_essais() {
 }
 function ueb_noter_echec() {
 	set_transient( ueb_cle_essais(), (int) get_transient( ueb_cle_essais() ) + 1, 15 * MINUTE_IN_SECONDS );
+}
+
+/* Limite dédiée aux connexions des espaces réservés aux personnels. */
+function ueb_cle_essais_gestion( $identifiant ) {
+	$ip = isset( $_SERVER['REMOTE_ADDR'] ) ? (string) $_SERVER['REMOTE_ADDR'] : '';
+	return 'ueb_gestion_essais_' . hash( 'sha256', strtolower( trim( $ip . "\0" . (string) $identifiant ) ) );
+}
+function ueb_connexion_gestion_bloquee( $identifiant ) {
+	return (int) get_transient( ueb_cle_essais_gestion( $identifiant ) ) >= 8;
+}
+function ueb_noter_echec_gestion( $identifiant ) {
+	$cle = ueb_cle_essais_gestion( $identifiant );
+	set_transient( $cle, (int) get_transient( $cle ) + 1, 15 * MINUTE_IN_SECONDS );
+}
+function ueb_reinitialiser_echecs_gestion( $identifiant ) {
+	delete_transient( ueb_cle_essais_gestion( $identifiant ) );
 }
 
 /* ---------- Actions ---------- */
@@ -223,6 +248,7 @@ function ueb_action_creer_compte() {
 	}
 
 	ueb_connecter( ueb_compte_par_id( $wpdb->insert_id ) );
+	$_SESSION['ueb_bienvenue'] = (int) $_SESSION['ueb_compte_id'];
 	ueb_flash( 'succes', 'Ton compte est créé. Tu peux maintenant préparer ton quitus.' );
 	ueb_rediriger( ueb_url( 'mon-espace' ) );
 }

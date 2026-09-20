@@ -64,6 +64,9 @@ body {
 	-webkit-font-smoothing: antialiased;
 	text-rendering: optimizeLegibility;
 }
+/* Les pages étudiantes n'affichent pas le pied de page public : conserver
+   une respiration visuelle avant la fin du contenu. */
+body.variante-espace { padding-bottom: clamp(2.5rem, 6vw, 5rem); }
 img, svg { display: block; max-width: 100%; }
 h1, h2, h3, h4 { font-family: var(--f-titre); font-weight: 700; line-height: 1.15; margin: 0 0 .5em; letter-spacing: -.01em; text-wrap: balance; }
 h1 { font-size: clamp(2rem, 1.4rem + 2.6vw, 3.25rem); }
@@ -142,6 +145,35 @@ a:hover { color: var(--foret-700); }
 .menu-mobile { display: none; width: 48px; height: 48px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, .45); background: rgba(255, 255, 255, .12); color: #fff; align-items: center; justify-content: center; cursor: pointer; }
 .site-entete :focus-visible { outline-color: #fcd34d; }
 
+/* Le rappel reste lisible sans JavaScript et se fige si les animations sont réduites. */
+html { scroll-padding-top: calc(var(--hauteur-entete, 72px) + 16px); }
+.confidentialite { background: var(--danger-fond); color: var(--danger); border-bottom: 1px solid rgba(179,38,30,.24); font-size: .875rem; }
+.confidentialite__ligne { display: flex; align-items: center; gap: .75rem; min-height: 44px; }
+.confidentialite__ligne > .icone { color: var(--danger); }
+.confidentialite__fenetre { min-width: 0; flex: 1; overflow: hidden; padding-block: .5rem; }
+.confidentialite__ruban { line-height: 1.5; }
+.confidentialite__copie { display: none; }
+.confidentialite.est-anime .confidentialite__ruban { display: flex; width: max-content; animation: confidentialite-defiler 48s linear infinite; }
+.confidentialite.est-anime .confidentialite__ruban span { display: block; padding-right: 4rem; white-space: nowrap; }
+@keyframes confidentialite-defiler { to { transform: translateX(-50%); } }
+.bienvenue { width: min(540px, calc(100% - 2rem)); max-height: calc(100dvh - 2rem); overflow: auto; padding: clamp(1.25rem, 4vw, 2.25rem); border: 1px solid var(--filet); border-radius: 22px; color: var(--encre); background: var(--blanc); box-shadow: var(--ombre-3); }
+.bienvenue::backdrop { background: rgba(10,31,22,.65); backdrop-filter: blur(3px); }
+.bienvenue[open] { animation: bienvenue-entree .38s var(--ease-sortie); }
+.bienvenue__entete { display: flex; align-items: center; gap: .7rem; margin-bottom: 1.25rem; color: var(--foret-700); font-weight: 600; }
+.bienvenue h2 { font-size: clamp(1.65rem, 4vw, 2.15rem); }
+.bienvenue p { color: var(--gris); }
+.bienvenue strong { color: var(--encre); }
+.bienvenue__conseil { padding: .85rem 1rem; border-radius: 10px; background: var(--papier); font-size: .94rem; }
+.bienvenue .btn { width: 100%; white-space: normal; }
+html:has(.bienvenue:modal) { overflow: hidden; }
+@keyframes bienvenue-entree { from { opacity: 0; transform: translateY(14px) scale(.98); } }
+@media (prefers-reduced-motion: reduce) {
+	.confidentialite.est-anime .confidentialite__ruban { display: block; width: auto; animation: none; }
+	.confidentialite.est-anime .confidentialite__ruban span { white-space: normal; padding: 0; }
+	.confidentialite.est-anime .confidentialite__copie { display: none; }
+	.bienvenue[open] { animation: none; }
+}
+
 @media (max-width: 960px) {
 	.menu-mobile { display: inline-flex; }
 	.site-nav { position: absolute; inset: 100% 0 auto; flex-direction: column; padding: .75rem 1.25rem 1.25rem; background: var(--blanc); border-bottom: 1px solid var(--filet); box-shadow: var(--ombre-2); display: none; }
@@ -218,7 +250,7 @@ a:hover { color: var(--foret-700); }
 .champ--invalide input:focus { box-shadow: 0 0 0 4px rgba(179, 38, 30, .15); }
 .champ__select { position: relative; }
 .champ__select select { appearance: none; padding-right: 2.75rem; cursor: pointer; }
-.champ__select .icone { position: absolute; right: 1rem; top: 50%; translate: 0 -50%; pointer-events: none; color: var(--gris); }
+.champ__select > .icone { position: absolute; right: 1rem; top: 50%; translate: 0 -50%; pointer-events: none; color: var(--gris); }
 .champ__mdp { position: relative; }
 .champ__mdp input { padding-right: 3.5rem; }
 .champ__voir { position: absolute; right: .3rem; top: 50%; translate: 0 -50%; width: 44px; height: 44px; display: grid; place-items: center; border: 0; background: transparent; color: var(--gris); border-radius: 8px; cursor: pointer; }

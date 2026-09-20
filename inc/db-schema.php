@@ -13,7 +13,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-const UEB_INSC_DB_VERSION = '2';
+const UEB_INSC_DB_VERSION = '4';
 
 function ueb_insc_schema() {
 	return array(
@@ -48,6 +48,14 @@ function ueb_insc_schema() {
 			etablissement VARCHAR(10) NOT NULL,
 			annee_academique CHAR(9) NOT NULL,
 			type ENUM('droits','medicaux') NOT NULL DEFAULT 'droits',
+			situation VARCHAR(12) NOT NULL DEFAULT '',
+			filiere_id INT UNSIGNED NULL,
+			quitus_droits_id INT UNSIGNED NULL,
+			email VARCHAR(150) NOT NULL DEFAULT '',
+			adresse VARCHAR(255) NOT NULL DEFAULT '',
+			nom_urgence VARCHAR(150) NOT NULL DEFAULT '',
+			numero_urgence VARCHAR(20) NOT NULL DEFAULT '',
+			adresse_urgence VARCHAR(255) NOT NULL DEFAULT '',
 			identifiant VARCHAR(30) NOT NULL,
 			type_identifiant ENUM('matricule','dossier') NOT NULL,
 			nom VARCHAR(100) NOT NULL,
@@ -69,6 +77,7 @@ function ueb_insc_schema() {
 			PRIMARY KEY (id),
 			UNIQUE KEY uniq_numero (numero),
 			UNIQUE KEY uniq_code (code_verif),
+			UNIQUE KEY uniq_medical_droits (quitus_droits_id),
 			KEY idx_compte (compte_id),
 			KEY idx_etab_annee (etablissement, annee_academique),
 			KEY idx_statut (statut)
@@ -110,13 +119,23 @@ function ueb_insc_migrer() {
 	global $wpdb;
 	$colonnes = $wpdb->get_col( 'SHOW COLUMNS FROM ueb_insc_quitus' );
 	if ( $colonnes && ! in_array( 'type', $colonnes, true ) ) {
-		$wpdb->query( "ALTER TABLE ueb_insc_quitus ADD COLUMN type ENUM('droits','medicaux') NOT NULL DEFAULT 'droits' AFTER annee_academique" );
+		if ( false === $wpdb->query( "ALTER TABLE ueb_insc_quitus ADD COLUMN type ENUM('droits','medicaux') NOT NULL DEFAULT 'droits' AFTER annee_academique" ) ) {
+			return false;
+		}
+	}
+	foreach ( array( 'situation' => "VARCHAR(12) NOT NULL DEFAULT ''", 'filiere_id' => 'INT UNSIGNED NULL', 'quitus_droits_id' => 'INT UNSIGNED NULL, ADD UNIQUE KEY uniq_medical_droits (quitus_droits_id)', 'email' => "VARCHAR(150) NOT NULL DEFAULT ''", 'adresse' => "VARCHAR(255) NOT NULL DEFAULT ''", 'nom_urgence' => "VARCHAR(150) NOT NULL DEFAULT ''", 'numero_urgence' => "VARCHAR(20) NOT NULL DEFAULT ''", 'adresse_urgence' => "VARCHAR(255) NOT NULL DEFAULT ''" ) as $colonne => $definition ) {
+		if ( ! in_array( $colonne, $colonnes, true ) && false === $wpdb->query( "ALTER TABLE ueb_insc_quitus ADD COLUMN $colonne $definition" ) ) {
+			return false;
+		}
 	}
 	$colonnes_sequence = $wpdb->get_col( 'SHOW COLUMNS FROM ueb_insc_sequence' );
 	if ( $colonnes_sequence && ! in_array( 'type', $colonnes_sequence, true ) ) {
-		$wpdb->query( "ALTER TABLE ueb_insc_sequence ADD COLUMN type ENUM('droits','medicaux') NOT NULL DEFAULT 'droits',
-			DROP PRIMARY KEY, ADD PRIMARY KEY (etablissement, annee_academique, type)" );
+		if ( false === $wpdb->query( "ALTER TABLE ueb_insc_sequence ADD COLUMN type ENUM('droits','medicaux') NOT NULL DEFAULT 'droits',
+			DROP PRIMARY KEY, ADD PRIMARY KEY (etablissement, annee_academique, type)" ) ) {
+			return false;
+		}
 	}
+	return true;
 }
 
 function ueb_insc_installer_schema() {
@@ -127,7 +146,10 @@ function ueb_insc_installer_schema() {
 			return;
 		}
 	}
-	ueb_insc_migrer();
+	if ( ! ueb_insc_migrer() ) {
+		error_log( '[inscription-ueb] Migration impossible : ' . $wpdb->last_error );
+		return;
+	}
 	update_option( 'ueb_insc_db_version', UEB_INSC_DB_VERSION );
 }
 

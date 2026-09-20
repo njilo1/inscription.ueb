@@ -24,24 +24,43 @@ if ( isset( $_POST['ueb_connexion_gestion'] ) ) {
 	if ( ! isset( $_POST['ueb_connexion_nonce'] ) || ! wp_verify_nonce( $_POST['ueb_connexion_nonce'], 'ueb_connexion_gestion' ) ) {
 		$erreur_connexion = 'Ta session a expiré. Recommence.';
 	} else {
-		$utilisateur = wp_signon( array(
-			'user_login'    => sanitize_text_field( wp_unslash( $_POST['identifiant'] ?? '' ) ),
-			'user_password' => $_POST['mot_de_passe'] ?? '',
-			'remember'      => true,
+		$identifiant = sanitize_text_field( wp_unslash( $_POST['identifiant'] ?? '' ) );
+		/* L'identifiant affiché à l'administration reste la référence, mais
+		   accepter l'e-mail du compte évite un échec de connexion lorsque
+		   l'établissement utilise l'adresse communiquée à la création. */
+		if ( is_email( $identifiant ) ) {
+			$par_email = get_user_by( 'email', $identifiant );
+			if ( $par_email ) {
+				$identifiant = $par_email->user_login;
+			}
+		}
+		$identifiant = sanitize_user( $identifiant, true );
+		$mot_de_passe = (string) wp_unslash( $_POST['mot_de_passe'] ?? '' );
+		$utilisateur = ueb_connexion_gestion_bloquee( $identifiant ) ? new WP_Error( 'ueb_rate_limited' ) : wp_signon( array(
+			'user_login'    => $identifiant,
+			'user_password' => $mot_de_passe,
+			'remember'      => false,
 		), is_ssl() );
 		if ( is_wp_error( $utilisateur ) ) {
-			$erreur_connexion = 'Identifiant ou mot de passe incorrect.';
-		} elseif ( ! user_can( $utilisateur, UEB_CAP_GESTION ) || ueb_agent_suspendu( $utilisateur->ID ) ) {
+			ueb_noter_echec_gestion( $identifiant );
+			$erreur_connexion = 'Identifiant ou mot de passe incorrect. Vérifie l’identifiant communiqué par l’administration.';
+		} elseif ( ! user_can( $utilisateur, UEB_CAP_GESTION ) || ! ueb_est_scolarite( $utilisateur->ID ) || ueb_agent_suspendu( $utilisateur->ID ) ) {
 			wp_logout();
 			$erreur_connexion = "Ce compte n'a pas accès à l'espace scolarité.";
 		} else {
-			wp_safe_redirect( get_permalink() );
+			ueb_reinitialiser_echecs_gestion( $identifiant );
+			/* Réaffirme l'utilisateur et le cookie avant la redirection : cela
+			   évite la boucle vers l'écran de connexion avec certains caches ou
+			   configurations HTTPS locales. */
+			wp_set_current_user( $utilisateur->ID );
+			wp_set_auth_cookie( $utilisateur->ID, false, is_ssl() );
+			wp_safe_redirect( ueb_url_scolarite() );
 			exit;
 		}
 	}
 }
 
-$autorise = ueb_est_gestionnaire();
+$autorise = is_user_logged_in() && ueb_est_scolarite() && current_user_can( UEB_CAP_GESTION ) && ! ueb_agent_suspendu();
 $annee    = ueb_annee_academique();
 
 if ( $autorise ) {
@@ -58,6 +77,12 @@ if ( $autorise ) {
 	$ici  = static fn( array $args = array() ) => esc_url( add_query_arg( $args, ueb_url_scolarite() ) );
 	$prov = $_SESSION['ueb_mdp_provisoire'] ?? null;
 	unset( $_SESSION['ueb_mdp_provisoire'] );
+	$prov_cellule = $_SESSION['ueb_mdp_cellule'] ?? null;
+	unset( $_SESSION['ueb_mdp_cellule'] );
+	$cellules = array_values( array_filter( ueb_agents_cellule(), static fn( $cellule ) => ueb_etab_agent( $cellule->ID ) === $etab_agent ) );
+	if ( 'comptes' === $vue ) {
+		ueb_rediriger( ueb_url_cellule() );
+	}
 }
 
 /* Coque plein écran une fois connecté ; en-tête de site conservé sur l'écran
@@ -72,7 +97,7 @@ ueb_page_debut( array( 'titre' => 'Espace scolarité', 'variante' => $autorise ?
 		<div class="espace-connexion">
 			<section class="carte carte__corps" aria-labelledby="titre-connexion">
 				<h1 id="titre-connexion">Espace scolarité</h1>
-				<p class="page-app__sous-titre">Réservé aux scolarités des établissements et à l'administration.</p>
+				<p class="page-app__sous-titre">Réservé à la scolarité de l’établissement.</p>
 
 				<?php if ( is_user_logged_in() ) : ?>
 					<?php ueb_alerte( 'erreur', "Ce compte n'a pas accès à l'espace scolarité." ); ?>
@@ -104,7 +129,8 @@ ueb_page_debut( array( 'titre' => 'Espace scolarité', 'variante' => $autorise ?
 				array(
 					array( 'url' => $ici(), 'libelle' => 'Tableau de bord', 'icone' => 'tampon', 'actif' => 'bord' === $vue ),
 					array( 'url' => $ici( array( 'vue' => 'quitus' ) ), 'libelle' => 'Quitus', 'icone' => 'recu', 'actif' => 'quitus' === $vue ),
-					array( 'url' => $ici( array( 'vue' => 'comptes' ) ), 'libelle' => 'Comptes étudiants', 'icone' => 'utilisateur', 'actif' => 'comptes' === $vue ),
+					array( 'url' => $ici( array( 'vue' => 'cellule' ) ), 'libelle' => 'Cellule informatique', 'icone' => 'cle', 'actif' => 'cellule' === $vue ),
+					array( 'url' => $ici( array( 'vue' => 'securite' ) ), 'libelle' => 'Sécurité', 'icone' => 'bouclier', 'actif' => 'securite' === $vue ),
 				),
 				array(
 					'titre' => $etab ? $etab['sigle'] : 'Tous',
@@ -116,18 +142,35 @@ ueb_page_debut( array( 'titre' => 'Espace scolarité', 'variante' => $autorise ?
 			<div class="bo-contenu">
 				<header class="page-app__entete">
 					<div>
-						<h1><?php echo esc_html( 'comptes' === $vue ? 'Comptes étudiants' : ( 'quitus' === $vue ? 'Quitus' : 'Tableau de bord' ) ); ?></h1>
+						<h1><?php echo esc_html( 'cellule' === $vue ? 'Cellule informatique' : ( 'securite' === $vue ? 'Sécurité' : ( 'quitus' === $vue ? 'Quitus' : 'Tableau de bord' ) ) ); ?></h1>
 						<p class="page-app__sous-titre"><?php echo esc_html( $etab ? $etab['fr'] : 'Tous les établissements' ); ?> · année <?php echo esc_html( $annee['libelle'] ); ?></p>
 					</div>
 				</header>
 				<?php ueb_afficher_flash(); ?>
 
-				<?php if ( 'bord' === $vue ) : ?>
+				<?php if ( 'securite' === $vue ) : ?>
+					<section class="carte section-form bo-securite" aria-labelledby="titre-securite-personnel">
+						<header class="section-form__entete"><span class="section-form__num"><?php echo ueb_icone( 'bouclier', 18 ); ?></span><div><h2 id="titre-securite-personnel">Modifier mon mot de passe</h2><p>Remplace le mot de passe initial communiqué par l’administration.</p></div></header>
+						<div class="section-form__corps"><form class="formulaire bo-securite-form" method="post" action="<?php echo esc_url( ueb_url_scolarite() ); ?>" data-formulaire novalidate><?php ueb_champ_csrf(); ?><input type="hidden" name="ueb_action" value="gestion_changer_mdp_personnel"><?php ueb_champ( array( 'nom' => 'mot_de_passe_actuel', 'libelle' => 'Mot de passe actuel', 'type' => 'password', 'icone' => 'cadenas', 'attrs' => array( 'autocomplete' => 'current-password' ) ) ); ?><?php ueb_champ( array( 'nom' => 'mot_de_passe_nouveau', 'libelle' => 'Nouveau mot de passe', 'type' => 'password', 'icone' => 'cle', 'attrs' => array( 'autocomplete' => 'new-password', 'minlength' => 8 ) ) ); ?><?php ueb_champ( array( 'nom' => 'mot_de_passe_confirmation', 'libelle' => 'Confirmation', 'type' => 'password', 'icone' => 'cle', 'attrs' => array( 'autocomplete' => 'new-password', 'minlength' => 8 ) ) ); ?><div class="securite-form__actions"><button class="btn btn--primaire" type="submit"><?php echo ueb_icone( 'bouclier', 18 ); ?>Changer le mot de passe</button></div></form></div>
+					</section>
+
+				<?php elseif ( 'bord' === $vue ) : ?>
 
 					<?php
 					$c = ueb_gestion_chiffres( $annee['code'], $etab_agent );
 					ueb_bo_palier( $c, $etab ? $etab['fr'] : 'Tous les établissements' );
 					?>
+
+				<?php elseif ( 'cellule' === $vue ) : ?>
+
+					<?php if ( $prov_cellule ) : ?>
+						<div class="provisoire carte" role="status"><?php echo ueb_icone( 'cle', 26 ); ?><div><p>Mot de passe provisoire pour <b><?php echo esc_html( $prov_cellule['compte'] ); ?></b> :</p><p class="provisoire__mdp"><?php echo esc_html( $prov_cellule['mdp'] ); ?></p><button type="button" class="btn btn--fantome btn--petit provisoire__copier" data-copier-mot-de-passe="<?php echo esc_attr( $prov_cellule['mdp'] ); ?>"><?php echo ueb_icone( 'fichier', 16 ); ?><span>Copier le mot de passe</span></button><p class="champ__aide">Communique-le à la cellule informatique de ton établissement.</p></div></div>
+					<?php endif; ?>
+					<section class="carte section-form bo-cellule-creation" aria-labelledby="titre-cellule">
+						<header class="section-form__entete"><span class="section-form__num"><?php echo ueb_icone( 'cle', 18 ); ?></span><div><h2 id="titre-cellule">Créer un compte cellule informatique</h2><p>Ce compte pourra créer et réinitialiser les comptes étudiants de <?php echo esc_html( $etab['fr'] ); ?>.</p></div></header>
+						<div class="section-form__corps formulaire"><form class="formulaire" method="post" action="<?php echo esc_url( ueb_url_scolarite() ); ?>" data-formulaire novalidate><?php ueb_champ_csrf(); ?><input type="hidden" name="ueb_action" value="gestion_creer_cellule"><div class="formulaire__rangee"><?php ueb_champ( array( 'nom' => 'login', 'libelle' => 'Identifiant de connexion', 'icone' => 'utilisateur', 'attrs' => array( 'placeholder' => 'cellule.fs', 'autocapitalize' => 'none', 'spellcheck' => 'false', 'autocomplete' => 'off' ) ) ); ?><?php ueb_champ( array( 'nom' => 'nom', 'libelle' => 'Nom du responsable', 'icone' => 'utilisateur', 'requis' => false ) ); ?></div><?php ueb_champ( array( 'nom' => 'email', 'libelle' => 'Adresse e-mail', 'type' => 'email', 'icone' => 'courriel', 'requis' => false, 'attrs' => array( 'autocomplete' => 'off' ) ) ); ?><div class="securite-form__actions"><button class="btn btn--primaire" type="submit"><?php echo ueb_icone( 'plus', 18 ); ?>Créer le compte</button></div></form></div>
+					</section>
+					<section class="carte section-form" aria-labelledby="titre-cellules"><header class="section-form__entete"><span class="section-form__num"><?php echo ueb_icone( 'utilisateur', 18 ); ?></span><div><h2 id="titre-cellules">Cellules rattachées</h2><p>Ces comptes sont limités à ton établissement.</p></div></header><div class="section-form__corps"><div class="tableau-conteneur"><table class="tableau"><thead><tr><th>Compte</th><th>Identifiant</th><th>État</th></tr></thead><tbody><?php if ( ! $cellules ) : ?><tr><td colspan="3" class="texte-discret">Aucun compte de cellule pour l’instant.</td></tr><?php endif; ?><?php foreach ( $cellules as $cellule ) : ?><tr><td><b><?php echo esc_html( $cellule->display_name ); ?></b></td><td><?php echo esc_html( $cellule->user_login ); ?></td><td><?php echo ueb_agent_suspendu( $cellule->ID ) ? '<span class="badge badge--rejete"><i></i>Suspendu</span>' : '<span class="badge badge--verifie"><i></i>Actif</span>'; ?></td></tr><?php endforeach; ?></tbody></table></div></div></section>
 
 				<?php elseif ( 'comptes' === $vue ) : ?>
 
@@ -145,6 +188,7 @@ ueb_page_debut( array( 'titre' => 'Espace scolarité', 'variante' => $autorise ?
 							<div>
 								<p>Mot de passe provisoire pour <b><?php echo esc_html( $prov['compte'] ); ?></b> — à communiquer maintenant, il ne sera plus affiché :</p>
 								<p class="provisoire__mdp"><?php echo esc_html( $prov['mdp'] ); ?></p>
+								<button type="button" class="btn btn--fantome btn--petit provisoire__copier" data-copier-mot-de-passe="<?php echo esc_attr( $prov['mdp'] ); ?>"><?php echo ueb_icone( 'fichier', 16 ); ?><span>Copier le mot de passe</span></button>
 								<p class="champ__aide">L'étudiant choisira son propre mot de passe à sa première connexion.</p>
 							</div>
 						</div>
@@ -357,7 +401,7 @@ ueb_page_debut( array( 'titre' => 'Espace scolarité', 'variante' => $autorise ?
 						<?php endforeach; ?>
 					</nav>
 
-					<form class="filtres carte" method="get" action="<?php echo esc_url( ueb_url_scolarite() ); ?>" role="search">
+					<form class="filtres filtres--quitus carte" method="get" action="<?php echo esc_url( ueb_url_scolarite() ); ?>" role="search">
 						<input type="hidden" name="vue" value="quitus">
 						<div class="champ">
 							<label for="f-q">Rechercher</label>
