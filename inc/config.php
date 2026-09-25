@@ -52,10 +52,16 @@ const UEB_TYPES_QUITUS = array(
    frais de préinscription. */
 const UEB_FRAIS_MEDICAUX = array(
 	'ancien'  => array( 'montant' => 3000, 'libelle' => 'Réinscription sans interruption' ),
-	'reprise' => array( 'montant' => 5000, 'libelle' => 'Reprise après réactivation du matricule' ),
+	'reprise' => array( 'montant' => 5000, 'libelle' => 'Réinscription avec interruption' ),
 );
 
+/* Droits des formations classiques : 50 000 FCFA par an, saisis par
+   l'étudiant par multiples de 5 000. Premier versement de 25 000 au moins :
+   en dessous de 50 000 c'est la première tranche, à 50 000 les deux. Le
+   second versement va jusqu'au reste de l'année. */
 const UEB_DROITS_CLASSIQUES = 50000;
+const UEB_DROITS_MINIMUM    = 25000;
+const UEB_DROITS_PAS        = 5000;
 const UEB_NIVEAUX_INSCRIPTION = array( 'L1' => 'L1 — Licence 1', 'L2' => 'L2 — Licence 2', 'L3' => 'L3 — Licence 3', 'M1' => 'M1 — Master 1', 'M2' => 'M2 — Master 2' );
 
 /**

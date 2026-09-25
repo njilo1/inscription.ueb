@@ -77,32 +77,30 @@ def verifier_espace(call, js, change, root):
     try:
         for case, cards in [('vide', 0), ('ancien', 1), ('nouveau', 1), ('deuxieme', 2), ('mixte', 1), ('rejete', 1), ('verifie', 1), ('medical-seul', 1)]:
             load('espace-' + case)
-            change('#mes-quitus > summary')
-            assert js('document.querySelectorAll("#mes-quitus [data-dossier]").length') == cards, case
+            assert js('document.querySelectorAll(".liste-quitus [data-dossier]").length') == cards, case
             assert js('document.querySelectorAll("[data-dossier-pdf]").length') == cards
             if case in ('mixte', 'rejete', 'verifie'):
                 assert js('document.querySelectorAll("[data-dossier-modifier]").length') == 0
             if case == 'ancien':
                 assert js('document.querySelectorAll("[data-dossier] .btn").length') == 3
                 assert 'Master 1' in js('document.querySelector("[data-dossier]").textContent')
-                assert '28 000' in js('document.querySelector(".dossier-quitus__total").textContent')
+                assert '28 000' in js('document.querySelector(".ligne-quitus__montant").textContent')
             if case == 'rejete':
-                assert 'illisible' in js('document.querySelector(".dossier-quitus__motif").textContent')
+                assert 'illisible' in js('document.querySelector(".ligne-quitus__motif").textContent')
             if case == 'nouveau':
-                assert '1 page' in js('document.querySelector("[data-dossier-pdf]").textContent')
+                assert '1 p.' in js('document.querySelector("[data-dossier-pdf]").textContent')
 
         for width in [1280, 768, 375, 320]:
             load('espace-archives', width)
-            change('#mes-quitus > summary')
             assert js('document.documentElement.scrollWidth <= innerWidth'), ('débordement espace', width)
-            assert js('document.querySelector(".dossier-quitus__entete > div").getBoundingClientRect().width > 125'), ('en-tête trop serré', width)
+            assert js('document.querySelector(".ligne-quitus__ident > div").getBoundingClientRect().width > 125'), ('en-tête trop serré', width)
             assert js('document.querySelectorAll(".quitus-annee").length') == 2
             assert not js(r'document.querySelector("[data-annee=\"2020-2021\"]").open')
             change('[data-annee="2020-2021"] > summary')
             assert js(r'document.querySelector("[data-annee=\"2020-2021\"]").open')
             assert not js(r'document.querySelector("[data-annee=\"2020-2021\"] [data-dossier-modifier]")')
             assert js('document.documentElement.scrollWidth <= innerWidth')
-            screenshot('espace-archives-' + str(width), '#mes-quitus')
+            screenshot('espace-archives-' + str(width), '.liste-quitus')
             # Fermer les archives au clavier.
             js(r'document.querySelector("[data-annee=\"2020-2021\"] > summary").focus()')
             call('Input.dispatchKeyEvent', {'type': 'keyDown', 'key': 'Enter', 'code': 'Enter', 'windowsVirtualKeyCode': 13, 'text': '\r'})
@@ -111,13 +109,14 @@ def verifier_espace(call, js, change, root):
             assert not js(r'document.querySelector("[data-annee=\"2020-2021\"]").open')
 
         load('espace-nouvelle-annee')
-        assert 'Une nouvelle année commence' in js('document.querySelector(".mes-quitus__vide").textContent')
-        assert 'Prépare ton inscription' in js('document.querySelector("#etape-titre").textContent')
+        assert 'Aucun quitus pour' in js('document.querySelector(".liste-quitus__vide").textContent')
+        # Les étapes de l'inscription sont sur le formulaire du quitus, plus dans la liste.
+        assert not js('document.querySelector(".parcours")')
 
         for case in ['droits', 'medicaux']:
             load('recus-' + case, 375)
-            assert js('document.querySelectorAll(".recus-paiements a").length') == 2
-            assert js('document.querySelectorAll(".recus-paiements [aria-current=page]").length') == 1
+            assert js('document.querySelectorAll(".choix-paiement a").length') == 2
+            assert js('document.querySelectorAll(".choix-paiement [aria-current=page]").length') == 1
             assert js('document.documentElement.scrollWidth <= innerWidth')
 
         load('espace-bienvenue', 375)
@@ -136,19 +135,13 @@ def verifier_espace(call, js, change, root):
         load('espace-retour')
         assert not js('document.querySelector("[data-bienvenue]")')
         assert js('getComputedStyle(document.querySelector(".confidentialite__ruban")).animationName') == 'confidentialite-defiler'
-        change('[data-pause-confidentialite]')
-        assert js('document.querySelector("[data-confidentialite]").classList.contains("est-en-pause")')
-        assert js('getComputedStyle(document.querySelector(".confidentialite__ruban")).animationPlayState') == 'paused'
-        change('[data-pause-confidentialite]')
-        assert not js('document.querySelector("[data-confidentialite]").classList.contains("est-en-pause")')
         call('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-reduced-motion', 'value': 'reduce'}]})
-        # Le changement CSS précède parfois l'événement matchMedia qui masque le bouton.
+        # La classe d'animation suit l'événement matchMedia : attendre qu'elle tombe.
         for _ in range(40):
-            if js('document.querySelector("[data-pause-confidentialite]").hidden'):
+            if js('getComputedStyle(document.querySelector(".confidentialite__ruban")).animationName') == 'none':
                 break
             time.sleep(.025)
         assert js('getComputedStyle(document.querySelector(".confidentialite__ruban")).animationName') == 'none'
-        assert js('document.querySelector("[data-pause-confidentialite]").hidden')
         assert js('document.documentElement.scrollWidth <= innerWidth')
         call('Emulation.setEmulatedMedia', {'features': []})
 
@@ -186,7 +179,7 @@ def verifier_espace(call, js, change, root):
         assert js('document.documentElement.scrollWidth <= innerWidth')
         assert js('getComputedStyle(document.querySelector(".confidentialite__ruban")).animationName') == 'none'
         call('Emulation.setScriptExecutionDisabled', {'value': False})
-        print('Mon espace : dossiers groupés, niveaux, années, reçus, popup, clavier, Pause, mouvement réduit, 320–1280 px et téléchargements PDF automatiques/manuels vérifiés.')
+        print('Mon espace : dossiers groupés, niveaux, années, reçus, popup, clavier, mouvement réduit, 320–1280 px et téléchargements PDF automatiques/manuels vérifiés.')
     finally:
         call('Emulation.setScriptExecutionDisabled', {'value': False})
         server.shutdown()

@@ -26,8 +26,9 @@ function verifier( $condition, $message ) {
 	if ( ! $condition ) { throw new RuntimeException( 'ÉCHEC : ' . $message ); }
 	$GLOBALS['assertions'] = ( $GLOBALS['assertions'] ?? 0 ) + 1;
 }
-function soumettre( $post ) {
+function soumettre( $post, $jeton = null ) {
 	$GLOBALS['erreurs_test'] = array();
+	$post += array( 'jeton_quitus' => $jeton ?? ueb_jeton_formulaire_quitus() );
 	unset( $_SESSION['ueb_telechargement'] );
 	$_POST = $post;
 	try { ueb_action_enregistrer_quitus(); } catch ( TestRedirect $redirect ) {}
@@ -67,7 +68,7 @@ $post = array(
  'date_naissance' => '2002-04-12', 'lieu_naissance' => 'Ebolowa', 'sexe' => 'F', 'nationalite' => 'Camerounaise',
  'email' => 'marie.test@example.com', 'adresse' => 'Quartier Nko’ovos, Ebolowa', 'nom_urgence' => 'Jean Test',
  'numero_urgence' => '699111111', 'adresse_urgence' => 'Quartier Angalé, Ebolowa',
- 'filiere_id' => $fs[0]->id, 'parcours' => 'M1', 'montant' => '1', 'tranche' => 1, 'situation' => 'ancien',
+ 'filiere_id' => $fs[0]->id, 'parcours' => 'M1', 'montant' => '25 000', 'tranche' => 1, 'situation' => 'ancien',
 );
 $sortie = $argv[1] ?? sys_get_temp_dir() . '/ueb-inscription-review';
 if ( ! is_dir( $sortie ) ) { mkdir( $sortie, 0700, true ); }
@@ -88,17 +89,50 @@ foreach ( array( '699111111', '699 11 11 11', '+237 699 11 11 11' ) as $telephon
 list( $v, $e ) = ueb_valider_quitus( array_replace( $post, array( 'numero_urgence' => '123' ) ), $c );
 verifier( isset( $e['numero_urgence'] ), 'numéro d’urgence invalide toujours refusé' );
 
+// Objet d'un reçu : ce que la scolarité doit rapprocher du relevé bancaire.
+$objets_de = static fn( $type, $tranche ) => array_keys( ueb_objets_recu( (object) array( 'type' => $type, 'tranche' => $tranche ) ) );
+verifier( $objets_de( 'droits', 1 ) === array( 'tranche1' ), 'reçu d’un quitus tranche 1 : première tranche seulement' );
+verifier( $objets_de( 'droits', 2 ) === array( 'tranche2' ), 'reçu d’un quitus tranche 2 : deuxième tranche seulement' );
+verifier( $objets_de( 'droits', 3 ) === array( 'tranche1', 'tranche2', 'totalite' ), 'reçu d’un quitus deux tranches : trois choix' );
+verifier( $objets_de( 'medicaux', 0 ) === array( 'medicaux' ), 'reçu médical : frais médicaux' );
+verifier( 'Totalité' === ueb_libelle_objet_recu( (object) array( 'objet' => 'totalite' ) ) && 'Frais médicaux' === ueb_libelle_objet_recu( (object) array( 'objet' => '' ), 'medicaux' ), 'libellé de l’objet, repli sur le type pour les anciens reçus' );
+
+// Formation classique : montant saisi, multiples de 5 000, tranche déduite du montant.
+vider_quitus();
+$c = ueb_contexte_inscription( $compte );
+foreach ( array( '20 000', '27 500', '55 000', '' ) as $montant ) {
+	list( $v, $e ) = ueb_valider_quitus( array_replace( $post, array( 'montant' => $montant ) ), $c );
+	verifier( isset( $e['montant'] ) && ! isset( $e['tranche'] ), 'montant classique refusé : ' . $montant );
+}
+foreach ( array( '25 000' => 1, '35 000' => 1, '45 000' => 1, '50 000' => 3 ) as $montant => $attendue ) {
+	list( $v, $e ) = ueb_valider_quitus( array_replace( $post, array( 'montant' => $montant, 'tranche' => 2 ) ), $c );
+	verifier( ! $e && $v['tranche'] === $attendue, 'tranche déduite de ' . $montant . ' malgré la tranche postée' );
+}
+verifier( ! soumettre( array_replace( $post, array( 'montant' => '30 000' ) ) ), 'premier versement de 30 000' );
+$c = ueb_contexte_inscription( $compte );
+$regle = ueb_regle_droits_classiques( $c );
+verifier( $regle['second'] && 20000 === $regle['max'] && 20000 === $c['reste_droits'], 'second versement : il reste 20 000' );
+list( $v, $e ) = ueb_valider_quitus( array_replace( $post, array( 'montant' => '25 000', 'situation' => 'nouveau' ) ), $c );
+verifier( isset( $e['montant'] ), 'second versement au-delà du reste refusé' );
+foreach ( array( '15 000', '20 000' ) as $montant ) {
+	list( $v, $e ) = ueb_valider_quitus( array_replace( $post, array( 'montant' => $montant, 'situation' => 'nouveau' ) ), $c );
+	verifier( ! $e && 2 === $v['tranche'], 'second versement accepté : ' . $montant );
+}
+list( $v, $e ) = ueb_valider_quitus( array_replace( $post, array( 'montant' => '12 000', 'situation' => 'nouveau' ) ), $c );
+verifier( isset( $e['montant'] ), 'second versement hors multiple de 5 000 refusé' );
+
 foreach ( array( 'ancien' => array( 28000, 53000 ), 'reprise' => array( 30000, 55000 ) ) as $situation => $totaux ) {
 	foreach ( array( 1, 3 ) as $i => $tranche ) {
 		vider_quitus();
-		$p = array_replace( $post, array( 'situation' => $situation, 'tranche' => $tranche, 'numero_urgence' => '+237 699 11 11 11' ) );
+		$p = array_replace( $post, array( 'situation' => $situation, 'tranche' => $tranche, 'montant' => 1 === $tranche ? '25 000' : '50 000', 'numero_urgence' => '+237 699 11 11 11' ) );
 		$c = ueb_contexte_inscription( $compte );
 		list( $v, $e ) = ueb_valider_quitus( $p, $c );
 		verifier( ! $e, 'validation ' . $situation . '/' . $tranche . ' ' . json_encode( $e ) );
-		$calcul = ueb_calculer_paiement( $fs[0], $tranche, 1, $situation, $c );
+		$calcul = ueb_calculer_paiement( $fs[0], $tranche, $v['montant'], $situation, $c );
 		verifier( $totaux[$i] === $calcul['total'], 'total attendu ' . $totaux[$i] );
-		verifier( $v['montant'] === ( 1 === $tranche ? 25000 : 50000 ), 'montant falsifié remplacé' );
-		verifier( ! soumettre( $p ), 'enregistrement ' . $situation . '/' . $tranche );
+		verifier( $v['montant'] === ( 1 === $tranche ? 25000 : 50000 ) && $v['tranche'] === $tranche, 'montant saisi et tranche déduite' );
+		$jeton = ueb_jeton_formulaire_quitus();
+		verifier( ! soumettre( $p, $jeton ), 'enregistrement ' . $situation . '/' . $tranche );
 		$qs = ueb_quitus_du_compte( 1 );
 		verifier( count( $qs ) === 2, 'deux quitus créés' );
 		$q = array_values( array_filter( $qs, static fn( $q ) => 'droits' === $q->type ) )[0];
@@ -114,7 +148,9 @@ foreach ( array( 'ancien' => array( 28000, 53000 ), 'reprise' => array( 30000, 5
 		$pdf = ueb_generer_pdf_quitus( $q );
 		verifier( $pdf->getNumPages() === 4, 'dossier de quatre pages' );
 		$pdf->Output( $sortie . '/' . $situation . '-' . $tranche . '.pdf', 'F' );
-		verifier( (bool) soumettre( $p ), 'double soumission rejetée' );
+		$GLOBALS['flash_test'] = '';
+		soumettre( $p, $jeton );
+		verifier( str_contains( $GLOBALS['flash_test'], 'déjà été envoyé' ), 'double soumission rejetée (jeton déjà utilisé)' );
 		verifier( count( ueb_quitus_du_compte( 1 ) ) === 2, 'aucun doublon après double soumission' );
 		if ( 1 === $tranche ) {
 			$c = ueb_contexte_inscription( $compte );
@@ -207,7 +243,8 @@ verifier( ! ueb_quitus_du_compte( 1 ), 'actualisation sans création de quitus' 
 verifier( empty( $_SESSION['ueb_telechargement'] ), 'actualisation : aucun téléchargement' );
 
 // L'étudiant ne peut pas ouvrir directement une deuxième tranche sans première.
-verifier( isset( soumettre( array_replace( $post, array( 'tranche' => 2 ) ) )['tranche'] ), 'première tranche nécessaire' );
+list( $v, $e ) = ueb_valider_quitus( array_replace( $post, array( 'tranche' => 2 ) ), ueb_contexte_inscription( $compte ) );
+verifier( ! $e && 1 === $v['tranche'], 'première tranche nécessaire : la tranche 2 postée devient la tranche 1' );
 
 // Compatibilité d'un ancien quitus médical généré séparément.
 verifier( ! soumettre( $post ), 'dossier pour compatibilité médicale' );
@@ -321,17 +358,22 @@ foreach ( array( 'vide', 'ancien', 'nouveau', 'deuxieme', 'mixte', 'rejete', 've
 	$wpdb->query( "UPDATE ueb_insc_quitus SET date_creation = '2020-10-13 10:00:00' WHERE annee_academique = '2020-2021'" );
 	if ( 'bienvenue' === $cas_espace ) { $_SESSION['ueb_bienvenue'] = 1; }
 	$GLOBALS['query_test'] = array( 'ueb_page' => 'espace' );
+	if ( ! in_array( $cas_espace, array( 'bienvenue', 'telechargement' ), true ) ) { // messages à usage unique
+		verifier( ! str_contains( exporter_vue_espace( 'espace-accueil-' . $cas_espace, 'espace', $sortie ), 'data-dossier>' ), 'accueil sans liste de quitus : ' . $cas_espace );
+	}
+	$_GET['vue'] = 'quitus';
 	$html = exporter_vue_espace( 'espace-' . $cas_espace, 'espace', $sortie );
+	unset( $_GET['vue'] );
 	$cartes = in_array( $cas_espace, array( 'deuxieme', 'archives' ), true ) ? 2 : ( in_array( $cas_espace, array( 'vide', 'bienvenue' ), true ) ? 0 : 1 );
 	verifier( substr_count( $html, 'data-dossier>' ) === $cartes, 'une carte par dossier : ' . $cas_espace );
 	verifier( substr_count( $html, 'data-dossier-pdf' ) === $cartes, 'un seul bouton PDF par carte : ' . $cas_espace );
-	verifier( str_contains( $html, 'id="mes-quitus"' ), 'module Mes quitus toujours présent' );
+	verifier( str_contains( $html, 'class="liste-quitus"' ) && ! str_contains( $html, 'parcours__frise' ), 'Mes quitus : la liste seule, sans les étapes' );
 	if ( 'bienvenue' === $cas_espace ) {
 		verifier( str_contains( $html, 'data-bienvenue' ), 'popup présent après création' );
 		verifier( ! str_contains( exporter_vue_espace( 'espace-retour', 'espace', $sortie ), 'data-bienvenue' ), 'pas de popup au retour' );
 	}
 	if ( 'nouvelle-annee' === $cas_espace ) {
-		verifier( str_contains( $html, 'Une nouvelle année commence' ), 'invitation à se réinscrire malgré les dossiers archivés' );
+		verifier( str_contains( $html, 'Aucun quitus pour ' . $annee['libelle'] ), 'invitation à se réinscrire malgré les dossiers archivés' );
 		verifier( ! str_contains( $html, 'data-dossier-modifier' ), 'archives non modifiables' );
 	}
 	if ( 'archives' === $cas_espace ) {
@@ -340,7 +382,9 @@ foreach ( array( 'vide', 'ancien', 'nouveau', 'deuxieme', 'mixte', 'rejete', 've
 	}
 	if ( 'telechargement' === $cas_espace ) {
 		verifier( str_contains( $html, 'data-telechargement-auto' ), 'téléchargement automatique après génération' );
+		$_GET['vue'] = 'quitus';
 		verifier( ! str_contains( exporter_vue_espace( 'espace-apres-telechargement', 'espace', $sortie ), 'data-telechargement-auto' ), 'rafraîchissement sans nouveau téléchargement' );
+		unset( $_GET['vue'] );
 	}
 	if ( 'ancien' === $cas_espace ) {
 		$dossier = ueb_dossiers_quitus( ueb_quitus_du_compte( 1 ) )[0];
@@ -351,4 +395,49 @@ foreach ( array( 'vide', 'ancien', 'nouveau', 'deuxieme', 'mixte', 'rejete', 've
 		}
 	}
 }
+// Suivi des paiements : trois étudiants aux montants choisis pour exercer chaque règle.
+if ( ! function_exists( 'ueb_etab_agent' ) ) {
+	function ueb_etab_agent( $user_id = 0 ) { return ''; } // SHORTINIT : aucun agent connecté
+}
+require_once UEB_INSC_DIR . '/inc/gestion.php';
+vider_quitus();
+$compte->numero_dossier = null;
+verifier( ! soumettre( $post ), 'quitus de référence pour le suivi' );
+$modele = (array) $wpdb->get_row( "SELECT * FROM ueb_insc_quitus WHERE type = 'droits'" );
+vider_quitus();
+$poser = static function ( $compte_id, $montant, $statut, $jours ) use ( $wpdb, $modele ) {
+	static $n = 0;
+	$n++;
+	$ligne = array_replace( $modele, array( 'numero' => 'TEST-SUIVI-' . $n, 'code_verif' => str_pad( (string) $n, 20, '0' ), 'compte_id' => $compte_id, 'montant' => $montant, 'statut' => $statut, 'date_creation' => gmdate( 'Y-m-d H:i:s', time() - $jours * DAY_IN_SECONDS ) ) );
+	unset( $ligne['id'], $ligne['nb_recus'] );
+	return false !== $wpdb->insert( 'ueb_insc_quitus', $ligne );
+};
+verifier( $poser( 1, 25000, 'verifie', 3 ) && $poser( 1, 25000, 'recu_envoye', 1 ), 'étudiant A : une tranche vérifiée, une en vérification' );
+verifier( $poser( 2, 50000, 'genere', 2 ), 'étudiant B : les deux tranches déclarées' );
+verifier( $poser( 3, 60000, 'verifie', 2 ), 'étudiant C : trop-perçu vérifié' );
+$suivi = ueb_suivi_paiements( $annee['code'] );
+$g = $suivi['global'];
+verifier( 3 === $g['etudiants'] && 150000 === $g['attendu'], 'suivi : 3 étudiants, 150 000 attendus' );
+verifier( 75000 === $g['encaisse'] && 25000 === $g['verification'] && 50000 === $g['declare'] && 0 === $g['non_declare'], 'suivi : ventilation exacte ' . json_encode( $g ) );
+verifier( $g['encaisse'] + $g['verification'] + $g['declare'] + $g['non_declare'] === $g['attendu'], 'suivi : les quatre parts font l’attendu' );
+verifier( 1 === $g['soldes'] && 1 === $g['partiels'] && 1 === $g['aucun'] && 10000 === $g['trop_percu'], 'suivi : soldés, partiels, aucun, trop-perçu' );
+verifier( 50.0 === (float) ueb_suivi_taux( $g ), 'suivi : taux de recouvrement 50 %' );
+verifier( 1 === count( $suivi['filieres'] ) && 3 === reset( $suivi['filieres'] )['etudiants'], 'suivi : une filière, trois étudiants' );
+verifier( '50 %' === ueb_pourcent( 50 ) && '7,2 %' === ueb_pourcent( 7.2 ), 'suivi : pourcentages à la française' );
+// Progression de l'année : mêmes quitus, sans reçu en base (repli sur la date de décision).
+$activite = ueb_gestion_activite( $annee['code'] );
+$croissant = static function ( array $serie ) {
+	$trie = $serie;
+	sort( $trie );
+	return $trie === $serie;
+};
+verifier( count( $activite['jours'] ) >= 4 && count( $activite['jours'] ) === count( $activite['generes'] ), 'activité : un point par jour depuis le premier quitus' );
+verifier( 4 === end( $activite['generes'] ) && 3 === end( $activite['envoyes'] ) && 2 === end( $activite['verifies'] ), 'activité : cumuls finaux 4 / 3 / 2 ' . json_encode( $activite ) );
+verifier( $croissant( $activite['generes'] ) && $croissant( $activite['envoyes'] ) && $croissant( $activite['verifies'] ), 'activité : cumuls jamais décroissants' );
+verifier( ! array_filter( array_keys( $activite['jours'] ), static fn( $i ) => $activite['envoyes'][ $i ] < $activite['verifies'][ $i ] || $activite['generes'][ $i ] < $activite['envoyes'][ $i ] ), 'activité : générés ⊇ envoyés ⊇ vérifiés chaque jour ' . json_encode( $activite ) );
+$fenetre = ueb_gestion_activite( $annee['code'], '', 2 );
+verifier( 2 === count( $fenetre['jours'] ) && 4 === end( $fenetre['generes'] ) && $fenetre['generes'][0] >= 3, 'activité : fenêtre de 2 jours, antérieur reporté au départ' );
+verifier( array( 0 ) === ueb_gestion_activite( $annee['code'], 'ETAB-INCONNU' )['generes'], 'activité : établissement sans quitus = un jour à zéro' );
+vider_quitus();
+
 echo $GLOBALS['assertions'] . " vérifications réussies. Aperçus : $sortie\n";

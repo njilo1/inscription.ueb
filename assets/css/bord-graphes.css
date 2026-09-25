@@ -1,0 +1,147 @@
+/* Graphiques du tableau de bord de la scolarité (inc/bord-graphes.php).
+   La coque (.bord .graphe : panneau, entête) est posée par bord.css ; ici,
+   seulement l'intérieur des deux figures. Couleurs : la rampe validée
+   (--viz-pas-1 → 3) et la piste, jamais une couleur de statut. */
+
+/* ---------- Progression de l'année : courbes cumulées ---------- */
+
+.courbes__resume { margin: -.2rem 0 1.25rem; max-width: 36rem; font-size: .9rem; line-height: 1.5; color: var(--gris); }
+.courbes__resume b { font-size: 1.05rem; font-weight: 700; color: var(--encre); }
+
+/* Trois colonnes : graduations, tracé, étiquettes de fin de courbe ;
+   dessous, les dates. La hauteur du tracé est fixe, sa largeur suit le panneau
+   (l'enveloppe mesure cette largeur pour les requêtes de conteneur). */
+.courbes-cadre { container-type: inline-size; }
+.courbes {
+	--courbes-h: 220px;
+	position: relative;
+	display: grid;
+	grid-template-columns: auto minmax(0, 1fr) 7rem;
+	grid-template-rows: var(--courbes-h) auto;
+	column-gap: .7rem;
+}
+
+.courbes__axe-y { grid-area: 1 / 1; position: relative; width: calc(var(--chiffres, 2) * 1ch); font-size: .75rem; }
+.courbes__axe-y span { position: absolute; right: 0; bottom: var(--y); translate: 0 50%; line-height: 1; color: var(--gris); }
+
+.courbes__zone { grid-area: 1 / 2; position: relative; min-width: 0; touch-action: pan-y; -webkit-tap-highlight-color: transparent; }
+.courbes__zone:focus-visible { outline: 2px solid var(--or); outline-offset: 6px; border-radius: 4px; }
+
+/* Grille : filets d'un pixel, la ligne de base un cran plus marquée. */
+.courbes__grille span { position: absolute; left: 0; right: 0; bottom: var(--y); height: 1px; background: var(--viz-piste); }
+.courbes__grille span:first-child { background: var(--filet-fort); }
+
+.courbes__trace { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.courbes__aire { fill: var(--viz-pas-1); fill-opacity: .14; stroke: none; }
+.courbes__ligne { fill: none; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+.courbes__ligne--generes { stroke: var(--viz-pas-1); stroke-width: 2.25px; }
+.courbes__ligne--envoyes { stroke: var(--viz-pas-2); stroke-width: 2px; stroke-dasharray: 6 4; stroke-linecap: butt; }
+.courbes__ligne--verifies { stroke: var(--viz-pas-3); stroke-width: 3.5px; }
+
+/* Points : plein clair, anneau creux (la série en tirets), plein foncé plus
+   gros — la forme double la couleur. Liseré blanc pour rester lisibles là où
+   deux courbes se croisent. */
+.courbes__point { position: absolute; left: var(--x); bottom: var(--y); z-index: 1; box-sizing: border-box; width: 10px; height: 10px; border-radius: 50%; translate: -50% 50%; box-shadow: 0 0 0 2px var(--blanc); pointer-events: none; }
+.courbes__point--generes { background: var(--viz-pas-1); }
+.courbes__point--envoyes { background: var(--blanc); border: 2.5px solid var(--viz-pas-2); }
+.courbes__point--verifies { width: 11px; height: 11px; background: var(--viz-pas-3); }
+
+/* Étiquettes directes au bout des courbes (positions écartées côté serveur). */
+.courbes__fins { grid-area: 1 / 3; position: relative; margin: 0; padding: 0; list-style: none; }
+.courbes__fin { position: absolute; left: .45rem; right: 0; bottom: var(--y); translate: 0 50%; display: grid; grid-template-columns: 20px minmax(0, 1fr); column-gap: .45rem; align-items: center; line-height: 1.15; }
+.courbes__fin .courbes__cle { grid-row: span 2; }
+.courbes__fin b { font-size: 1.05rem; font-weight: 700; color: var(--encre); }
+.courbes__fin span { font-size: .75rem; color: var(--gris); }
+
+/* Pastilles de série : même couleur et même trait que la courbe. */
+.courbes__cle { flex: none; overflow: visible; fill: none; stroke-linecap: round; }
+.courbes__cle--generes rect { fill: var(--viz-pas-1); fill-opacity: .22; }
+.courbes__cle--generes path { stroke: var(--viz-pas-1); stroke-width: 2.25; }
+.courbes__cle--envoyes path { stroke: var(--viz-pas-2); stroke-width: 2; stroke-dasharray: 5 3; stroke-linecap: butt; }
+.courbes__cle--verifies path { stroke: var(--viz-pas-3); stroke-width: 3.5; }
+
+.courbes__axe-x { grid-area: 2 / 2; position: relative; height: 1.85rem; }
+
+.courbes__axe-x span { position: absolute; top: .6rem; left: var(--x); translate: -50% 0; font-size: .75rem; line-height: 1; white-space: nowrap; color: var(--gris); }
+.courbes__axe-x span:first-child { translate: 0 0; }
+.courbes__axe-x span:last-child { translate: -100% 0; }
+/* Graphique étroit (téléphone, colonne serrée) : les étiquettes de fin
+   passent en légende chiffrée sous les dates et le tracé prend toute la
+   largeur ; plus étroit encore, la date du milieu toucherait ses voisines. */
+@container (max-width: 26rem) {
+	.courbes { --courbes-h: 190px; grid-template-columns: auto minmax(0, 1fr); grid-template-rows: var(--courbes-h) auto auto; column-gap: .55rem; }
+	.courbes__fins { grid-area: 3 / 1 / auto / -1; display: flex; flex-wrap: wrap; gap: .55rem 1.3rem; margin-top: .45rem; }
+	.courbes__fin { position: static; translate: none; }
+}
+@container (max-width: 15rem) {
+	.courbes__axe-x span:nth-child(2):not(:last-child) { display: none; }
+}
+
+/* Survol et clavier (assets/js/bord.js) : repère vertical, un point par
+   courbe, infobulle qui bascule à gauche près du bord. */
+.courbes__repere, .courbes__point--survol, .courbes__bulle { opacity: 0; transition: opacity .15s; }
+.courbes__zone--active .courbes__repere,
+.courbes__zone--active .courbes__point--survol,
+.courbes__zone--active .courbes__bulle { opacity: 1; }
+.courbes__repere { position: absolute; top: -.25rem; bottom: 0; left: var(--x); width: 1px; background: var(--filet-fort); pointer-events: none; }
+.courbes__point--survol { z-index: 2; }
+.courbes__bulle { position: absolute; top: 0; left: 0; z-index: 3; width: max-content; min-width: 9.5rem; padding: .6rem .8rem .65rem; border: 1px solid var(--filet); border-radius: 10px; background: var(--blanc); box-shadow: 0 18px 32px -20px rgba(10, 31, 22, .5); pointer-events: none; }
+.courbes__bulle-date { margin: 0 0 .35rem; font-size: .85rem; font-weight: 700; color: var(--encre); }
+.courbes__bulle ul { display: grid; gap: .2rem; margin: 0; padding: 0; list-style: none; }
+.courbes__bulle li { display: flex; align-items: center; gap: .5rem; font-size: .8rem; line-height: 1.35; color: var(--gris); }
+.courbes__bulle b { min-width: 1.4ch; font-weight: 700; color: var(--encre); }
+
+/* Entrée : les courbes se dévoilent de gauche à droite, puis les points et
+   les étiquettes de fin apparaissent. Le découpage ne vaut que pendant
+   l'animation (remplissage « backwards ») : ensuite, rien n'est rogné. */
+.courbes__trace { animation: courbes-devoile .9s var(--ease-sortie) .1s backwards; }
+.courbes__point--fin, .courbes__fin { animation: courbes-apparait .35s ease-out .75s backwards; }
+@keyframes courbes-devoile {
+	from { clip-path: inset(-12px 100% -12px -12px); }
+	to { clip-path: inset(-12px -12px -12px -12px); }
+}
+@keyframes courbes-apparait { from { opacity: 0; } }
+
+/* ---------- Recouvrement par filière ---------- */
+
+.filieres { display: grid; gap: 1.1rem; margin: 0 0 1.35rem; padding: 0; list-style: none; }
+.filieres__ligne { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: baseline; column-gap: .9rem; row-gap: .05rem; }
+.filieres__nom { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .92rem; font-weight: 600; color: var(--encre); }
+.filieres__taux { font-size: 1.05rem; font-weight: 700; line-height: 1.2; color: var(--encre); }
+.filieres__meta { grid-column: 1 / -1; font-size: .78rem; color: var(--gris); }
+.filieres__ligne .suivi-barre { grid-column: 1 / -1; margin-top: .5rem; }
+.graphe--filieres .suivi-barre--fine { height: 10px; }
+
+/* Les barres poussent depuis la gauche, en léger décalage (--i plafonné à 6). */
+.graphe--filieres .suivi-barre { transform-origin: left center; animation: filieres-pousse .6s var(--ease-sortie) calc(.15s + var(--i, 0) * 60ms) backwards; }
+@keyframes filieres-pousse { from { transform: scaleX(0); } }
+
+/* Infobulles des parts aux extrémités : calées sur le bord de la barre pour
+   ne jamais sortir du panneau. */
+.graphe--filieres .suivi-barre__part:first-child::after { left: 0; translate: 0 4px; }
+.graphe--filieres .suivi-barre__part:last-child::after { left: auto; right: 0; translate: 0 4px; }
+.graphe--filieres .suivi-barre__part:first-child:hover::after,
+.graphe--filieres .suivi-barre__part:last-child:hover::after { translate: 0 0; }
+
+.filieres__pied { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .4rem 1rem; margin-top: auto; padding-top: .85rem; border-top: 1px solid var(--filet); }
+.filieres__legende { flex: 1 1 16rem; display: grid; grid-template-columns: repeat(auto-fill, minmax(8.25rem, 1fr)); gap: .4rem .9rem; margin: 0; padding: 0; list-style: none; font-size: .75rem; line-height: 1.3; color: var(--gris); }
+.filieres__legende li { display: inline-flex; align-items: center; gap: .4rem; }
+.filieres__legende i { flex: none; width: 10px; height: 10px; border-radius: 3px; }
+.filieres__tout { display: inline-flex; align-items: center; gap: .3rem; min-height: 44px; font-size: .88rem; font-weight: 700; color: var(--foret-700); text-decoration: none; }
+.filieres__tout .icone { transition: translate .18s var(--ease-sortie); }
+.filieres__tout:hover { text-decoration: underline; text-underline-offset: 3px; }
+.filieres__tout:hover .icone { translate: 3px 0; }
+.filieres__tout:focus-visible { outline: 2px solid var(--or); outline-offset: 2px; border-radius: 4px; }
+
+/* ---------- Mouvement réduit et impression : image finale, tout de suite ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+	.courbes__trace, .courbes__point--fin, .courbes__fin, .graphe--filieres .suivi-barre { animation: none; }
+	.courbes__repere, .courbes__point--survol, .courbes__bulle, .filieres__tout .icone { transition: none; }
+}
+
+@media print {
+	.courbes__trace, .courbes__point--fin, .courbes__fin, .graphe--filieres .suivi-barre { animation: none; }
+	.courbes__repere, .courbes__point--survol, .courbes__bulle { display: none; }
+	.filieres__tout { display: none; }
+}

@@ -17,7 +17,7 @@ if ( isset( $_POST['ueb_connexion_cellule'] ) ) {
 		if ( is_wp_error( $utilisateur ) ) {
 			ueb_noter_echec_gestion( $identifiant );
 			$erreur_connexion = 'Identifiant ou mot de passe incorrect.';
-		} elseif ( ! user_can( $utilisateur, UEB_CAP_COMPTES ) || ! ueb_est_cellule( $utilisateur->ID ) || ueb_agent_suspendu( $utilisateur->ID ) ) {
+		} elseif ( ! ueb_est_cellule( $utilisateur->ID ) || ! ueb_etabs_autorises( $utilisateur->ID ) || ueb_agent_suspendu( $utilisateur->ID ) ) {
 			wp_logout();
 			$erreur_connexion = "Ce compte n'a pas accès à la cellule informatique.";
 		} else {
@@ -28,9 +28,11 @@ if ( isset( $_POST['ueb_connexion_cellule'] ) ) {
 	}
 }
 
-$autorise = is_user_logged_in() && ueb_est_cellule() && current_user_can( UEB_CAP_COMPTES ) && ! ueb_agent_suspendu();
+/* Accès par capacité et portée (inc/roles.php), jamais par nom de rôle. */
+$autorise = ueb_est_cellule() && ueb_peut( UEB_CAP_COMPTES );
 $annee    = ueb_annee_academique();
 $etab     = $autorise ? ueb_etablissement( ueb_etab_agent() ) : null;
+$etab     = $etab ?: array( 'sigle' => 'Tous', 'fr' => 'Tous les établissements' );
 $vue      = sanitize_key( $_GET['vue'] ?? 'comptes' );
 $filtres  = array( 'q' => sanitize_text_field( wp_unslash( $_GET['qc'] ?? '' ) ), 'paiement' => '' );
 $etudiants = $autorise ? ueb_gestion_chercher_etudiants( $filtres, ueb_etab_agent() ) : array();
@@ -60,7 +62,7 @@ ueb_page_debut( array( 'titre' => 'Cellule informatique', 'variante' => $autoris
 		</div>
 	<?php else : ?>
 		<div class="bo">
-			<?php ueb_bo_barre( 'Cellule informatique', array( array( 'url' => ueb_url_cellule(), 'libelle' => 'Comptes étudiants', 'icone' => 'utilisateur', 'actif' => 'comptes' === $vue ), array( 'url' => add_query_arg( 'vue', 'securite', ueb_url_cellule() ), 'libelle' => 'Sécurité', 'icone' => 'bouclier', 'actif' => 'securite' === $vue ) ), array( 'titre' => $etab['sigle'], 'note' => $etab['fr'] ) ); ?>
+			<?php ueb_bo_barre( 'Comptes étudiants', array( array( 'url' => ueb_url_cellule(), 'libelle' => 'Comptes étudiants', 'icone' => 'utilisateur', 'actif' => 'comptes' === $vue ), ueb_est_scolarite() && ( ueb_peut( UEB_CAP_GESTION ) || ueb_peut( 'ueb_voir_paiements' ) ) ? array( 'url' => ueb_url_scolarite(), 'libelle' => 'Espace scolarité', 'icone' => 'recu', 'actif' => false ) : null, ueb_peut( UEB_CAP_DIRECTION ) ? array( 'url' => ueb_url_direction(), 'libelle' => 'Direction', 'icone' => 'bouclier', 'actif' => false ) : null, array( 'url' => add_query_arg( 'vue', 'securite', ueb_url_cellule() ), 'libelle' => 'Sécurité', 'icone' => 'cadenas', 'actif' => 'securite' === $vue ) ), array( 'titre' => $etab['sigle'], 'note' => $etab['fr'] ) ); ?>
 			<div class="bo-contenu">
 				<header class="page-app__entete"><div><h1><?php echo 'securite' === $vue ? 'Sécurité' : 'Comptes étudiants'; ?></h1><p class="page-app__sous-titre"><?php echo esc_html( $etab['fr'] ); ?> · année <?php echo esc_html( $annee['libelle'] ); ?></p></div></header>
 				<?php ueb_afficher_flash(); ?>

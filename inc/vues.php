@@ -90,6 +90,388 @@ function ueb_page_debut( array $args = array() ) {
 	}
 }
 
+/* ---------- Suivi des paiements (administration et scolarité) ---------- */
+
+/** Montant lisible : « 700 000 FCFA ». */
+function ueb_fcfa( $montant ) {
+	return ueb_formater_montant( (int) $montant ) . ' FCFA';
+}
+
+/** Pourcentage à une décimale, à la française : « 14,3 % ». */
+function ueb_pourcent( $valeur ) {
+	return number_format( (float) $valeur, $valeur > 0 && $valeur < 10 ? 1 : 0, ',', ' ' ) . ' %';
+}
+
+/**
+ * Barre de progression du paiement : encaissé, en vérification, déclaré,
+ * pas encore déclaré. Les quatre parts font 100 % de l'attendu.
+ */
+function ueb_suivi_barre( array $a, $classe = '' ) {
+	$parts = array(
+		'encaisse'     => 'Encaissé',
+		'verification' => 'En vérification',
+		'declare'      => 'Déclaré',
+		'non_declare'  => 'Pas encore déclaré',
+	);
+	$resume = array();
+	foreach ( $parts as $cle => $libelle ) {
+		$resume[] = $libelle . ' ' . ueb_pourcent( ueb_suivi_taux( $a, $cle ) );
+	}
+	?>
+	<div class="suivi-barre <?php echo esc_attr( $classe ); ?>" role="img" aria-label="<?php echo esc_attr( implode( ', ', $resume ) ); ?>">
+		<?php foreach ( $parts as $cle => $libelle ) :
+			$part = ueb_suivi_taux( $a, $cle );
+			if ( $part <= 0 ) {
+				continue;
+			}
+			?>
+			<span class="suivi-barre__part suivi-barre__part--<?php echo esc_attr( $cle ); ?>" style="--part: <?php echo esc_attr( round( $part, 3 ) ); ?>%" data-info="<?php echo esc_attr( $libelle . ' · ' . ueb_fcfa( $a[ $cle ] ) . ' · ' . ueb_pourcent( $part ) ); ?>"></span>
+		<?php endforeach; ?>
+	</div>
+	<?php
+}
+
+/**
+ * Carte compacte du tableau de bord : taux, barre, lien vers le suivi complet.
+ */
+function ueb_suivi_carte( array $suivi, $url, $perimetre ) {
+	$g = $suivi['global'];
+	?>
+	<a class="carte suivi-carte" href="<?php echo esc_url( $url ); ?>">
+		<span class="suivi-carte__tete">
+			<span class="suivi-carte__titre">Recouvrement des droits · <?php echo esc_html( $perimetre ); ?></span>
+			<span class="suivi-carte__lien">Suivi des paiements<?php echo ueb_icone( 'fleche', 16 ); ?></span>
+		</span>
+		<span class="suivi-carte__corps">
+			<span class="suivi-carte__taux"><?php echo esc_html( ueb_pourcent( ueb_suivi_taux( $g ) ) ); ?></span>
+			<span class="suivi-carte__phrase"><b><?php echo esc_html( ueb_fcfa( $g['encaisse'] ) ); ?></b> encaissés sur <?php echo esc_html( ueb_fcfa( $g['attendu'] ) ); ?> attendus · <?php echo (int) $g['soldes']; ?> étudiant<?php echo $g['soldes'] > 1 ? 's' : ''; ?> soldé<?php echo $g['soldes'] > 1 ? 's' : ''; ?> sur <?php echo (int) $g['etudiants']; ?></span>
+		</span>
+		<?php ueb_suivi_barre( $g ); ?>
+	</a>
+	<?php
+}
+
+/**
+ * Suivi complet des paiements, partagé par la scolarité et l'administration :
+ * héros du recouvrement (jauge animée, inc/bord.php), tableau par établissement
+ * ou par filière en pleine largeur, puis niveaux et frais médicaux côte à côte,
+ * et la méthode de calcul.
+ *
+ * @param array $args perimetre (texte), lignes ('etabs' ou 'filieres'),
+ *                    lien_ligne (callable sigle => url, facultatif).
+ */
+function ueb_suivi_paiements_vue( array $suivi, array $args ) {
+	$args = array_merge( array( 'perimetre' => '', 'lignes' => 'filieres', 'lien_ligne' => null ), $args );
+	?>
+	<div class="suivi">
+		<?php
+		ueb_bord_recouvrement( $suivi, '', $args['perimetre'], array( 'reste' => true, 'titre' => 'Taux de recouvrement des droits' ) );
+		ueb_suivi_tableau( $suivi, $args );
+		?>
+		<div class="suivi__rangee">
+			<?php
+			ueb_suivi_niveaux( $suivi['niveaux'] );
+			ueb_suivi_medicaux( $suivi['medicaux'] );
+			?>
+		</div>
+		<?php ueb_suivi_methode(); ?>
+	</div>
+	<?php
+}
+
+/** « 1 étudiant », « 8 étudiants ». */
+function ueb_suivi_etudiants( $nombre ) {
+	return (int) $nombre . ( (int) $nombre > 1 ? ' étudiants' : ' étudiant' );
+}
+
+/**
+ * Légende compacte d'une barre : pastille de la couleur de la part et libellé.
+ *
+ * @param array $cles cle de part (encaisse, verification, declare, non_declare) => libellé.
+ */
+function ueb_suivi_cles( array $cles, $etiquette ) {
+	?>
+	<ul class="suivi-cles" aria-label="<?php echo esc_attr( $etiquette ); ?>">
+		<?php foreach ( $cles as $cle => $libelle ) : ?>
+			<li class="suivi-legende__item--<?php echo esc_attr( $cle ); ?>"><i aria-hidden="true"></i><?php echo esc_html( $libelle ); ?></li>
+		<?php endforeach; ?>
+	</ul>
+	<?php
+}
+
+/**
+ * Tableau du recouvrement, une ligne par établissement (administration, ligne
+ * cliquable vers ses filières) ou par filière, et la ligne Total. Sous 860 px,
+ * chaque ligne devient une carte (libellés des colonnes via data-titre).
+ */
+function ueb_suivi_tableau( array $suivi, array $args ) {
+	$g        = $suivi['global'];
+	$par_etab = 'etabs' === $args['lignes'];
+	$lignes   = $suivi[ $args['lignes'] ] ?? array();
+	$lien_de  = $par_etab && is_callable( $args['lien_ligne'] ) ? $args['lien_ligne'] : null;
+	$rang     = 0;
+	?>
+	<section class="suivi-panneau suivi-lignes" aria-labelledby="suivi-lignes-titre">
+		<header class="suivi-panneau__entete">
+			<div>
+				<h2 id="suivi-lignes-titre"><?php echo $par_etab ? 'Par établissement' : 'Par filière'; ?></h2>
+				<p><?php echo $lien_de ? 'Du plus gros montant attendu au plus petit. Ouvre un établissement pour voir ses filières. Montants en FCFA.' : 'Du plus gros montant attendu au plus petit. Montants en FCFA.'; ?></p>
+			</div>
+			<?php if ( $lignes ) {
+				ueb_suivi_cles( array( 'encaisse' => 'Encaissé', 'verification' => 'En vérification', 'declare' => 'Déclaré', 'non_declare' => 'Pas encore déclaré' ), 'Lecture de la barre de recouvrement' );
+			} ?>
+		</header>
+
+		<?php if ( ! $lignes ) : ?>
+			<div class="bo-vide"><span><?php echo ueb_icone( 'banque', 22 ); ?></span><p>Aucun quitus de droits universitaires cette année pour l’instant.</p></div>
+		<?php else : ?>
+			<table class="suivi-table">
+				<caption class="sr">Recouvrement des droits universitaires <?php echo $par_etab ? 'par établissement' : 'par filière'; ?>, montants en FCFA</caption>
+				<thead>
+					<tr>
+						<th scope="col" class="suivi-table__col-nom"><?php echo $par_etab ? 'Établissement' : 'Filière'; ?></th>
+						<th scope="col" class="num suivi-table__effectif">Étudiants</th>
+						<th scope="col" class="num">Attendu</th>
+						<th scope="col" class="num">Encaissé</th>
+						<th scope="col" class="num">Reste</th>
+						<th scope="col" class="suivi-table__col-taux">Recouvrement</th>
+					</tr>
+				</thead>
+				<tbody>
+				<?php foreach ( $lignes as $cle => $a ) :
+					$sigle = $par_etab ? $cle : $a['etab'];
+					$e     = ueb_etablissement( $sigle );
+					$lien  = $lien_de ? call_user_func( $lien_de, $sigle ) : '';
+					?>
+					<tr class="suivi-table__ligne<?php echo $lien ? ' est-cliquable' : ''; ?>" style="--i: <?php echo (int) min( $rang++, 6 ); ?>">
+						<th scope="row" class="suivi-table__nom">
+							<span class="suivi-table__nom-corps">
+								<?php if ( $par_etab ) : ?>
+									<span class="suivi-table__logo" style="--etab: <?php echo esc_attr( $e['couleur'] ?? '#13351a' ); ?>"><img src="<?php echo esc_url( ueb_logo_url( $sigle ) ); ?>" alt="" width="26" height="26" loading="lazy"></span>
+								<?php endif; ?>
+								<span class="suivi-table__texte">
+									<?php if ( $par_etab ) : ?>
+										<?php if ( $lien ) : ?>
+											<a class="suivi-table__intitule suivi-table__lien" href="<?php echo esc_url( $lien ); ?>" title="<?php echo esc_attr( $e['fr'] ?? $sigle ); ?>"><?php echo esc_html( $sigle ); ?><span class="sr"> : voir ses filières</span></a>
+										<?php else : ?>
+											<span class="suivi-table__intitule"><?php echo esc_html( $sigle ); ?></span>
+										<?php endif; ?>
+										<small class="suivi-table__complet" title="<?php echo esc_attr( $e['fr'] ?? '' ); ?>"><?php echo esc_html( $e['fr'] ?? '' ); ?></small>
+									<?php else : ?>
+										<span class="suivi-table__intitule suivi-table__intitule--long" title="<?php echo esc_attr( $a['libelle'] ); ?>"><?php echo esc_html( $a['libelle'] ); ?></span>
+										<?php if ( $a['pro'] ) : ?>
+											<small class="suivi-table__pro" title="Attendu : total des quitus préparés, le tarif étant fixé par l’établissement">Formation professionnelle</small>
+										<?php endif; ?>
+									<?php endif; ?>
+									<small class="suivi-table__effectif-ligne"><?php echo esc_html( ueb_suivi_etudiants( $a['etudiants'] ) ); ?></small>
+									<?php if ( $a['trop_percu'] > 0 ) : ?>
+										<small class="suivi-table__trop" title="Vérifié au-delà de l’attendu : à contrôler"><?php echo ueb_icone( 'alerte', 14 ); ?><span>Trop-perçu : <?php echo esc_html( ueb_fcfa( $a['trop_percu'] ) ); ?></span></small>
+									<?php endif; ?>
+								</span>
+							</span>
+						</th>
+						<?php ueb_suivi_cellules( $a, (bool) $lien_de ); ?>
+					</tr>
+				<?php endforeach; ?>
+				</tbody>
+				<?php if ( count( $lignes ) > 1 ) : ?>
+					<tfoot>
+						<tr class="suivi-table__ligne suivi-table__total" style="--i: <?php echo (int) min( $rang, 6 ); ?>">
+							<th scope="row" class="suivi-table__nom">
+								<span class="suivi-table__nom-corps">
+									<span class="suivi-table__texte">
+										<span class="suivi-table__intitule">Total</span>
+										<small class="suivi-table__effectif-ligne"><?php echo esc_html( ueb_suivi_etudiants( $g['etudiants'] ) ); ?></small>
+									</span>
+								</span>
+							</th>
+							<?php ueb_suivi_cellules( $g, (bool) $lien_de ); ?>
+						</tr>
+					</tfoot>
+				<?php endif; ?>
+			</table>
+		<?php endif; ?>
+	</section>
+	<?php
+}
+
+/**
+ * Cellules chiffrées d'une ligne du tableau : effectif, attendu, encaissé,
+ * reste, puis la barre en quatre parts et le taux. $fleche réserve la place
+ * de la flèche des lignes cliquables (la ligne Total reste alignée).
+ */
+function ueb_suivi_cellules( array $a, $fleche = false ) {
+	?>
+	<td class="num suivi-table__effectif" data-titre="Étudiants"><?php echo (int) $a['etudiants']; ?></td>
+	<td class="num" data-titre="Attendu"><?php echo esc_html( ueb_formater_montant( $a['attendu'] ) ); ?></td>
+	<td class="num suivi-table__encaisse" data-titre="Encaissé"><?php echo esc_html( ueb_formater_montant( $a['encaisse'] ) ); ?></td>
+	<td class="num" data-titre="Reste"><?php echo esc_html( ueb_formater_montant( $a['attendu'] - $a['encaisse'] ) ); ?></td>
+	<td class="suivi-table__taux">
+		<span class="suivi-table__mesure">
+			<?php ueb_suivi_barre( $a, 'suivi-barre--ligne' ); ?>
+			<b><?php echo esc_html( ueb_pourcent( ueb_suivi_taux( $a ) ) ); ?></b>
+			<?php if ( $fleche ) : ?>
+				<span class="suivi-table__aller" aria-hidden="true"><?php echo ueb_icone( 'fleche', 16 ); ?></span>
+			<?php endif; ?>
+		</span>
+	</td>
+	<?php
+}
+
+/**
+ * Recouvrement par niveau (L1 → M2, puis « Non précisé ») : barres
+ * horizontales sur une échelle de 0 à 100 % de l'attendu, part encaissée puis
+ * part en vérification ; effectif à gauche, taux et montant encaissé à droite.
+ */
+function ueb_suivi_niveaux( array $niveaux ) {
+	$rang = 0;
+	?>
+	<section class="suivi-panneau suivi-niveaux" aria-labelledby="suivi-niveaux-titre">
+		<header class="suivi-panneau__entete">
+			<div>
+				<h2 id="suivi-niveaux-titre">Par niveau</h2>
+				<p>Part des droits attendus déjà encaissée, et celle dont le reçu est en vérification.</p>
+			</div>
+			<?php if ( $niveaux ) {
+				ueb_suivi_cles( array( 'encaisse' => 'Encaissé', 'verification' => 'En vérification' ), 'Lecture des barres par niveau' );
+			} ?>
+		</header>
+
+		<?php if ( ! $niveaux ) : ?>
+			<div class="bo-vide"><span><?php echo ueb_icone( 'utilisateur', 22 ); ?></span><p>Aucun étudiant pour l’instant.</p></div>
+		<?php else : ?>
+			<div class="suivi-niveaux__graphe">
+				<div class="suivi-niveaux__grille" aria-hidden="true">
+					<?php foreach ( array( 0, 25, 50, 75, 100 ) as $x ) : ?><span style="--x: <?php echo (int) $x; ?>%"></span><?php endforeach; ?>
+				</div>
+				<ul class="suivi-niveaux__liste">
+					<?php foreach ( $niveaux as $niveau => $a ) :
+						$parts  = array(
+							'encaisse'     => array( 'Encaissé', ueb_suivi_taux( $a ) ),
+							'verification' => array( 'En vérification', ueb_suivi_taux( $a, 'verification' ) ),
+						);
+						$resume = sprintf(
+							'%s, %s : %s encaissés sur %s attendus (%s), %s en vérification (%s)',
+							$niveau,
+							ueb_suivi_etudiants( $a['etudiants'] ),
+							ueb_fcfa( $a['encaisse'] ),
+							ueb_fcfa( $a['attendu'] ),
+							ueb_pourcent( $parts['encaisse'][1] ),
+							ueb_fcfa( $a['verification'] ),
+							ueb_pourcent( $parts['verification'][1] )
+						);
+						?>
+						<li class="suivi-niveau" style="--i: <?php echo (int) min( $rang++, 6 ); ?>">
+							<span class="suivi-niveau__nom"><b><?php echo esc_html( $niveau ); ?></b><small><?php echo esc_html( ueb_suivi_etudiants( $a['etudiants'] ) ); ?></small></span>
+							<span class="suivi-barre suivi-barre--niveau" role="img" aria-label="<?php echo esc_attr( $resume ); ?>">
+								<?php foreach ( $parts as $cle => $p ) :
+									if ( $p[1] <= 0 ) {
+										continue;
+									}
+									?>
+									<span class="suivi-barre__part suivi-barre__part--<?php echo esc_attr( $cle ); ?>" style="--part: <?php echo esc_attr( round( $p[1], 3 ) ); ?>%" data-info="<?php echo esc_attr( $p[0] . ' : ' . ueb_fcfa( $a[ $cle ] ) . ' (' . ueb_pourcent( $p[1] ) . ')' ); ?>"></span>
+								<?php endforeach; ?>
+							</span>
+							<span class="suivi-niveau__valeur"><b><?php echo esc_html( ueb_pourcent( $parts['encaisse'][1] ) ); ?></b><small><?php echo esc_html( ueb_fcfa( $a['encaisse'] ) ); ?></small></span>
+						</li>
+					<?php endforeach; ?>
+				</ul>
+				<div class="suivi-niveaux__axe" aria-hidden="true">
+					<span style="--x: 0%">0</span><span style="--x: 50%">50 %</span><span style="--x: 100%">100 %</span>
+				</div>
+			</div>
+		<?php endif; ?>
+	</section>
+	<?php
+}
+
+/**
+ * Frais médicaux : suivis à part des droits (montant fixe selon la situation
+ * de l'étudiant, versé au compte des services centraux).
+ */
+function ueb_suivi_medicaux( array $m ) {
+	$taux = $m['attendu'] > 0 ? 100 * $m['encaisse'] / $m['attendu'] : 0;
+	?>
+	<section class="suivi-panneau suivi-medicaux" aria-labelledby="suivi-medicaux-titre">
+		<header class="suivi-panneau__entete">
+			<div>
+				<h2 id="suivi-medicaux-titre">Frais médicaux</h2>
+				<p>Visite médicale, suivie à part des droits universitaires.</p>
+			</div>
+		</header>
+
+		<?php if ( $m['attendu'] <= 0 ) : ?>
+			<div class="bo-vide"><span><?php echo ueb_icone( 'bouclier', 22 ); ?></span><p>Aucun quitus de frais médicaux cette année pour l’instant.</p></div>
+		<?php else : ?>
+			<p class="suivi-medicaux__montant">
+				<b><?php echo esc_html( ueb_formater_montant( $m['encaisse'] ) ); ?> <small>FCFA</small></b>
+				<span>encaissés sur <?php echo esc_html( ueb_fcfa( $m['attendu'] ) ); ?> attendus</span>
+			</p>
+			<div class="suivi-medicaux__progression">
+				<span class="suivi-medicaux__barre" role="img" aria-label="<?php echo esc_attr( 'Frais médicaux encaissés : ' . ueb_pourcent( $taux ) ); ?>"><span style="--part: <?php echo esc_attr( round( $taux, 3 ) ); ?>%"></span></span>
+				<b><?php echo esc_html( ueb_pourcent( $taux ) ); ?></b>
+			</div>
+			<dl class="suivi-medicaux__chiffres">
+				<div><dt>Quitus médicaux</dt><dd><?php echo (int) $m['etudiants']; ?></dd></div>
+				<div><dt>En vérification</dt><dd><?php echo esc_html( ueb_formater_montant( $m['verification'] ) ); ?> <small>FCFA</small></dd></div>
+			</dl>
+		<?php endif; ?>
+		<p class="suivi-medicaux__compte"><?php echo ueb_icone( 'banque', 18 ); ?><span>Versés au compte des services centraux : ils ne comptent pas dans le taux de recouvrement des droits.</span></p>
+	</section>
+	<?php
+}
+
+/** Méthode de calcul, repliée par défaut. */
+function ueb_suivi_methode() {
+	$regles = array(
+		'Étudiant compté'      => 'Il a au moins un quitus de droits universitaires cette année. Sa filière et son niveau sont ceux de son quitus le plus récent ; inscrit dans deux établissements, il compte dans chacun.',
+		'Attendu'              => ueb_fcfa( UEB_DROITS_CLASSIQUES ) . ' par étudiant en formation classique. En formation professionnelle, le total des quitus préparés, car le tarif est fixé par l’établissement.',
+		'Encaissé'             => 'Seuls les quitus <b>vérifiés</b> par la scolarité après contrôle des originaux, plafonnés à l’attendu de l’étudiant.',
+		'Taux de recouvrement' => 'Encaissé ÷ attendu. Les quatre parts de la barre (encaissé, en vérification, déclaré, pas encore déclaré) font toujours 100 % de l’attendu.',
+		'Soldé ou partiel'     => 'Soldé : tout l’attendu est encaissé. Partiel : une partie seulement est encaissée.',
+		'Trop-perçu'           => 'Montant vérifié au-delà de l’attendu d’un étudiant. Il est signalé pour contrôle et n’entre pas dans le taux.',
+		'Frais médicaux'       => 'Suivis à part : montant fixe selon la situation de l’étudiant, versé au compte des services centraux.',
+	);
+	?>
+	<details class="suivi-panneau suivi-methode">
+		<summary>
+			<span class="suivi-methode__icone" aria-hidden="true"><?php echo ueb_icone( 'info', 18 ); ?></span>
+			<span class="suivi-methode__titre">Comment ces chiffres sont calculés</span>
+			<span class="suivi-methode__chevron" aria-hidden="true"><?php echo ueb_icone( 'chevron', 18 ); ?></span>
+		</summary>
+		<dl class="suivi-methode__regles">
+			<?php foreach ( $regles as $terme => $definition ) : ?>
+				<div>
+					<dt><?php echo esc_html( $terme ); ?></dt>
+					<dd><?php echo wp_kses( $definition, array( 'b' => array() ) ); ?></dd>
+				</div>
+			<?php endforeach; ?>
+		</dl>
+	</details>
+	<?php
+}
+
+/** Deux initiales en capitales pour un avatar : « Neo TCHAMBA » → « NT ». */
+function ueb_initiales( $prenom, $nom = '' ) {
+	$mots = preg_split( '/[\s.\-_]+/u', trim( $prenom . ' ' . $nom ), -1, PREG_SPLIT_NO_EMPTY );
+	if ( ! $mots ) {
+		return '?';
+	}
+	$premiere = mb_substr( $mots[0], 0, 1 );
+	$derniere = count( $mots ) > 1 ? mb_substr( end( $mots ), 0, 1 ) : mb_substr( $mots[0], 1, 1 );
+	return mb_strtoupper( $premiere . $derniere );
+}
+
+/** Bord en nuage au bas des bandeaux verts (espace, listes, envoi des reçus). */
+function ueb_nuages() {
+	?>
+		<svg class="espace__nuages" viewBox="0 0 1200 40" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+		<path class="espace__nuages-halo" transform="translate(0 -8)" d="M0 40V30A70 70 0 0 1 90 28A80 80 0 0 1 200 31A65 65 0 0 1 290 27A90 90 0 0 1 410 30A70 70 0 0 1 505 28A85 85 0 0 1 620 31A65 65 0 0 1 710 27A80 80 0 0 1 820 30A70 70 0 0 1 915 28A90 90 0 0 1 1035 31A70 70 0 0 1 1130 28A60 60 0 0 1 1200 30V48H0Z"/>
+		<path d="M0 40V30A70 70 0 0 1 90 28A80 80 0 0 1 200 31A65 65 0 0 1 290 27A90 90 0 0 1 410 30A70 70 0 0 1 505 28A85 85 0 0 1 620 31A65 65 0 0 1 710 27A80 80 0 0 1 820 30A70 70 0 0 1 915 28A90 90 0 0 1 1035 31A70 70 0 0 1 1130 28A60 60 0 0 1 1200 30V40Z"/>
+		</svg>
+	<?php
+}
+
 function ueb_page_fin( $variante = 'simple' ) {
 	if ( ! in_array( $variante, array( 'auth', 'gestion', 'bo', 'espace' ), true ) ) {
 		ueb_pied_site();
@@ -304,7 +686,7 @@ function ueb_graphe_anneau( $titre, $sous_titre, array $parts ) {
 	<figure class="graphe">
 		<?php ueb_graphe_entete( $titre, $sous_titre, null ); ?>
 		<?php if ( ! $total ) : ?>
-			<p class="graphe__vide"><?php echo ueb_icone( 'info', 18 ); ?>Aucune donnée pour l'instant.</p>
+			<p class="graphe__vide"><?php echo ueb_icone( 'info', 18 ); ?>Aucune donnée pour l’instant.</p>
 		<?php else : ?>
 			<div class="graphe__anneau">
 				<svg viewBox="0 0 160 160" role="img" aria-label="<?php echo esc_attr( $titre ); ?>">
@@ -362,7 +744,7 @@ function ueb_graphe_barres( $titre, $sous_titre, array $parts ) {
 	<figure class="graphe">
 		<?php ueb_graphe_entete( $titre, $sous_titre, null ); ?>
 		<?php if ( ! $total ) : ?>
-			<p class="graphe__vide"><?php echo ueb_icone( 'info', 18 ); ?>Aucune donnée pour l'instant.</p>
+			<p class="graphe__vide"><?php echo ueb_icone( 'info', 18 ); ?>Aucune donnée pour l’instant.</p>
 		<?php else : ?>
 			<ul class="graphe__barres">
 				<?php foreach ( $parts as $libelle => $p ) : ?>
@@ -438,7 +820,8 @@ function ueb_carte_chiffre( $valeur, $libelle, $icone = '', $variante = '', arra
 function ueb_bo_barre( $espace, array $liens, array $pied = array() ) {
 	$utilisateur = wp_get_current_user();
 	$nom         = $utilisateur->display_name ? $utilisateur->display_name : $utilisateur->user_login;
-	$role        = ueb_est_admin_ueb() ? 'Administrateur' : ( ueb_est_cellule() ? 'Cellule informatique' : ( ueb_est_scolarite() ? 'Scolarité' : 'Compte gestion' ) );
+	$role        = ueb_nom_role_du_compte(); // nom saisi par la Direction, jamais écrit dans le code
+	$liens       = array_values( array_filter( $liens ) ); // entrées retirées faute de permission
 	$role_classe = sanitize_html_class( strtolower( str_replace( ' ', '-', remove_accents( $role ) ) ) );
 	?>
 	<aside class="bo-sidebar bo-sidebar--<?php echo esc_attr( $role_classe ); ?>">
@@ -458,7 +841,25 @@ function ueb_bo_barre( $espace, array $liens, array $pied = array() ) {
 		</nav>
 
 		<div class="bo-sidebar__pied">
-			<?php if ( ! empty( $pied['titre'] ) ) : ?>
+			<?php
+			/* Portée de plusieurs établissements (ou tous) : sélecteur, revalidé côté serveur. */
+			$autorises = ueb_est_admin_ueb() ? array() : ueb_etabs_autorises();
+			if ( count( $autorises ) > 1 ) :
+				$courant = ueb_etab_agent();
+				?>
+				<form class="bo-perimetre bo-perimetre--choix" method="get" action="">
+					<label for="bo-etab"><b>Établissement consulté</b></label>
+					<div class="champ__select">
+						<select id="bo-etab" name="ueb_etab" onchange="this.form.submit()">
+							<?php if ( ueb_portee_totale() ) : ?><option value="" <?php selected( $courant, '' ); ?>>Tous les établissements</option><?php endif; ?>
+							<?php foreach ( $autorises as $sigle ) : ?>
+								<option value="<?php echo esc_attr( $sigle ); ?>" <?php selected( $courant, $sigle ); ?>><?php echo esc_html( $sigle . ' — ' . ueb_etablissement( $sigle )['fr'] ); ?></option>
+							<?php endforeach; ?>
+						</select><?php echo ueb_icone( 'chevron', 16 ); ?>
+					</div>
+					<noscript><button class="btn btn--petit btn--clair" type="submit">Afficher</button></noscript>
+				</form>
+			<?php elseif ( ! empty( $pied['titre'] ) ) : ?>
 				<p class="bo-perimetre"><b><?php echo esc_html( $pied['titre'] ); ?></b><?php echo esc_html( $pied['note'] ?? '' ); ?></p>
 			<?php endif; ?>
 			<div class="bo-compte">
@@ -688,14 +1089,20 @@ function ueb_fenetre_confirmation() {
 	<?php
 }
 
-/** Balise du lecteur d'animation Remotion (monté par remotion-ueb.js). */
-function ueb_animation( $composition, array $props = array(), $classe = '', $etiquette = '' ) {
+/**
+ * Balise du lecteur d'animation Remotion (monté par remotion-ueb.js).
+ *
+ * $repli : HTML déjà échappé, affiché dans la scène tant que le lecteur n'est
+ * pas monté (sans JavaScript, il reste l'image définitive) ; React le remplace.
+ */
+function ueb_animation( $composition, array $props = array(), $classe = '', $etiquette = '', $repli = '' ) {
 	printf(
-		'<div class="animation %s" data-remotion="%s" data-props="%s" role="img" aria-label="%s"><div class="animation__scene" data-remotion-scene></div><button type="button" class="animation__pause" data-remotion-pause aria-label="Mettre l’animation en pause" aria-pressed="false">%s%s</button></div>',
+		'<div class="animation %s" data-remotion="%s" data-props="%s" role="img" aria-label="%s"><div class="animation__scene" data-remotion-scene>%s</div><button type="button" class="animation__pause" data-remotion-pause aria-label="Mettre l’animation en pause" aria-pressed="false">%s%s</button></div>',
 		esc_attr( $classe ),
 		esc_attr( $composition ),
 		esc_attr( wp_json_encode( $props ) ),
 		esc_attr( $etiquette ),
+		$repli, // phpcs:ignore -- HTML construit et échappé par l'appelant
 		ueb_icone( 'pause', 16, 'icone-pause' ),
 		ueb_icone( 'lecture', 16, 'icone-lecture' )
 	);

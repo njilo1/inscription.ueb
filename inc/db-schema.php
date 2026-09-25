@@ -13,7 +13,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-const UEB_INSC_DB_VERSION = '4';
+const UEB_INSC_DB_VERSION = '5';
 
 function ueb_insc_schema() {
 	return array(
@@ -92,6 +92,7 @@ function ueb_insc_schema() {
 			nom_original VARCHAR(255) NOT NULL,
 			type_mime VARCHAR(50) NOT NULL,
 			taille INT UNSIGNED NOT NULL,
+			objet VARCHAR(12) NOT NULL DEFAULT '',
 			date_envoi DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 			PRIMARY KEY (id),
 			KEY idx_quitus (quitus_id),
@@ -125,6 +126,13 @@ function ueb_insc_migrer() {
 	}
 	foreach ( array( 'situation' => "VARCHAR(12) NOT NULL DEFAULT ''", 'filiere_id' => 'INT UNSIGNED NULL', 'quitus_droits_id' => 'INT UNSIGNED NULL, ADD UNIQUE KEY uniq_medical_droits (quitus_droits_id)', 'email' => "VARCHAR(150) NOT NULL DEFAULT ''", 'adresse' => "VARCHAR(255) NOT NULL DEFAULT ''", 'nom_urgence' => "VARCHAR(150) NOT NULL DEFAULT ''", 'numero_urgence' => "VARCHAR(20) NOT NULL DEFAULT ''", 'adresse_urgence' => "VARCHAR(255) NOT NULL DEFAULT ''" ) as $colonne => $definition ) {
 		if ( ! in_array( $colonne, $colonnes, true ) && false === $wpdb->query( "ALTER TABLE ueb_insc_quitus ADD COLUMN $colonne $definition" ) ) {
+			return false;
+		}
+	}
+	/* Version 5 : ce que paie chaque reçu (tranche 1, tranche 2, totalité, frais médicaux). */
+	$colonnes_recus = $wpdb->get_col( 'SHOW COLUMNS FROM ueb_insc_recus' );
+	if ( $colonnes_recus && ! in_array( 'objet', $colonnes_recus, true ) ) {
+		if ( false === $wpdb->query( "ALTER TABLE ueb_insc_recus ADD COLUMN objet VARCHAR(12) NOT NULL DEFAULT '' AFTER taille" ) ) {
 			return false;
 		}
 	}

@@ -107,7 +107,7 @@ add_action( 'template_redirect', function () {
 			ueb_flash( 'alerte', "Ton mot de passe a été réinitialisé par l'administration : choisis-en un nouveau pour continuer." );
 			ueb_rediriger( ueb_url( 'mon-espace/securite' ) );
 		}
-	}
+	}m
 	if ( in_array( $page, UEB_PAGES_INVITE, true ) && $compte ) {
 		ueb_rediriger( ueb_url( 'mon-espace' ) );
 	}
@@ -166,13 +166,6 @@ function ueb_traiter_action( $action ) {
 		'gestion_agent_etat'  => 'ueb_action_gestion_agent_etat',
 		'gestion_agent_modifier'  => 'ueb_action_gestion_agent_modifier',
 		'gestion_agent_supprimer' => 'ueb_action_gestion_agent_supprimer',
-		'direction_role_enregistrer' => 'ueb_action_direction_role_enregistrer',
-		'direction_role_dupliquer'   => 'ueb_action_direction_role_dupliquer',
-		'direction_role_supprimer'   => 'ueb_action_direction_role_supprimer',
-		'direction_compte_creer'     => 'ueb_action_direction_compte_creer',
-		'direction_compte_role'      => 'ueb_action_direction_compte_role',
-		'direction_compte_etat'      => 'ueb_action_direction_compte_etat',
-		'direction_compte_mdp'       => 'ueb_action_direction_compte_mdp',
 	);
 	if ( ! isset( $traitements[ $action ] ) ) {
 		return;

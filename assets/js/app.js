@@ -208,6 +208,25 @@
 			$$("[data-regle]", liste).forEach((li) => li.classList.toggle("est-ok", regles[li.dataset.regle](champ.value)));
 		});
 	});
+	/* Jauge de solidité : longueur, variété des caractères. */
+	$$("[data-force-mdp]").forEach((bloc) => {
+		const champ = document.getElementById(bloc.dataset.forceMdp);
+		const libelle = $("[data-force-libelle]", bloc);
+		if (!champ || !libelle) return;
+		const noms = ["à saisir", "trop faible", "moyen", "solide", "très solide"];
+		champ.addEventListener("input", () => {
+			const v = champ.value;
+			let niveau = 0;
+			if (v) {
+				const familles = [/\p{Ll}/u, /\p{Lu}/u, /\d/, /[^\p{L}\d]/u].filter((r) => r.test(v)).length;
+				niveau = v.length < 8 || !/\p{L}/u.test(v) || !/\d/.test(v) ? 1 : 2;
+				if (niveau === 2 && (v.length >= 12 || familles >= 3)) niveau = 3;
+				if (niveau === 3 && v.length >= 14 && familles >= 3) niveau = 4;
+			}
+			bloc.dataset.niveau = String(niveau);
+			libelle.textContent = noms[niveau];
+		});
+	});
 	$$("[data-confirme]").forEach((champ) => {
 		const original = document.getElementById(champ.dataset.confirme);
 		const bloc = champ.closest(".champ");
@@ -299,9 +318,42 @@
 		let dernierEtab;
 		let derniereFormation = filiere.value;
 		const montantProfessionnel = new Map();
+		let montantClassique = config.formations.find((f) => String(f.id) === filiere.value)?.type_formation === "classique" ? champMontant.value : "";
 		if (config.formations.find((f) => String(f.id) === filiere.value)?.type_formation === "pro") {
 			montantProfessionnel.set(filiere.value, champMontant.value);
 		}
+		/* Mêmes règles que ueb_erreur_montant_classique() côté serveur. */
+		const messageMontantClassique = (n, regle) => {
+			if (!n) return regle.second ? `Saisis le montant de ton second versement (${formater(regle.max)} FCFA au plus).` : "Saisis le montant que tu verses : 25 000 FCFA au moins.";
+			if (n % regle.pas) return "Saisis un multiple de 5 000 FCFA : 25 000, 30 000, 35 000…";
+			if (n < regle.min) return `Le premier versement est de ${formater(regle.min)} FCFA au moins.`;
+			if (n > regle.max) return regle.second
+				? `Il te reste ${formater(regle.max)} FCFA à payer cette année : ne dépasse pas ce montant.`
+				: "Les droits de l’année sont de 50 000 FCFA au plus (les deux tranches).";
+			return "";
+		};
+		/* Erreur visible dès qu'un montant est saisi ; un champ vide n'est signalé qu'à l'envoi. */
+		const signalerMontant = (message) => {
+			champMontant.setCustomValidity(message);
+			const champ = champMontant.closest(".champ");
+			let bulle = $("#champ-montant-erreur", champ);
+			const visible = Boolean(message && lireMontant());
+			if (!bulle && visible) {
+				bulle = document.createElement("p");
+				bulle.className = "champ__erreur";
+				bulle.id = "champ-montant-erreur";
+				champ.appendChild(bulle);
+			}
+			if (bulle) {
+				bulle.hidden = !visible;
+				if (visible && bulle.textContent !== message) bulle.textContent = message;
+			}
+			champ.classList.toggle("champ--invalide", visible);
+			champMontant.setAttribute("aria-invalid", String(visible));
+			const decrit = new Set((champMontant.getAttribute("aria-describedby") || "").split(" ").filter(Boolean));
+			decrit[visible ? "add" : "delete"]("champ-montant-erreur");
+			champMontant.setAttribute("aria-describedby", [...decrit].join(" "));
+		};
 		const texte = (selecteur, valeur) => {
 			const cible = $(selecteur);
 			if (cible && cible.textContent !== valeur) cible.textContent = valeur;
@@ -317,17 +369,30 @@
 				dernierEtab = etablissement;
 			}
 			const formation = config.formations.find((f) => String(f.id) === filiere.value);
-			const tranche = $("input[name=tranche]:checked", formQuitus);
 			const classique = formation?.type_formation === "classique";
+			const regle = config.regleDroits;
 			if (derniereFormation !== filiere.value) {
-				champMontant.value = montantProfessionnel.get(filiere.value) || "";
+				/* Entre deux formations classiques, le montant saisi est conservé. */
+				champMontant.value = classique ? (montantClassique || (regle.second ? formater(regle.max) : "")) : (montantProfessionnel.get(filiere.value) || "");
 				derniereFormation = filiere.value;
 			}
-			champMontant.readOnly = !formation || classique || medicalSeul;
-			if (classique) champMontant.value = tranche ? formater(config.droitsClassiques / (tranche.value === "3" ? 1 : 2)) : "";
-			else if (formation) montantProfessionnel.set(filiere.value, champMontant.value);
+			champMontant.readOnly = !formation || medicalSeul;
+			$("[data-tranche-auto]", formQuitus)?.classList.toggle("est-auto", classique && !medicalSeul);
+			let erreurMontant = "";
+			if (classique && !medicalSeul) {
+				/* Formation classique : la tranche découle du montant saisi. */
+				const n = lireMontant();
+				montantClassique = champMontant.value;
+				erreurMontant = messageMontantClassique(n, regle);
+				const valeur = regle.second ? "2" : (n >= config.droitsClassiques ? "3" : "1");
+				$$("input[name=tranche]", formQuitus).forEach((radio) => { radio.checked = !erreurMontant && radio.value === valeur; });
+			} else if (formation) montantProfessionnel.set(filiere.value, champMontant.value);
+			signalerMontant(erreurMontant);
+			const tranche = $("input[name=tranche]:checked", formQuitus);
 			texte("#champ-montant-aide", classique
-				? "Formation classique : 50 000 FCFA par an, en deux tranches de 25 000 FCFA. Montant fixé automatiquement."
+				? (regle.second
+					? `Reste à payer cette année : ${formater(regle.max)} FCFA. Tu peux verser moins, par multiples de 5 000 FCFA.`
+					: "De 25 000 à 50 000 FCFA, par multiples de 5 000. Moins de 50 000 : première tranche ; 50 000 : les deux tranches.")
 				: formation ? "Pour une formation professionnelle, indique le montant communiqué par ton établissement." : "Choisis une filière pour connaître les modalités de paiement.");
 			const frais = situation.value === "nouveau" ? 0 : (config.medicalInclus ? (config.montantsMedicaux[situation.value] || 0) : 0);
 			const cmsRequis = medicalSeul || (config.medicalInclus && situation.value !== "nouveau");
@@ -339,14 +404,14 @@
 				? "Pour tes fiches CMS, complète ton email, ton adresse et les trois coordonnées de ton contact d’urgence ci-dessous."
 				: "Ces coordonnées sont facultatives pour ce paiement : aucune fiche CMS n’est à générer.");
 			const droits = medicalSeul ? 0 : lireMontant();
-			const pret = medicalSeul || Boolean(formation && tranche && droits);
+			const pret = medicalSeul || Boolean(formation && tranche && droits && !erreurMontant);
 			const total = droits + frais;
 			texte("[data-montant-fixe]", formater(frais) + " FCFA");
 			texte("[data-montant-lettres]", droits ? enLettres(droits) : "");
 			texte("[data-total-paiement]", pret ? formater(total) + " FCFA" : "—");
 			texte("[data-detail-paiement]", pret
 				? (medicalSeul ? "" : formater(droits) + " FCFA de droits universitaires + ") + formater(frais) + " FCFA de frais médicaux."
-				: "Choisis ta formation et ta tranche pour afficher le total.");
+				: "Choisis ta formation et saisis un montant valable pour afficher le total.");
 			texte("[data-note-medicale]", situation.value === "nouveau"
 				? "Aucun frais médical supplémentaire : cette situation est considérée comme une nouvelle inscription."
 				: config.medicalInclus ? "Les frais médicaux sont payables en une seule fois pour l’année en cours, sur le compte des services centraux."
@@ -382,44 +447,216 @@
 		maj();
 	}
 
-	/* ---------- Reçus : vignettes et contrôles avant envoi ---------- */
+	/* ---------- Reçus : sélection, compression des photos, caméra ----------
+	   Les fichiers choisis, glissés ou photographiés s'ajoutent à une même
+	   sélection (retirables un à un). Les photos sont réduites à 2 000 px et
+	   réencodées en JPEG avant l'envoi : une photo de téléphone de 4 Mo pèse
+	   alors quelques centaines de Ko. */
 	$$("[data-envoi-recus]").forEach((form) => {
-		const champ = $("input[type=file]", form);
+		const champ = $("input[type=file][data-max]", form);
+		const capture = $("[data-capture]", form);
 		const depot = $("[data-depot]", form);
 		const liste = $("[data-apercus]", form);
 		const erreur = $("[data-depot-erreur]", form);
 		const envoyer = $("[data-depot-envoyer]", form);
+		const titre = $("[data-depot-titre]", form);
+		const titreInitial = titre?.textContent || "";
+		const libelle = $("[data-depot-libelle]", form);
 		const max = parseInt(champ.dataset.max, 10);
 		const maxOctets = parseInt(champ.dataset.maxOctets, 10);
 		const types = ["image/jpeg", "image/png", "application/pdf"];
+		const COTE_MAX = 2000;
+		const QUALITE = 0.82;
+		const taille = (o) => (o >= 1048576 ? (o / 1048576).toFixed(1).replace(".", ",") + " Mo" : Math.max(1, Math.round(o / 1024)) + " Ko");
+		const peutRegrouper = typeof DataTransfer === "function";
+		let selection = [];
+		let occupe = false;
 
-		const verifier = () => {
+		/* Sans DataTransfer (très vieux navigateurs), on garde le comportement natif. */
+		if (peutRegrouper && capture) capture.removeAttribute("name");
+
+		const compresser = async (fichier) => {
+			if (!["image/jpeg", "image/png"].includes(fichier.type) || typeof createImageBitmap !== "function") return fichier;
+			try {
+				const image = await createImageBitmap(fichier, { imageOrientation: "from-image" });
+				const ratio = Math.min(1, COTE_MAX / Math.max(image.width, image.height));
+				const toile = document.createElement("canvas");
+				toile.width = Math.round(image.width * ratio);
+				toile.height = Math.round(image.height * ratio);
+				const ctx = toile.getContext("2d");
+				ctx.fillStyle = "#fff";
+				ctx.fillRect(0, 0, toile.width, toile.height);
+				ctx.drawImage(image, 0, 0, toile.width, toile.height);
+				image.close?.();
+				const blob = await new Promise((ok) => toile.toBlob(ok, "image/jpeg", QUALITE));
+				if (!blob || (fichier.type === "image/jpeg" && blob.size >= fichier.size)) return fichier;
+				return new File([blob], fichier.name.replace(/\.[^.]+$/, "") + ".jpg", { type: "image/jpeg", lastModified: Date.now() });
+			} catch {
+				return fichier;
+			}
+		};
+
+		const synchroniser = () => {
+			if (peutRegrouper) {
+				const transfert = new DataTransfer();
+				selection.forEach((s) => transfert.items.add(s.fichier));
+				champ.files = transfert.files;
+			}
 			liste.innerHTML = "";
-			const fichiers = [...champ.files];
 			const problemes = [];
-			if (fichiers.length > max) problemes.push(`${max} fichier(s) au maximum.`);
-			fichiers.forEach((f) => {
+			if (selection.length > max) problemes.push(`${max} fichier${max > 1 ? "s" : ""} au plus pour ce paiement : retire-en ${selection.length - max}.`);
+			selection.forEach((s, i) => {
+				const f = s.fichier;
+				let souci = "";
+				if (!types.includes(f.type)) souci = "format non accepté";
+				else if (f.size > maxOctets) souci = "plus de 5 Mo";
+				if (souci) problemes.push(`${f.name} : ${souci}.`);
 				const li = document.createElement("li");
-				if (!types.includes(f.type)) problemes.push(`${f.name} : format non accepté.`);
-				else if (f.size > maxOctets) problemes.push(`${f.name} : plus de 5 Mo.`);
+				li.style.setProperty("--i", i);
+				li.classList.toggle("est-invalide", Boolean(souci));
+				const vignette = document.createElement("span");
+				vignette.className = "depot__vignette";
 				if (f.type.startsWith("image/")) {
 					const img = document.createElement("img");
-					img.alt = f.name;
+					img.alt = "";
 					img.src = URL.createObjectURL(f);
 					img.onload = () => URL.revokeObjectURL(img.src);
-					li.appendChild(img);
+					vignette.appendChild(img);
 				} else {
-					li.textContent = "PDF — " + f.name;
+					vignette.textContent = "PDF";
+					vignette.classList.add("depot__vignette--pdf");
 				}
+				const nom = document.createElement("span");
+				nom.className = "depot__nom";
+				nom.textContent = f.name;
+				const infos = document.createElement("small");
+				infos.textContent = souci ? souci.charAt(0).toUpperCase() + souci.slice(1)
+					: s.origine > f.size * 1.1 ? `${taille(s.origine)} → ${taille(f.size)}` : taille(f.size);
+				if (!souci && s.origine > f.size * 1.1) infos.classList.add("depot__gain");
+				const retirer = document.createElement("button");
+				retirer.type = "button";
+				retirer.className = "depot__retirer";
+				retirer.setAttribute("aria-label", "Retirer " + f.name);
+				retirer.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>';
+				retirer.addEventListener("click", () => {
+					selection.splice(i, 1);
+					synchroniser();
+					champ.focus();
+				});
+				li.append(vignette, nom, infos, retirer);
 				liste.appendChild(li);
 			});
 			erreur.hidden = problemes.length === 0;
 			erreur.textContent = problemes.join(" ");
-			envoyer.disabled = fichiers.length === 0 || problemes.length > 0;
+			envoyer.disabled = occupe || selection.length === 0 || problemes.length > 0;
+			depot.classList.toggle("est-rempli", selection.length > 0);
+			if (titre) titre.textContent = occupe ? "Compression des photos…" : selection.length ? `${selection.length} fichier${selection.length > 1 ? "s" : ""} prêt${selection.length > 1 ? "s" : ""} à l’envoi` : titreInitial;
+			if (libelle) libelle.textContent = selection.length > 1 ? `Envoyer ${selection.length} reçus` : "Envoyer mon reçu";
 		};
-		champ.addEventListener("change", verifier);
+
+		const ajouter = async (fichiers) => {
+			if (!fichiers.length) return;
+			if (!peutRegrouper) return;
+			occupe = true;
+			synchroniser();
+			for (const f of fichiers) selection.push({ fichier: await compresser(f), origine: f.size });
+			occupe = false;
+			synchroniser();
+		};
+		/* À la sélection, champ.files ne contient que les nouveaux fichiers : on les ajoute puis on réécrit la liste complète. */
+		champ.addEventListener("change", () => (peutRegrouper ? ajouter([...champ.files]) : null));
+		capture?.addEventListener("change", () => {
+			ajouter([...capture.files]);
+			capture.value = "";
+		});
 		["dragenter", "dragover"].forEach((t) => depot.addEventListener(t, () => depot.classList.add("est-survole")));
 		["dragleave", "drop"].forEach((t) => depot.addEventListener(t, () => depot.classList.remove("est-survole")));
+
+		/* Caméra : aperçu en direct si le navigateur y donne accès (HTTPS ou
+		   localhost), sinon l'appareil photo du téléphone via le champ natif. */
+		const dialogue = $("[data-camera]");
+		const ouvrir = $("[data-camera-ouvrir]", form);
+		const natif = $("[data-camera-natif]", form);
+		const direct = Boolean(dialogue?.showModal && navigator.mediaDevices?.getUserMedia && window.isSecureContext);
+		const tactile = window.matchMedia("(pointer: coarse)").matches;
+		if (ouvrir) ouvrir.hidden = !direct;
+		if (natif) natif.hidden = direct || !tactile;
+		const blocCamera = ouvrir?.parentElement;
+		if (blocCamera) blocCamera.hidden = ouvrir.hidden && natif.hidden;
+		if (!direct) return;
+
+		const video = $("[data-camera-video]", dialogue);
+		const cliche = $("[data-camera-cliche]", dialogue);
+		const message = $("[data-camera-message]", dialogue);
+		const declencher = $("[data-camera-declencher]", dialogue);
+		const reprendre = $("[data-camera-reprendre]", dialogue);
+		const utiliser = $("[data-camera-utiliser]", dialogue);
+		let flux = null;
+
+		const arreter = () => {
+			flux?.getTracks().forEach((piste) => piste.stop());
+			flux = null;
+			video.srcObject = null;
+		};
+		const mode = (etat) => {
+			dialogue.dataset.etat = etat;
+			const photo = etat === "cliche";
+			cliche.hidden = !photo;
+			video.hidden = photo;
+			declencher.hidden = photo;
+			declencher.disabled = etat !== "vue";
+			reprendre.hidden = !photo;
+			utiliser.hidden = !photo;
+		};
+		const demarrer = async () => {
+			mode("attente");
+			message.textContent = "Ouverture de la caméra…";
+			try {
+				flux = await navigator.mediaDevices.getUserMedia({
+					video: { facingMode: { ideal: "environment" }, width: { ideal: 1920 }, height: { ideal: 1080 } },
+					audio: false,
+				});
+				if (!dialogue.open) return arreter();
+				video.srcObject = flux;
+				await video.play();
+				message.textContent = "";
+				mode("vue");
+				declencher.focus();
+			} catch (e) {
+				mode("erreur");
+				message.textContent = e?.name === "NotAllowedError"
+					? "Accès à la caméra refusé. Autorise-le dans les réglages du navigateur, ou choisis plutôt un fichier."
+					: "Aucune caméra disponible sur cet appareil. Choisis plutôt un fichier.";
+			}
+		};
+		ouvrir.addEventListener("click", () => {
+			dialogue.showModal();
+			demarrer();
+		});
+		declencher.addEventListener("click", () => {
+			cliche.width = video.videoWidth;
+			cliche.height = video.videoHeight;
+			cliche.getContext("2d").drawImage(video, 0, 0);
+			mode("cliche");
+			utiliser.focus();
+		});
+		reprendre.addEventListener("click", () => {
+			mode("vue");
+			declencher.focus();
+		});
+		utiliser.addEventListener("click", () => {
+			cliche.toBlob((blob) => {
+				if (!blob) return;
+				const heure = new Date().toTimeString().slice(0, 5).replace(":", "h");
+				ajouter([new File([blob], `photo-recu-${heure}.jpg`, { type: "image/jpeg", lastModified: Date.now() })]);
+				dialogue.close();
+			}, "image/jpeg", 0.92);
+		});
+		$("[data-camera-fermer]", dialogue).addEventListener("click", () => dialogue.close());
+		dialogue.addEventListener("close", () => {
+			arreter();
+			ouvrir.focus();
+		});
 	});
 
 	/* ---------- Confirmation avant une action sensible ---------- */

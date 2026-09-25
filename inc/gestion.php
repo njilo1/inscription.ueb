@@ -12,15 +12,18 @@
 
 defined( 'ABSPATH' ) || exit;
 
+/* Toutes les vérifications passent par ueb_peut() (inc/roles.php) : une
+   capacité, la portée par établissement, et le compte non suspendu. Jamais
+   un nom de rôle. */
+
 function ueb_est_gestionnaire() {
-	return is_user_logged_in()
-		&& ( current_user_can( 'manage_options' ) || current_user_can( UEB_CAP_GESTION ) )
-		&& ! ueb_agent_suspendu();
+	return ueb_peut( UEB_CAP_GESTION );
 }
 
+/** Décision sur un quitus : consulter ET décider ; l'établissement est contrôlé ensuite. */
 function ueb_exiger_gestionnaire() {
-	if ( ! is_user_logged_in() || ! ueb_est_scolarite() || ! current_user_can( UEB_CAP_GESTION ) || ueb_agent_suspendu() ) {
-		wp_die( 'Action réservée à la scolarité de l’établissement.', 'Accès refusé', array( 'response' => 403 ) );
+	if ( ! ueb_peut( UEB_CAP_GESTION ) || ! ueb_peut( 'ueb_decider_quitus' ) ) {
+		wp_die( 'Action réservée aux comptes autorisés à rendre les décisions.', 'Accès refusé', array( 'response' => 403 ) );
 	}
 }
 
@@ -32,26 +35,34 @@ function ueb_exiger_admin() {
 
 /** Accès aux opérations réservées à la cellule informatique. */
 function ueb_exiger_comptes() {
-	if ( ! ueb_est_gestionnaire_comptes() ) {
-		wp_die( 'Action réservée à la cellule informatique.', 'Accès refusé', array( 'response' => 403 ) );
+	if ( ! ueb_peut( UEB_CAP_COMPTES ) ) {
+		wp_die( 'Action réservée aux comptes autorisés à gérer les comptes étudiants.', 'Accès refusé', array( 'response' => 403 ) );
 	}
 }
 
-/** Seule la scolarité de l'établissement peut créer sa cellule informatique. */
+/** Création de comptes pour l'établissement consulté (ex. la cellule d'une scolarité). */
 function ueb_exiger_scolarite() {
-	if ( ! is_user_logged_in() || ! ueb_est_scolarite() || ! current_user_can( UEB_CAP_GESTION ) || ! ueb_etab_agent() ) {
-		wp_die( 'Action réservée à la scolarité de l’établissement.', 'Accès refusé', array( 'response' => 403 ) );
+	$etab = ueb_etab_agent();
+	if ( ! ueb_peut( 'ueb_creer_agents' ) || ! ueb_etablissement( $etab ) || ! ueb_peut_gerer_etab( $etab ) ) {
+		wp_die( 'Action réservée aux comptes autorisés à créer des comptes pour leur établissement.', 'Accès refusé', array( 'response' => 403 ) );
 	}
 }
 
 function ueb_action_gestion_creer_cellule() {
 	ueb_exiger_scolarite();
 	$retour = add_query_arg( 'vue', 'cellule', ueb_url_scolarite() );
+	/* Rôle choisi parmi ceux que ce compte peut attribuer pour son établissement. */
+	$role = sanitize_key( wp_unslash( $_POST['role'] ?? '' ) );
+	if ( $role && ! isset( ueb_roles_attribuables( true )[ $role ] ) ) {
+		ueb_flash( 'erreur', 'Ce rôle ne peut pas être attribué depuis ton espace.' );
+		ueb_rediriger( $retour );
+	}
 	$cellule = ueb_creer_cellule(
 		sanitize_text_field( wp_unslash( $_POST['login'] ?? '' ) ),
 		sanitize_text_field( wp_unslash( $_POST['nom'] ?? '' ) ),
 		sanitize_email( wp_unslash( $_POST['email'] ?? '' ) ),
-		ueb_etab_agent()
+		ueb_etab_agent(),
+		$role
 	);
 	if ( is_wp_error( $cellule ) ) {
 		ueb_flash( 'erreur', $cellule->get_error_message() );
@@ -59,7 +70,7 @@ function ueb_action_gestion_creer_cellule() {
 	}
 	list( $id, $provisoire ) = $cellule;
 	$_SESSION['ueb_mdp_cellule'] = array( 'compte' => get_userdata( $id )->user_login, 'mdp' => $provisoire );
-	ueb_flash( 'succes', 'Compte de cellule informatique créé.' );
+	ueb_flash( 'succes', 'Compte créé.' );
 	ueb_rediriger( $retour );
 }
 
@@ -241,6 +252,215 @@ function ueb_gestion_par_filiere( $annee_code, $etab ) {
 }
 
 /**
+ * Progression de l'année, jour par jour et en cumul : quitus générés, quitus
+ * dont un premier reçu a été envoyé, quitus vérifiés. Chaque quitus compte une
+ * fois par courbe (un renvoi après correction ne le recompte pas).
+ *
+ * La fenêtre couvre au plus $jours_max jours jusqu'à aujourd'hui ; ce qui la
+ * précède est reporté dans la valeur de départ, pour que les cumuls restent justes.
+ *
+ * Un quitus passé par la vérification sans reçu en base (ancien dossier)
+ * compte comme envoyé le jour de sa décision : la courbe des envois ne passe
+ * jamais sous celle des vérifiés.
+ *
+ * @return array{jours: string[], generes: int[], envoyes: int[], verifies: int[]}
+ */
+function ueb_gestion_activite( $annee_code, $etab = '', $jours_max = 45 ) {
+	global $wpdb;
+	$ou     = 'q.annee_academique = %s';
+	$params = array( $annee_code );
+	if ( $etab ) {
+		$ou      .= ' AND q.etablissement = %s';
+		$params[] = $etab;
+	}
+	$lignes = (array) $wpdb->get_results( $wpdb->prepare(
+		"SELECT DATE(q.date_creation) AS genere,
+		        COALESCE(
+		            (SELECT DATE(MIN(r.date_envoi)) FROM ueb_insc_recus r WHERE r.quitus_id = q.id),
+		            IF(q.statut IN ('recu_envoye', 'verifie', 'rejete'), DATE(COALESCE(q.date_verification, q.date_modification)), NULL)
+		        ) AS envoye,
+		        IF(q.statut = 'verifie', DATE(COALESCE(q.date_verification, q.date_modification)), NULL) AS verifie
+		   FROM ueb_insc_quitus q
+		  WHERE $ou", // phpcs:ignore
+		$params
+	) );
+
+	$aujourdhui = current_time( 'Y-m-d' );
+	$premier    = $aujourdhui;
+	foreach ( $lignes as $l ) {
+		$premier = min( $premier, $l->genere );
+		/* Dates incohérentes en base (décision datée avant la création) : un
+		   envoi ne précède jamais le quitus, une vérification jamais l'envoi. */
+		$l->envoye  = $l->envoye ? max( $l->envoye, $l->genere ) : null;
+		$l->verifie = $l->verifie ? max( $l->verifie, (string) $l->envoye, $l->genere ) : null;
+	}
+	$debut = max( $premier, gmdate( 'Y-m-d', strtotime( $aujourdhui . ' -' . ( max( 2, (int) $jours_max ) - 1 ) . ' days' ) ) );
+
+	$jours = array();
+	for ( $t = strtotime( $debut ); $t <= strtotime( $aujourdhui ); $t += DAY_IN_SECONDS ) {
+		$jours[] = gmdate( 'Y-m-d', $t );
+	}
+	$index  = array_flip( $jours );
+	$series = array();
+	foreach ( array( 'generes' => 'genere', 'envoyes' => 'envoye', 'verifies' => 'verifie' ) as $serie => $colonne ) {
+		$par_jour = array_fill( 0, count( $jours ), 0 );
+		foreach ( $lignes as $l ) {
+			if ( ! $l->$colonne ) {
+				continue;
+			}
+			/* Avant la fenêtre : reporté au premier jour ; jamais après aujourd'hui. */
+			$par_jour[ $index[ max( $debut, min( $aujourdhui, $l->$colonne ) ) ] ]++;
+		}
+		$cumul = 0;
+		foreach ( $par_jour as $i => $n ) {
+			$cumul          += $n;
+			$par_jour[ $i ] = $cumul;
+		}
+		$series[ $serie ] = $par_jour;
+	}
+	return array( 'jours' => $jours ) + $series;
+}
+
+/* ---------- Suivi des paiements ----------
+ *
+ * Règles de calcul (affichées aussi sur la page, pour que les chiffres
+ * soient vérifiables) :
+ *   - un étudiant compte dès qu'il a au moins un quitus de droits
+ *     universitaires dans l'année, rattaché à l'établissement et à la
+ *     filière de son quitus le plus récent ;
+ *   - montant attendu : 50 000 FCFA pour une formation classique ; pour une
+ *     formation professionnelle, le total des quitus qu'il a préparés (le
+ *     tarif est communiqué par l'établissement) ;
+ *   - encaissé : les quitus « vérifiés » par la scolarité, plafonnés au
+ *     montant attendu (un trop-perçu n'augmente pas le taux) ;
+ *   - le reste de l'attendu se répartit en « en vérification » (reçu envoyé),
+ *     « déclaré » (quitus généré ou reçu à corriger) et « pas encore déclaré » ;
+ *     les quatre parts font toujours 100 % ;
+ *   - taux de recouvrement = encaissé / attendu ;
+ *   - soldé : encaissé = attendu ; partiel : encaissé > 0 ; aucun : 0.
+ *   - frais médicaux : suivis à part (montant fixe, compte des services centraux).
+ */
+
+/** Agrégat vide du suivi des paiements. */
+function ueb_suivi_vide() {
+	return array( 'etudiants' => 0, 'attendu' => 0, 'encaisse' => 0, 'verification' => 0, 'declare' => 0, 'non_declare' => 0, 'soldes' => 0, 'partiels' => 0, 'aucun' => 0, 'trop_percu' => 0 );
+}
+
+/** Ajoute un étudiant (déjà ventilé) à un agrégat. */
+function ueb_suivi_ajouter( array &$agregat, array $e ) {
+	$agregat['etudiants']++;
+	foreach ( array( 'attendu', 'encaisse', 'verification', 'declare', 'non_declare', 'trop_percu' ) as $cle ) {
+		$agregat[ $cle ] += $e[ $cle ];
+	}
+	$agregat[ $e['attendu'] > 0 && $e['encaisse'] >= $e['attendu'] ? 'soldes' : ( $e['encaisse'] > 0 ? 'partiels' : 'aucun' ) ]++;
+}
+
+/** Taux d'un agrégat, en pourcentage (0 à 100). */
+function ueb_suivi_taux( array $a, $cle = 'encaisse' ) {
+	return $a['attendu'] > 0 ? 100 * $a[ $cle ] / $a['attendu'] : 0;
+}
+
+/**
+ * Suivi des paiements de l'année : global, par établissement, par filière,
+ * par niveau, et frais médicaux. $etab limite à un établissement (scolarité).
+ */
+function ueb_suivi_paiements( $annee_code, $etab = '' ) {
+	global $wpdb;
+	$etab   = ueb_etab_agent() ?: $etab;
+	$filtre = $etab ? $wpdb->prepare( ' AND q.etablissement = %s', $etab ) : '';
+	$lignes = $wpdb->get_results( $wpdb->prepare(
+		"SELECT q.compte_id, q.etablissement, q.type, q.filiere_id, q.departement, q.parcours, q.montant, q.statut, q.date_creation, q.id,
+		        fi.libelle AS filiere_libelle, fi.type_formation
+		   FROM ueb_insc_quitus q
+		   LEFT JOIN ueb_filieres fi ON fi.id = q.filiere_id
+		  WHERE q.annee_academique = %s $filtre
+		  ORDER BY q.date_creation ASC, q.id ASC",
+		$annee_code
+	) );
+
+	/* Anciens quitus sans identifiant de filière : on rapproche le texte saisi
+	   (« tic », « TIC — … ») d'une filière de l'établissement, par code ou libellé. */
+	$catalogue = array();
+	foreach ( $wpdb->get_results( 'SELECT fi.id, fi.code, fi.libelle, fi.type_formation, f.code AS etab FROM ueb_filieres fi JOIN ueb_facultes f ON f.id = fi.faculte_id' ) as $fi ) {
+		$catalogue[ $fi->etab ][] = $fi;
+	}
+	$rapprocher = static function ( $etab, $texte ) use ( $catalogue ) {
+		$t = mb_strtoupper( trim( (string) $texte ) );
+		if ( '' === $t ) {
+			return null;
+		}
+		foreach ( $catalogue[ $etab ] ?? array() as $fi ) {
+			$code = mb_strtoupper( $fi->code );
+			if ( $t === $code || $t === mb_strtoupper( $fi->libelle ) || str_starts_with( $t, $code . ' ' ) || str_starts_with( $t, $code . ' —' ) ) {
+				return $fi;
+			}
+		}
+		return null;
+	};
+
+	$medicaux  = array( 'etudiants' => 0, 'attendu' => 0, 'encaisse' => 0, 'verification' => 0 );
+	$etudiants = array();
+	foreach ( $lignes as $l ) {
+		if ( 'medicaux' === $l->type ) {
+			$medicaux['etudiants']++;
+			$medicaux['attendu'] += (int) $l->montant;
+			$medicaux['encaisse'] += 'verifie' === $l->statut ? (int) $l->montant : 0;
+			$medicaux['verification'] += 'recu_envoye' === $l->statut ? (int) $l->montant : 0;
+			continue;
+		}
+		$cle = $l->compte_id . '|' . $l->etablissement;
+		if ( ! isset( $etudiants[ $cle ] ) ) {
+			$etudiants[ $cle ] = array( 'etab' => $l->etablissement, 'declare_total' => 0, 'verifie' => 0, 'recu' => 0, 'a_payer' => 0 );
+		}
+		$e = &$etudiants[ $cle ];
+		/* Le quitus le plus récent fixe la filière, le niveau et le type de formation. */
+		$trouvee = $l->filiere_id ? null : $rapprocher( $l->etablissement, $l->departement );
+		$fil_id  = $l->filiere_id ?: ( $trouvee->id ?? 0 );
+		$libelle = $l->filiere_libelle ?: ( $trouvee->libelle ?? trim( (string) $l->departement ) );
+		$e['filiere']   = $fil_id ? 'id:' . $fil_id : 'txt:' . mb_strtoupper( $libelle );
+		$e['libelle']   = $libelle ?: 'Filière non précisée';
+		$e['pro']       = 'pro' === ( $l->type_formation ?: ( $trouvee->type_formation ?? 'classique' ) );
+		$niveau_saisi   = strtoupper( trim( (string) $l->parcours ) );
+		$e['niveau']    = isset( UEB_NIVEAUX_INSCRIPTION[ $niveau_saisi ] ) ? $niveau_saisi : 'Non précisé';
+		$e['declare_total'] += (int) $l->montant;
+		$e[ 'verifie' === $l->statut ? 'verifie' : ( 'recu_envoye' === $l->statut ? 'recu' : 'a_payer' ) ] += (int) $l->montant;
+		unset( $e );
+	}
+
+	$global = ueb_suivi_vide();
+	$etabs = $filieres = $niveaux = array();
+	foreach ( $etudiants as $e ) {
+		$attendu      = $e['pro'] ? $e['declare_total'] : UEB_DROITS_CLASSIQUES;
+		$encaisse     = min( $e['verifie'], $attendu );
+		$verification = min( $e['recu'], $attendu - $encaisse );
+		$declare      = min( $e['a_payer'], $attendu - $encaisse - $verification );
+		$ventile      = array(
+			'attendu'      => $attendu,
+			'encaisse'     => $encaisse,
+			'verification' => $verification,
+			'declare'      => $declare,
+			'non_declare'  => $attendu - $encaisse - $verification - $declare,
+			'trop_percu'   => max( 0, $e['verifie'] - $attendu ),
+		);
+		ueb_suivi_ajouter( $global, $ventile );
+		$etabs[ $e['etab'] ] = $etabs[ $e['etab'] ] ?? ueb_suivi_vide();
+		ueb_suivi_ajouter( $etabs[ $e['etab'] ], $ventile );
+		$cle_f = $e['etab'] . '|' . $e['filiere'];
+		$filieres[ $cle_f ] = $filieres[ $cle_f ] ?? ( ueb_suivi_vide() + array( 'libelle' => $e['libelle'], 'etab' => $e['etab'], 'pro' => $e['pro'] ) );
+		ueb_suivi_ajouter( $filieres[ $cle_f ], $ventile );
+		$niveaux[ $e['niveau'] ] = $niveaux[ $e['niveau'] ] ?? ueb_suivi_vide();
+		ueb_suivi_ajouter( $niveaux[ $e['niveau'] ], $ventile );
+	}
+	/* Établissements et filières : les plus gros montants attendus d'abord. */
+	uasort( $etabs, static fn( $a, $b ) => $b['attendu'] <=> $a['attendu'] );
+	uasort( $filieres, static fn( $a, $b ) => $b['attendu'] <=> $a['attendu'] ?: strcmp( $a['libelle'], $b['libelle'] ) );
+	$ordre = array_flip( array_merge( array_keys( UEB_NIVEAUX_INSCRIPTION ), array( 'Non précisé' ) ) );
+	uksort( $niveaux, static fn( $a, $b ) => ( $ordre[ $a ] ?? 99 ) <=> ( $ordre[ $b ] ?? 99 ) );
+
+	return compact( 'global', 'etabs', 'filieres', 'niveaux', 'medicaux', 'etab' );
+}
+
+/**
  * @return array{lignes: array, total: int, pages: int, page: int}
  */
 function ueb_gestion_liste_quitus( array $filtres, $par_page = 30 ) {
@@ -251,6 +471,9 @@ function ueb_gestion_liste_quitus( array $filtres, $par_page = 30 ) {
 		$filtres['etab'] = $limite;
 	}
 	$where  = array( 'q.annee_academique = %s' );
+	if ( UEB_AUCUN_ETAB === $limite ) {
+		$where[] = '1 = 0'; // aucune portée : aucune ligne, jamais « tous »
+	}
 	$params = array( $filtres['annee'] );
 	if ( ! empty( $filtres['etab'] ) && ueb_etablissement( $filtres['etab'] ) ) {
 		$where[]  = 'q.etablissement = %s';
@@ -488,7 +711,8 @@ function ueb_action_gestion_creer_agent() {
 		sanitize_text_field( wp_unslash( $_POST['nom'] ?? '' ) ),
 		sanitize_email( wp_unslash( $_POST['email'] ?? '' ) ),
 		sanitize_text_field( wp_unslash( $_POST['etablissement'] ?? '' ) ),
-		trim( (string) wp_unslash( $_POST['mot_de_passe'] ?? '' ) )
+		trim( (string) wp_unslash( $_POST['mot_de_passe'] ?? '' ) ),
+		sanitize_key( wp_unslash( $_POST['role'] ?? '' ) )
 	);
 	if ( is_wp_error( $agent ) ) {
 		ueb_flash( 'erreur', $agent->get_error_message() );
@@ -496,16 +720,17 @@ function ueb_action_gestion_creer_agent() {
 	}
 	list( $id, $provisoire ) = $agent;
 	$_SESSION['ueb_mdp_agent'] = array( 'compte' => get_userdata( $id )->user_login, 'mdp' => $provisoire );
-	ueb_flash( 'succes', 'Compte de scolarité créé.' );
+	ueb_flash( 'succes', 'Compte du personnel créé.' );
 	ueb_rediriger( $retour );
 }
 
 /** Permet à un agent connecté de remplacer son mot de passe WordPress. */
 function ueb_action_gestion_changer_mdp_personnel() {
-	if ( ! is_user_logged_in() || ( ! ueb_est_scolarite() && ! ueb_est_cellule() ) || ueb_agent_suspendu() ) {
+	if ( ! is_user_logged_in() || ! ueb_est_agent( get_current_user_id() ) || ueb_agent_suspendu() ) {
 		wp_die( 'Action réservée aux personnels autorisés.', 'Accès refusé', array( 'response' => 403 ) );
 	}
-	$retour = ueb_est_cellule() ? ueb_url_cellule() : add_query_arg( 'vue', 'securite', ueb_url_scolarite() );
+	/* Retour vers l'espace d'où vient le formulaire (Direction, scolarité ou comptes étudiants). */
+	$retour = wp_validate_redirect( wp_get_referer(), ueb_url_espace() );
 	$user = wp_get_current_user();
 	$actuel = (string) ( $_POST['mot_de_passe_actuel'] ?? '' );
 	$nouveau = (string) ( $_POST['mot_de_passe_nouveau'] ?? '' );
@@ -601,11 +826,8 @@ function ueb_action_gestion_agent_supprimer() {
 
 /** Après connexion, un gestionnaire arrive directement sur son espace. */
 add_filter( 'login_redirect', function ( $url, $demande, $utilisateur ) {
-	if ( $utilisateur instanceof WP_User && user_can( $utilisateur, UEB_CAP_COMPTES ) && ueb_est_cellule( $utilisateur->ID ) ) {
-		return ueb_url_cellule();
-	}
-	if ( $utilisateur instanceof WP_User && user_can( $utilisateur, UEB_CAP_GESTION ) && ! user_can( $utilisateur, 'manage_options' ) ) {
-		return ueb_url_scolarite();
+	if ( $utilisateur instanceof WP_User && ! user_can( $utilisateur, 'manage_options' ) && ueb_est_agent( $utilisateur->ID ) ) {
+		return ueb_url_espace_du_compte( $utilisateur->ID );
 	}
 	if ( $demande ) {
 		return $url; /* les comptes étudiants et les administrateurs gardent la destination demandée */
@@ -615,11 +837,11 @@ add_filter( 'login_redirect', function ( $url, $demande, $utilisateur ) {
 
 /* PDF d'un quitus depuis l'espace scolarité : ?quitus={id}&pdf=1 */
 add_action( 'template_redirect', function () {
-	if ( ! isset( $_GET['pdf'], $_GET['quitus'] ) || ! is_page_template( 'page-scolarite.php' ) || ! is_user_logged_in() || ! ueb_est_scolarite() || ! current_user_can( UEB_CAP_GESTION ) || ueb_agent_suspendu() ) {
+	if ( ! isset( $_GET['pdf'], $_GET['quitus'] ) || ! is_page_template( 'page-scolarite.php' ) || ! ueb_peut( UEB_CAP_GESTION ) ) {
 		return;
 	}
 	$quitus = ueb_quitus_par_id( (int) $_GET['quitus'] );
-	if ( $quitus && ueb_peut_gerer_etab( $quitus->etablissement ) ) {
+	if ( $quitus && ueb_peut( UEB_CAP_GESTION, $quitus->etablissement ) ) {
 		ueb_envoyer_pdf_quitus( $quitus );
 	}
 }, 20 );

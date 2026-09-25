@@ -1,0 +1,295 @@
+/* Tableau de bord de l’espace scolarité (inc/bord.php).
+
+   Un seul élément mémorable : le héros du recouvrement, volet vert et jauge.
+   Le reste est calme : panneaux blancs, filet, rayon 16 px, sans ombre ;
+   éléments internes au rayon 10 px ; barres arrondies.
+
+   Chargé aussi sur les vues Quitus, dossier et Paiements : tout est scopé
+   (.bord, .bord-recouvrement, .bord-parcours). Le héros fonctionne sans
+   ancêtre .bord (il ouvre aussi la vue Paiements). */
+
+/* ---------- Grille ---------- */
+.bord { display: grid; gap: 1.25rem; min-width: 0; }
+.bord__rangee { display: grid; gap: 1.25rem; align-items: stretch; min-width: 0; }
+.bord__rangee > * { min-width: 0; }
+.bord__rangee--2 { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); }
+.bord__rangee--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+/* ---------- Héros : recouvrement des droits ---------- */
+.bord-recouvrement {
+	display: grid;
+	grid-template-columns: clamp(250px, 29%, 340px) minmax(0, 1fr);
+	overflow: hidden;
+	border: 0;
+	border-radius: 20px;
+	background: var(--blanc);
+	box-shadow: 0 0 0 1px rgba(19, 53, 26, .07), 0 24px 48px -36px rgba(10, 31, 22, .55);
+}
+
+/* Volet vert : la jauge et sa légende. */
+.bord-recouvrement__volet {
+	display: grid;
+	align-content: center;
+	justify-items: center;
+	gap: .35rem;
+	min-width: 0;
+	padding: 1.6rem 1.5rem 1.5rem;
+	overflow: hidden;
+	background: var(--vert-bandeau);
+	color: var(--blanc);
+}
+.bord-recouvrement__cadran { position: relative; isolation: isolate; width: min(100%, 260px); }
+/* Clin d'œil au tampon de la scolarité : quelques cercles très fins autour
+   du cadran, jamais sous les chiffres. */
+.bord-recouvrement__cadran::before {
+	content: "";
+	position: absolute;
+	inset: -38%;
+	z-index: -1;
+	border-radius: 50%;
+	background: repeating-radial-gradient(circle, transparent 0 21px, rgba(255, 255, 255, .045) 21px 22px);
+	-webkit-mask: radial-gradient(closest-side, transparent 57%, #000 61%, #000 80%, transparent 100%);
+	mask: radial-gradient(closest-side, transparent 57%, #000 61%, #000 80%, transparent 100%);
+	pointer-events: none;
+}
+.bord-recouvrement .animation--jauge { width: 100%; aspect-ratio: 1; }
+.bord-recouvrement .animation--jauge .animation__pause { display: none; } /* jouée une seule fois */
+.bord-recouvrement .jauge-repli { display: block; overflow: visible; }
+.bord-recouvrement .jauge-repli text { font-family: var(--f-texte); }
+.bord-recouvrement__legende-jauge { max-width: 24ch; margin: -.35rem 0 0; font-size: .9rem; line-height: 1.4; text-align: center; color: rgba(255, 255, 255, .78); }
+
+/* Volet blanc : montants, barre en quatre parts, légende, étudiants. */
+.bord-recouvrement__corps { display: flex; flex-direction: column; gap: 1.1rem; min-width: 0; padding: 1.5rem 1.75rem 1.45rem; }
+.bord-recouvrement__entete { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: .5rem 1.25rem; }
+.bord-recouvrement__entete h2 { margin: 0 0 .25rem; font: 600 1.25rem/1.2 var(--f-titre); letter-spacing: -.005em; color: var(--encre); }
+.bord-recouvrement__entete p { margin: 0; font-size: .9rem; color: var(--gris); }
+.bord-recouvrement__lien { margin-block: -.55rem; padding-block: .55rem; }
+.bord-recouvrement__lien:focus-visible { outline: 2px solid var(--or); outline-offset: 2px; border-radius: 4px; }
+
+.bord-recouvrement__montant { display: flex; flex-wrap: wrap; align-items: baseline; gap: .15rem .8rem; margin: .4rem 0 0; }
+.bord-recouvrement__montant > b { font: 700 2.4rem/1 var(--f-texte); letter-spacing: -.02em; color: var(--encre); white-space: nowrap; }
+.bord-recouvrement__montant > b small { margin-left: .1em; font-size: .46em; font-weight: 700; letter-spacing: .01em; color: var(--gris); }
+.bord-recouvrement__montant > span { font-size: .95rem; color: var(--gris); }
+.bord-recouvrement__montant > span b { font-weight: 700; color: var(--encre); white-space: nowrap; }
+
+.bord-recouvrement .suivi-barre--hero { height: 14px; margin-top: .15rem; }
+
+.bord-recouvrement__legende { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .8rem 1.25rem; }
+.bord-recouvrement__legende .suivi-legende__item { grid-template-columns: auto auto minmax(0, 1fr); grid-template-areas: "puce nom nom" ". montant part"; column-gap: .45rem; row-gap: .15rem; align-items: baseline; }
+.bord-recouvrement__legende .suivi-legende__item i { grid-area: puce; grid-row: auto; align-self: center; width: 10px; height: 10px; margin: 0; border-radius: 3px; }
+.bord-recouvrement__legende .suivi-legende__nom { grid-area: nom; font-size: .84rem; font-weight: 600; color: var(--gris); }
+.bord-recouvrement__legende .suivi-legende__item b { grid-area: montant; font-size: 1rem; font-weight: 700; color: var(--encre); white-space: nowrap; font-variant-numeric: normal; }
+.bord-recouvrement__legende .suivi-legende__item small { grid-area: part; font-size: .8rem; color: var(--gris); white-space: nowrap; }
+
+.bord-recouvrement__eleves { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin: auto 0 0; padding-top: 1rem; border-top: 1px solid var(--filet); }
+.bord-recouvrement__eleve { display: flex; flex-direction: column-reverse; justify-content: flex-end; gap: .2rem; min-width: 0; padding: 0 1rem; border-left: 1px solid var(--filet); }
+.bord-recouvrement__eleve:first-child { padding-left: 0; border-left: 0; }
+.bord-recouvrement__eleve dd { margin: 0; font: 700 1.5rem/1.05 var(--f-texte); letter-spacing: -.01em; color: var(--encre); }
+.bord-recouvrement__eleve dt { font-size: .85rem; line-height: 1.3; color: var(--gris); }
+
+.bord-recouvrement__alerte { display: flex; align-items: flex-start; gap: .5rem; margin: 0; padding: .6rem .8rem; border-radius: 10px; background: var(--alerte-fond); font-size: .86rem; color: #5c4200; }
+.bord-recouvrement__alerte .icone { margin-top: .1rem; }
+
+.bord-recouvrement__vide { display: flex; align-items: center; gap: .8rem; margin: auto 0; padding: 1rem 1.1rem; border-radius: 10px; background: var(--papier); color: var(--gris); }
+.bord-recouvrement__vide span { display: grid; place-items: center; width: 40px; height: 40px; flex: none; border-radius: 50%; background: var(--blanc); color: var(--vert-bandeau); }
+.bord-recouvrement__vide p { margin: 0; }
+
+/* ---------- Parcours des quitus ---------- */
+.bord-parcours { padding: 1.35rem 1.5rem 1.5rem; border-radius: 16px; box-shadow: none; }
+.bord-parcours__entete { display: grid; gap: .25rem; margin-bottom: 1.1rem; }
+.bord-parcours__entete h2 { margin: 0; font: 600 1.25rem/1.2 var(--f-titre); letter-spacing: -.005em; color: var(--encre); }
+.bord-parcours__entete p { margin: 0; font-size: .9rem; color: var(--gris); }
+
+/* Trois étapes de la séquence, un filet, puis la dérivation « à corriger ».
+   Les étapes partagent les colonnes du parent (subgrid) : quatre cases
+   strictement égales. */
+.bord-parcours__corps { --pas: 1.75rem; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) 1px minmax(0, 1fr); gap: .75rem var(--pas); }
+.bord-parcours__etapes { grid-column: 1 / 4; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-columns: subgrid; column-gap: var(--pas); margin: 0; padding: 0; list-style: none; }
+.bord-parcours__etapes > li { position: relative; display: grid; min-width: 0; }
+.bord-parcours__suite { position: absolute; top: 50%; right: calc(var(--pas) / -2); display: grid; place-items: center; translate: 50% -50%; color: var(--gris-clair); pointer-events: none; }
+.bord-parcours__suite .icone { rotate: -90deg; }
+.bord-parcours__filet { width: 1px; margin-block: .35rem; background: var(--filet); }
+.bord-parcours__derive { display: grid; min-width: 0; }
+
+.bord-etape {
+	--c: var(--viz-attente);
+	--c-fond: rgba(250, 178, 25, .18);
+	--c-encre: #8a6100;
+	display: grid;
+	grid-template-columns: auto minmax(0, 1fr);
+	align-content: start;
+	column-gap: .6rem;
+	min-width: 0;
+	padding: .9rem 1rem 1rem;
+	border: 1px solid var(--filet);
+	border-radius: 10px;
+	background: var(--blanc);
+	color: var(--encre);
+	text-decoration: none;
+	transition: background-color .18s var(--ease-sortie), border-color .18s var(--ease-sortie);
+}
+.bord-etape--recu_envoye { --c: var(--viz-id-2); --c-fond: rgba(55, 141, 183, .13); --c-encre: #235d7a; }
+.bord-etape--verifie { --c: var(--viz-bien); --c-fond: rgba(12, 163, 12, .12); --c-encre: #0a7a0a; }
+.bord-etape--rejete { --c: var(--viz-critique); --c-fond: var(--danger-fond); --c-encre: var(--danger); }
+.bord-etape:hover { border-color: var(--filet-fort); background: #f8faf7; }
+.bord-etape:focus-visible { outline: 2px solid var(--or); outline-offset: 2px; }
+/* L'étape qui attend l'agent : un fond à peine teinté, rien de plus. */
+.bord-etape.est-a-traiter { border-color: rgba(55, 141, 183, .3); background: rgba(55, 141, 183, .055); }
+.bord-etape.est-a-traiter:hover { border-color: rgba(55, 141, 183, .5); background: rgba(55, 141, 183, .09); }
+.bord-etape.est-a-traiter .bord-etape__note { font-weight: 600; color: var(--c-encre); }
+
+.bord-etape__tete { grid-column: 1 / -1; display: flex; align-items: center; gap: .5rem; min-width: 0; margin-bottom: .6rem; }
+.bord-etape__numero { display: grid; place-items: center; width: 22px; height: 22px; flex: none; border: 1px solid var(--filet-fort); border-radius: 50%; font-size: .75rem; font-weight: 700; line-height: 1; color: var(--gris); }
+.bord-etape__nom { min-width: 0; font-size: .95rem; font-weight: 600; }
+.bord-etape__icone { display: grid; place-items: center; width: 32px; height: 32px; flex: none; margin-left: auto; border-radius: 9px; background: var(--c-fond); color: var(--c-encre); }
+.bord-etape__nombre { align-self: baseline; font: 700 2.1rem/1 var(--f-texte); letter-spacing: -.02em; }
+.bord-etape__part { align-self: baseline; font-size: .85rem; color: var(--gris); }
+.bord-etape__barre { grid-column: 1 / -1; height: 6px; margin: .7rem 0 .55rem; overflow: hidden; border-radius: 999px; background: var(--viz-piste); }
+.bord-etape__barre > span { display: block; width: var(--part, 0%); height: 100%; border-radius: 999px; background: var(--c); }
+.bord-etape__note { grid-column: 1 / -1; font-size: .82rem; line-height: 1.35; color: var(--gris); }
+
+/* ---------- File « À vérifier » (balisage de page-scolarite.php) ---------- */
+.bord .file-verif { display: flex; flex-direction: column; gap: 1rem; padding: 1.35rem 1.5rem 1.25rem; border-radius: 16px; box-shadow: none; }
+.bord .file-verif__entete h2 { margin: 0 0 .25rem; font: 600 1.25rem/1.2 var(--f-titre); letter-spacing: -.005em; }
+.bord .file-verif__entete p { font-size: .9rem; }
+.bord .file-verif__liste { border-radius: 10px; }
+.bord .file-verif__liste li { animation: none; } /* un seul moment d'entrée : les barres */
+/* Colonne étroite : montant et attente passent sous le nom. */
+.bord .file-verif__ligne { grid-template-columns: auto minmax(0, 1fr) auto; column-gap: .85rem; row-gap: .4rem; min-height: 44px; padding: .8rem .9rem; }
+.bord .file-verif__ligne .bo-avatar { grid-row: 1 / span 2; align-self: start; width: 36px; height: 36px; }
+.bord .file-verif__qui { grid-column: 2; grid-row: 1; }
+.bord .file-verif__meta { grid-column: 2; grid-row: 2; display: flex; flex-wrap: wrap; align-items: center; gap: .35rem .65rem; min-width: 0; }
+.bord .file-verif__montant { display: inline; font-size: .95rem; }
+.bord .file-verif__aller { grid-column: 3; grid-row: 1 / span 2; align-self: center; }
+.bord .file-verif__ligne:focus-visible { outline: 2px solid var(--or); outline-offset: -3px; }
+.bord .file-verif__pied { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem 1rem; margin-top: auto; padding-top: .2rem; }
+.bord .file-verif__pied p { display: flex; align-items: center; gap: .45rem; margin: 0; font-size: .86rem; color: var(--gris); }
+.bord .file-verif__pied p .icone { color: #8a6100; }
+.bord .file-verif__pied .bo-lien { min-height: 44px; }
+.bord .file-verif__vide { border-radius: 10px; }
+
+/* ---------- Coque commune des figures ---------- */
+.bord .graphe { padding: 1.35rem 1.5rem 1.5rem; border: 1px solid var(--filet); border-radius: 16px; box-shadow: none; transition: none; }
+.bord .graphe:hover { transform: none; box-shadow: none; border-color: var(--filet); }
+.bord .graphe__entete { gap: .3rem; margin-bottom: 1.25rem; }
+.bord .graphe__titre { font: 600 1.2rem/1.2 var(--f-titre); letter-spacing: -.005em; color: var(--encre); }
+.bord .graphe__sous-titre { font-size: .88rem; line-height: 1.4; color: var(--gris); }
+.bord .graphe__vide { border-radius: 10px; background: var(--papier); color: var(--gris); }
+
+/* Anneau (sexe) : plus grand, total au centre plus présent, légende en lignes. */
+.bord .graphe__anneau { margin: .25rem 0 1.35rem; }
+.bord .graphe__anneau svg { width: min(100%, 180px); }
+.bord .graphe__anneau circle { stroke-width: 16; }
+.bord .graphe__anneau-centre { gap: .2rem; }
+.bord .graphe__anneau-centre b { font: 700 2.4rem/1 var(--f-texte); letter-spacing: -.02em; }
+.bord .graphe__anneau-centre span { font-size: .82rem; color: var(--gris); }
+.bord .graphe__legende { gap: 0; }
+.bord .graphe__legende li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto 3.2rem; align-items: center; gap: .65rem; min-height: 44px; padding: .45rem 0; border-top: 1px solid var(--filet); font-size: .92rem; color: var(--encre); }
+.bord .graphe__legende i { width: 10px; height: 10px; border-radius: 3px; }
+.bord .graphe__legende b { margin: 0; font-size: 1.05rem; font-weight: 700; }
+.bord .graphe__legende small { width: auto; font-size: .85rem; color: var(--gris); }
+
+/* Barres (tranches) : libellé au-dessus, barre de 14 px, valeur en bout. */
+.bord .graphe__barres { gap: 1.2rem; }
+.bord .graphe__barres li { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "libelle libelle" "barre valeur"; align-items: center; column-gap: .8rem; row-gap: .45rem; font-size: .92rem; }
+.bord .graphe__barre-libelle { grid-area: libelle; font-weight: 600; color: var(--encre); }
+.bord .graphe__barre { grid-area: barre; height: 14px; }
+.bord .graphe__barre > span { border-radius: 999px; }
+.bord .graphe__barres b { grid-area: valeur; min-width: 1.4rem; font: 700 1.05rem/1 var(--f-texte); }
+
+/* ---------- Entrée : un seul moment orchestré ----------
+   La jauge se joue une fois ; pendant ce temps les barres poussent depuis
+   la gauche, en cascade de 60 ms plafonnée à six crans. */
+@keyframes bord-pousse { from { transform: scaleX(0); } }
+.bord-recouvrement .suivi-barre--hero,
+.bord-etape__barre > span,
+.bord .graphe__barre > span {
+	transform-origin: left center;
+	animation: bord-pousse .6s var(--ease-sortie) both;
+	animation-delay: calc(min(var(--i, 0), 6) * 60ms);
+}
+.bord-recouvrement .suivi-barre--hero { --i: 1; }
+.bord .graphe__barres li:nth-child(1) { --i: 4; }
+.bord .graphe__barres li:nth-child(2) { --i: 5; }
+.bord .graphe__barres li:nth-child(n+3) { --i: 6; }
+
+/* ---------- Écrans intermédiaires ---------- */
+@media (max-width: 1180px) {
+	.bord__rangee--2 { grid-template-columns: minmax(0, 1fr); }
+	.bord__rangee--3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+	.bord__rangee--3 > :nth-child(3) { grid-column: 1 / -1; }
+	.bord-recouvrement { grid-template-columns: clamp(230px, 34%, 290px) minmax(0, 1fr); }
+	.bord-recouvrement__corps { padding: 1.35rem 1.5rem 1.35rem; }
+	.bord-recouvrement__legende { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+	/* Colonnes à la taille du contenu : « sans paiement vérifié » garde la place. */
+	.bord-recouvrement__eleves { grid-template-columns: repeat(4, auto); justify-content: start; }
+	.bord-recouvrement__eleve { padding-inline: 1.1rem; }
+}
+
+/* File en pleine largeur : une ligne par reçu, montant et attente à droite. */
+@media (max-width: 1180px) and (min-width: 561px) {
+	.bord .file-verif__ligne { grid-template-columns: auto minmax(0, 1fr) auto auto; }
+	.bord .file-verif__ligne .bo-avatar { grid-row: 1; align-self: center; }
+	.bord .file-verif__meta { grid-column: 3; grid-row: 1; flex-wrap: nowrap; gap: .8rem; }
+	.bord .file-verif__aller { grid-column: 4; grid-row: 1; }
+}
+
+/* Sous 960 px : une colonne, le héros s'empile (jauge au-dessus). */
+@media (max-width: 960px) {
+	.bord__rangee--3 { grid-template-columns: minmax(0, 1fr); }
+	.bord-recouvrement { grid-template-columns: minmax(0, 1fr); }
+	.bord-recouvrement__volet { padding: 1.35rem 1.25rem 1.25rem; }
+	.bord-recouvrement__cadran { width: min(100%, 200px); }
+	.bord-recouvrement__legende { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+	.bord-recouvrement__eleves { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+/* Anneau en largeur : cadran à gauche, légende à droite. */
+@media (max-width: 960px) and (min-width: 561px) {
+	.bord .graphe:has(> .graphe__anneau) { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; column-gap: 2.25rem; }
+	.bord .graphe:has(> .graphe__anneau) > .graphe__entete { grid-column: 1 / -1; }
+	.bord .graphe:has(> .graphe__anneau) > .graphe__anneau { margin: 0; }
+}
+
+/* Parcours en 2 × 2 : les trois étapes et la dérivation, sans chevrons (la
+   numérotation porte la séquence). Dès 1240 px : avec la barre latérale,
+   quatre cases de moins de 190 px coupaient les libellés. */
+@media (max-width: 1240px) {
+	.bord-parcours__corps { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; }
+	.bord-parcours__etapes { grid-column: 1 / -1; grid-row: 1 / span 2; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-columns: subgrid; grid-template-rows: subgrid; gap: .75rem; }
+	.bord-parcours__suite, .bord-parcours__filet { display: none; }
+	.bord-parcours__derive { grid-column: 2; grid-row: 2; }
+}
+@media (max-width: 680px) {
+	.bord-recouvrement__legende { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 560px) {
+	.bord-recouvrement__corps { padding: 1.2rem 1.15rem 1.2rem; }
+	.bord-recouvrement__montant > b { font-size: 2.05rem; }
+	.bord-recouvrement__eleves { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+	.bord-recouvrement__eleve { padding: .8rem 0 .8rem 1rem; }
+	.bord-recouvrement__eleve:nth-child(odd) { padding-left: 0; border-left: 0; }
+	.bord-recouvrement__eleve:nth-child(-n+2) { padding-top: 0; }
+	.bord-recouvrement__eleve:nth-child(n+3) { border-top: 1px solid var(--filet); padding-bottom: 0; }
+	.bord-parcours, .bord .file-verif, .bord .graphe { padding: 1.15rem 1.1rem 1.2rem; }
+}
+@media (max-width: 480px) {
+	.bord-parcours__corps { grid-template-columns: minmax(0, 1fr); }
+	.bord-parcours__etapes { grid-column: 1; grid-row: auto; grid-template-columns: minmax(0, 1fr); grid-template-rows: none; }
+	.bord-parcours__derive { grid-column: 1; grid-row: auto; }
+}
+
+/* Mouvement réduit et impression : image finale, sans entrée ni transition. */
+@media (prefers-reduced-motion: reduce) {
+	.bord-recouvrement .suivi-barre--hero,
+	.bord-etape__barre > span,
+	.bord .graphe__barre > span { animation: none; }
+	.bord-etape { transition: none; }
+}
+@media print {
+	.bord-recouvrement .suivi-barre--hero,
+	.bord-etape__barre > span,
+	.bord .graphe__barre > span { animation: none; }
+	.bord-recouvrement { box-shadow: none; border: 1px solid var(--filet); break-inside: avoid; }
+	.bord-recouvrement__volet { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+	.bord-parcours, .bord .file-verif, .bord .graphe { break-inside: avoid; }
+}

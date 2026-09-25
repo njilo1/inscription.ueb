@@ -223,7 +223,7 @@ function ueb_valider_quitus( array $post, array $contexte ) {
 		$e['parcours'] = 'Choisis ton niveau dans la liste.';
 	}
 	if ( 'nouveau' !== $v['situation'] && ! isset( UEB_FRAIS_MEDICAUX[ $v['situation'] ] ) ) {
-		$e['situation'] = 'Choisis Nouveau, une réinscription sans interruption ou une reprise après réactivation.';
+		$e['situation'] = 'Indique ta situation : nouveau, réinscription sans interruption ou réinscription avec interruption.';
 	}
 	if ( ! isset( UEB_TYPES_QUITUS[ $v['type'] ] ) ) {
 		$v['type'] = 'droits';
@@ -234,12 +234,20 @@ function ueb_valider_quitus( array $post, array $contexte ) {
 		$v['tranche'] = 0;
 		$v['montant'] = UEB_FRAIS_MEDICAUX[ $v['situation'] ]['montant'] ?? 0;
 	} else {
-		$calcul = ueb_calculer_paiement( $formation, $v['tranche'], $v['montant'], $v['situation'], $contexte );
-		$v['montant'] = $calcul['droits'];
-		if ( $v['montant'] < UEB_MONTANT_MIN || $v['montant'] > UEB_MONTANT_MAX || ( $formation && 'pro' === $formation->type_formation && ! preg_match( '/^\d[\d\s]*$/u', $texte( 'montant' ) ) ) ) {
+		$regle = null;
+		if ( $formation && 'classique' === $formation->type_formation ) {
+			/* Formation classique : la tranche découle du montant saisi. */
+			$regle = ueb_regle_droits_classiques( $contexte );
+			$erreur_montant = ueb_erreur_montant_classique( $v['montant'], $regle );
+			if ( $erreur_montant ) {
+				$e['montant'] = $erreur_montant;
+			} else {
+				$v['tranche'] = ueb_tranche_du_montant( $v['montant'], $regle );
+			}
+		} elseif ( $v['montant'] < UEB_MONTANT_MIN || $v['montant'] > UEB_MONTANT_MAX || ( $formation && 'pro' === $formation->type_formation && ! preg_match( '/^\d[\d\s]*$/u', $texte( 'montant' ) ) ) ) {
 			$e['montant'] = sprintf( 'Montant entre %s et %s FCFA.', ueb_formater_montant( UEB_MONTANT_MIN ), ueb_formater_montant( UEB_MONTANT_MAX ) );
 		}
-		if ( ! isset( $contexte['tranches'][ $v['tranche'] ] ) ) {
+		if ( ! ( $regle && isset( $e['montant'] ) ) && ! isset( $contexte['tranches'][ $v['tranche'] ] ) ) {
 			$e['tranche'] = 'Choisis une tranche disponible. Pour une tranche déjà préparée, utilise le quitus existant dans ton espace.';
 		}
 	}
@@ -277,6 +285,29 @@ function ueb_prochain_numero_quitus( $sigle, array $annee, $type = 'droits' ) {
 
 /* ---------- Enregistrement ---------- */
 
+/**
+ * Jeton à usage unique du formulaire de création : un double clic ou un
+ * renvoi du même formulaire ne crée pas un second quitus (le même montant
+ * pourrait sinon passer pour le second versement). Dix jetons au plus.
+ */
+function ueb_jeton_formulaire_quitus() {
+	$jeton   = bin2hex( random_bytes( 12 ) );
+	$jetons  = array_slice( (array) ( $_SESSION['ueb_jetons_quitus'] ?? array() ), -9, null, true );
+	$jetons[ $jeton ] = time();
+	$_SESSION['ueb_jetons_quitus'] = $jetons;
+	return $jeton;
+}
+
+/** Consomme le jeton posté ; faux s'il est absent ou déjà utilisé. */
+function ueb_consommer_jeton_quitus( $jeton ) {
+	$jeton = (string) $jeton;
+	if ( '' === $jeton || empty( $_SESSION['ueb_jetons_quitus'][ $jeton ] ) ) {
+		return false;
+	}
+	unset( $_SESSION['ueb_jetons_quitus'][ $jeton ] );
+	return true;
+}
+
 /** Enregistre les deux quitus ensemble, sous verrou du compte, ou aucun. */
 function ueb_action_enregistrer_quitus() {
 	global $wpdb;
@@ -288,6 +319,10 @@ function ueb_action_enregistrer_quitus() {
 	$id = (int) ( $_POST['quitus_id'] ?? 0 );
 	$actualiser = '1' === ( $_POST['actualiser_paiement'] ?? '' );
 	$retour = ueb_url( 'mon-espace/quitus' ) . ( $id ? '?id=' . $id : '' );
+	if ( ! $id && ! $actualiser && ! ueb_consommer_jeton_quitus( $_POST['jeton_quitus'] ?? '' ) ) {
+		ueb_flash( 'info', 'Ce formulaire a déjà été envoyé : ton quitus est dans Mes quitus.' );
+		ueb_rediriger( add_query_arg( 'vue', 'quitus', ueb_url( 'mon-espace' ) ) );
+	}
 	$erreurs = array();
 	$v = array();
 	$numero = '';
@@ -375,7 +410,7 @@ function ueb_action_enregistrer_quitus() {
 	}
 	$_SESSION['ueb_telechargement'] = array( 'compte_id' => (int) $compte->id, 'numero' => $numero );
 	ueb_flash( 'succes', 'Tes documents sont enregistrés dans Mes quitus. Fais tamponner chaque quitus avant le paiement à la banque.' );
-	ueb_rediriger( ueb_url( 'mon-espace' ) . '#quitus-' . $numero );
+	ueb_rediriger( add_query_arg( 'vue', 'quitus', ueb_url( 'mon-espace' ) ) . '#quitus-' . $numero );
 }
 
 /** URL publique de vérification, conservée pour les liens et les anciens QR codes. */

@@ -34,7 +34,12 @@ $v = $saisie ?: ( $edite ? (array) $edite : ueb_valeurs_initiales_quitus( $compt
 $contexte = ueb_contexte_inscription( $compte, $edite );
 $preinscrit_cette_annee = $contexte['nouveau'];
 $formations = $contexte['formations'];
-$options_situation = array( 'nouveau' => 'Nouveau — frais médicaux déjà réglés à la préinscription' ) + array_map( static fn( $f ) => $f['libelle'], UEB_FRAIS_MEDICAUX );
+/* Situation : une liste déroulante dont chaque option s'explique entre parenthèses. */
+$options_situation = array(
+	'nouveau' => 'Nouveau (préinscrit cette année à l’Université d’Ebolowa)',
+	'ancien'  => 'Réinscription sans interruption (inscrit l’année dernière à l’Université d’Ebolowa)',
+	'reprise' => 'Réinscription avec interruption (matricule interrompu les années antérieures)',
+);
 $v['situation'] = $contexte['situation_verrouillee'] ? $contexte['situation'] : ( $v['situation'] ?? $contexte['situation'] );
 if ( ! isset( $options_situation[ $v['situation'] ] ) ) {
 	$v['situation'] = $contexte['situation'];
@@ -52,6 +57,18 @@ if ( empty( $v['filiere_id'] ) ) {
 	}
 }
 $formation = $formations[ $v['filiere_id'] ?? 0 ] ?? null;
+/* Formation classique : montant saisi (second versement pré-rempli avec le reste), tranche déduite. */
+$v['montant'] = (int) preg_replace( '/\D+/', '', (string) ( $v['montant'] ?? '' ) );
+$regle_droits = ueb_regle_droits_classiques( $contexte );
+$classique = $formation && 'classique' === $formation->type_formation;
+if ( $classique && 'droits' === $type_courant ) {
+	if ( empty( $v['montant'] ) && $regle_droits['second'] ) {
+		$v['montant'] = $regle_droits['max'];
+	}
+	if ( ! empty( $v['montant'] ) && ! ueb_erreur_montant_classique( $v['montant'], $regle_droits ) ) {
+		$v['tranche'] = ueb_tranche_du_montant( $v['montant'], $regle_droits );
+	}
+}
 $medical_document = $contexte['medical_inclus'] && 'nouveau' !== ( $v['situation'] ?? '' );
 $paiement = ueb_calculer_paiement( $formation, $v['tranche'], $v['montant'] ?? 0, $v['situation'], $contexte, $type_courant );
 $v['montant'] = 'medicaux' === $type_courant ? $paiement['medicaux'] : $paiement['droits'];
@@ -73,13 +90,17 @@ $donnees_paiement = array(
 	'medicalExistant' => $contexte['medical'] ? array( 'numero' => $contexte['medical']->numero, 'statut' => $contexte['medical']->statut ) : null,
 	'montantsMedicaux' => $montants_medicaux,
 	'droitsClassiques' => UEB_DROITS_CLASSIQUES,
+	'regleDroits' => $regle_droits,
 );
+$aide_classique = $regle_droits['second']
+	? sprintf( 'Reste à payer cette année : %s FCFA. Tu peux verser moins, par multiples de 5 000 FCFA.', ueb_formater_montant( $regle_droits['max'] ) )
+	: 'De 25 000 à 50 000 FCFA, par multiples de 5 000. Moins de 50 000 : première tranche ; 50 000 : les deux tranches.';
 
 ueb_page_debut( array( 'titre' => $edite ? 'Modifier le quitus' : 'Nouveau quitus', 'variante' => 'espace' ) );
 ?>
 <main id="contenu" class="page-app">
 	<div class="conteneur conteneur--moyen">
-		<a class="fil" href="<?php echo esc_url( ueb_url( 'mon-espace' ) ); ?>"><?php echo ueb_icone( 'fleche-g', 18 ); ?>Mes quitus</a>
+		<a class="fil" href="<?php echo esc_url( add_query_arg( 'vue', 'quitus', ueb_url( 'mon-espace' ) ) ); ?>"><?php echo ueb_icone( 'fleche-g', 18 ); ?>Mes quitus</a>
 		<header class="page-app__entete">
 			<div>
 				<h1><?php echo $edite ? 'Modifier le quitus ' . esc_html( $edite->numero ) : 'Nouveau quitus'; ?></h1>
@@ -94,6 +115,8 @@ ueb_page_debut( array( 'titre' => $edite ? 'Modifier le quitus' : 'Nouveau quitu
 		<?php if ( ! $compte->matricule ) : ?>
 			<p class="quitus-contexte__note">Tu as reçu ton matricule ? Enregistre-le dans <a href="<?php echo esc_url( ueb_url( 'mon-espace/securite' ) ); ?>">Sécurité</a> avant de générer ton quitus.</p>
 		<?php endif; ?>
+
+		<?php $parcours = ueb_parcours_inscription( $compte ); require UEB_INSC_DIR . '/templates/composants/parcours-inscription.php'; ?>
 
 		<?php ueb_afficher_flash(); ?>
 		<?php if ( $erreurs ) : ?>
@@ -116,7 +139,7 @@ ueb_page_debut( array( 'titre' => $edite ? 'Modifier le quitus' : 'Nouveau quitu
 			<?php ueb_champ_csrf(); ?>
 			<input type="hidden" name="type" value="<?php echo esc_attr( $type_courant ); ?>">
 			<input type="hidden" name="ueb_action" value="enregistrer_quitus">
-			<?php if ( $edite ) : ?><input type="hidden" name="quitus_id" value="<?php echo (int) $edite->id; ?>"><?php endif; ?>
+			<?php if ( $edite ) : ?><input type="hidden" name="quitus_id" value="<?php echo (int) $edite->id; ?>"><?php else : ?><input type="hidden" name="jeton_quitus" value="<?php echo esc_attr( ueb_jeton_formulaire_quitus() ); ?>"><?php endif; ?>
 
 			<!-- 1. Établissement -->
 			<section class="carte section-form" aria-labelledby="section-etablissement">
@@ -156,8 +179,11 @@ ueb_page_debut( array( 'titre' => $edite ? 'Modifier le quitus' : 'Nouveau quitu
 							'nom' => 'situation', 'libelle' => 'Ta situation cette année', 'type' => 'select',
 							'valeur' => $val( 'situation' ), 'erreur' => $erreurs['situation'] ?? '',
 							'options' => $options_situation,
+							'icone' => 'utilisateur',
 							'attrs' => $contexte['situation_verrouillee'] ? array( 'disabled' => true ) : array(),
-							'aide' => $preinscrit_cette_annee ? 'Ton dossier est prérempli. Tu peux conserver Nouveau ou choisir une autre situation.' : 'Nouveau ne génère pas de frais médicaux. Les autres situations sont payables en une seule fois : 3 000 ou 5 000 FCFA.',
+							'aide' => $contexte['situation_verrouillee']
+								? 'Ta situation est déjà fixée par ton quitus médical de cette année : elle ne peut plus changer.'
+								: sprintf( 'Visite médicale : déjà payée à la préinscription si tu es nouveau, %s FCFA sans interruption, %s FCFA avec interruption (réactivation du matricule).%s', ueb_formater_montant( UEB_FRAIS_MEDICAUX['ancien']['montant'] ), ueb_formater_montant( UEB_FRAIS_MEDICAUX['reprise']['montant'] ), $preinscrit_cette_annee ? ' Ta préinscription de cette année a été retrouvée : « Nouveau » est présélectionné.' : '' ),
 						) );
 						?>
 						<?php if ( $contexte['situation_verrouillee'] ) : ?><input type="hidden" name="situation" value="<?php echo esc_attr( $val( 'situation' ) ); ?>"><?php endif; ?>
@@ -256,13 +282,16 @@ ueb_page_debut( array( 'titre' => $edite ? 'Modifier le quitus' : 'Nouveau quitu
 								'icone'   => 'banque',
 								'valeur'  => $val( 'montant' ) ? ueb_formater_montant( $val( 'montant' ) ) : '',
 								'erreur'  => $erreurs['montant'] ?? '',
-								'aide' => $formation && 'classique' === $formation->type_formation ? 'Formation classique : 50 000 FCFA par an, en deux tranches de 25 000 FCFA. Montant fixé automatiquement.' : 'Pour une formation professionnelle, indique le montant communiqué par ton établissement.',
-								'attrs' => array( 'inputmode' => 'numeric', 'placeholder' => '25 000', 'data-montant' => true, 'autocomplete' => 'off' ) + ( ! $formation || 'classique' === $formation->type_formation ? array( 'readonly' => true ) : array() ),
+								'aide' => $classique ? $aide_classique : ( $formation ? 'Pour une formation professionnelle, indique le montant communiqué par ton établissement.' : 'Choisis une filière pour connaître les modalités de paiement.' ),
+								'attrs' => array( 'inputmode' => 'numeric', 'placeholder' => $regle_droits['second'] ? ueb_formater_montant( $regle_droits['max'] ) : '25 000', 'data-montant' => true, 'autocomplete' => 'off' ) + ( ! $formation ? array( 'readonly' => true ) : array() ),
 							) );
 							?>
 							<p class="apercu" data-montant-lettres></p>
 						</div>
-						<?php ueb_choix_segments( 'tranche', 'Tranche payée', $contexte['tranches'], $val( 'tranche' ), $erreurs['tranche'] ?? '' ); ?>
+						<div class="tranche-auto<?php echo $classique ? ' est-auto' : ''; ?>" data-tranche-auto>
+							<?php ueb_choix_segments( 'tranche', 'Tranche payée', $contexte['tranches'], $val( 'tranche' ), $erreurs['tranche'] ?? '' ); ?>
+							<p class="tranche-auto__note"><?php echo ueb_icone( 'info', 15 ); ?>Déduite du montant saisi.</p>
+						</div>
 					</div>
 					<div class="paiement-total" role="status" aria-live="polite" aria-atomic="true">
 						<p>Montant total à payer <strong data-total-paiement><?php echo $paiement['total'] ? esc_html( ueb_formater_montant( $paiement['total'] ) . ' FCFA' ) : '—'; ?></strong></p>

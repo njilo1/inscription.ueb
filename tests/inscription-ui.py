@@ -67,13 +67,31 @@ with tempfile.TemporaryDirectory(prefix='ueb-inscription-chromium-', ignore_clea
             code = 'const e=document.querySelector(' + json.dumps(selector) + ');'
             code += 'e.click();' if value is None else 'e.value=' + json.dumps(value) + ';e.dispatchEvent(new Event("change",{bubbles:true}));'
             js('(()=>{' + code + '})()')
+        def montant(valeur):
+            js('(()=>{const e=document.querySelector("[data-montant]");e.value=' + json.dumps(valeur) + ';e.dispatchEvent(new Event("input",{bubbles:true}));})()')
+        def tranche_cochee():
+            return js('document.querySelector("input[name=tranche]:checked")?.value || ""')
+        def erreur_montant():
+            return js('(()=>{const e=document.querySelector("#champ-montant-erreur");return e && !e.hidden ? e.textContent : "";})()')
         for name, one, all_ in [('ancien', '28 000', '53 000'), ('reprise', '30 000', '55 000'), ('nouveau', '25 000', '50 000')]:
             load(name)
+            if name == 'nouveau':
+                assert js('document.querySelector("[data-total-paiement]").textContent') == '—'
+                montant('25000')
             total(one)
-            assert js('document.querySelector("[data-montant]").readOnly')
-            change('input[name=tranche][value="3"]')
+            # Formation classique : montant saisi, tranche déduite.
+            assert not js('document.querySelector("[data-montant]").readOnly')
+            assert tranche_cochee() == '1'
+            montant('50000')
             total(all_)
-            change('input[name=tranche][value="1"]')
+            assert tranche_cochee() == '3'
+            for invalide in ['20000', '32000', '55000']:
+                montant(invalide)
+                assert erreur_montant(), invalide
+                assert tranche_cochee() == ''
+                assert js('document.querySelector("[data-total-paiement]").textContent') == '—'
+            montant('25000')
+            assert not erreur_montant()
             total(one)
             if name == 'nouveau':
                 assert not js('document.querySelector("select[name=situation]").disabled')
@@ -88,6 +106,13 @@ with tempfile.TemporaryDirectory(prefix='ueb-inscription-chromium-', ignore_clea
         load('deuxieme')
         total('25 000')
         assert js('[...document.querySelectorAll("input[name=tranche]")].map(e=>e.value)') == ['2']
+        assert tranche_cochee() == '2'
+        montant('15000')
+        total('15 000')
+        assert tranche_cochee() == '2'
+        montant('30000')
+        assert 'reste' in erreur_montant()
+        montant('25000')
         assert '1 page' in js('document.querySelector("[data-documents-paiement]").textContent')
         assert js('[...document.querySelectorAll("[data-cms-champ]")].every(e=>!e.required)')
         load('nouveau')
@@ -137,7 +162,7 @@ with tempfile.TemporaryDirectory(prefix='ueb-inscription-chromium-', ignore_clea
         for width in [1280, 768, 375, 320]:
             load('reprise', width)
             assert js('document.documentElement.scrollWidth <= innerWidth'), ('débordement', width)
-            change('input[name=tranche][value="3"]')
+            montant('50000')
             total('55 000')
             js('document.querySelector("#section-paiement").scrollIntoView({block:"start",behavior:"instant"})')
             js('new Promise(resolve=>setTimeout(resolve,150))')
@@ -148,7 +173,7 @@ with tempfile.TemporaryDirectory(prefix='ueb-inscription-chromium-', ignore_clea
             shot = call('Page.captureScreenshot', {'format': 'png', 'captureBeyondViewport': True, 'clip': bounds})
             (ROOT / ('recapitulatif-' + str(width) + '.png')).write_bytes(base64.b64decode(shot['data']))
         call('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-reduced-motion', 'value': 'reduce'}]})
-        change('input[name=tranche][value="1"]')
+        montant('25000')
         total('30 000')
         assert not errors, errors
         from espace_ui import verifier_espace

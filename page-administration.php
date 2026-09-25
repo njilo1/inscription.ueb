@@ -58,7 +58,7 @@ if ( $autorise ) {
 	$prov     = $_SESSION['ueb_mdp_agent'] ?? null;
 	unset( $_SESSION['ueb_mdp_agent'] );
 	if ( 'scolarites' === $vue ) {
-		$agents = ueb_agents_scolarite();
+		$agents = ueb_agents(); // tous les comptes du personnel, quel que soit leur rôle
 	}
 }
 
@@ -103,8 +103,10 @@ ueb_page_debut( array( 'titre' => 'Administration', 'variante' => $autorise ? 'b
 			ueb_bo_barre(
 				'Administration',
 				array(
-					array( 'url' => $ici(), 'libelle' => 'Tableau de bord', 'icone' => 'tampon', 'actif' => 'bord' === $vue && ! $focus ),
-					array( 'url' => $ici( array( 'vue' => 'scolarites' ) ), 'libelle' => 'Scolarités', 'icone' => 'bouclier', 'actif' => 'scolarites' === $vue ),
+					array( 'url' => $ici(), 'libelle' => 'Tableau de bord', 'icone' => 'tampon', 'actif' => 'bord' === $vue ),
+					array( 'url' => $ici( array( 'vue' => 'paiements' ) ), 'libelle' => 'Paiements', 'icone' => 'banque', 'actif' => 'paiements' === $vue ),
+					array( 'url' => $ici( array( 'vue' => 'scolarites' ) ), 'libelle' => 'Personnel', 'icone' => 'utilisateur', 'actif' => 'scolarites' === $vue ),
+					array( 'url' => ueb_url_direction(), 'libelle' => 'Rôles (Direction)', 'icone' => 'bouclier', 'actif' => false ),
 				),
 				array(
 					'titre' => UEB_UNIVERSITE['fr'],
@@ -119,8 +121,8 @@ ueb_page_debut( array( 'titre' => 'Administration', 'variante' => $autorise ? 'b
 
 					<header class="page-app__entete">
 						<div>
-							<h1>Comptes de scolarité</h1>
-							<p class="page-app__sous-titre">Chaque agent ne voit que les quitus de son établissement.</p>
+							<h1>Comptes du personnel</h1>
+							<p class="page-app__sous-titre">Chaque compte agit selon son rôle et sa portée. Les rôles se gèrent dans l’espace Direction.</p>
 						</div>
 					</header>
 					<?php ueb_afficher_flash(); ?>
@@ -160,6 +162,7 @@ ueb_page_debut( array( 'titre' => 'Administration', 'variante' => $autorise ? 'b
 									<?php
 									ueb_champ( array( 'nom' => 'email', 'libelle' => 'Adresse e-mail', 'type' => 'email', 'icone' => 'courriel', 'requis' => false, 'aide' => 'Utile pour récupérer un mot de passe oublié.', 'attrs' => array( 'autocomplete' => 'off' ) ) );
 									ueb_champ( array( 'nom' => 'etablissement', 'libelle' => 'Établissement', 'type' => 'select', 'icone' => 'ecole', 'options' => array_map( static fn( $e ) => $e['fr'], ueb_etablissements() ) ) );
+									ueb_champ( array( 'nom' => 'role', 'libelle' => 'Rôle', 'type' => 'select', 'icone' => 'cle', 'options' => array_map( static fn( $r ) => $r['nom'], ueb_roles_attribuables() ), 'valeur' => ueb_role_par_defaut( UEB_CAP_GESTION ) ) );
 									?>
 								</div>
 								<div class="securite-form__actions">
@@ -181,7 +184,7 @@ ueb_page_debut( array( 'titre' => 'Administration', 'variante' => $autorise ? 'b
 								$suspendu = ueb_agent_suspendu( $agent->ID );
 								?>
 								<tr>
-									<td><b><?php echo esc_html( $agent->display_name ); ?></b><br><small class="texte-discret"><?php echo esc_html( $agent->user_login ); ?><?php echo $agent->user_email ? ' · ' . esc_html( $agent->user_email ) : ''; ?></small></td>
+									<td><b><?php echo esc_html( $agent->display_name ); ?></b> <span class="badge badge--recu_envoye"><?php echo esc_html( ueb_nom_role_du_compte( $agent->ID ) ); ?></span><br><small class="texte-discret"><?php echo esc_html( $agent->user_login ); ?><?php echo $agent->user_email ? ' · ' . esc_html( $agent->user_email ) : ''; ?></small></td>
 									<td>
 										<form method="post" action="<?php echo esc_url( ueb_url_administration() ); ?>" class="actions-ligne">
 											<?php ueb_champ_csrf(); ?>
@@ -232,6 +235,35 @@ ueb_page_debut( array( 'titre' => 'Administration', 'variante' => $autorise ? 'b
 						</table>
 					</div>
 
+				<?php elseif ( 'paiements' === $vue ) : ?>
+
+					<?php
+					$suivi = ueb_suivi_paiements( $annee['code'], $focus );
+					$e_suivi = $focus ? ueb_etablissement( $focus ) : null;
+					?>
+					<?php if ( $focus ) : ?>
+						<a class="fil" href="<?php echo $ici( array( 'vue' => 'paiements' ) ); ?>"><?php echo ueb_icone( 'fleche-g', 18 ); ?>Toute l’université</a>
+					<?php endif; ?>
+					<header class="bo-entete">
+						<div class="bo-entete__texte">
+							<p class="bo-entete__contexte">
+								<img src="<?php echo esc_url( ueb_logo_url( $focus ?: 'UEB' ) ); ?>" alt="" width="22" height="22">
+								<span><?php echo esc_html( $focus ?: 'Université d’Ebolowa' ); ?></span>
+								<span class="bo-entete__annee">Année <?php echo esc_html( $annee['libelle'] ); ?></span>
+							</p>
+							<h1>Suivi des paiements</h1>
+							<p class="bo-entete__sous-titre"><?php echo $focus ? 'Droits universitaires attendus et encaissés à ' . esc_html( $e_suivi['fr'] ) . ', filière par filière.' : 'Droits universitaires attendus et encaissés dans les neuf établissements. Ouvre un établissement pour le détail par filière.'; ?></p>
+						</div>
+					</header>
+					<?php ueb_afficher_flash(); ?>
+					<?php
+					ueb_suivi_paiements_vue( $suivi, array(
+						'perimetre'  => $focus ? $focus : 'Université',
+						'lignes'     => $focus ? 'filieres' : 'etabs',
+						'lien_ligne' => static fn( $sigle ) => add_query_arg( array( 'vue' => 'paiements', 'etab' => $sigle ), ueb_url_administration() ),
+					) );
+					?>
+
 				<?php elseif ( $focus ) : ?>
 
 					<?php $e = ueb_etablissement( $focus ); ?>
@@ -243,6 +275,8 @@ ueb_page_debut( array( 'titre' => 'Administration', 'variante' => $autorise ? 'b
 						</div>
 					</header>
 					<?php ueb_afficher_flash(); ?>
+
+					<?php ueb_suivi_carte( ueb_suivi_paiements( $annee['code'], $focus ), add_query_arg( array( 'vue' => 'paiements', 'etab' => $focus ), ueb_url_administration() ), $focus ); ?>
 
 					<?php ueb_bo_palier( $chiffres, $e['fr'] ); ?>
 
@@ -282,6 +316,8 @@ ueb_page_debut( array( 'titre' => 'Administration', 'variante' => $autorise ? 'b
 						</div>
 					</header>
 					<?php ueb_afficher_flash(); ?>
+
+					<?php ueb_suivi_carte( ueb_suivi_paiements( $annee['code'] ), add_query_arg( 'vue', 'paiements', ueb_url_administration() ), 'Université' ); ?>
 
 					<?php ueb_bo_palier( $chiffres, 'Tous les établissements' ); ?>
 
