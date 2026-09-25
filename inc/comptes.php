@@ -242,7 +242,7 @@ function ueb_action_creer_compte() {
 		'mot_de_passe'   => password_hash( $mdp, PASSWORD_DEFAULT ),
 	) );
 	if ( ! $ok ) {
-		error_log( '[inscription-ueb] Création de compte impossible : ' . $wpdb->last_error );
+		error_log( '[inscriptions-ueb] Création de compte impossible : ' . $wpdb->last_error );
 		ueb_memoriser_saisie( array( 'identifiant' => $identifiant, 'telephone' => $tel_saisi ), array( 'general' => "Le compte n'a pas pu être créé. Réessaie dans un instant." ) );
 		ueb_rediriger( ueb_url( 'creer-mon-compte' ) );
 	}

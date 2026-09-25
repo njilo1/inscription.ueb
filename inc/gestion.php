@@ -679,7 +679,7 @@ function ueb_action_gestion_creer_etudiant() {
 		'doit_changer_mdp' => 1,
 	) );
 	if ( ! $ok ) {
-		error_log( '[inscription-ueb] Création du compte étudiant impossible : ' . $wpdb->last_error );
+		error_log( '[inscriptions-ueb] Création du compte étudiant impossible : ' . $wpdb->last_error );
 		ueb_flash( 'erreur', "Le compte n'a pas pu être créé. Réessaie dans un instant." );
 		ueb_rediriger( $retour );
 	}

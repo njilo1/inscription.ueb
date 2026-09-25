@@ -397,7 +397,7 @@ function ueb_action_enregistrer_quitus() {
 		}
 	} catch ( Throwable $exception ) {
 		$wpdb->query( 'ROLLBACK' );
-		error_log( '[inscription-ueb] Enregistrement du dossier impossible : ' . $exception->getMessage() );
+		error_log( '[inscriptions-ueb] Enregistrement du dossier impossible : ' . $exception->getMessage() );
 		$erreurs['general'] = 'Les documents n’ont pas pu être enregistrés. Réessaie dans un instant.';
 	}
 	if ( $actualiser && empty( $erreurs['general'] ) ) {

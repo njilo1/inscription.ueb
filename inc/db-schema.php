@@ -150,12 +150,12 @@ function ueb_insc_installer_schema() {
 	global $wpdb;
 	foreach ( ueb_insc_schema() as $table => $sql ) {
 		if ( false === $wpdb->query( $sql ) ) {
-			error_log( "[inscription-ueb] Création de $table impossible : " . $wpdb->last_error );
+			error_log( "[inscriptions-ueb] Création de $table impossible : " . $wpdb->last_error );
 			return;
 		}
 	}
 	if ( ! ueb_insc_migrer() ) {
-		error_log( '[inscription-ueb] Migration impossible : ' . $wpdb->last_error );
+		error_log( '[inscriptions-ueb] Migration impossible : ' . $wpdb->last_error );
 		return;
 	}
 	update_option( 'ueb_insc_db_version', UEB_INSC_DB_VERSION );

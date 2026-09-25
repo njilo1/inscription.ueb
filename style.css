@@ -5,7 +5,7 @@ Author: Equipe UEb
 Description: Plateforme d'inscription des neuf établissements de l'Université d'Ebolowa : comptes étudiants, quitus de paiement en PDF, envoi des reçus bancaires. Codé à la main, sans plugin.
 Version: 1.0.0
 Requires PHP: 8.1
-Text Domain: inscription-ueb
+Text Domain: inscriptions-ueb
 */
 
 /* Les styles sont dans assets/css/ : ce fichier ne sert qu'à déclarer le thème. */
