@@ -1,0 +1,19 @@
+# Exports de test (PDF, zip générés)
+exports/
+
+# Python
+__pycache__/
+*.pyc
+
+# Sauvegardes et fichiers temporaires
+*.bak
+*.tmp
+*.log
+*~
+
+# Systèmes et éditeurs
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
