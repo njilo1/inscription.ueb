@@ -16,7 +16,7 @@ if ( isset( $_POST['ueb_connexion_cellule'] ) ) {
 		), is_ssl() );
 		if ( is_wp_error( $utilisateur ) ) {
 			ueb_noter_echec_gestion( $identifiant );
-			$erreur_connexion = 'Identifiant ou mot de passe incorrect.';
+			$erreur_connexion = ueb_message_echec_connexion( $utilisateur, 'Identifiant ou mot de passe incorrect.' );
 		} elseif ( ! ueb_est_cellule( $utilisateur->ID ) || ! ueb_etabs_autorises( $utilisateur->ID ) || ueb_agent_suspendu( $utilisateur->ID ) ) {
 			wp_logout();
 			$erreur_connexion = "Ce compte n'a pas accès à la cellule informatique.";

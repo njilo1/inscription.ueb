@@ -43,7 +43,7 @@ if ( isset( $_POST['ueb_connexion_gestion'] ) ) {
 		), is_ssl() );
 		if ( is_wp_error( $utilisateur ) ) {
 			ueb_noter_echec_gestion( $identifiant );
-			$erreur_connexion = 'Identifiant ou mot de passe incorrect. Vérifie l’identifiant communiqué par l’administration.';
+			$erreur_connexion = ueb_message_echec_connexion( $utilisateur, 'Identifiant ou mot de passe incorrect. Vérifie l’identifiant communiqué par l’administration.' );
 		} elseif ( ! ueb_est_scolarite( $utilisateur->ID ) || ! ueb_etabs_autorises( $utilisateur->ID ) || ueb_agent_suspendu( $utilisateur->ID ) ) {
 			wp_logout();
 			$erreur_connexion = "Ce compte n'a pas accès à l'espace scolarité.";
