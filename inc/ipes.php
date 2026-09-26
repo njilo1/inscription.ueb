@@ -261,3 +261,51 @@ function ueb_ipes_changer_etat( $id, $actif ) {
 		array( 'id' => (int) $id )
 	);
 }
+
+/* ---------- Actions de l'administration ----------
+   Formulaires de l'onglet IPES (page-administration.php, ?vue=ipes). Le jeton
+   de session est vérifié par ueb_traiter_action() ; chaque action revérifie
+   que le compte est administrateur. */
+
+/** Adresse de l'onglet IPES : la liste, la fiche d'un IPES ou « nouveau ». */
+function ueb_url_ipes( $ipes = null ) {
+	$args = array( 'vue' => 'ipes' );
+	if ( null !== $ipes ) {
+		$args['ipes'] = $ipes;
+	}
+	return add_query_arg( $args, ueb_url_administration() );
+}
+
+/** IPES désigné par le champ « ipes_id » du formulaire, ou retour à la liste. */
+function ueb_ipes_du_formulaire() {
+	$ipes = ueb_ipes( (int) ( $_POST['ipes_id'] ?? 0 ) );
+	if ( ! $ipes ) {
+		ueb_flash( 'erreur', 'Cet IPES n’existe pas.' );
+		ueb_rediriger( ueb_url_ipes() );
+	}
+	return $ipes;
+}
+
+/** Créer (ipes_id vide) ou modifier un IPES et ses tutelles. */
+function ueb_action_ipes_enregistrer() {
+	ueb_exiger_admin();
+	$id = (int) ( $_POST['ipes_id'] ?? 0 );
+	if ( $id && ! ueb_ipes( $id ) ) {
+		ueb_flash( 'erreur', 'Cet IPES n’existe pas.' );
+		ueb_rediriger( ueb_url_ipes() );
+	}
+	$saisie = array();
+	foreach ( array( 'sigle', 'nom_fr', 'nom_en', 'ville', 'telephone', 'email', 'convention_ref', 'convention_signee_le', 'convention_fin_le' ) as $champ ) {
+		$saisie[ $champ ] = sanitize_text_field( wp_unslash( $_POST[ $champ ] ?? '' ) );
+	}
+	$saisie['tutelles'] = array_map( 'sanitize_text_field', (array) wp_unslash( $_POST['tutelles'] ?? array() ) );
+
+	$resultat = ueb_ipes_enregistrer( $saisie, $id );
+	if ( is_wp_error( $resultat ) ) {
+		ueb_memoriser_saisie( $saisie, (array) $resultat->get_error_data() ?: array( 'general' => $resultat->get_error_message() ) );
+		ueb_flash( 'erreur', $resultat->get_error_message() );
+		ueb_rediriger( ueb_url_ipes( $id ?: 'nouveau' ) );
+	}
+	ueb_flash( 'succes', $id ? 'IPES mis à jour.' : 'IPES créé.' );
+	ueb_rediriger( ueb_url_ipes( $resultat ) );
+}
