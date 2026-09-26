@@ -411,3 +411,46 @@ function ueb_ipes_installer_logo( $ipes_id, array $logo ) {
 	}
 	return true;
 }
+
+/* ---------- Désactivation ---------- */
+
+/* Rôle WordPress des administrateurs d'IPES (créé à part, hors du registre de la Direction). */
+const UEB_ROLE_ADMIN_IPES = 'ueb_admin_ipes';
+
+/** Comptes administrateurs d'un IPES (méta « ueb_ipes_id »), par nom. */
+function ueb_ipes_comptes( $ipes_id ) {
+	return get_users( array(
+		'role'       => UEB_ROLE_ADMIN_IPES,
+		'meta_key'   => 'ueb_ipes_id', // phpcs:ignore WordPress.DB.SlowDBQuery
+		'meta_value' => (int) $ipes_id, // phpcs:ignore WordPress.DB.SlowDBQuery
+		'orderby'    => 'display_name',
+	) );
+}
+
+/**
+ * Désactive un IPES actif, réactive un IPES désactivé. Ses administrateurs
+ * suivent : suspendus avec lui (méta « ueb_suspendu_avec_ipes » pour s'en
+ * souvenir), rétablis avec lui. Un compte déjà suspendu à part le reste.
+ */
+function ueb_action_ipes_etat() {
+	ueb_exiger_admin();
+	$ipes   = ueb_ipes_du_formulaire();
+	$actif  = ! (int) $ipes->actif;
+	if ( ! ueb_ipes_changer_etat( $ipes->id, $actif ) ) {
+		ueb_flash( 'erreur', 'L’état de l’IPES n’a pas pu être changé. Réessaie dans un instant.' );
+		ueb_rediriger( ueb_url_ipes( $ipes->id ) );
+	}
+	foreach ( ueb_ipes_comptes( $ipes->id ) as $compte ) {
+		if ( ! $actif && ! ueb_agent_suspendu( $compte->ID ) ) {
+			update_user_meta( $compte->ID, 'ueb_agent_suspendu', 1 );
+			update_user_meta( $compte->ID, 'ueb_suspendu_avec_ipes', 1 );
+		} elseif ( $actif && get_user_meta( $compte->ID, 'ueb_suspendu_avec_ipes', true ) ) {
+			delete_user_meta( $compte->ID, 'ueb_agent_suspendu' );
+			delete_user_meta( $compte->ID, 'ueb_suspendu_avec_ipes' );
+		}
+	}
+	ueb_flash( 'succes', $actif
+		? 'IPES réactivé : ses administrateurs retrouvent leur accès.'
+		: 'IPES désactivé : ses administrateurs n’ont plus accès. Rien n’est supprimé.' );
+	ueb_rediriger( ueb_url_ipes( $ipes->id ) );
+}
