@@ -13,7 +13,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-const UEB_INSC_DB_VERSION = '5';
+const UEB_INSC_DB_VERSION = '6';
 
 function ueb_insc_schema() {
 	return array(
@@ -107,6 +107,50 @@ function ueb_insc_schema() {
 			type ENUM('droits','medicaux') NOT NULL DEFAULT 'droits',
 			dernier INT UNSIGNED NOT NULL DEFAULT 0,
 			PRIMARY KEY (etablissement, annee_academique, type)
+		) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+		/* Établissements privés sous tutelle (IPES), enregistrés par
+		   l'administration. convention_fin_le reste facultative. */
+		'ueb_insc_ipes' => "CREATE TABLE IF NOT EXISTS ueb_insc_ipes (
+			id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+			sigle VARCHAR(20) NOT NULL,
+			nom_fr VARCHAR(150) NOT NULL,
+			nom_en VARCHAR(150) NOT NULL DEFAULT '',
+			ville VARCHAR(100) NOT NULL DEFAULT '',
+			telephone VARCHAR(12) NOT NULL DEFAULT '',
+			email VARCHAR(150) NOT NULL DEFAULT '',
+			logo VARCHAR(100) NOT NULL DEFAULT '',
+			convention_ref VARCHAR(100) NOT NULL DEFAULT '',
+			convention_signee_le DATE NULL,
+			convention_fin_le DATE NULL,
+			actif TINYINT(1) NOT NULL DEFAULT 1,
+			modifie_par BIGINT UNSIGNED NULL,
+			date_creation DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			date_modification DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+			PRIMARY KEY (id),
+			UNIQUE KEY uniq_sigle (sigle)
+		) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+		/* Tutelles d'un IPES : un ou plusieurs établissements de l'UEb
+		   (sigles de ueb_etablissements()). */
+		'ueb_insc_ipes_tutelles' => "CREATE TABLE IF NOT EXISTS ueb_insc_ipes_tutelles (
+			ipes_id INT UNSIGNED NOT NULL,
+			etablissement VARCHAR(10) NOT NULL,
+			depuis_le DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			PRIMARY KEY (ipes_id, etablissement),
+			KEY idx_etablissement (etablissement)
+		) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+		/* Filières d'un IPES. Une filière retirée est désactivée, jamais
+		   supprimée. La collation rend l'unicité insensible à la casse. */
+		'ueb_insc_ipes_filieres' => "CREATE TABLE IF NOT EXISTS ueb_insc_ipes_filieres (
+			id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+			ipes_id INT UNSIGNED NOT NULL,
+			libelle VARCHAR(150) NOT NULL,
+			actif TINYINT(1) NOT NULL DEFAULT 1,
+			date_creation DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			PRIMARY KEY (id),
+			UNIQUE KEY uniq_ipes_libelle (ipes_id, libelle)
 		) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
 	);
 }
