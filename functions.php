@@ -14,6 +14,7 @@
  *   inc/recus.php         envoi et consultation des reçus bancaires
  *   inc/gestion.php       espace d'administration
  *   inc/direction.php     rôles dynamiques et personnel (espace Direction)
+ *   inc/ipes.php          établissements privés sous tutelle (IPES)
  *   inc/assets.php        feuilles de style et scripts
  *
  * @package Inscription_UEB
@@ -25,7 +26,7 @@ define( 'UEB_INSC_VERSION', '1.0.0' );
 define( 'UEB_INSC_DIR', get_template_directory() );
 define( 'UEB_INSC_URI', get_template_directory_uri() );
 
-foreach ( array( 'config', 'db-schema', 'session', 'routes', 'roles', 'comptes', 'nombres', 'inscription', 'quitus', 'quitus-pdf', 'recus', 'gestion', 'direction', 'assets', 'vues', 'bord', 'bord-graphes', 'landing' ) as $ueb_module ) {
+foreach ( array( 'config', 'db-schema', 'session', 'routes', 'roles', 'comptes', 'nombres', 'inscription', 'quitus', 'quitus-pdf', 'recus', 'gestion', 'direction', 'ipes', 'assets', 'vues', 'bord', 'bord-graphes', 'landing' ) as $ueb_module ) {
 	require_once UEB_INSC_DIR . '/inc/' . $ueb_module . '.php';
 }
 
