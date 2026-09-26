@@ -300,6 +300,14 @@ function ueb_action_ipes_enregistrer() {
 	}
 	$saisie['tutelles'] = array_map( 'sanitize_text_field', (array) wp_unslash( $_POST['tutelles'] ?? array() ) );
 
+	/* Logo refusé : rien n'est enregistré, et les autres erreurs sont signalées en même temps. */
+	$logo = ueb_ipes_logo_envoye();
+	if ( isset( $logo['erreur'] ) ) {
+		ueb_memoriser_saisie( $saisie, ueb_ipes_valider( ueb_ipes_normaliser( $saisie ), $id ) + array( 'logo' => $logo['erreur'] ) );
+		ueb_flash( 'erreur', 'Corrige les champs signalés.' );
+		ueb_rediriger( ueb_url_ipes( $id ?: 'nouveau' ) );
+	}
+
 	$resultat = ueb_ipes_enregistrer( $saisie, $id );
 	if ( is_wp_error( $resultat ) ) {
 		ueb_memoriser_saisie( $saisie, (array) $resultat->get_error_data() ?: array( 'general' => $resultat->get_error_message() ) );
@@ -307,5 +315,99 @@ function ueb_action_ipes_enregistrer() {
 		ueb_rediriger( ueb_url_ipes( $id ?: 'nouveau' ) );
 	}
 	ueb_flash( 'succes', $id ? 'IPES mis à jour.' : 'IPES créé.' );
+	if ( $logo && ! ueb_ipes_installer_logo( $resultat, $logo ) ) {
+		ueb_flash( 'alerte', 'Le logo n’a pas pu être enregistré : envoie-le à nouveau.' );
+	}
 	ueb_rediriger( ueb_url_ipes( $resultat ) );
+}
+
+/* ---------- Logo ----------
+   Rangé dans uploads/ueb-ipes/, public (il s'affiche dans l'administration).
+   L'image envoyée est réencodée en PNG : un fichier piégé déguisé en image
+   ne survit pas, et la transparence d'un logo est conservée. */
+
+const UEB_IPES_LOGO_MAX_OCTETS = MB_IN_BYTES;
+const UEB_IPES_LOGO_MAX_PIXELS = 512;
+
+function ueb_ipes_dossier_logos() {
+	$base  = wp_upload_dir( null, false )['basedir'] . '/ueb-ipes';
+	$garde = $base . '/.htaccess';
+	if ( ! is_dir( $base ) ) {
+		wp_mkdir_p( $base );
+	}
+	if ( ! file_exists( $garde ) ) {
+		/* Lecture des images permise, liste du dossier et scripts interdits. */
+		file_put_contents( $garde, "Options -Indexes\n<FilesMatch \"\.(php|phtml|phar)\$\">\nRequire all denied\n</FilesMatch>\n" );
+		file_put_contents( $base . '/index.php', "<?php // Silence.\n" );
+	}
+	return $base;
+}
+
+/** Adresse du logo d'un IPES, ou null s'il n'en a pas. */
+function ueb_ipes_logo_url( $ipes ) {
+	if ( ! $ipes || '' === (string) $ipes->logo || ! file_exists( ueb_ipes_dossier_logos() . '/' . $ipes->logo ) ) {
+		return null;
+	}
+	return wp_upload_dir( null, false )['baseurl'] . '/ueb-ipes/' . rawurlencode( $ipes->logo );
+}
+
+/**
+ * Logo envoyé avec le formulaire : null si aucun fichier, sinon
+ * array( 'tmp' => chemin ) ou array( 'erreur' => message ).
+ */
+function ueb_ipes_logo_envoye() {
+	$f = $_FILES['logo'] ?? null;
+	if ( ! $f || is_array( $f['name'] ) || UPLOAD_ERR_NO_FILE === $f['error'] ) {
+		return null;
+	}
+	if ( UPLOAD_ERR_OK !== $f['error'] || ! is_uploaded_file( $f['tmp_name'] ) ) {
+		return array( 'erreur' => 'Le logo n’a pas pu être envoyé. Réessaie.' );
+	}
+	if ( $f['size'] > UEB_IPES_LOGO_MAX_OCTETS ) {
+		return array( 'erreur' => 'Le logo dépasse 1 Mo.' );
+	}
+	$type = ( new finfo( FILEINFO_MIME_TYPE ) )->file( $f['tmp_name'] );
+	if ( ! in_array( $type, array( 'image/png', 'image/jpeg' ), true ) || ! @getimagesize( $f['tmp_name'] ) ) {
+		return array( 'erreur' => 'Le logo doit être une image PNG ou JPEG.' );
+	}
+	return array( 'tmp' => $f['tmp_name'], 'type' => $type );
+}
+
+/**
+ * Réencode le logo en PNG (512 px au plus), l'enregistre sous un nom neuf
+ * (le navigateur ne garde pas l'ancien en cache) et supprime le précédent.
+ */
+function ueb_ipes_installer_logo( $ipes_id, array $logo ) {
+	global $wpdb;
+	$image = 'image/png' === $logo['type'] ? @imagecreatefrompng( $logo['tmp'] ) : @imagecreatefromjpeg( $logo['tmp'] );
+	if ( ! $image ) {
+		return false;
+	}
+	$l     = imagesx( $image );
+	$h     = imagesy( $image );
+	$ratio = min( 1, UEB_IPES_LOGO_MAX_PIXELS / max( $l, $h ) );
+	/* Toile transparente : la transparence du logo est conservée telle quelle. */
+	$final = imagecreatetruecolor( max( 1, (int) round( $l * $ratio ) ), max( 1, (int) round( $h * $ratio ) ) );
+	imagealphablending( $final, false );
+	imagesavealpha( $final, true );
+	imagefill( $final, 0, 0, imagecolorallocatealpha( $final, 0, 0, 0, 127 ) );
+	imagecopyresampled( $final, $image, 0, 0, 0, 0, imagesx( $final ), imagesy( $final ), $l, $h );
+	imagedestroy( $image );
+
+	$dossier = ueb_ipes_dossier_logos();
+	$nom     = 'ipes-' . (int) $ipes_id . '-' . time() . '.png';
+	$ok      = imagepng( $final, $dossier . '/' . $nom, 9 );
+	imagedestroy( $final );
+	if ( ! $ok ) {
+		return false;
+	}
+	$ancien = (string) $wpdb->get_var( $wpdb->prepare( 'SELECT logo FROM ueb_insc_ipes WHERE id = %d', $ipes_id ) );
+	if ( false === $wpdb->update( 'ueb_insc_ipes', array( 'logo' => $nom ), array( 'id' => (int) $ipes_id ) ) ) {
+		wp_delete_file( $dossier . '/' . $nom );
+		return false;
+	}
+	if ( '' !== $ancien && $ancien !== $nom ) {
+		wp_delete_file( $dossier . '/' . basename( $ancien ) );
+	}
+	return true;
 }
