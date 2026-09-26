@@ -454,3 +454,137 @@ function ueb_action_ipes_etat() {
 		: 'IPES désactivé : ses administrateurs n’ont plus accès. Rien n’est supprimé.' );
 	ueb_rediriger( ueb_url_ipes( $ipes->id ) );
 }
+
+/* ---------- Comptes des administrateurs d'IPES ----------
+   Un rôle WordPress fixe, qui ne porte que la capacité « ueb_espace_ipes » :
+   ni « read » (donc aucun accès à wp-admin), ni aucune capacité du
+   back-office. Il reste hors du registre de la Direction, qui ne peut ni le
+   voir ni l'attribuer. Le compte est rattaché à son IPES par la méta
+   « ueb_ipes_id ». Son espace arrive à l'étape suivante. */
+
+const UEB_CAP_IPES          = 'ueb_espace_ipes';
+const UEB_IPES_ROLE_VERSION = '1';
+
+add_action( 'init', function () {
+	if ( get_option( 'ueb_insc_ipes_role_version' ) === UEB_IPES_ROLE_VERSION || ! ueb_insc_verrouiller( 'role_ipes' ) ) {
+		return;
+	}
+	if ( ueb_insc_option_en_base( 'ueb_insc_ipes_role_version' ) !== UEB_IPES_ROLE_VERSION ) {
+		remove_role( UEB_ROLE_ADMIN_IPES );
+		add_role( UEB_ROLE_ADMIN_IPES, 'Administrateur d’IPES', array( UEB_CAP_IPES => true ) );
+		update_option( 'ueb_insc_ipes_role_version', UEB_IPES_ROLE_VERSION );
+	}
+	ueb_insc_deverrouiller( 'role_ipes' );
+}, 4 );
+
+/** Vrai si ce compte administre un IPES. */
+function ueb_est_admin_ipes( $user_id ) {
+	$user = get_userdata( $user_id );
+	return $user && in_array( UEB_ROLE_ADMIN_IPES, (array) $user->roles, true );
+}
+
+/**
+ * Crée le compte administrateur d'un IPES actif, avec un mot de passe provisoire.
+ *
+ * @return array|WP_Error array( id, mot de passe provisoire ).
+ */
+function ueb_ipes_creer_compte( $ipes, $login, $nom, $email ) {
+	$login = sanitize_user( (string) $login, true );
+	if ( ! (int) $ipes->actif ) {
+		return new WP_Error( 'ueb_ipes_compte', 'Cet IPES est désactivé : réactive-le avant de lui créer un compte.' );
+	}
+	if ( '' === $login ) {
+		return new WP_Error( 'ueb_ipes_compte', 'Saisis un identifiant de connexion.' );
+	}
+	if ( username_exists( $login ) ) {
+		return new WP_Error( 'ueb_ipes_compte', 'Cet identifiant est déjà pris.' );
+	}
+	if ( '' !== $email && ! is_email( $email ) ) {
+		return new WP_Error( 'ueb_ipes_compte', 'Adresse e-mail invalide.' );
+	}
+	if ( '' !== $email && email_exists( $email ) ) {
+		return new WP_Error( 'ueb_ipes_compte', 'Cette adresse e-mail est déjà utilisée par un autre compte.' );
+	}
+	$mot_de_passe = ueb_mot_de_passe_provisoire();
+	$id = wp_insert_user( array(
+		'user_login'   => $login,
+		'user_pass'    => $mot_de_passe,
+		'user_email'   => $email,
+		'display_name' => '' !== $nom ? $nom : $login,
+		'first_name'   => $nom,
+		'role'         => UEB_ROLE_ADMIN_IPES,
+	) );
+	if ( is_wp_error( $id ) ) {
+		return $id;
+	}
+	update_user_meta( $id, 'ueb_ipes_id', (int) $ipes->id );
+	return array( (int) $id, $mot_de_passe );
+}
+
+/** Compte administrateur désigné par « compte_id », s'il appartient bien à cet IPES. */
+function ueb_ipes_compte_du_formulaire( $ipes ) {
+	$id = (int) ( $_POST['compte_id'] ?? 0 );
+	if ( ! ueb_est_admin_ipes( $id ) || (int) get_user_meta( $id, 'ueb_ipes_id', true ) !== (int) $ipes->id ) {
+		ueb_flash( 'erreur', 'Ce compte n’appartient pas à cet IPES.' );
+		ueb_rediriger( ueb_url_ipes( $ipes->id ) . '#comptes' );
+	}
+	return get_userdata( $id );
+}
+
+/** Mot de passe provisoire à afficher une seule fois sur la fiche de l'IPES. */
+function ueb_ipes_montrer_mot_de_passe( $user, $mot_de_passe ) {
+	$_SESSION['ueb_mdp_ipes'] = array( 'compte' => $user->user_login, 'mdp' => $mot_de_passe );
+}
+
+function ueb_action_ipes_compte_creer() {
+	ueb_exiger_admin();
+	$ipes     = ueb_ipes_du_formulaire();
+	$resultat = ueb_ipes_creer_compte(
+		$ipes,
+		wp_unslash( $_POST['login'] ?? '' ),
+		sanitize_text_field( wp_unslash( $_POST['nom'] ?? '' ) ),
+		sanitize_email( wp_unslash( $_POST['email'] ?? '' ) )
+	);
+	if ( is_wp_error( $resultat ) ) {
+		ueb_flash( 'erreur', $resultat->get_error_message() );
+		ueb_rediriger( ueb_url_ipes( $ipes->id ) . '#comptes' );
+	}
+	ueb_ipes_montrer_mot_de_passe( get_userdata( $resultat[0] ), $resultat[1] );
+	ueb_flash( 'succes', 'Compte administrateur de l’IPES créé.' );
+	ueb_rediriger( ueb_url_ipes( $ipes->id ) . '#comptes' );
+}
+
+/** Nouveau mot de passe provisoire. Les sessions ouvertes du compte sont fermées. */
+function ueb_action_ipes_compte_mdp() {
+	ueb_exiger_admin();
+	$ipes   = ueb_ipes_du_formulaire();
+	$compte = ueb_ipes_compte_du_formulaire( $ipes );
+	$mdp    = ueb_mot_de_passe_provisoire();
+	wp_set_password( $mdp, $compte->ID );
+	WP_Session_Tokens::get_instance( $compte->ID )->destroy_all();
+	ueb_ipes_montrer_mot_de_passe( $compte, $mdp );
+	ueb_flash( 'succes', 'Nouveau mot de passe provisoire créé.' );
+	ueb_rediriger( ueb_url_ipes( $ipes->id ) . '#comptes' );
+}
+
+/** Suspendre ou rétablir un compte. Pas de rétablissement tant que l'IPES est désactivé. */
+function ueb_action_ipes_compte_etat() {
+	ueb_exiger_admin();
+	$ipes   = ueb_ipes_du_formulaire();
+	$compte = ueb_ipes_compte_du_formulaire( $ipes );
+	if ( ueb_agent_suspendu( $compte->ID ) ) {
+		if ( ! (int) $ipes->actif ) {
+			ueb_flash( 'erreur', 'Cet IPES est désactivé : réactive-le pour rétablir ses comptes.' );
+			ueb_rediriger( ueb_url_ipes( $ipes->id ) . '#comptes' );
+		}
+		delete_user_meta( $compte->ID, 'ueb_agent_suspendu' );
+		ueb_flash( 'succes', 'Accès rétabli.' );
+	} else {
+		update_user_meta( $compte->ID, 'ueb_agent_suspendu', 1 );
+		WP_Session_Tokens::get_instance( $compte->ID )->destroy_all();
+		ueb_flash( 'succes', 'Accès suspendu. Le compte est conservé.' );
+	}
+	/* Décision prise à la main : la réactivation de l'IPES ne la défera pas. */
+	delete_user_meta( $compte->ID, 'ueb_suspendu_avec_ipes' );
+	ueb_rediriger( ueb_url_ipes( $ipes->id ) . '#comptes' );
+}

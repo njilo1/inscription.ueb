@@ -826,7 +826,8 @@ function ueb_action_gestion_agent_supprimer() {
 
 /** Après connexion, un gestionnaire arrive directement sur son espace. */
 add_filter( 'login_redirect', function ( $url, $demande, $utilisateur ) {
-	if ( $utilisateur instanceof WP_User && ! user_can( $utilisateur, 'manage_options' ) && ueb_est_agent( $utilisateur->ID ) ) {
+	/* L'administrateur d'un IPES n'a pas accès à wp-admin : il n'y est jamais envoyé. */
+	if ( $utilisateur instanceof WP_User && ! user_can( $utilisateur, 'manage_options' ) && ( ueb_est_agent( $utilisateur->ID ) || ueb_est_admin_ipes( $utilisateur->ID ) ) ) {
 		return ueb_url_espace_du_compte( $utilisateur->ID );
 	}
 	if ( $demande ) {
