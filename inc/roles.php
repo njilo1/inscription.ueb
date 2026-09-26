@@ -138,11 +138,14 @@ add_action( 'init', function () {
 			}
 		}
 	}
-	if ( get_option( 'ueb_insc_roles_version' ) === UEB_ROLES_VERSION ) {
+	if ( get_option( 'ueb_insc_roles_version' ) === UEB_ROLES_VERSION || ! ueb_insc_verrouiller( 'roles' ) ) {
 		return;
 	}
-	ueb_migrer_roles_historiques();
-	update_option( 'ueb_insc_roles_version', UEB_ROLES_VERSION );
+	if ( ueb_insc_option_en_base( 'ueb_insc_roles_version' ) !== UEB_ROLES_VERSION ) {
+		ueb_migrer_roles_historiques();
+		update_option( 'ueb_insc_roles_version', UEB_ROLES_VERSION );
+	}
+	ueb_insc_deverrouiller( 'roles' );
 }, 4 );
 
 /**

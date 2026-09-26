@@ -161,8 +161,35 @@ function ueb_insc_installer_schema() {
 	update_option( 'ueb_insc_db_version', UEB_INSC_DB_VERSION );
 }
 
+/**
+ * Verrou MySQL pour les tâches d'installation lancées depuis « init ».
+ * Au premier affichage, le navigateur envoie plusieurs requêtes à la fois :
+ * sans verrou, chacune croit l'installation à faire et la lance (colonnes
+ * ajoutées deux fois, Page créée en double). Non bloquant : la requête qui
+ * n'obtient pas le verrou passe son tour.
+ */
+function ueb_insc_verrouiller( $nom ) {
+	global $wpdb;
+	return '1' === (string) $wpdb->get_var( $wpdb->prepare( 'SELECT GET_LOCK(%s, 0)', DB_NAME . '.' . $nom ) );
+}
+function ueb_insc_deverrouiller( $nom ) {
+	global $wpdb;
+	$wpdb->query( $wpdb->prepare( 'SELECT RELEASE_LOCK(%s)', DB_NAME . '.' . $nom ) );
+}
+
+/** Valeur d'une option lue en base, sans le cache de la requête en cours. */
+function ueb_insc_option_en_base( $nom ) {
+	global $wpdb;
+	return $wpdb->get_var( $wpdb->prepare( "SELECT option_value FROM {$wpdb->options} WHERE option_name = %s", $nom ) );
+}
+
 add_action( 'init', function () {
-	if ( get_option( 'ueb_insc_db_version' ) !== UEB_INSC_DB_VERSION ) {
+	if ( get_option( 'ueb_insc_db_version' ) === UEB_INSC_DB_VERSION || ! ueb_insc_verrouiller( 'schema' ) ) {
+		return;
+	}
+	/* Une autre requête a pu finir le travail pendant qu'on attendait. */
+	if ( ueb_insc_option_en_base( 'ueb_insc_db_version' ) !== UEB_INSC_DB_VERSION ) {
 		ueb_insc_installer_schema();
 	}
+	ueb_insc_deverrouiller( 'schema' );
 }, 5 );
