@@ -205,6 +205,29 @@ function ueb_agent_suspendu( $user_id = 0 ) {
 	return (bool) get_user_meta( $user_id ?: get_current_user_id(), 'ueb_agent_suspendu', true );
 }
 
+/* Un compte suspendu ne se connecte plus, par aucune porte (wp-login.php
+   compris). Contrôle placé après celui du mot de passe (priorité 20) : la
+   suspension n'est révélée qu'à qui connaît le mot de passe. Un
+   administrateur n'est jamais bloqué, pour ne pas fermer la plateforme. */
+add_filter( 'authenticate', function ( $utilisateur ) {
+	if ( $utilisateur instanceof WP_User && ! user_can( $utilisateur, 'manage_options' ) && ueb_agent_suspendu( $utilisateur->ID ) ) {
+		return new WP_Error( 'ueb_compte_suspendu', 'Ce compte est suspendu. Contacte l’administration de l’UEb.' );
+	}
+	return $utilisateur;
+}, 30 );
+
+/* Une session ouverte avant la suspension est fermée à la requête suivante. */
+add_action( 'init', function () {
+	if ( is_user_logged_in() && ! current_user_can( 'manage_options' ) && ueb_agent_suspendu() ) {
+		wp_logout();
+	}
+}, 1 );
+
+/** Message d'échec des formulaires de connexion du back-office. */
+function ueb_message_echec_connexion( WP_Error $erreur, $par_defaut ) {
+	return 'ueb_compte_suspendu' === $erreur->get_error_code() ? $erreur->get_error_message() : $par_defaut;
+}
+
 /** Rôle du registre porté par ce compte (slug), ou chaîne vide. */
 function ueb_role_du_compte( $user_id = 0 ) {
 	$user = get_userdata( $user_id ?: get_current_user_id() );

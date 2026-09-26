@@ -33,7 +33,7 @@ if ( isset( $_POST['ueb_connexion_direction'] ) ) {
 		), is_ssl() );
 		if ( is_wp_error( $utilisateur ) ) {
 			ueb_noter_echec_gestion( $identifiant );
-			$erreur_connexion = 'Identifiant ou mot de passe incorrect.';
+			$erreur_connexion = ueb_message_echec_connexion( $utilisateur, 'Identifiant ou mot de passe incorrect.' );
 		} elseif ( ! user_can( $utilisateur, UEB_CAP_DIRECTION ) || ueb_agent_suspendu( $utilisateur->ID ) ) {
 			wp_logout();
 			$erreur_connexion = "Ce compte n'a pas accès à l'espace Direction.";
