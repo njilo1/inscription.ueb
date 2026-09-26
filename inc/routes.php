@@ -173,6 +173,11 @@ function ueb_traiter_action( $action ) {
 		'direction_compte_role'      => 'ueb_action_direction_compte_role',
 		'direction_compte_etat'      => 'ueb_action_direction_compte_etat',
 		'direction_compte_mdp'       => 'ueb_action_direction_compte_mdp',
+		'ipes_enregistrer'           => 'ueb_action_ipes_enregistrer',
+		'ipes_etat'                  => 'ueb_action_ipes_etat',
+		'ipes_compte_creer'          => 'ueb_action_ipes_compte_creer',
+		'ipes_compte_mdp'            => 'ueb_action_ipes_compte_mdp',
+		'ipes_compte_etat'           => 'ueb_action_ipes_compte_etat',
 	);
 	if ( ! isset( $traitements[ $action ] ) ) {
 		return;
