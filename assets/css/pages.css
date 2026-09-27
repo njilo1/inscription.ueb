@@ -2047,3 +2047,5 @@
 .ipes-fiche__actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .75rem; }.ipes-filiere-ajout { display: flex; flex-wrap: wrap; align-items: flex-start; gap: .75rem; max-width: 680px; margin-bottom: 1.25rem; }
 .ipes-filiere-ajout .champ { flex: 1 1 16rem; margin: 0; }
 .ipes-filiere-ajout .btn { margin-top: 1.85rem; }
+/* Barre latérale d'un IPES sans logo : une icône d'école à la place, dans le même carré blanc. */
+.bo-marque__icone { flex: none; display: grid; place-items: center; width: 38px; height: 38px; border-radius: 10px; background: var(--blanc); color: var(--vert-bandeau); }

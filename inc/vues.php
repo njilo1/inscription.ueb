@@ -816,20 +816,28 @@ function ueb_carte_chiffre( $valeur, $libelle, $icone = '', $variante = '', arra
  * @param string $espace Nom de l'espace, affiché au-dessus de la navigation.
  * @param array  $liens  array( array( 'url', 'libelle', 'icone', 'actif' ) )
  * @param array  $pied   array( 'titre' => string, 'note' => string )
+ * @param array  $marque En-tête propre à l'espace (celui d'un IPES) :
+ *                       array( 'nom', 'note', 'url', 'logo' ) ; logo vide = icône.
+ *                       Par défaut : « Inscriptions », Université d'Ebolowa.
  */
-function ueb_bo_barre( $espace, array $liens, array $pied = array() ) {
+function ueb_bo_barre( $espace, array $liens, array $pied = array(), array $marque = array() ) {
 	$utilisateur = wp_get_current_user();
 	$nom         = $utilisateur->display_name ? $utilisateur->display_name : $utilisateur->user_login;
 	$role        = ueb_nom_role_du_compte(); // nom saisi par la Direction, jamais écrit dans le code
 	$liens       = array_values( array_filter( $liens ) ); // entrées retirées faute de permission
 	$role_classe = sanitize_html_class( strtolower( str_replace( ' ', '-', remove_accents( $role ) ) ) );
+	$marque      = $marque + array( 'nom' => 'Inscriptions', 'note' => UEB_UNIVERSITE['fr'], 'url' => home_url( '/' ), 'logo' => ueb_logo_url( 'UEB' ) );
 	?>
 	<aside class="bo-sidebar bo-sidebar--<?php echo esc_attr( $role_classe ); ?>">
-		<a class="bo-marque" href="<?php echo esc_url( home_url( '/' ) ); ?>">
-			<img src="<?php echo esc_url( ueb_logo_url( 'UEB' ) ); ?>" alt="" width="38" height="38">
+		<a class="bo-marque" href="<?php echo esc_url( $marque['url'] ); ?>">
+			<?php if ( $marque['logo'] ) : ?>
+				<img src="<?php echo esc_url( $marque['logo'] ); ?>" alt="" width="38" height="38">
+			<?php else : ?>
+				<span class="bo-marque__icone" aria-hidden="true"><?php echo ueb_icone( 'ecole', 22 ); ?></span>
+			<?php endif; ?>
 			<span class="bo-marque__texte">
-				<span class="bo-marque__nom">Inscriptions</span>
-				<span class="bo-marque__note"><?php echo esc_html( UEB_UNIVERSITE['fr'] ); ?></span>
+				<span class="bo-marque__nom"><?php echo esc_html( $marque['nom'] ); ?></span>
+				<span class="bo-marque__note"><?php echo esc_html( $marque['note'] ); ?></span>
 			</span>
 		</a>
 

@@ -107,7 +107,16 @@ ueb_page_debut( array( 'titre' => 'Espace IPES', 'variante' => $autorise ? 'bo' 
 					array( 'url' => $ici( array( 'vue' => 'bordereaux' ) ), 'libelle' => 'Bordereaux', 'icone' => 'recu', 'actif' => 'bordereaux' === $vue ),
 					array( 'url' => $ici( array( 'vue' => 'securite' ) ), 'libelle' => 'Sécurité', 'icone' => 'cadenas', 'actif' => 'securite' === $vue ),
 				),
-				array( 'titre' => $ipes->sigle, 'note' => $ipes->nom_fr )
+				array(
+					'titre' => 1 === count( $ipes->tutelles ) ? 'Tutelle' : 'Tutelles',
+					'note'  => implode( ', ', array_map( static fn( $s ) => $s . ' — ' . ( ueb_etablissement( $s )['fr'] ?? $s ), $ipes->tutelles ) ),
+				),
+				array(
+					'nom'  => $ipes->sigle,
+					'note' => 'Sous tutelle de l’UEb',
+					'url'  => ueb_url_espace_ipes(),
+					'logo' => ueb_ipes_logo_url( $ipes ),
+				)
 			);
 			?>
 
