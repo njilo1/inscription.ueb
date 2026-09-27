@@ -2049,3 +2049,12 @@
 .ipes-filiere-ajout .btn, .ipes-versement-ajout .btn { margin-top: 1.85rem; }
 /* Barre latérale d'un IPES sans logo : une icône d'école à la place, dans le même carré blanc. */
 .bo-marque__icone { flex: none; display: grid; place-items: center; width: 38px; height: 38px; border-radius: 10px; background: var(--blanc); color: var(--vert-bandeau); }
+/* Espace IPES, bordereaux : création sur une ligne, cases à cocher, total en pied. */
+.ipes-bordereau-nouveau { display: flex; flex-wrap: wrap; align-items: flex-end; gap: .75rem 1rem; }
+.ipes-bordereau-nouveau .champ { flex: 1 1 18rem; margin: 0; }
+.ipes-bordereau-nouveau > p { margin: 0; flex: 1 1 18rem; }
+.ipes-case { width: 2.75rem; text-align: center; }
+.ipes-case input { width: 20px; height: 20px; accent-color: var(--vert-bandeau); cursor: pointer; }
+.ipes-bordereau__pied { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .75rem 1.25rem; padding-top: .9rem; border-top: 1px solid var(--filet); }
+.ipes-bordereau__total { margin: 0; font-size: 1.05rem; }
+.ipes-bordereau__total b { font-size: 1.35rem; font-variant-numeric: tabular-nums; }
