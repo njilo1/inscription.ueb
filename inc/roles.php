@@ -584,7 +584,9 @@ function ueb_url_espace_du_compte( $user_id ) {
 	if ( user_can( $user_id, UEB_CAP_DIRECTION ) ) {
 		return ueb_url_direction();
 	}
-	/* Administrateur d'IPES : l'accueil, en attendant l'espace IPES. */
+	if ( user_can( $user_id, UEB_CAP_IPES ) ) {
+		return ueb_url_espace_ipes();
+	}
 	return home_url( '/' );
 }
 

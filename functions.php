@@ -18,6 +18,7 @@
  *   inc/ipes-filieres.php filières des IPES
  *   inc/ipes-etudiants.php étudiants des IPES et leurs versements de pension
  *   inc/ipes-bordereaux.php bordereaux de reversement des IPES à leur tutelle
+ *   inc/ipes-espace.php   espace de l'administrateur d'un IPES : page et accès
  *   inc/assets.php        feuilles de style et scripts
  *
  * @package Inscription_UEB
@@ -29,7 +30,7 @@ define( 'UEB_INSC_VERSION', '1.0.0' );
 define( 'UEB_INSC_DIR', get_template_directory() );
 define( 'UEB_INSC_URI', get_template_directory_uri() );
 
-foreach ( array( 'config', 'db-schema', 'session', 'routes', 'roles', 'comptes', 'nombres', 'inscription', 'quitus', 'quitus-pdf', 'recus', 'gestion', 'direction', 'ipes', 'ipes-filieres', 'ipes-etudiants', 'ipes-bordereaux', 'assets', 'vues', 'bord', 'bord-graphes', 'landing' ) as $ueb_module ) {
+foreach ( array( 'config', 'db-schema', 'session', 'routes', 'roles', 'comptes', 'nombres', 'inscription', 'quitus', 'quitus-pdf', 'recus', 'gestion', 'direction', 'ipes', 'ipes-filieres', 'ipes-etudiants', 'ipes-bordereaux', 'ipes-espace', 'assets', 'vues', 'bord', 'bord-graphes', 'landing' ) as $ueb_module ) {
 	require_once UEB_INSC_DIR . '/inc/' . $ueb_module . '.php';
 }
 

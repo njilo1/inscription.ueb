@@ -40,7 +40,8 @@ add_action( 'wp_enqueue_scripts', function () {
 
 	/* Emblème animé aussi sur les écrans de connexion des espaces scolarité et Direction. */
 	$connexion_scolarite = ( is_page_template( 'page-scolarite.php' ) && ! ( is_user_logged_in() && function_exists( 'ueb_est_scolarite' ) && ueb_est_scolarite() ) )
-		|| ( is_page_template( 'page-direction.php' ) && ! ( function_exists( 'ueb_peut' ) && ueb_peut( UEB_CAP_DIRECTION ) ) );
+		|| ( is_page_template( 'page-direction.php' ) && ! ( function_exists( 'ueb_peut' ) && ueb_peut( UEB_CAP_DIRECTION ) ) )
+		|| ( is_page_template( 'page-ipes.php' ) && ! ( function_exists( 'ueb_ipes_du_compte' ) && ueb_ipes_du_compte() ) );
 	/* Vues de travail de la scolarité (tableau de bord, quitus, dossier, paiements)
 	   et suivi des paiements de l'administration, qui partage le même rendu :
 	   graphiques, infobulles, jauge et suivi animés. */
