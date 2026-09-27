@@ -12,6 +12,11 @@ defined( 'ABSPATH' ) || exit;
 
 $ipes_demande = sanitize_key( wp_unslash( $_GET['ipes'] ?? '' ) );
 
+/* Bloc de la fiche où afficher les messages (voir ueb_ipes_retour_bloc()) ;
+   lu une seule fois, quelle que soit la vue, pour ne jamais servir deux fois. */
+$bloc_messages = in_array( $_SESSION['ueb_ipes_bloc'] ?? '', array( 'filieres', 'comptes' ), true ) ? $_SESSION['ueb_ipes_bloc'] : '';
+unset( $_SESSION['ueb_ipes_bloc'] );
+
 /** Date AAAA-MM-JJ affichée JJ/MM/AAAA, ou tiret. */
 $ipes_date = static fn( $date ) => $date ? mysql2date( 'd/m/Y', $date ) : '—';
 ?>
@@ -155,7 +160,7 @@ $ipes_date = static fn( $date ) => $date ? mysql2date( 'd/m/Y', $date ) : '—';
 				</form>
 			<?php endif; ?>
 		</header>
-		<?php ueb_afficher_flash(); ?>
+		<?php if ( ! $bloc_messages || ! $ipes ) { ueb_afficher_flash(); } ?>
 
 		<?php if ( $erreurs ) : ?>
 			<div class="alerte alerte--erreur ipes-erreurs" role="alert" tabindex="-1" aria-labelledby="ipes-erreurs-titre" data-resume-erreurs>
@@ -288,6 +293,7 @@ $ipes_date = static fn( $date ) => $date ? mysql2date( 'd/m/Y', $date ) : '—';
 					</div>
 				</header>
 				<div class="section-form__corps">
+					<?php if ( 'filieres' === $bloc_messages ) { ueb_afficher_flash(); } ?>
 					<form class="formulaire ipes-filiere-ajout" method="post" action="<?php echo esc_url( ueb_url_administration() ); ?>" data-formulaire novalidate>
 						<?php ueb_champ_csrf(); ?>
 						<input type="hidden" name="ueb_action" value="ipes_filiere_ajouter">
@@ -335,6 +341,96 @@ $ipes_date = static fn( $date ) => $date ? mysql2date( 'd/m/Y', $date ) : '—';
 								</tbody>
 							</table>
 						</div>
+					<?php endif; ?>
+				</div>
+			</section>
+
+			<?php
+			$comptes = ueb_ipes_comptes( $ipes->id );
+			/* Mot de passe provisoire : affiché une seule fois, juste après sa création. */
+			$prov_ipes = $_SESSION['ueb_mdp_ipes'] ?? null;
+			unset( $_SESSION['ueb_mdp_ipes'] );
+			?>
+			<section id="comptes" class="carte section-form" aria-labelledby="ipes-comptes-titre">
+				<header class="section-form__entete">
+					<span class="section-form__num"><?php echo ueb_icone( 'utilisateur', 18 ); ?></span>
+					<div>
+						<h2 id="ipes-comptes-titre">Administrateur de l’IPES</h2>
+						<p>Le compte avec lequel l’IPES déclarera ses étudiants et ses reversements. Il n’a accès à rien d’autre sur la plateforme.</p>
+					</div>
+				</header>
+				<div class="section-form__corps">
+					<?php if ( 'comptes' === $bloc_messages ) { ueb_afficher_flash(); } ?>
+					<?php if ( $prov_ipes ) : ?>
+						<div class="provisoire carte" role="status">
+							<?php echo ueb_icone( 'cle', 26 ); ?>
+							<div>
+								<p>Mot de passe provisoire pour <b><?php echo esc_html( $prov_ipes['compte'] ); ?></b> — à communiquer à l’IPES, il ne sera plus affiché :</p>
+								<p class="provisoire__mdp"><?php echo esc_html( $prov_ipes['mdp'] ); ?></p>
+								<button type="button" class="btn btn--fantome btn--petit provisoire__copier" data-copier-mot-de-passe="<?php echo esc_attr( $prov_ipes['mdp'] ); ?>"><?php echo ueb_icone( 'fichier', 16 ); ?><span>Copier le mot de passe</span></button>
+							</div>
+						</div>
+					<?php endif; ?>
+
+					<?php if ( (int) $ipes->actif ) : ?>
+						<form class="formulaire ipes-compte-form" method="post" action="<?php echo esc_url( ueb_url_administration() ); ?>" data-formulaire novalidate>
+							<?php ueb_champ_csrf(); ?>
+							<input type="hidden" name="ueb_action" value="ipes_compte_creer">
+							<input type="hidden" name="ipes_id" value="<?php echo (int) $ipes->id; ?>">
+							<div class="formulaire__rangee">
+								<?php
+								ueb_champ( array( 'nom' => 'login', 'id' => 'compte-login', 'libelle' => 'Identifiant de connexion', 'icone' => 'utilisateur', 'attrs' => array( 'placeholder' => 'admin.' . strtolower( $ipes->sigle ), 'autocapitalize' => 'none', 'spellcheck' => 'false', 'autocomplete' => 'off' ) ) );
+								ueb_champ( array( 'nom' => 'nom', 'id' => 'compte-nom', 'libelle' => 'Nom du responsable', 'icone' => 'utilisateur', 'requis' => false, 'attrs' => array( 'placeholder' => 'Nom et prénom', 'autocomplete' => 'off' ) ) );
+								?>
+							</div>
+							<?php ueb_champ( array( 'nom' => 'email', 'id' => 'compte-email', 'libelle' => 'Adresse e-mail', 'type' => 'email', 'icone' => 'courriel', 'requis' => false, 'aide' => 'Utile pour récupérer un mot de passe oublié.', 'attrs' => array( 'autocomplete' => 'off' ) ) ); ?>
+							<p class="champ__aide">Le mot de passe provisoire est créé automatiquement et affiché une seule fois.</p>
+							<div class="securite-form__actions">
+								<button class="btn btn--primaire" type="submit"><?php echo ueb_icone( 'plus', 18 ); ?>Créer le compte</button>
+							</div>
+						</form>
+					<?php else : ?>
+						<div class="bo-vide"><span><?php echo ueb_icone( 'cadenas', 22 ); ?></span><p><b>Cet IPES est désactivé.</b> Réactive-le pour lui créer un compte ou rétablir ses accès.</p></div>
+					<?php endif; ?>
+
+					<?php if ( $comptes ) : ?>
+						<div class="tableau-conteneur ipes-comptes">
+							<table class="tableau">
+								<thead><tr><th>Compte</th><th>Créé le</th><th>État</th><th><span class="sr">Actions</span></th></tr></thead>
+								<tbody>
+								<?php foreach ( $comptes as $compte ) :
+									$suspendu   = ueb_agent_suspendu( $compte->ID );
+									$avec_ipes  = $suspendu && get_user_meta( $compte->ID, 'ueb_suspendu_avec_ipes', true );
+									?>
+									<tr>
+										<td><b><?php echo esc_html( $compte->display_name ); ?></b><br><small class="texte-discret"><?php echo esc_html( $compte->user_login ); ?><?php echo $compte->user_email ? ' · ' . esc_html( $compte->user_email ) : ''; ?></small></td>
+										<td class="num"><?php echo esc_html( mysql2date( 'd/m/Y', $compte->user_registered ) ); ?></td>
+										<td><?php echo $suspendu ? '<span class="badge badge--rejete"><i></i>' . ( $avec_ipes ? 'Suspendu avec l’IPES' : 'Suspendu' ) . '</span>' : '<span class="badge badge--verifie"><i></i>Actif</span>'; ?></td>
+										<td class="actions-ligne">
+											<form method="post" action="<?php echo esc_url( ueb_url_administration() ); ?>" data-confirmer="Créer un nouveau mot de passe provisoire pour <?php echo esc_attr( $compte->user_login ); ?> ? L’ancien ne fonctionnera plus et ses sessions seront fermées.">
+												<?php ueb_champ_csrf(); ?>
+												<input type="hidden" name="ueb_action" value="ipes_compte_mdp">
+												<input type="hidden" name="ipes_id" value="<?php echo (int) $ipes->id; ?>">
+												<input type="hidden" name="compte_id" value="<?php echo (int) $compte->ID; ?>">
+												<button class="btn btn--fantome btn--petit" type="submit"><?php echo ueb_icone( 'cle', 16 ); ?>Nouveau mot de passe</button>
+											</form>
+											<?php if ( ! $suspendu || (int) $ipes->actif ) : ?>
+												<form method="post" action="<?php echo esc_url( ueb_url_administration() ); ?>" data-confirmer="<?php echo $suspendu ? 'Rétablir l’accès de ce compte ?' : 'Suspendre ce compte ? Il ne pourra plus se connecter ; il est conservé.'; ?>">
+													<?php ueb_champ_csrf(); ?>
+													<input type="hidden" name="ueb_action" value="ipes_compte_etat">
+													<input type="hidden" name="ipes_id" value="<?php echo (int) $ipes->id; ?>">
+													<input type="hidden" name="compte_id" value="<?php echo (int) $compte->ID; ?>">
+													<button class="btn btn--lien btn--petit" type="submit"><?php echo $suspendu ? 'Rétablir' : 'Suspendre'; ?></button>
+												</form>
+											<?php endif; ?>
+										</td>
+									</tr>
+								<?php endforeach; ?>
+								</tbody>
+							</table>
+						</div>
+					<?php elseif ( (int) $ipes->actif ) : ?>
+						<p class="texte-discret">Aucun compte pour l’instant.</p>
 					<?php endif; ?>
 				</div>
 			</section>

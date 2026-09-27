@@ -286,6 +286,14 @@ function ueb_ipes_du_formulaire() {
 	return $ipes;
 }
 
+/**
+ * Bloc de la fiche (« filieres », « comptes ») où l'action renvoie : ses
+ * messages s'y affichent, là où l'administrateur regarde, plutôt qu'en haut.
+ */
+function ueb_ipes_retour_bloc( $bloc ) {
+	$_SESSION['ueb_ipes_bloc'] = $bloc;
+}
+
 /** Créer (ipes_id vide) ou modifier un IPES et ses tutelles. */
 function ueb_action_ipes_enregistrer() {
 	ueb_exiger_admin();
@@ -538,6 +546,7 @@ function ueb_ipes_montrer_mot_de_passe( $user, $mot_de_passe ) {
 
 function ueb_action_ipes_compte_creer() {
 	ueb_exiger_admin();
+	ueb_ipes_retour_bloc( 'comptes' );
 	$ipes     = ueb_ipes_du_formulaire();
 	$resultat = ueb_ipes_creer_compte(
 		$ipes,
@@ -557,6 +566,7 @@ function ueb_action_ipes_compte_creer() {
 /** Nouveau mot de passe provisoire. Les sessions ouvertes du compte sont fermées. */
 function ueb_action_ipes_compte_mdp() {
 	ueb_exiger_admin();
+	ueb_ipes_retour_bloc( 'comptes' );
 	$ipes   = ueb_ipes_du_formulaire();
 	$compte = ueb_ipes_compte_du_formulaire( $ipes );
 	$mdp    = ueb_mot_de_passe_provisoire();
@@ -570,6 +580,7 @@ function ueb_action_ipes_compte_mdp() {
 /** Suspendre ou rétablir un compte. Pas de rétablissement tant que l'IPES est désactivé. */
 function ueb_action_ipes_compte_etat() {
 	ueb_exiger_admin();
+	ueb_ipes_retour_bloc( 'comptes' );
 	$ipes   = ueb_ipes_du_formulaire();
 	$compte = ueb_ipes_compte_du_formulaire( $ipes );
 	if ( ueb_agent_suspendu( $compte->ID ) ) {
