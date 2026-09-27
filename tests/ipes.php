@@ -78,7 +78,12 @@ verifier( isset( erreurs_de( ueb_ipes_enregistrer( array( 'sigle' => 'NEW', 'tel
 verifier( isset( erreurs_de( ueb_ipes_enregistrer( array( 'sigle' => 'NEW', 'convention_signee_le' => '2026-02-30' ) + $siantou ) )['convention_signee_le'] ), 'date inexistante refusée' );
 verifier( isset( erreurs_de( ueb_ipes_enregistrer( array( 'sigle' => 'NEW', 'convention_fin_le' => '2026-09-01' ) + $siantou ) )['convention_fin_le'] ), 'fin le jour de la signature refusée' );
 verifier( isset( erreurs_de( ueb_ipes_enregistrer( array( 'sigle' => 'NEW', 'convention_fin_le' => '2025-01-01' ) + $siantou ) )['convention_fin_le'] ), 'fin avant la signature refusée' );
+verifier( isset( erreurs_de( ueb_ipes_enregistrer( array( 'sigle' => 'NEW', 'montant_annuel_du' => '0' ) + $siantou ) )['montant_annuel_du'] ), 'montant annuel dû nul refusé' );
+verifier( isset( erreurs_de( ueb_ipes_enregistrer( array( 'sigle' => 'NEW', 'montant_annuel_du' => 'beaucoup' ) + $siantou ) )['montant_annuel_du'] ), 'montant annuel dû sans chiffre refusé' );
 verifier( $avant === nombre_ipes(), 'aucun enregistrement refusé n’a laissé de ligne' );
+verifier( null === ueb_ipes( $id )->montant_annuel_du, 'montant annuel dû vide : non renseigné (NULL)' );
+verifier( $id === ueb_ipes_enregistrer( array( 'montant_annuel_du' => ' 50 000 FCFA' ) + $siantou, $id ) && 50000 === (int) ueb_ipes( $id )->montant_annuel_du, 'montant annuel dû « 50 000 FCFA » enregistré' );
+verifier( $id === ueb_ipes_enregistrer( array( 'montant_annuel_du' => '' ) + $siantou, $id ) && null === ueb_ipes( $id )->montant_annuel_du, 'montant annuel dû vidé : de nouveau NULL' );
 verifier( is_wp_error( ueb_ipes_enregistrer( $siantou, 999999 ) ), 'modification d’un IPES inexistant refusée' );
 
 /* ---------- Modification et tutelles ---------- */

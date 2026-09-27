@@ -228,6 +228,11 @@ $ipes_date = static fn( $date ) => $date ? mysql2date( 'd/m/Y', $date ) : '—';
 						ueb_champ( array( 'nom' => 'convention_fin_le', 'libelle' => 'Fin de la convention', 'type' => 'date', 'requis' => false, 'valeur' => $valeur( 'convention_fin_le' ), 'erreur' => $erreur( 'convention_fin_le' ), 'aide' => 'Laisse vide si la convention n’a pas de terme.' ) );
 						?>
 					</div>
+					<?php
+					/* Après un échec, la saisie telle quelle ; sinon le montant enregistré, lisible. */
+					$montant_du = array_key_exists( 'montant_annuel_du', $saisie ) ? (string) $saisie['montant_annuel_du'] : ( null === ( $ipes->montant_annuel_du ?? null ) ? '' : ueb_formater_montant( (int) $ipes->montant_annuel_du ) );
+					ueb_champ( array( 'nom' => 'montant_annuel_du', 'libelle' => 'Montant annuel dû à la tutelle (FCFA)', 'icone' => 'banque', 'requis' => false, 'valeur' => $montant_du, 'erreur' => $erreur( 'montant_annuel_du' ), 'aide' => 'Indicatif, en attendant la règle définitive : il sert à la jauge de reversement de l’IPES.', 'attrs' => array( 'inputmode' => 'numeric', 'autocomplete' => 'off', 'placeholder' => '50 000' ) ) );
+					?>
 				</div>
 			</section>
 
