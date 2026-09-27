@@ -164,6 +164,30 @@
 		});
 	});
 
+	/* ---------- Total des cases cochées (bordereau d'un IPES) ----------
+	   <form data-total-coches> : cases input[data-montant], [data-total-affiche],
+	   [data-total-nombre], case [data-tout-cocher] facultative. Indicatif : le
+	   serveur recalcule et fige le total à l'envoi. */
+	$$("[data-total-coches]").forEach((form) => {
+		const cases = $$("input[type=checkbox][data-montant]", form);
+		const affiche = $("[data-total-affiche]", form);
+		const nombre = $("[data-total-nombre]", form);
+		const tout = $("[data-tout-cocher]", form);
+		const format = (n) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, " ") + " FCFA";
+		const maj = () => {
+			const cochees = cases.filter((c) => c.checked);
+			if (affiche) affiche.textContent = format(cochees.reduce((s, c) => s + Number(c.dataset.montant || 0), 0));
+			if (nombre) nombre.textContent = cochees.length + " versement" + (cochees.length > 1 ? "s" : "");
+			if (tout) {
+				tout.checked = cases.length > 0 && cochees.length === cases.length;
+				tout.indeterminate = cochees.length > 0 && cochees.length < cases.length;
+			}
+		};
+		cases.forEach((c) => c.addEventListener("change", maj));
+		tout?.addEventListener("change", () => { cases.forEach((c) => { c.checked = tout.checked; }); maj(); });
+		maj();
+	});
+
 	/* ---------- Logo d'un IPES : aperçu de l'image choisie avant l'envoi ---------- */
 	$$("[data-logo-ipes]").forEach((zone) => {
 		const champ = $("input[type=file]", zone);
@@ -735,6 +759,23 @@
 				if (fenetre.returnValue === "oui") {
 					form.dataset.confirme = "1";
 					form.requestSubmit();
+				}
+			}, { once: true });
+		});
+	});
+	/* Sur un bouton : seul ce bouton demande confirmation, et c'est bien lui qui
+	   est envoyé ensuite (son nom compte pour le serveur, ex. « envoyer »). */
+	$$("button[data-confirmer]").forEach((bouton) => {
+		bouton.form?.addEventListener("submit", (ev) => {
+			if (ev.submitter !== bouton || bouton.dataset.confirme === "1" || !fenetre?.showModal) return;
+			ev.preventDefault();
+			$("[data-fenetre-texte]", fenetre).textContent = bouton.dataset.confirmer;
+			fenetre.returnValue = "";
+			fenetre.showModal();
+			fenetre.addEventListener("close", () => {
+				if (fenetre.returnValue === "oui") {
+					bouton.dataset.confirme = "1";
+					bouton.form.requestSubmit(bouton);
 				}
 			}, { once: true });
 		});

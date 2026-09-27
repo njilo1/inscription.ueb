@@ -181,6 +181,14 @@ function ueb_traiter_action( $action ) {
 		'ipes_filiere_ajouter'       => 'ueb_action_ipes_filiere_ajouter',
 		'ipes_filiere_renommer'      => 'ueb_action_ipes_filiere_renommer',
 		'ipes_filiere_etat'          => 'ueb_action_ipes_filiere_etat',
+		/* Espace de l'administrateur d'un IPES (inc/ipes-espace.php). */
+		'ipes_etudiant_enregistrer'  => 'ueb_action_ipes_etudiant_enregistrer',
+		'ipes_etudiant_supprimer'    => 'ueb_action_ipes_etudiant_supprimer',
+		'ipes_paiement_enregistrer'  => 'ueb_action_ipes_paiement_enregistrer',
+		'ipes_paiement_supprimer'    => 'ueb_action_ipes_paiement_supprimer',
+		'ipes_bordereau_creer'       => 'ueb_action_ipes_bordereau_creer',
+		'ipes_bordereau_enregistrer' => 'ueb_action_ipes_bordereau_enregistrer',
+		'ipes_bordereau_supprimer'   => 'ueb_action_ipes_bordereau_supprimer',
 	);
 	if ( ! isset( $traitements[ $action ] ) ) {
 		return;

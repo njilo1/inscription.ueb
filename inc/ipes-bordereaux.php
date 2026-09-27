@@ -28,6 +28,12 @@ const UEB_IPES_STATUTS_BORDEREAU = array(
 /* Statuts dans lesquels l'IPES peut encore modifier son bordereau. */
 const UEB_IPES_BORDEREAU_MODIFIABLE = array( 'brouillon', 'rejete' );
 
+/** Badge d'un statut, aux couleurs des statuts de quitus (à faire, en cours, vérifié, rejeté). */
+function ueb_ipes_badge_bordereau( $statut ) {
+	$classe = array( 'brouillon' => 'genere', 'envoye' => 'recu_envoye', 'verifie' => 'verifie', 'rejete' => 'rejete' )[ $statut ] ?? 'genere';
+	return sprintf( '<span class="badge badge--%s"><i aria-hidden="true"></i>%s</span>', esc_attr( $classe ), esc_html( UEB_IPES_STATUTS_BORDEREAU[ $statut ] ?? $statut ) );
+}
+
 /* ---------- Lecture ---------- */
 
 /** Un bordereau de CET IPES, ou null. */

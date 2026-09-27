@@ -248,6 +248,9 @@ function ueb_nom_role_du_compte( $user_id = 0 ) {
 	if ( $user && user_can( $user, 'manage_options' ) ) {
 		return 'Administrateur';
 	}
+	if ( $user && ueb_est_admin_ipes( $user->ID ) ) {
+		return 'Administrateur de l’IPES'; /* rôle fixe, hors du registre de la Direction */
+	}
 	$role = ueb_role( ueb_role_du_compte( $user_id ) );
 	return $role ? $role['nom'] : 'Compte du personnel';
 }
@@ -584,7 +587,9 @@ function ueb_url_espace_du_compte( $user_id ) {
 	if ( user_can( $user_id, UEB_CAP_DIRECTION ) ) {
 		return ueb_url_direction();
 	}
-	/* Administrateur d'IPES : l'accueil, en attendant l'espace IPES. */
+	if ( user_can( $user_id, UEB_CAP_IPES ) ) {
+		return ueb_url_espace_ipes();
+	}
 	return home_url( '/' );
 }
 
