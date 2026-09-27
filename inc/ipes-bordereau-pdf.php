@@ -281,3 +281,16 @@ function ueb_brd_signature( TCPDF $pdf, $x, $y, $w, $titre, $mention, array $c )
 	ueb_pdf_ajuster( $pdf, $mention, 'uebsans', '', 7.5, $w - 7, 6 );
 	ueb_pdf_texte( $pdf, $x + 3.5, $y + 7.5, 3.8, $mention, $c['gris'] );
 }
+
+/* PDF d'un bordereau depuis l'administration : fiche de l'IPES,
+   ?vue=ipes&ipes={id}&bordereau={id}&pdf=1. Réservé à l'administrateur. */
+add_action( 'template_redirect', function () {
+	if ( ! isset( $_GET['pdf'], $_GET['bordereau'], $_GET['ipes'] ) || ! is_page_template( 'page-administration.php' ) || ! ueb_est_admin_ueb() ) {
+		return;
+	}
+	$ipes      = ueb_ipes( (int) $_GET['ipes'] );
+	$bordereau = $ipes ? ueb_ipes_bordereau( $ipes->id, (int) $_GET['bordereau'] ) : null;
+	if ( ueb_ipes_bordereau_a_pdf( $bordereau ) ) {
+		ueb_ipes_envoyer_pdf_bordereau( $ipes, $bordereau );
+	}
+}, 20 );

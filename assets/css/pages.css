@@ -2058,3 +2058,6 @@
 .ipes-bordereau__pied { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .75rem 1.25rem; padding-top: .9rem; border-top: 1px solid var(--filet); }
 .ipes-bordereau__total { margin: 0; font-size: 1.05rem; }
 .ipes-bordereau__total b { font-size: 1.35rem; font-variant-numeric: tabular-nums; }
+/* Motif de rejet d'un bordereau : même apparence que les champs de la fenêtre. */
+.bo-agent-mdp textarea { width: 100%; min-height: 5.5rem; padding: .6rem .75rem; border: 1px solid var(--filet-fort); border-radius: 8px; font: inherit; font-size: .95rem; color: var(--encre); resize: vertical; }
+.ipes-tableau .badge--recu_envoye { margin-top: .3rem; }

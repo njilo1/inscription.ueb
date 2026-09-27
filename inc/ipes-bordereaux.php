@@ -302,3 +302,58 @@ function ueb_ipes_jauge( $ipes_id, $annee = null ) {
 		'reste'   => null === $du ? null : max( 0, $du - $verifie ),
 	);
 }
+
+/* ---------- Côté administration de l'UEb ---------- */
+
+/**
+ * Bordereaux d'un IPES tels que l'UEb les voit : jamais les brouillons (le
+ * travail en cours de l'IPES), toutes années, ceux à vérifier d'abord.
+ */
+function ueb_ipes_bordereaux_pour_ueb( $ipes_id ) {
+	global $wpdb;
+	return $wpdb->get_results( $wpdb->prepare(
+		"SELECT b.*, COUNT( p.id ) AS nb_versements
+		FROM ueb_insc_ipes_bordereaux b
+		LEFT JOIN ueb_insc_ipes_paiements p ON p.bordereau_id = b.id AND p.ipes_id = b.ipes_id
+		WHERE b.ipes_id = %d AND b.statut <> 'brouillon'
+		GROUP BY b.id
+		ORDER BY FIELD( b.statut, 'envoye', 'rejete', 'verifie' ), b.date_envoi DESC, b.id DESC",
+		$ipes_id
+	) );
+}
+
+/** Nombre de bordereaux en attente de vérification, par IPES : array( ipes_id => n ). */
+function ueb_ipes_bordereaux_a_verifier() {
+	global $wpdb;
+	$compte = array();
+	foreach ( $wpdb->get_results( "SELECT ipes_id, COUNT(*) AS n FROM ueb_insc_ipes_bordereaux WHERE statut = 'envoye' GROUP BY ipes_id" ) as $ligne ) {
+		$compte[ (int) $ligne->ipes_id ] = (int) $ligne->n;
+	}
+	return $compte;
+}
+
+/**
+ * Décision de l'administration sur un bordereau envoyé (fiche de l'IPES,
+ * bloc Bordereaux) : « verifie », ou « rejete » avec un motif.
+ */
+function ueb_action_ipes_bordereau_decider() {
+	ueb_exiger_admin();
+	ueb_ipes_retour_bloc( 'bordereaux' );
+	$ipes      = ueb_ipes_du_formulaire();
+	$retour    = ueb_url_ipes( $ipes->id ) . '#bordereaux';
+	$bordereau = ueb_ipes_bordereau( $ipes->id, (int) ( $_POST['bordereau_id'] ?? 0 ) );
+	if ( ! $bordereau ) {
+		ueb_flash( 'erreur', 'Ce bordereau n’appartient pas à cet IPES.' );
+		ueb_rediriger( $retour );
+	}
+	$verifie  = 'verifie' === sanitize_key( wp_unslash( $_POST['decision'] ?? '' ) );
+	$resultat = ueb_ipes_bordereau_decider( $bordereau->id, $verifie, sanitize_textarea_field( wp_unslash( $_POST['motif'] ?? '' ) ) );
+	if ( is_wp_error( $resultat ) ) {
+		ueb_flash( 'erreur', $resultat->get_error_message() );
+	} else {
+		ueb_flash( 'succes', $verifie
+			? 'Bordereau ' . $bordereau->numero . ' vérifié : l’IPES le voit dans son espace.'
+			: 'Bordereau ' . $bordereau->numero . ' rejeté : l’IPES voit le motif et peut le corriger.' );
+	}
+	ueb_rediriger( $retour );
+}
