@@ -7,7 +7,8 @@
  *     le tableau « Par établissement », dont chaque ligne s'ouvre ;
  *   - Vue d'un établissement (?etab=FS) : ses cartes, ses graphiques et ses
  *     effectifs par filière ;
- *   - Scolarités : créer, rattacher, réinitialiser, suspendre, supprimer.
+ *   - Scolarités : créer, rattacher, réinitialiser, suspendre, supprimer ;
+ *   - IPES : établissements privés sous tutelle (templates/composants/ipes-admin.php).
  *
  * Accès : capacité « manage_options ». La connexion se fait ici ou par la
  * page de connexion WordPress.
@@ -106,6 +107,7 @@ ueb_page_debut( array( 'titre' => 'Administration', 'variante' => $autorise ? 'b
 					array( 'url' => $ici(), 'libelle' => 'Tableau de bord', 'icone' => 'tampon', 'actif' => 'bord' === $vue ),
 					array( 'url' => $ici( array( 'vue' => 'paiements' ) ), 'libelle' => 'Paiements', 'icone' => 'banque', 'actif' => 'paiements' === $vue ),
 					array( 'url' => $ici( array( 'vue' => 'scolarites' ) ), 'libelle' => 'Personnel', 'icone' => 'utilisateur', 'actif' => 'scolarites' === $vue ),
+					array( 'url' => $ici( array( 'vue' => 'ipes' ) ), 'libelle' => 'IPES', 'icone' => 'ecole', 'actif' => 'ipes' === $vue ),
 					array( 'url' => ueb_url_direction(), 'libelle' => 'Rôles (Direction)', 'icone' => 'bouclier', 'actif' => false ),
 				),
 				array(
@@ -234,6 +236,10 @@ ueb_page_debut( array( 'titre' => 'Administration', 'variante' => $autorise ? 'b
 							</tbody>
 						</table>
 					</div>
+
+				<?php elseif ( 'ipes' === $vue ) : ?>
+
+					<?php include UEB_INSC_DIR . '/templates/composants/ipes-admin.php'; ?>
 
 				<?php elseif ( 'paiements' === $vue ) : ?>
 
