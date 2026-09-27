@@ -164,6 +164,26 @@
 		});
 	});
 
+	/* ---------- Logo d'un IPES : aperçu de l'image choisie avant l'envoi ---------- */
+	$$("[data-logo-ipes]").forEach((zone) => {
+		const champ = $("input[type=file]", zone);
+		const apercu = $("[data-logo-apercu]", zone);
+		const vide = $("[data-logo-vide]", zone);
+		const titre = $("[data-logo-titre]", zone);
+		if (!champ || !apercu) return;
+		let url = null;
+		champ.addEventListener("change", () => {
+			const fichier = champ.files?.[0];
+			if (!fichier || !/^image\/(png|jpeg)$/.test(fichier.type)) return;
+			if (url) URL.revokeObjectURL(url);
+			url = URL.createObjectURL(fichier);
+			apercu.src = url;
+			apercu.hidden = false;
+			if (vide) vide.hidden = true;
+			if (titre) titre.textContent = fichier.name;
+		});
+	});
+
 	/* ---------- Menu mobile ---------- */
 	const boutonMenu = $("[data-menu-mobile]");
 	if (boutonMenu) {

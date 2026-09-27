@@ -104,4 +104,174 @@ $ipes_date = static fn( $date ) => $date ? mysql2date( 'd/m/Y', $date ) : '—';
 	</div>
 	</div>
 
+<?php else : ?>
+
+	<?php
+	$nouveau = 'nouveau' === $ipes_demande;
+	$ipes    = $nouveau ? null : ueb_ipes( (int) $ipes_demande );
+	list( $saisie, $erreurs ) = ueb_reprendre_saisie();
+	?>
+	<a class="fil" href="<?php echo esc_url( ueb_url_ipes() ); ?>"><?php echo ueb_icone( 'fleche-g', 18 ); ?>Tous les IPES</a>
+
+	<?php if ( ! $nouveau && ! $ipes ) : ?>
+
+		<header class="page-app__entete"><div><h1>IPES introuvable</h1></div></header>
+		<?php ueb_afficher_flash(); ?>
+		<div class="bo-vide bo-vide--large"><span><?php echo ueb_icone( 'ecole', 24 ); ?></span><p><b>Cet IPES n’existe pas.</b> Il a peut-être été saisi avec une autre adresse : retrouve-le dans la liste.</p></div>
+
+	<?php else : ?>
+
+		<?php
+		/* Après un échec, la saisie prime ; sinon les valeurs enregistrées. */
+		$valeur   = static fn( $champ ) => (string) ( $saisie[ $champ ] ?? ( $ipes->$champ ?? '' ) );
+		$erreur   = static fn( $champ ) => (string) ( $erreurs[ $champ ] ?? '' );
+		$tutelles = array_key_exists( 'tutelles', $saisie ) ? (array) $saisie['tutelles'] : ( $ipes->tutelles ?? array() );
+		$logo     = $ipes ? ueb_ipes_logo_url( $ipes ) : null;
+		?>
+		<header class="page-app__entete">
+			<div class="ipes-nom">
+				<span class="ipes-logo ipes-logo--grand" aria-hidden="true"><?php if ( $logo ) : ?><img src="<?php echo esc_url( $logo ); ?>" alt="" width="40" height="40"><?php else : ?><?php echo ueb_icone( 'ecole', 22 ); ?><?php endif; ?></span>
+				<div>
+					<h1><?php echo $ipes ? esc_html( $ipes->sigle ) : 'Nouvel IPES'; ?></h1>
+					<p class="page-app__sous-titre">
+						<?php if ( $ipes ) : ?>
+							<?php echo esc_html( $ipes->nom_fr ); ?>
+							· <?php echo (int) $ipes->actif ? '<span class="badge badge--verifie"><i></i>Actif</span>' : '<span class="badge badge--rejete"><i></i>Désactivé</span>'; ?>
+						<?php else : ?>
+							Renseigne l’institut, sa convention et le ou les établissements de l’UEb qui en assurent la tutelle.
+						<?php endif; ?>
+					</p>
+				</div>
+			</div>
+			<?php if ( $ipes ) : ?>
+				<form method="post" action="<?php echo esc_url( ueb_url_administration() ); ?>" data-confirmer="<?php echo (int) $ipes->actif ? 'Désactiver cet IPES ? Ses administrateurs perdront leur accès. Rien n’est supprimé.' : 'Réactiver cet IPES ? Ses administrateurs retrouveront leur accès.'; ?>">
+					<?php ueb_champ_csrf(); ?>
+					<input type="hidden" name="ueb_action" value="ipes_etat">
+					<input type="hidden" name="ipes_id" value="<?php echo (int) $ipes->id; ?>">
+					<button class="btn btn--fantome" type="submit"><?php echo ueb_icone( (int) $ipes->actif ? 'pause' : 'lecture', 18 ); ?><?php echo (int) $ipes->actif ? 'Désactiver' : 'Réactiver'; ?></button>
+				</form>
+			<?php endif; ?>
+		</header>
+		<?php ueb_afficher_flash(); ?>
+
+		<?php if ( $erreurs ) : ?>
+			<div class="alerte alerte--erreur ipes-erreurs" role="alert" tabindex="-1" aria-labelledby="ipes-erreurs-titre" data-resume-erreurs>
+				<?php echo ueb_icone( 'alerte', 20 ); ?>
+				<div>
+					<p id="ipes-erreurs-titre"><strong>Vérifie les informations suivantes.</strong></p>
+					<ul>
+						<?php foreach ( $erreurs as $champ => $message ) : ?>
+							<li><?php if ( 'general' === $champ ) : ?><?php echo esc_html( $message ); ?><?php else : ?><a href="#champ-<?php echo esc_attr( $champ ); ?>" data-lien-erreur><?php echo esc_html( $message ); ?></a><?php endif; ?></li>
+						<?php endforeach; ?>
+					</ul>
+				</div>
+			</div>
+		<?php endif; ?>
+
+		<form class="ipes-fiche" method="post" action="<?php echo esc_url( ueb_url_administration() ); ?>" enctype="multipart/form-data" data-formulaire novalidate>
+			<?php ueb_champ_csrf(); ?>
+			<input type="hidden" name="ueb_action" value="ipes_enregistrer">
+			<input type="hidden" name="ipes_id" value="<?php echo $ipes ? (int) $ipes->id : ''; ?>">
+
+			<section class="carte section-form" aria-labelledby="ipes-identite">
+				<header class="section-form__entete">
+					<span class="section-form__num">1</span>
+					<div><h2 id="ipes-identite">Identité</h2><p>Le sigle identifie l’IPES partout sur la plateforme. Il ne peut pas reprendre celui d’un établissement de l’UEb.</p></div>
+				</header>
+				<div class="section-form__corps formulaire">
+					<div class="formulaire__rangee">
+						<?php
+						ueb_champ( array( 'nom' => 'sigle', 'libelle' => 'Sigle', 'icone' => 'ecole', 'valeur' => $valeur( 'sigle' ), 'erreur' => $erreur( 'sigle' ), 'aide' => '2 à 20 caractères : lettres, chiffres ou tiret.', 'attrs' => array( 'maxlength' => 20, 'autocomplete' => 'off', 'autocapitalize' => 'characters', 'spellcheck' => 'false', 'placeholder' => 'SIANTOU' ) ) );
+						ueb_champ( array( 'nom' => 'ville', 'libelle' => 'Ville', 'icone' => 'lieu', 'requis' => false, 'valeur' => $valeur( 'ville' ), 'erreur' => $erreur( 'ville' ), 'attrs' => array( 'maxlength' => 100, 'autocomplete' => 'off' ) ) );
+						?>
+					</div>
+					<?php
+					ueb_champ( array( 'nom' => 'nom_fr', 'libelle' => 'Nom complet', 'valeur' => $valeur( 'nom_fr' ), 'erreur' => $erreur( 'nom_fr' ), 'attrs' => array( 'maxlength' => 150, 'autocomplete' => 'off', 'placeholder' => 'Institut Supérieur Siantou' ) ) );
+					ueb_champ( array( 'nom' => 'nom_en', 'libelle' => 'Nom en anglais', 'requis' => false, 'valeur' => $valeur( 'nom_en' ), 'erreur' => $erreur( 'nom_en' ), 'attrs' => array( 'maxlength' => 150, 'autocomplete' => 'off', 'lang' => 'en' ) ) );
+					?>
+				</div>
+			</section>
+
+			<section class="carte section-form" aria-labelledby="ipes-contacts">
+				<header class="section-form__entete">
+					<span class="section-form__num">2</span>
+					<div><h2 id="ipes-contacts">Contacts</h2><p>Pour joindre l’IPES au sujet de sa convention et de ses reversements.</p></div>
+				</header>
+				<div class="section-form__corps formulaire">
+					<div class="formulaire__rangee">
+						<?php
+						ueb_champ( array( 'nom' => 'telephone', 'libelle' => 'Téléphone', 'type' => 'tel', 'icone' => 'telephone', 'requis' => false, 'valeur' => $valeur( 'telephone' ) ? ueb_formater_telephone( $valeur( 'telephone' ) ) : '', 'erreur' => $erreur( 'telephone' ), 'aide' => 'Mobile à 9 chiffres, avec ou sans +237.', 'attrs' => array( 'inputmode' => 'tel', 'autocomplete' => 'off' ) ) );
+						ueb_champ( array( 'nom' => 'email', 'libelle' => 'Adresse e-mail', 'type' => 'email', 'icone' => 'courriel', 'requis' => false, 'valeur' => $valeur( 'email' ), 'erreur' => $erreur( 'email' ), 'attrs' => array( 'maxlength' => 150, 'autocomplete' => 'off' ) ) );
+						?>
+					</div>
+				</div>
+			</section>
+
+			<section class="carte section-form" aria-labelledby="ipes-convention">
+				<header class="section-form__entete">
+					<span class="section-form__num">3</span>
+					<div><h2 id="ipes-convention">Convention</h2><p>La convention qui place l’IPES sous la tutelle de l’UEb.</p></div>
+				</header>
+				<div class="section-form__corps formulaire">
+					<?php ueb_champ( array( 'nom' => 'convention_ref', 'libelle' => 'Référence de la convention', 'icone' => 'fichier', 'requis' => false, 'valeur' => $valeur( 'convention_ref' ), 'erreur' => $erreur( 'convention_ref' ), 'attrs' => array( 'maxlength' => 100, 'autocomplete' => 'off', 'placeholder' => 'CONV-FS-2026-01' ) ) ); ?>
+					<div class="formulaire__rangee">
+						<?php
+						ueb_champ( array( 'nom' => 'convention_signee_le', 'libelle' => 'Signée le', 'type' => 'date', 'requis' => false, 'valeur' => $valeur( 'convention_signee_le' ), 'erreur' => $erreur( 'convention_signee_le' ) ) );
+						ueb_champ( array( 'nom' => 'convention_fin_le', 'libelle' => 'Fin de la convention', 'type' => 'date', 'requis' => false, 'valeur' => $valeur( 'convention_fin_le' ), 'erreur' => $erreur( 'convention_fin_le' ), 'aide' => 'Laisse vide si la convention n’a pas de terme.' ) );
+						?>
+					</div>
+				</div>
+			</section>
+
+			<section class="carte section-form" aria-labelledby="ipes-tutelles">
+				<header class="section-form__entete">
+					<span class="section-form__num">4</span>
+					<div><h2 id="ipes-tutelles">Établissements de tutelle</h2><p>Un ou plusieurs établissements de l’UEb. Leurs administrateurs verront cet IPES.</p></div>
+				</header>
+				<div class="section-form__corps">
+					<fieldset id="champ-tutelles" tabindex="-1" class="etabs-choix champ<?php echo $erreur( 'tutelles' ) ? ' champ--invalide' : ''; ?>"<?php echo $erreur( 'tutelles' ) ? ' aria-describedby="champ-tutelles-erreur"' : ''; ?>>
+						<legend>Tutelle</legend>
+						<div class="etabs-choix__grille">
+							<?php foreach ( ueb_etablissements() as $sigle => $e ) : ?>
+								<label class="etab-case" style="--etab: <?php echo esc_attr( $e['couleur'] ); ?>" title="<?php echo esc_attr( $e['fr'] ); ?>">
+									<input type="checkbox" name="tutelles[]" value="<?php echo esc_attr( $sigle ); ?>" <?php checked( in_array( $sigle, $tutelles, true ) ); ?>>
+									<span><img src="<?php echo esc_url( ueb_logo_url( $sigle ) ); ?>" alt="" width="26" height="26"><b><?php echo esc_html( $sigle ); ?></b></span>
+								</label>
+							<?php endforeach; ?>
+						</div>
+						<?php if ( $erreur( 'tutelles' ) ) : ?>
+							<p class="champ__erreur" id="champ-tutelles-erreur"><?php echo ueb_icone( 'alerte', 16 ); ?><?php echo esc_html( $erreur( 'tutelles' ) ); ?></p>
+						<?php endif; ?>
+					</fieldset>
+				</div>
+			</section>
+
+			<section class="carte section-form" aria-labelledby="ipes-logo-titre">
+				<header class="section-form__entete">
+					<span class="section-form__num">5</span>
+					<div><h2 id="ipes-logo-titre">Logo <span class="facultatif">(facultatif)</span></h2><p>PNG ou JPEG, 1 Mo au plus. Il est redimensionné et sa transparence est conservée.</p></div>
+				</header>
+				<div class="section-form__corps">
+					<div id="champ-logo" tabindex="-1" class="ipes-logo-choix champ<?php echo $erreur( 'logo' ) ? ' champ--invalide' : ''; ?>" data-logo-ipes>
+						<span class="ipes-logo ipes-logo--apercu" aria-hidden="true"><img <?php echo $logo ? 'src="' . esc_url( $logo ) . '"' : 'hidden'; ?> alt="" width="64" height="64" data-logo-apercu><span data-logo-vide <?php echo $logo ? 'hidden' : ''; ?>><?php echo ueb_icone( 'ecole', 26 ); ?></span></span>
+						<label class="depot ipes-depot">
+							<input type="file" name="logo" accept="image/png,image/jpeg" aria-describedby="logo-aide<?php echo $erreur( 'logo' ) ? ' champ-logo-erreur' : ''; ?>">
+							<span class="depot__titre" data-logo-titre><?php echo $logo ? 'Remplacer le logo' : 'Choisir le logo'; ?></span>
+							<span class="depot__aide" id="logo-aide"><?php echo $logo ? 'Laisse vide pour garder le logo actuel.' : 'Clique ou glisse l’image ici.'; ?></span>
+						</label>
+						<?php if ( $erreur( 'logo' ) ) : ?>
+							<p class="champ__erreur" id="champ-logo-erreur"><?php echo ueb_icone( 'alerte', 16 ); ?><?php echo esc_html( $erreur( 'logo' ) ); ?></p>
+						<?php endif; ?>
+					</div>
+				</div>
+			</section>
+
+			<div class="ipes-fiche__actions">
+				<a class="btn btn--fantome" href="<?php echo esc_url( ueb_url_ipes() ); ?>">Annuler</a>
+				<button class="btn btn--primaire" type="submit"><?php echo ueb_icone( 'check', 18 ); ?><?php echo $ipes ? 'Enregistrer les modifications' : 'Créer l’IPES'; ?></button>
+			</div>
+		</form>
+
+	<?php endif; ?>
+
 <?php endif; ?>

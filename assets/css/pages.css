@@ -492,10 +492,10 @@
 .quitus-cms { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--filet); }
 .quitus-cms h3 { margin: 0; color: var(--foret-800); font-size: 1.1rem; }
 .quitus-cms__corps { padding-top: .85rem; }
-.quitus-erreurs > div { min-width: 0; }
-.quitus-erreurs ul { margin: .5rem 0 0; padding-left: 1.2rem; }
-.quitus-erreurs li + li { margin-top: .4rem; }
-.quitus-erreurs a { color: inherit; text-decoration: underline; text-underline-offset: .15em; }
+.quitus-erreurs > div, .ipes-erreurs > div { min-width: 0; }
+.quitus-erreurs ul, .ipes-erreurs ul { margin: .5rem 0 0; padding-left: 1.2rem; }
+.quitus-erreurs li + li, .ipes-erreurs li + li { margin-top: .4rem; }
+.quitus-erreurs a, .ipes-erreurs a { color: inherit; text-decoration: underline; text-underline-offset: .15em; }
 
 /* Montant, récapitulatif et génération */
 .champ-montant { display: grid; gap: .4rem; align-content: start; }
@@ -2032,3 +2032,16 @@
 @media (prefers-reduced-motion: reduce) {
 	[data-filtres-direct] ~ [aria-busy="true"] { transition: none; }
 }
+/* Fiche d'un IPES : mêmes sections numérotées que les autres formulaires,
+   espacées comme les blocs de .bo-contenu. */
+.ipes-fiche { display: grid; gap: 1.4rem; }
+.ipes-fiche .etabs-choix { animation: none; }
+.ipes-logo--grand { width: 56px; height: 56px; }
+.ipes-logo--grand img { width: 40px; height: 40px; }
+.ipes-logo--apercu { width: 88px; height: 88px; }
+.ipes-logo--apercu img { width: 64px; height: 64px; }
+.ipes-logo-choix { display: flex; align-items: center; flex-wrap: wrap; gap: 1.25rem; }
+.ipes-logo-choix .ipes-logo [hidden] { display: none; }
+.ipes-depot { flex: 1 1 18rem; padding: 1.25rem; }
+.ipes-logo-choix .champ__erreur { flex-basis: 100%; }
+.ipes-fiche__actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .75rem; }
