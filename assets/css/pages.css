@@ -2044,4 +2044,6 @@
 .ipes-logo-choix .ipes-logo [hidden] { display: none; }
 .ipes-depot { flex: 1 1 18rem; padding: 1.25rem; }
 .ipes-logo-choix .champ__erreur { flex-basis: 100%; }
-.ipes-fiche__actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .75rem; }
+.ipes-fiche__actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .75rem; }.ipes-filiere-ajout { display: flex; flex-wrap: wrap; align-items: flex-start; gap: .75rem; max-width: 680px; margin-bottom: 1.25rem; }
+.ipes-filiere-ajout .champ { flex: 1 1 16rem; margin: 0; }
+.ipes-filiere-ajout .btn { margin-top: 1.85rem; }
