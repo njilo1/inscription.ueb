@@ -360,7 +360,7 @@ add_action( 'init', function () {
 /** Accès à l'espace scolarité : examiner les quitus ou suivre les paiements (hors administrateur). */
 function ueb_est_scolarite( $user_id = 0 ) {
 	$user = get_userdata( $user_id ?: get_current_user_id() );
-	return $user && ! user_can( $user, 'manage_options' ) && ( user_can( $user, UEB_CAP_GESTION ) || user_can( $user, 'ueb_voir_paiements' ) );
+	return $user && ! user_can( $user, 'manage_options' ) && ( user_can( $user, UEB_CAP_GESTION ) || user_can( $user, 'ueb_voir_paiements' ) || user_can( $user, 'ueb_voir_ipes' ) );
 }
 
 /** Accès à l'espace « comptes étudiants » (hors administrateur). */
@@ -580,7 +580,7 @@ function ueb_url_espace_du_compte( $user_id ) {
 	if ( user_can( $user_id, 'manage_options' ) ) {
 		return ueb_url_administration();
 	}
-	if ( user_can( $user_id, UEB_CAP_GESTION ) || user_can( $user_id, 'ueb_voir_paiements' ) ) {
+	if ( user_can( $user_id, UEB_CAP_GESTION ) || user_can( $user_id, 'ueb_voir_paiements' ) || user_can( $user_id, 'ueb_voir_ipes' ) ) {
 		return ueb_url_scolarite();
 	}
 	if ( user_can( $user_id, UEB_CAP_COMPTES ) ) {

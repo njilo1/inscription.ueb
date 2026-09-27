@@ -60,27 +60,32 @@ if ( isset( $_POST['ueb_connexion_gestion'] ) ) {
 	}
 }
 
-/* Accès par capacité et portée (inc/roles.php) : examiner les quitus ou suivre les paiements. */
+/* Accès par capacité et portée (inc/roles.php) : examiner les quitus, suivre les
+   paiements ou suivre les IPES sous tutelle (inc/ipes-tutelle.php). */
 $peut_quitus    = ueb_peut( UEB_CAP_GESTION );
 $peut_paiements = ueb_peut( 'ueb_voir_paiements' );
-$autorise       = ueb_est_scolarite() && ( $peut_quitus || $peut_paiements );
+$peut_ipes      = ueb_peut( 'ueb_voir_ipes' );
+$autorise       = ueb_est_scolarite() && ( $peut_quitus || $peut_paiements || $peut_ipes );
+/* Première vue permise : tableau de bord, sinon paiements, sinon IPES. */
+$vue_defaut     = $peut_quitus ? 'bord' : ( $peut_paiements ? 'paiements' : 'ipes' );
 $annee    = ueb_annee_academique();
 
 if ( $autorise ) {
 	$etab_agent = ueb_etab_agent();
 	$etab       = $etab_agent ? ueb_etablissement( $etab_agent ) : null;
-	$vue        = sanitize_key( $_GET['vue'] ?? ( $peut_quitus ? 'bord' : 'paiements' ) );
+	$vue        = sanitize_key( $_GET['vue'] ?? $vue_defaut );
 	/* Chaque vue exige sa permission ; sinon retour à la première vue permise. */
 	$permises = array_filter( array(
 		'bord'      => $peut_quitus,
 		'quitus'    => $peut_quitus,
 		'paiements' => $peut_paiements,
+		'ipes'      => $peut_ipes,
 		'cellule'   => ueb_peut( 'ueb_creer_agents' ),
 		'securite'  => true,
 		'comptes'   => true,
 	) );
 	if ( ! isset( $permises[ $vue ] ) ) {
-		$vue = $peut_quitus ? 'bord' : 'paiements';
+		$vue = $vue_defaut;
 	}
 	$fiche      = $peut_quitus && isset( $_GET['quitus'] ) ? ueb_quitus_par_id( (int) $_GET['quitus'] ) : null;
 	if ( $fiche && ! ueb_peut( UEB_CAP_GESTION, $fiche->etablissement ) ) {
