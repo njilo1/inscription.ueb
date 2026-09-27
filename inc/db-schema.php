@@ -13,7 +13,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-const UEB_INSC_DB_VERSION = '6';
+const UEB_INSC_DB_VERSION = '7';
 
 function ueb_insc_schema() {
 	return array(
@@ -123,6 +123,7 @@ function ueb_insc_schema() {
 			convention_ref VARCHAR(100) NOT NULL DEFAULT '',
 			convention_signee_le DATE NULL,
 			convention_fin_le DATE NULL,
+			montant_annuel_du INT UNSIGNED NULL,
 			actif TINYINT(1) NOT NULL DEFAULT 1,
 			modifie_par BIGINT UNSIGNED NULL,
 			date_creation DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -151,6 +152,75 @@ function ueb_insc_schema() {
 			date_creation DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 			PRIMARY KEY (id),
 			UNIQUE KEY uniq_ipes_libelle (ipes_id, libelle)
+		) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+		/* Étudiants d'un IPES, saisis par son administrateur : une ligne par
+		   année académique (filière et niveau changent d'une année à l'autre),
+		   le matricule restant le même. */
+		'ueb_insc_ipes_etudiants' => "CREATE TABLE IF NOT EXISTS ueb_insc_ipes_etudiants (
+			id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+			ipes_id INT UNSIGNED NOT NULL,
+			annee_academique CHAR(9) NOT NULL,
+			matricule VARCHAR(30) NOT NULL,
+			nom VARCHAR(100) NOT NULL,
+			prenom VARCHAR(150) NOT NULL,
+			filiere_id INT UNSIGNED NOT NULL,
+			niveau VARCHAR(2) NOT NULL,
+			telephone VARCHAR(12) NOT NULL DEFAULT '',
+			saisi_par BIGINT UNSIGNED NULL,
+			date_creation DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			date_modification DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+			PRIMARY KEY (id),
+			UNIQUE KEY uniq_ipes_annee_matricule (ipes_id, annee_academique, matricule),
+			KEY idx_filiere (filiere_id)
+		) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+		/* Versements de pension d'un étudiant d'IPES. bordereau_id : le seul
+		   bordereau qui le reverse (NULL tant qu'il n'est dans aucun). */
+		'ueb_insc_ipes_paiements' => "CREATE TABLE IF NOT EXISTS ueb_insc_ipes_paiements (
+			id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+			ipes_id INT UNSIGNED NOT NULL,
+			etudiant_id INT UNSIGNED NOT NULL,
+			montant INT UNSIGNED NOT NULL,
+			date_paiement DATE NOT NULL,
+			bordereau_id INT UNSIGNED NULL,
+			saisi_par BIGINT UNSIGNED NULL,
+			date_creation DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			date_modification DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+			PRIMARY KEY (id),
+			KEY idx_etudiant (etudiant_id),
+			KEY idx_ipes_bordereau (ipes_id, bordereau_id)
+		) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+		/* Bordereaux de reversement d'un IPES à UNE de ses tutelles. Le total
+		   est figé à l'envoi ; un bordereau rejeté redevient modifiable. */
+		'ueb_insc_ipes_bordereaux' => "CREATE TABLE IF NOT EXISTS ueb_insc_ipes_bordereaux (
+			id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+			numero VARCHAR(40) NOT NULL,
+			ipes_id INT UNSIGNED NOT NULL,
+			etablissement VARCHAR(10) NOT NULL,
+			annee_academique CHAR(9) NOT NULL,
+			total INT UNSIGNED NOT NULL DEFAULT 0,
+			statut ENUM('brouillon','envoye','verifie','rejete') NOT NULL DEFAULT 'brouillon',
+			motif_rejet VARCHAR(255) NULL,
+			cree_par BIGINT UNSIGNED NULL,
+			date_envoi DATETIME NULL,
+			verifie_par BIGINT UNSIGNED NULL,
+			date_verification DATETIME NULL,
+			date_creation DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			date_modification DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+			PRIMARY KEY (id),
+			UNIQUE KEY uniq_numero (numero),
+			KEY idx_ipes_annee (ipes_id, annee_academique),
+			KEY idx_etab_statut (etablissement, statut)
+		) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+		/* Compteur des numéros de bordereau, par IPES et par année académique. */
+		'ueb_insc_ipes_sequence' => "CREATE TABLE IF NOT EXISTS ueb_insc_ipes_sequence (
+			ipes_id INT UNSIGNED NOT NULL,
+			annee_academique CHAR(9) NOT NULL,
+			dernier INT UNSIGNED NOT NULL DEFAULT 0,
+			PRIMARY KEY (ipes_id, annee_academique)
 		) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
 	);
 }
@@ -184,6 +254,13 @@ function ueb_insc_migrer() {
 	if ( $colonnes_sequence && ! in_array( 'type', $colonnes_sequence, true ) ) {
 		if ( false === $wpdb->query( "ALTER TABLE ueb_insc_sequence ADD COLUMN type ENUM('droits','medicaux') NOT NULL DEFAULT 'droits',
 			DROP PRIMARY KEY, ADD PRIMARY KEY (etablissement, annee_academique, type)" ) ) {
+			return false;
+		}
+	}
+	/* Version 7 : montant annuel dû par un IPES, prévu par sa convention (indicatif). */
+	$colonnes_ipes = $wpdb->get_col( 'SHOW COLUMNS FROM ueb_insc_ipes' );
+	if ( $colonnes_ipes && ! in_array( 'montant_annuel_du', $colonnes_ipes, true ) ) {
+		if ( false === $wpdb->query( 'ALTER TABLE ueb_insc_ipes ADD COLUMN montant_annuel_du INT UNSIGNED NULL AFTER convention_fin_le' ) ) {
 			return false;
 		}
 	}
