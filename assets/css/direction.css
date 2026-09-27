@@ -1,0 +1,381 @@
+/* ==========================================================================
+   Espace de gestion — page-direction.php
+   Même rendu que l'espace de gestion de la préinscription (access-portal.css
+   de ce site) : barre du haut avec le rôle et la date, cartes de rôles,
+   assistant en fenêtre avec l'aperçu de la barre latérale, comptes en deux
+   panneaux, connexion en deux volets sur verre dépoli. Transposé sur les
+   jetons de l'inscription : vert de la charte, or, Source Sans / Source
+   Serif. La coque (barre latérale, boutons .adm-bouton, bascule et jetons du
+   thème sombre) vient de pages.css et administration.css.
+
+   Sommaire
+     1. Jetons
+     2. Barre du haut, section, pied
+     3. Panneaux, étiquettes, messages, champs
+     4. Rôles
+     5. Assistant et dialogues
+     6. Comptes
+     7. Connexion
+     8. Responsive, mouvement réduit
+   ========================================================================== */
+
+/* ---------- 1. Jetons ---------- */
+
+.espace-direction {
+	--g-surface-2: #f7f9f6;
+	--g-survol: #eef4f0;
+	--g-primaire: #1d5a38;
+	--g-sur-primaire: #fff;
+	--g-lavis: rgba(29, 90, 56, .08);
+	--g-or: #e3a822;
+	--g-or-lavis: rgba(227, 168, 34, .16);
+	--g-sur-or: #3d2c00;
+	--g-succes: #1f6f43;
+	--g-rayon-petit: 8px;
+	--g-rayon: 12px;
+	--g-rayon-grand: 16px;
+	--g-ombre-petite: 0 1px 2px rgba(16, 32, 24, .05);
+	--g-ombre-grande: 0 12px 32px -12px rgba(16, 32, 24, .28);
+	--g-nav: var(--vert-bandeau);
+	--g-nav-texte: rgba(255, 255, 255, .74);
+	--g-nav-filet: rgba(255, 255, 255, .13);
+}
+:root[data-theme="sombre"] .espace-direction {
+	--g-surface-2: #1b2620;
+	--g-survol: #1f2b24;
+	--g-primaire: #5cb37e;
+	--g-sur-primaire: #08130d;
+	--g-lavis: rgba(92, 179, 126, .14);
+	--g-or-lavis: rgba(226, 189, 70, .16);
+	--g-sur-or: #f0d48a;
+	--g-succes: #5cb37e;
+	--g-ombre-petite: 0 1px 2px rgba(0, 0, 0, .4);
+	--g-ombre-grande: 0 16px 40px -14px rgba(0, 0, 0, .7);
+	--g-nav: #0a140d;
+}
+
+/* ---------- 2. Barre du haut, section, pied ---------- */
+
+.bo-contenu.gestion-contenu { display: block; padding: 1.6rem 2rem 2.5rem; font-size: .95rem; }
+.gestion-contenu :where(h2, h3) { margin: 0; font-family: var(--f-texte); font-weight: 700; line-height: 1.3; letter-spacing: -.005em; color: var(--encre); }
+.gestion-contenu :where(p) { margin: 0; color: var(--gris); }
+.gestion-contenu [hidden] { display: none !important; }
+
+.gestion-tete { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.6rem; }
+.gestion-tete h1 { margin: 0; font: 700 clamp(1.55rem, 1.3rem + .7vw, 1.9rem)/1.15 var(--f-titre); letter-spacing: -.015em; color: var(--encre); }
+.gestion-tete__contexte { display: flex; align-items: center; flex-wrap: wrap; gap: .5rem; margin-top: .35rem; }
+.gestion-tete__contexte p { font-size: .9rem; }
+.gestion-tete__actions { display: flex; align-items: center; gap: .6rem; }
+.gestion-date { display: inline-flex; align-items: center; gap: .35rem; font-size: .86rem; color: var(--gris); white-space: nowrap; }
+.gestion-date .icone { color: var(--gris-clair); }
+
+.gestion-section { display: flex; align-items: flex-end; justify-content: space-between; flex-wrap: wrap; gap: 1rem; margin: .5rem 0 1rem; }
+.gestion-section h2 { font-size: 1.2rem; }
+.gestion-section p { margin-top: .15rem; font-size: .9rem; }
+
+.gestion-pied { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 1rem; margin-top: 3rem; padding-top: 1.25rem; border-top: 1px solid var(--filet); font-size: .8rem; color: var(--gris); }
+
+/* ---------- 3. Panneaux, étiquettes, messages, champs ---------- */
+
+.gestion-panneau { min-width: 0; padding: 1.35rem 1.5rem 1.5rem; border: 1px solid var(--filet); border-radius: var(--g-rayon); background: var(--blanc); box-shadow: var(--g-ombre-petite); }
+.gestion-panneau__tete { margin-bottom: 1.1rem; }
+.gestion-panneau__tete h2 { font-size: 1.05rem; }
+.gestion-panneau__tete p { margin-top: .15rem; font-size: .86rem; }
+
+.gestion-etiquette { display: inline-flex; align-items: center; gap: .3rem; padding: .2rem .6rem; border: 1px solid var(--filet); border-radius: 999px; background: var(--g-surface-2); font-size: .78rem; font-weight: 600; line-height: 1.4; color: var(--gris); }
+.gestion-etiquette--portee { border-color: transparent; background: var(--g-lavis); color: var(--g-primaire); }
+.gestion-etiquette--verrou { border-color: transparent; background: var(--g-or-lavis); color: var(--g-sur-or); }
+.gestion-etiquette--role { font-size: .76rem; }
+
+.gestion-vide { display: grid; justify-items: center; gap: .5rem; padding: 2.75rem 1.25rem; text-align: center; color: var(--gris); }
+.gestion-vide .icone { opacity: .5; }
+.gestion-vide strong { font-size: 1rem; color: var(--encre); }
+.gestion-vide p { max-width: 42ch; font-size: .88rem; }
+
+/* Messages : bordure complète, jamais de filet latéral. */
+.gestion-contenu .alerte { display: flex; align-items: flex-start; gap: .6rem; margin: 0 0 1.25rem; padding: .85rem 1rem; border: 1px solid var(--filet-fort); border-radius: var(--g-rayon-petit); background: var(--blanc); color: var(--encre); font-size: .9rem; font-weight: 500; }
+.gestion-contenu .alerte .icone { flex: none; margin-top: .12rem; color: var(--g-or); }
+.gestion-contenu .alerte p { margin: 0; color: inherit; }
+.gestion-contenu .alerte--erreur { border-color: var(--danger); background: var(--danger-fond); }
+.gestion-contenu .alerte--erreur .icone { color: var(--danger); }
+.gestion-contenu .alerte--succes { border-color: var(--g-succes); }
+.gestion-contenu .alerte--succes .icone { color: var(--g-succes); }
+
+.gestion-form { display: grid; gap: 1rem; }
+.gestion-form label { display: grid; gap: .35rem; font-size: .84rem; font-weight: 600; color: var(--gris); }
+.gestion-facultatif { font-weight: 400; color: var(--gris-clair); }
+.gestion-aide { font-size: .82rem; font-weight: 400; color: var(--gris); }
+.gestion-aide.est-erreur { color: var(--danger); }
+.gestion-form__actions { display: flex; flex-wrap: wrap; gap: .5rem; padding-top: 1rem; border-top: 1px solid var(--filet); }
+
+.gestion-contenu :where(input:not([type="checkbox"]):not([type="radio"]), select),
+.espace-direction--connexion :where(input:not([type="checkbox"]):not([type="radio"])) { min-height: 44px; min-width: 0; max-width: 100%; padding: .5rem .75rem; border: 1px solid var(--filet-fort); border-radius: var(--g-rayon-petit); background: var(--blanc); color: var(--encre); font: 400 .95rem/1.4 var(--f-texte); transition: border-color .15s, box-shadow .15s; }
+.gestion-contenu :where(input, select):focus { outline: none; border-color: var(--g-primaire); box-shadow: 0 0 0 3px var(--g-lavis); }
+.gestion-contenu :where(input[type="checkbox"], input[type="radio"]) { flex: none; width: 17px; height: 17px; margin: 0; accent-color: var(--g-primaire); }
+
+.gestion-mdp { position: relative; display: flex; align-items: center; }
+.gestion-mdp input { width: 100%; padding-right: 3rem !important; }
+.gestion-mdp button { position: absolute; right: .3rem; display: grid; place-items: center; width: 36px; height: 36px; border: 0; border-radius: var(--g-rayon-petit); background: transparent; color: var(--gris); cursor: pointer; }
+.gestion-mdp button:hover { background: var(--g-survol); color: var(--encre); }
+
+.gestion-case { display: flex; align-items: center; gap: .55rem; min-height: 40px; font-size: .9rem; font-weight: 400; color: var(--encre); cursor: pointer; }
+.gestion-case.est-hors { color: var(--gris-clair); cursor: not-allowed; }
+
+/* ---------- 4. Rôles ---------- */
+
+.gestion-roles { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr)); gap: 1rem; }
+.gestion-role { display: flex; flex-direction: column; gap: .75rem; }
+.gestion-role h3 { font-size: 1.1rem; }
+.gestion-role__meta { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .45rem; }
+.gestion-role__droits { display: grid; gap: .3rem; margin: 0; padding: 0; list-style: none; font-size: .88rem; color: var(--gris); }
+.gestion-role__droits li { display: flex; align-items: flex-start; gap: .45rem; }
+.gestion-role__droits .icone { flex: none; margin-top: .22rem; color: var(--g-succes); }
+.gestion-role__plus .icone { color: var(--gris-clair); }
+.gestion-role__actions { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: auto; padding-top: .9rem; border-top: 1px solid var(--filet); }
+.gestion-role__actions > form { display: contents; }
+
+/* Bouton destructif plein : seulement dans la fenêtre de suppression. */
+.adm-bouton--danger-plein { border-color: var(--danger); background: var(--danger); color: #fff; }
+.adm-bouton--danger-plein .icone { color: currentColor; }
+.adm-bouton--danger-plein:hover { border-color: #93231d; background: #93231d; color: #fff; }
+:root[data-theme="sombre"] .adm-bouton--danger-plein { color: #1a0908; }
+
+/* ---------- 5. Assistant et dialogues ---------- */
+
+.gestion-dialogue { width: min(900px, calc(100% - 2rem)); max-height: 90dvh; margin: auto; padding: 0; border: 1px solid var(--filet); border-radius: var(--g-rayon-grand); background: var(--blanc); color: var(--encre); box-shadow: var(--g-ombre-grande); overflow: hidden; }
+.gestion-dialogue--petit { width: min(520px, calc(100% - 2rem)); }
+.gestion-dialogue::backdrop { background: rgba(9, 29, 18, .55); backdrop-filter: blur(3px); }
+.gestion-dialogue[open] { animation: gestion-entree .32s var(--ease-sortie) both; }
+.gestion-dialogue > form { display: flex; flex-direction: column; max-height: 90dvh; }
+.gestion-dialogue__tete { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; padding: 1.35rem 1.6rem 1.1rem; border-bottom: 1px solid var(--filet); }
+.gestion-dialogue__tete h2 { margin: 0; font: 700 1.2rem/1.3 var(--f-texte); color: var(--encre); }
+.gestion-dialogue__tete p { margin: .15rem 0 0; font-size: .88rem; color: var(--gris); }
+.gestion-dialogue__corps { flex: 1 1 auto; overflow-y: auto; padding: 1.5rem 1.6rem; }
+.gestion-dialogue__corps > p { font-size: .92rem; color: var(--gris); }
+.gestion-dialogue__corps > p + .gestion-form { margin-top: 1.1rem; }
+.gestion-dialogue__actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: .6rem; padding: 1rem 1.6rem; border-top: 1px solid var(--filet); background: var(--g-surface-2); }
+.gestion-dialogue__espace { margin-right: auto; }
+
+/* Étapes : numéros dans un cercle, soulignement de l'étape en cours, coche
+   des étapes passées (icône en masque, pas un caractère). */
+.gestion-etapes { display: flex; gap: .5rem; margin: 0 0 1.5rem; padding: 0; list-style: none; counter-reset: etape; }
+.gestion-etapes li { flex: 1; display: flex; align-items: center; gap: .5rem; padding: .6rem 0 .7rem; border-bottom: 2px solid var(--filet); font-size: .88rem; color: var(--gris); transition: border-color .22s, color .22s; }
+.gestion-etapes li::before { counter-increment: etape; content: counter(etape); flex: none; display: grid; place-items: center; width: 22px; height: 22px; border: 1px solid currentColor; border-radius: 50%; font-size: .74rem; font-weight: 700; }
+.gestion-etapes li[aria-current] { border-bottom-color: var(--g-primaire); color: var(--g-primaire); font-weight: 600; }
+.gestion-etapes li[data-fait] { border-bottom-color: var(--g-succes); color: var(--g-succes); }
+.gestion-etapes li[data-fait]::before { content: ""; border-color: var(--g-succes); background: var(--g-succes) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E") center / 12px no-repeat; }
+
+.gestion-dialogue .alerte { margin-bottom: 1.1rem; }
+.gestion-assistant { display: grid; grid-template-columns: minmax(0, 1fr) 260px; align-items: start; gap: 1.75rem; }
+.gestion-assistant fieldset { min-width: 0; margin: 0; padding: 0; border: 0; }
+.gestion-assistant legend { margin-bottom: 1rem; padding: 0; font-size: 1.08rem; font-weight: 700; color: var(--encre); }
+
+.gestion-portees { display: grid; gap: .6rem; margin-bottom: 1.1rem; }
+.gestion-portee { display: flex; align-items: flex-start; gap: .7rem; padding: .85rem 1rem; border: 1px solid var(--filet-fort); border-radius: var(--g-rayon-petit); cursor: pointer; transition: border-color .15s, background-color .15s; }
+.gestion-portee:hover { background: var(--g-survol); }
+.gestion-portee:has(input:checked) { border-color: var(--g-primaire); background: var(--g-lavis); }
+.gestion-portee input { margin-top: .2rem !important; }
+.gestion-portee span { display: block; font-size: .92rem; font-weight: 600; color: var(--encre); }
+.gestion-portee small { display: block; font-size: .82rem; font-weight: 400; color: var(--gris); }
+.gestion-choix { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(240px, 100%), 1fr)); gap: .1rem 1.25rem; max-height: 15rem; overflow-y: auto; padding: .25rem; }
+
+.gestion-droits { display: grid; gap: 1.35rem; margin-top: 1.25rem; }
+.gestion-droits__groupe h3 { margin-bottom: .35rem; padding-bottom: .45rem; border-bottom: 1px solid var(--filet); font-size: .86rem; color: var(--gris); }
+.gestion-droits__groupe > div { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(230px, 100%), 1fr)); gap: 0 1.25rem; }
+
+/* Aperçu : une maquette de la barre latérale que verra le titulaire. */
+.gestion-apercu { position: sticky; top: 0; overflow: hidden; border: 1px solid var(--filet-fort); border-radius: var(--g-rayon); background: var(--g-surface-2); }
+.gestion-apercu__tete { padding: .7rem .9rem; border-bottom: 1px solid var(--filet); font-size: .8rem; font-weight: 700; color: var(--gris); }
+.gestion-apercu__ecran { padding: .8rem .7rem; background: var(--g-nav); }
+.gestion-apercu__nom { display: block; margin-bottom: .55rem; padding: 0 .45rem .65rem; overflow: hidden; border-bottom: 1px solid var(--g-nav-filet); font-size: .9rem; font-weight: 700; color: #fff; text-overflow: ellipsis; white-space: nowrap; }
+.gestion-apercu__nav { display: grid; gap: .15rem; }
+.gestion-apercu__nav span { display: flex; align-items: center; gap: .5rem; padding: .42rem .5rem; border-radius: 7px; font-size: .82rem; font-weight: 600; color: var(--g-nav-texte); animation: gestion-entree .22s var(--ease-sortie) both; }
+.gestion-apercu__nav span:first-child { background: var(--or); color: var(--foret-950); }
+.gestion-apercu__nav span.est-vide { background: none; color: var(--g-nav-texte); opacity: .7; }
+.gestion-apercu__pied { padding: .7rem .9rem; border-top: 1px solid var(--filet); font-size: .8rem; line-height: 1.5; color: var(--gris); }
+.gestion-apercu__pied strong { font-weight: 700; color: var(--encre); }
+
+/* ---------- 6. Comptes ---------- */
+
+.gestion-deux { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(300px, .85fr); align-items: start; gap: 1.25rem; }
+.gestion-filtres { display: flex; align-items: flex-end; flex-wrap: wrap; gap: .7rem; padding: 0 0 1.15rem; border-bottom: 1px solid var(--filet); }
+.gestion-champ { display: grid; gap: .35rem; min-width: 0; }
+.gestion-champ > span:first-child { font-size: .8rem; font-weight: 600; color: var(--gris); }
+.gestion-champ--large { flex: 1 1 15rem; }
+.gestion-recherche { position: relative; display: flex; align-items: center; }
+.gestion-recherche .icone { position: absolute; left: .85rem; color: var(--gris-clair); pointer-events: none; }
+.gestion-recherche input { width: 100%; padding-left: 2.5rem !important; }
+
+.gestion-table { margin-top: 1.1rem; overflow-x: auto; border: 1px solid var(--filet); border-radius: var(--g-rayon); background: var(--blanc); }
+.gestion-table table { width: 100%; border-collapse: collapse; font-size: .9rem; text-align: left; }
+.gestion-table th { padding: .7rem .9rem; border-bottom: 1px solid var(--filet); background: var(--g-surface-2); font-size: .8rem; font-weight: 600; color: var(--gris); white-space: nowrap; }
+.gestion-table td { padding: .8rem .9rem; border-bottom: 1px solid var(--filet); vertical-align: middle; color: var(--encre); }
+.gestion-table tbody tr:last-child td { border-bottom: 0; }
+.gestion-table tbody tr { transition: background-color .15s; }
+.gestion-table tbody tr:hover { background: var(--g-surface-2); }
+.gestion-table strong { font-weight: 600; }
+.gestion-table small { display: block; font-size: .8rem; color: var(--gris); overflow-wrap: break-word; }
+.gestion-table td:first-child { min-width: 12.5rem; }
+.gestion-table__actions { white-space: nowrap; text-align: right; }
+.gestion-table__actions > * { vertical-align: middle; }
+.gestion-table__actions > form { display: inline-flex; margin-left: .3rem; }
+
+.gestion-statut { display: inline-flex; align-items: center; gap: .35rem; padding: .2rem .6rem; border: 1px solid color-mix(in srgb, var(--g-succes) 35%, transparent); border-radius: 999px; font-size: .78rem; font-weight: 600; color: var(--g-succes); white-space: nowrap; }
+.gestion-statut::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.gestion-statut--suspendu { border-color: var(--filet-fort); color: var(--gris); }
+.gestion-verrou { display: inline-flex; align-items: center; gap: .35rem; font-size: .82rem; font-weight: 600; color: var(--gris); }
+.gestion-compte-total { margin-top: 1rem; font-size: .86rem; }
+
+.gestion-provisoire { display: grid; justify-items: start; gap: .5rem; margin-bottom: 1.25rem; padding: 1rem 1.1rem; border: 1px solid color-mix(in srgb, var(--g-or) 55%, transparent); border-radius: var(--g-rayon); background: var(--g-or-lavis); }
+.gestion-provisoire p { color: var(--encre); font-size: .9rem; }
+.gestion-provisoire__mdp { font: 700 1.5rem/1.2 var(--f-texte) !important; color: var(--encre) !important; user-select: all; }
+.gestion-provisoire .provisoire__copier.est-copie { border-color: var(--g-succes); color: var(--g-succes); }
+
+.gestion-securite { max-width: 640px; }
+.gestion-securite .force-mdp { margin: -.25rem 0 0; }
+
+/* ---------- 7. Connexion ----------
+   Cadre flottant sur fond texturé, verre dépoli à droite : l'écran de
+   connexion garde ses couleurs quel que soit le thème choisi une fois connecté. */
+
+.espace-direction--connexion {
+	--c-nuit: #0b2417;
+	--c-vert: #123a24;
+	--c-foret: #1a4a2e;
+	--c-or: #c9a227;
+	--c-or-clair: #e5cc7b;
+	--c-attenue: #e1e9e3;
+	--c-marge: clamp(12px, 4svh, 60px);
+	min-height: 100svh;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	margin: 0;
+	padding: var(--c-marge) clamp(24px, 6vw, 88px);
+	background: linear-gradient(115deg, rgba(6, 24, 14, .4), rgba(6, 24, 14, .1)), url("../svg/motif-gestion.svg") center / cover, var(--c-nuit);
+	color: #fff;
+}
+html:has(> body.espace-direction--connexion) { min-height: 100%; background: #0b2417; }
+.espace-direction--connexion .lien-evitement { color: var(--c-nuit); }
+.gestion-connexion { position: relative; isolation: isolate; display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); width: 100%; max-width: 1240px; min-height: min(660px, calc(100svh - 2 * var(--c-marge))); overflow: hidden; border: 1px solid rgba(208, 221, 211, .09); border-radius: 3px; background: url("../svg/motif-gestion.svg") center / cover, linear-gradient(118deg, var(--c-vert), var(--c-foret) 68%, #1c4029); box-shadow: 0 36px 90px -20px rgba(0, 0, 0, .65), 0 8px 24px rgba(0, 0, 0, .24); }
+
+.gestion-connexion__marque { display: flex; flex-direction: column; align-items: flex-start; gap: 3rem; min-width: 0; padding: 3rem 0 2.75rem clamp(2rem, 4.5vw, 4.25rem); }
+.gestion-connexion__logo { display: inline-flex; align-items: center; gap: .85rem; color: #fff; text-decoration: none; }
+.gestion-connexion__logo:hover { color: #fff; }
+.gestion-connexion__sceau { display: grid; place-items: center; width: 54px; height: 54px; flex: none; padding: 3px; border-radius: 50%; background: #fff; }
+.gestion-connexion__sceau .animation--embleme { --taille: 48px; width: 48px; margin: 0; }
+.gestion-connexion__logo > span:last-child { font-size: .95rem; font-weight: 700; line-height: 1.5; }
+.gestion-connexion__logo small { display: block; font-size: .8rem; font-weight: 400; color: var(--c-attenue); }
+.gestion-connexion__propos { margin-block: auto; }
+.gestion-connexion h1 { margin: 0; font: 500 clamp(3.3rem, 6vw, 5.25rem)/1.03 var(--f-titre); letter-spacing: -.025em; color: #fff; }
+.gestion-connexion__ligne { display: block; overflow: hidden; }
+.gestion-connexion__ligne > span { display: block; padding-bottom: .06em; }
+.gestion-connexion__filet { display: block; width: 3rem; height: 2px; margin: 1.7rem 0; background: var(--c-or-clair); transform-origin: left center; }
+.gestion-connexion__chapo { max-width: 35ch; margin: 0; font-size: .98rem; line-height: 1.8; color: var(--c-attenue); }
+.gestion-connexion__public { display: inline-flex; align-items: center; justify-content: center; gap: .55rem; min-height: 44px; margin-top: 1.8rem; padding: .55rem 1.15rem; border: 1px solid rgba(229, 204, 123, .65); border-radius: 999px; background: rgba(201, 162, 39, .07); color: var(--c-or-clair); font-size: .88rem; text-decoration: none; transition: background-color .18s, color .18s; }
+.gestion-connexion__public:hover { background: var(--c-or-clair); color: var(--c-vert); }
+.gestion-connexion__devise { display: flex; gap: 1.25rem; margin: 0; font-size: .82rem; color: var(--c-attenue); }
+
+.gestion-connexion__panneau { display: flex; align-items: center; justify-content: center; min-width: 0; padding: 3rem clamp(2rem, 4vw, 3.5rem) 3rem 1.5rem; }
+.gestion-connexion__verre { width: 100%; max-width: 420px; padding: 2.65rem 2.2rem 2rem; border: 1px solid rgba(255, 255, 255, .2); border-radius: 3px; background: linear-gradient(135deg, rgba(255, 255, 255, .13), rgba(255, 255, 255, .065)); box-shadow: 0 18px 45px -22px rgba(0, 0, 0, .35), inset 0 1px 0 rgba(255, 255, 255, .08); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); }
+.gestion-connexion__verre h2 { margin: 0 0 .65rem; font: 700 1.95rem/1.2 var(--f-texte); letter-spacing: -.03em; text-align: center; color: #fff; }
+.gestion-connexion__intro { margin: 0 0 1.8rem; font-size: .9rem; line-height: 1.7; text-align: center; color: var(--c-attenue); }
+.gestion-connexion .gestion-form { gap: 1.15rem; }
+.gestion-connexion .gestion-form label { display: grid; gap: .4rem; font-size: .86rem; font-weight: 600; color: #fff; }
+.gestion-connexion input:not([type="checkbox"]) { width: 100%; min-height: 48px !important; padding: .7rem 1.1rem !important; border: 1px solid rgba(255, 255, 255, .6) !important; border-radius: 999px !important; background: rgba(9, 35, 21, .3) !important; color: #fff !important; font-size: 1rem !important; caret-color: var(--c-or-clair); transition: background-color .18s, border-color .18s, box-shadow .18s; }
+.gestion-connexion input:not([type="checkbox"]):hover { border-color: var(--c-attenue) !important; }
+.gestion-connexion input:not([type="checkbox"]):focus { outline: 2px solid transparent; border-color: var(--c-or-clair) !important; background: rgba(9, 35, 21, .55) !important; box-shadow: 0 0 0 3px rgba(229, 204, 123, .18); }
+.gestion-connexion .gestion-mdp input { padding-right: 3.25rem !important; }
+.gestion-connexion .gestion-mdp button { right: .2rem; width: 44px; height: 44px; border: 0; border-radius: 50%; background: transparent; color: var(--c-attenue); cursor: pointer; }
+.gestion-connexion .gestion-mdp button:hover { background: rgba(255, 255, 255, .12); color: #fff; }
+.gestion-connexion__envoyer { width: 100%; min-height: 48px; margin-top: .15rem; padding: .8rem 1.1rem; border: 1px solid var(--c-or); border-radius: 999px; background: linear-gradient(110deg, var(--c-or-clair), var(--c-or)); color: var(--c-nuit); font: 700 .98rem var(--f-texte); cursor: pointer; box-shadow: 0 8px 20px -10px rgba(201, 162, 39, .5); transition: box-shadow .18s, filter .18s; }
+.gestion-connexion__envoyer:hover { filter: brightness(1.08); box-shadow: 0 8px 24px -8px rgba(201, 162, 39, .5); }
+.gestion-connexion__envoyer:active { filter: brightness(.95); }
+.gestion-connexion__confiance { display: flex; align-items: flex-start; justify-content: center; gap: .5rem; margin: 1.5rem 0 0; padding-top: 1.15rem; border-top: 1px solid rgba(255, 255, 255, .18); font-size: .82rem; line-height: 1.6; color: var(--c-attenue); }
+.gestion-connexion__confiance .icone { flex: none; margin-top: .15rem; color: var(--c-or-clair); }
+.gestion-connexion .alerte { margin: 0 0 1.1rem; border-radius: 12px; color: #14201a; }
+.gestion-connexion .alerte--erreur { background: #fff1ee; border-color: #c67b70; }
+.gestion-connexion :focus-visible { outline-color: var(--c-or-clair); }
+
+/* Ouverture de la connexion : un seul enchaînement, 0 → 700 ms. Le sceau,
+   lui, est animé par Remotion. */
+.gestion-connexion__ligne > span { animation: gestion-monte .64s var(--ease-sortie) both; }
+.gestion-connexion__ligne:nth-child(1) > span { animation-delay: .14s; }
+.gestion-connexion__ligne:nth-child(2) > span { animation-delay: .22s; }
+.gestion-connexion__filet { animation: gestion-trace .52s var(--ease-sortie) .38s both; }
+.gestion-connexion__chapo { animation: gestion-entree .42s var(--ease-sortie) .46s both; }
+.gestion-connexion__verre { animation: gestion-entree .48s var(--ease-sortie) .3s both; }
+
+@keyframes gestion-entree { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@keyframes gestion-monte { from { transform: translateY(110%); } to { transform: none; } }
+@keyframes gestion-trace { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
+/* ---------- 8. Responsive, mouvement réduit ---------- */
+
+@media (max-width: 1240px) {
+	.gestion-deux, .gestion-assistant { grid-template-columns: minmax(0, 1fr); }
+	.gestion-apercu { position: static; }
+}
+@media (max-width: 960px) {
+	.bo-contenu.gestion-contenu { padding: 1.25rem 1rem 2.5rem; }
+}
+/* Comptes en fiches : compte, puis rôle et état, puis les actions. */
+@media (max-width: 760px) {
+	.gestion-table { overflow: visible; border: 0; background: none; }
+	.gestion-table table, .gestion-table tbody { display: block; }
+	.gestion-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+	.gestion-table tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .5rem .75rem; margin-bottom: .6rem; padding: .85rem .95rem; border: 1px solid var(--filet); border-radius: var(--g-rayon); background: var(--blanc); }
+	.gestion-table td { display: block; min-width: 0 !important; padding: 0; border: 0; }
+	.gestion-table td:first-child { grid-column: 1 / -1; }
+	.gestion-table td:nth-child(3) { align-self: start; }
+	.gestion-table__actions { grid-column: 1 / -1; display: flex !important; flex-wrap: wrap; gap: .4rem; text-align: left; }
+	.gestion-table__actions > form { margin-left: 0; }
+}
+@media (max-width: 620px) {
+	.gestion-panneau { padding: 1.1rem 1rem 1.2rem; }
+	.gestion-dialogue__corps { padding: 1.15rem 1.1rem; }
+	.gestion-dialogue__tete { padding: 1.1rem 1.1rem .9rem; }
+	.gestion-dialogue__actions { padding: .9rem 1.1rem; }
+	.gestion-dialogue__espace { width: 100%; margin-right: 0; }
+	.gestion-etapes li span { display: none; }
+	.gestion-date { display: none; }
+	.gestion-table__actions { white-space: normal; }
+}
+@media (max-width: 1100px) {
+	.espace-direction--connexion { padding-inline: 2rem; }
+	.gestion-connexion__marque { padding-left: 2.5rem; }
+	.gestion-connexion__panneau { padding-right: 2rem; }
+	.gestion-connexion__verre { padding-inline: 1.6rem; }
+}
+@media (max-width: 800px) {
+	.espace-direction--connexion { --c-marge: 12px; padding-inline: 12px; }
+	.gestion-connexion { grid-template-columns: minmax(0, 1fr); min-height: auto; max-width: 580px; background-position: 58% top; }
+	.gestion-connexion__marque { gap: .75rem; padding: 1rem 1.5rem 0; }
+	.gestion-connexion h1 { font-size: clamp(1.65rem, 6vw, 2rem); }
+	.gestion-connexion__ligne, .gestion-connexion__ligne > span { display: inline; }
+	.gestion-connexion__propos { margin: 0; }
+	.gestion-connexion__filet, .gestion-connexion__chapo, .gestion-connexion__devise, .gestion-connexion__confiance, .gestion-connexion__intro { display: none; }
+	.gestion-connexion__public { margin-top: .25rem; padding: .35rem 0; border: 0; background: transparent; }
+	.gestion-connexion__panneau { padding: .5rem 1rem 1rem; }
+	.gestion-connexion__verre { max-width: none; padding: 1rem; }
+	.gestion-connexion__verre h2 { margin-bottom: .75rem; font-size: 1.5rem; }
+	.gestion-connexion .gestion-form { gap: .75rem; }
+}
+@media (max-height: 800px) and (min-width: 801px) {
+	.gestion-connexion__marque { gap: 1.5rem; padding-block: 1.5rem; }
+	.gestion-connexion__panneau { padding-block: 1.25rem; }
+	.gestion-connexion__verre { padding-block: 1.5rem; }
+	.gestion-connexion__intro { margin-bottom: 1rem; }
+	.gestion-connexion .gestion-form { gap: .75rem; }
+	.gestion-connexion__confiance { margin-top: 1rem; padding-top: .75rem; }
+	.gestion-connexion__filet { margin-block: 1.25rem; }
+	.gestion-connexion__public { margin-top: 1rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+	.gestion-dialogue[open], .gestion-apercu__nav span, .gestion-connexion__ligne > span, .gestion-connexion__filet, .gestion-connexion__chapo, .gestion-connexion__verre { animation: none; }
+	.gestion-portee, .gestion-etapes li, .gestion-table tbody tr, .gestion-connexion__public, .gestion-connexion__envoyer { transition: none; }
+}
+@media print {
+	.gestion-tete__actions, .gestion-filtres, .gestion-table__actions { display: none !important; }
+	.gestion-panneau { box-shadow: none; break-inside: avoid; }
+}

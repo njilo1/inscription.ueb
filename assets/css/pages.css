@@ -600,6 +600,8 @@
 
 .bo-sidebar__titre { margin: 0; padding: .3rem 1.3rem .35rem; font-size: .78rem; font-weight: 700; color: var(--bo-nav-texte); }
 .bo-sidebar__nav { display: grid; gap: .2rem; padding: 0 .75rem; }
+/* Intertitre d'un second groupe de liens : aligné sur le titre de l'espace. */
+.bo-sidebar__nav .bo-sidebar__titre--groupe { margin-top: .9rem; padding-inline: .55rem; }
 .bo-sidebar__nav a { position: relative; display: flex; align-items: center; gap: .7rem; min-height: 44px; padding: 0 .85rem; border-radius: 10px; color: var(--bo-nav-texte); font-weight: 600; font-size: .92rem; text-decoration: none; transition: background-color .15s var(--ease-sortie), color .15s var(--ease-sortie); }
 .bo-sidebar__nav a:hover { background: var(--bo-nav-survol); color: var(--blanc); }
 .bo-sidebar__nav a[aria-current="page"] { background: var(--or); color: var(--encre); }
@@ -639,17 +641,6 @@
 .bo-cellule-creation form > .champ { width: min(100%, 470px); }
 .bo-cellule-creation form > .champ input[type="email"] { max-width: 470px; }
 
-/* Entrée échelonnée des grilles de cartes : un cran de 45 ms, plafonné à six
-   — au-delà, on attend sans raison que la dernière carte daigne apparaître. */
-.bo-anim > * { animation: bo-monte .32s var(--ease-sortie) both; animation-delay: calc(var(--i, 0) * 45ms); }
-.bo-anim > *:nth-child(1) { --i: 0; }
-.bo-anim > *:nth-child(2) { --i: 1; }
-.bo-anim > *:nth-child(3) { --i: 2; }
-.bo-anim > *:nth-child(4) { --i: 3; }
-.bo-anim > *:nth-child(5) { --i: 4; }
-.bo-anim > *:nth-child(n+6) { --i: 5; }
-@keyframes bo-monte { from { opacity: 0; transform: translate3d(0, 14px, 0); } to { opacity: 1; transform: none; } }
-
 /* Couleurs des graphiques, validées (séparation daltonienne et contraste) :
    identité = vert + bleu, rampe ordonnée = un seul vert clair → foncé,
    statuts = jeu réservé, jamais réutilisé pour une série. */
@@ -665,69 +656,6 @@
 	--viz-piste: #eceee9;
 }
 
-/* Tête du tableau de bord : le chiffre mis en avant, puis quatre tuiles. */
-.bo-tete { display: grid; grid-template-columns: minmax(220px, 280px) minmax(0, 1fr); gap: .85rem; align-items: stretch; }
-/* Deux colonnes fixes : les quatre tuiles forment un bloc plein en face du
-   héro. Un auto-fit laissait une tuile seule en deuxième rangée, donc un trou. */
-.bo-tete .bo-chiffres { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-@media (max-width: 860px) { .bo-tete { grid-template-columns: 1fr; } }
-@media (max-width: 520px) { .bo-tete .bo-chiffres { grid-template-columns: 1fr; } }
-
-/* Le chiffre mis en avant : un seul par écran, police de l'interface. */
-.bo-hero { display: grid; align-content: space-between; gap: .4rem; padding: 1.5rem 1.6rem; border-radius: var(--r-carte); background: var(--vert-bandeau); color: var(--blanc); box-shadow: var(--ombre-2); }
-.bo-hero__libelle { font-size: .92rem; color: rgba(255, 255, 255, .78); }
-.bo-hero__valeur { font: 700 clamp(2.6rem, 2rem + 2.4vw, 3.6rem)/1 var(--f-texte); letter-spacing: -.02em; }
-.bo-hero__note { font-size: .88rem; color: rgba(255, 255, 255, .72); }
-
-.bo-chiffres { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); gap: .85rem; }
-.bo-chiffre { display: grid; align-content: start; gap: .35rem; padding: 1.05rem 1.2rem; border-radius: var(--r-carte); background: var(--blanc); border: 1px solid var(--filet); box-shadow: var(--ombre-1); transition: transform .2s var(--ease-sortie), box-shadow .2s; }
-.bo-chiffre:hover { transform: translateY(-2px); box-shadow: var(--ombre-2); }
-/* Libellé à gauche, icône à droite dans une pastille teintée : la tuile se lit
-   d'un coup d'œil et l'icône donne la couleur de l'état sans porter le sens
-   seule (le libellé le dit). Casse normale, pas de capitales : elles sont un
-   tic de gabarit et ralentissent la lecture. */
-.bo-chiffre__haut { display: flex; flex-direction: row-reverse; align-items: flex-start; justify-content: space-between; gap: .5rem; font-size: .88rem; color: var(--gris); }
-.bo-chiffre__haut .icone { box-sizing: content-box; padding: 6px; border-radius: 9px; background: rgba(46, 125, 50, .09); color: var(--vert); }
-.bo-chiffre--attente .bo-chiffre__haut .icone { background: rgba(250, 178, 25, .18); color: #8a6100; }
-.bo-chiffre--verifie .bo-chiffre__haut .icone { background: rgba(12, 163, 12, .12); color: #0a7a0a; }
-.bo-chiffre--rejete .bo-chiffre__haut .icone { background: var(--danger-fond); color: var(--danger); }
-.bo-chiffre b { font: 600 1.9rem/1.05 var(--f-texte); color: var(--encre); letter-spacing: -.01em; }
-.bo-chiffre__jauge { height: 5px; border-radius: 999px; background: var(--viz-piste); overflow: hidden; }
-.bo-chiffre__jauge span { display: block; height: 100%; border-radius: 999px; background: var(--viz-pas-2); }
-.bo-chiffre__note { font-size: .82rem; color: var(--gris-clair); }
-.bo-chiffre--attente b { color: #8a6100; }
-.bo-chiffre--attente .bo-chiffre__jauge span { background: var(--viz-attente); }
-.bo-chiffre--verifie b { color: #0a7a0a; }
-.bo-chiffre--verifie .bo-chiffre__jauge span { background: var(--viz-bien); }
-.bo-chiffre--rejete b { color: var(--danger); }
-.bo-chiffre--rejete .bo-chiffre__jauge span { background: var(--viz-critique); }
-
-/* Une carte par établissement, cliquable, sur le tableau de bord global */
-/* 270px : les neuf établissements tiennent en 3 × 3 sur un écran de bureau,
-   sans carte orpheline en dernière rangée, et les noms longs respirent. */
-.bo-etabs { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 270px), 1fr)); gap: .9rem; }
-.bo-etab { position: relative; display: grid; gap: .1rem; padding: 1.1rem 1.2rem; border-radius: var(--r-carte); background: var(--blanc); border: 1px solid var(--filet); box-shadow: var(--ombre-1); color: var(--encre); text-decoration: none; overflow: hidden; transition: transform .2s var(--ease-sortie), box-shadow .2s, border-color .2s; }
-.bo-etab:hover { transform: translateY(-2px); box-shadow: var(--ombre-2); border-color: var(--gris-clair); color: var(--encre); }
-/* Même traitement que les tuiles : un chiffre isolé reste en police d'interface,
-   en chiffres proportionnels (tabular-nums est réservé aux colonnes alignées). */
-.bo-etab > b { font: 600 1.9rem/1.05 var(--f-texte); letter-spacing: -.01em; }
-.bo-etab__sigle { display: inline-flex; align-items: center; width: fit-content; padding: .18rem .5rem; border-radius: 999px; background: color-mix(in srgb, var(--etab) 12%, #fff); font-weight: 700; font-size: .95rem; color: var(--etab); }
-.bo-etab__niveaux { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .45rem .7rem; margin-top: .45rem; color: var(--gris); font-size: .84rem; line-height: 1.35; font-variant-numeric: tabular-nums; }
-.bo-etab__niveaux span { min-width: 0; white-space: nowrap; }
-.bo-etab__niveaux b { color: var(--encre); font-weight: 700; }
-.bo-etab__note { font-size: .78rem; color: var(--gris-clair); }
-
-/* Grille de douze colonnes : chaque figure prend l'empan qu'appelle sa forme,
-   au lieu de trois cartes de largeur identique. Les empans sont posés par rang
-   parce que ueb_bo_palier() est le seul émetteur de cette grille, et qu'il
-   pose toujours les mêmes trois figures dans cet ordre :
-     1. répartition par sexe — un anneau, compact : un tiers ;
-     2. avancement des quitus — quatre barres libellées : deux tiers ;
-     3. étudiants par tranche — des barres qui gagnent à être longues : tout. */
-.bo-graphes { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 1rem; }
-.bo-graphes .graphe:nth-child(1) { grid-column: span 4; }
-.bo-graphes .graphe:nth-child(2) { grid-column: span 8; }
-.bo-graphes .graphe:nth-child(3) { grid-column: span 12; }
 .graphe { display: flex; flex-direction: column; margin: 0; padding: 1.3rem 1.4rem 1.45rem; border-radius: var(--r-carte); background: var(--blanc); border: 1px solid var(--filet); box-shadow: var(--ombre-1); transition: transform .2s var(--ease-sortie), box-shadow .2s, border-color .2s; }
 .graphe:hover { transform: translateY(-2px); box-shadow: var(--ombre-2); border-color: var(--filet-fort); }
 .graphe__entete { display: grid; gap: .1rem; margin-bottom: 1.15rem; }
@@ -763,12 +691,6 @@
 .graphe__barre span { display: block; height: 100%; border-radius: 0 4px 4px 0; }
 .graphe__barres b { text-align: right; color: var(--encre); font-variant-numeric: tabular-nums; }
 
-/* Écran intermédiaire : les deux premières figures se partagent la largeur. */
-@media (max-width: 1180px) {
-	.bo-graphes .graphe:nth-child(1),
-	.bo-graphes .graphe:nth-child(2) { grid-column: span 6; }
-}
-
 /* Sous 960 px la barre latérale se couche en bandeau au-dessus du contenu. */
 @media (max-width: 960px) {
 	/* Rangée du bandeau à sa hauteur : sur une vue courte, la place libre va au contenu. */
@@ -782,18 +704,16 @@
 	.bo-sidebar__pied { margin: 0; padding: 0; border: 0; grid-auto-flow: column; align-items: center; gap: .8rem; flex: 0 0 auto; }
 	.bo-perimetre, .bo-compte__meta { display: none; }
 	.bo-contenu { padding: 1.2rem 1rem 2.5rem; }
-	.bo-graphes .graphe:nth-child(n) { grid-column: span 12; }
 }
 
 @media (max-width: 620px) {
 	.bo-contenu { padding: 1rem .9rem 2.5rem; }
 }
 
-/* Mouvement réduit : plus de cascade ni de soulèvement, les états restent
-   lisibles et instantanés. */
+/* Mouvement réduit : plus de soulèvement, les états restent lisibles et
+   instantanés. */
 @media (prefers-reduced-motion: reduce) {
-	.bo-anim > * { animation: none; }
-	.bo-chiffre:hover, .graphe:hover, .bo-etab:hover { transform: none; }
+	.graphe:hover { transform: none; }
 }
 
 /* À l'impression, la navigation et les actions ne servent à rien ; les cartes
@@ -802,10 +722,7 @@
 	.bo { grid-template-columns: 1fr; }
 	.bo-sidebar, .bo-contenu .page-app__actions { display: none; }
 	.bo-contenu { padding: 0; }
-	.bo-chiffre, .bo-etab, .graphe, .bo-hero { box-shadow: none; break-inside: avoid; }
-	/* La cascade d'entrée part d'une opacité nulle : si l'impression saisit la
-	   page avant sa fin, des cartes manqueraient à l'appel. */
-	.bo-anim > * { animation: none; }
+	.graphe { box-shadow: none; break-inside: avoid; }
 }
 
 /* ---------- Espaces scolarité et administration ---------- */
@@ -1345,18 +1262,23 @@
 .registre--quitus { container: registre / inline-size; overflow: visible; border-radius: 16px; box-shadow: none; }
 .registre__barre { display: flex; align-items: center; justify-content: space-between; gap: .75rem 1.25rem; flex-wrap: wrap; padding: .85rem 1rem; border-bottom: 1px solid var(--filet); }
 
-/* Onglets de statut : icône + libellé + compteur ; l'onglet actif se détache du rail. */
-.onglets-statut { display: flex; flex-wrap: wrap; gap: .25rem; padding: .25rem; border-radius: 12px; background: var(--papier); }
-.onglets-statut a { display: inline-flex; align-items: center; gap: .4rem; min-height: 40px; padding: 0 .75rem; border-radius: 9px; color: var(--gris); font-size: .88rem; font-weight: 600; text-decoration: none; transition: background-color .15s, color .15s, box-shadow .15s; }
-.onglets-statut a:hover { color: var(--encre); background: rgba(255, 255, 255, .75); }
-.onglets-statut a:focus-visible { outline: 2px solid var(--or); outline-offset: 2px; }
-.onglets-statut a.est-actif { background: var(--blanc); color: var(--encre); box-shadow: 0 0 0 1px var(--filet-fort), 0 2px 6px -2px rgba(15, 44, 31, .18); }
+/* Filtres de statut : boutons distincts et sélection contrastée. */
+.onglets-statut { display: flex; flex-wrap: wrap; gap: .5rem; }
+.onglets-statut__titre { flex-basis: 100%; color: var(--gris); font-size: .8rem; font-weight: 600; }
+.onglets-statut a { display: inline-flex; align-items: center; gap: .45rem; min-height: 44px; padding: .45rem .85rem; border: 1px solid var(--filet-fort); border-radius: 8px; background: var(--blanc); color: var(--encre); font-size: .88rem; font-weight: 600; text-decoration: none; cursor: pointer; box-shadow: 0 2px 0 var(--filet); transition: background-color .15s, border-color .15s, color .15s, box-shadow .15s; }
+.onglets-statut a:hover { color: var(--foret-800); border-color: var(--foret-700); background: var(--papier); box-shadow: 0 2px 0 var(--foret-700); }
+.onglets-statut a:focus-visible { outline: 2px solid var(--foret-700); outline-offset: 3px; }
+.onglets-statut a.est-actif { border-color: var(--vert-bandeau); background: var(--vert-bandeau); color: var(--blanc); box-shadow: none; text-decoration: underline; text-underline-offset: .25em; text-decoration-thickness: 2px; }
 .onglets-statut__recu_envoye .icone { color: var(--ciel-fonce); }
 .onglets-statut__genere .icone { color: var(--or-fonce); }
 .onglets-statut__rejete .icone { color: var(--danger); }
 .onglets-statut__verifie .icone { color: var(--vert); }
 .onglets-statut__nb { display: inline-grid; place-items: center; min-width: 22px; height: 20px; padding: 0 .35rem; border-radius: 999px; background: rgba(19, 53, 26, .08); color: var(--foret-800); font-size: .75rem; font-weight: 700; font-variant-numeric: tabular-nums; }
-.onglets-statut a.est-actif .onglets-statut__nb { background: var(--vert-bandeau); color: var(--blanc); }
+.onglets-statut a.est-actif .icone { color: var(--blanc); }
+.onglets-statut a.est-actif .onglets-statut__nb { background: var(--blanc); color: var(--vert-bandeau); }
+@media (prefers-reduced-motion: reduce) {
+	.onglets-statut a { transition: none; }
+}
 
 /* Recherche : la touche Entrée s'affiche dans le champ quand il a le focus. */
 .registre__recherche { display: flex; align-items: center; gap: .5rem; flex: 1 1 300px; max-width: 460px; }
@@ -1741,19 +1663,6 @@
 .suivi-table .suivi-barre, .suivi-barre--niveau, .suivi-medicaux__barre span { transform-origin: left center; animation: suivi-pousse .6s var(--ease-sortie) calc(.15s + min(var(--i, 0), 6) * 60ms) backwards; }
 @keyframes suivi-pousse { from { transform: scaleX(0); } }
 
-/* Carte compacte des tableaux de bord */
-.suivi-carte { display: grid; gap: .85rem; padding: 1.15rem 1.35rem 1.25rem; border-radius: 20px; color: var(--encre); text-decoration: none; transition: border-color .2s, box-shadow .25s, transform .25s var(--ease-sortie); }
-.suivi-carte:hover { box-shadow: var(--ombre-2); transform: translateY(-2px); }
-.suivi-carte:focus-visible { outline: 3px solid var(--or); outline-offset: 3px; }
-.suivi-carte__tete { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
-.suivi-carte__titre { font-size: .9rem; font-weight: 700; color: var(--foret-800); }
-.suivi-carte__lien { display: inline-flex; align-items: center; gap: .3rem; font-size: .88rem; font-weight: 700; color: var(--foret-800); }
-.suivi-carte__lien .icone { transition: translate .2s var(--ease-sortie); }
-.suivi-carte:hover .suivi-carte__lien .icone { translate: 3px 0; }
-.suivi-carte__corps { display: flex; align-items: baseline; gap: .5rem 1rem; flex-wrap: wrap; }
-.suivi-carte__taux { font-size: 2.3rem; font-weight: 700; line-height: 1; letter-spacing: -.03em; }
-.suivi-carte__phrase { font-size: .92rem; color: var(--gris); }
-.suivi-carte__phrase b { color: var(--encre); }
 
 /* Moins de 1180 px : la colonne Étudiants passe sous le nom, la barre garde
    de la place ; le graphique par niveau prend un peu plus de largeur. */
@@ -1807,7 +1716,6 @@
 	.suivi-methode__regles { padding: 1.1rem; }
 }
 @media (prefers-reduced-motion: reduce) {
-	.suivi-carte, .suivi-carte:hover { transition: none; transform: none; }
 	.suivi-barre__part::after, .suivi-methode__chevron, .suivi-table__aller, .suivi-table th, .suivi-table td, .suivi-methode > summary { transition: none; }
 	.suivi-table .suivi-barre, .suivi-barre--niveau, .suivi-medicaux__barre span { animation: none; }
 }
@@ -1818,12 +1726,9 @@
 	.suivi-table__aller { display: none; }
 }
 
-/* ---------- Espace Direction : rôles dynamiques ----------
-   Cartes de rôles (portée, droits accordés / refusés, comptes), assistant
-   en trois étapes avec aperçu en direct, personnel. Mêmes jetons que le
-   reste du back-office ; les mouvements sont courts (180–300 ms), orientés
-   (l'étape suivante arrive de la droite, la précédente de la gauche) et
-   supprimés en mouvement réduit. */
+/* ---------- Portée de plusieurs établissements ----------
+   Sélecteur de la barre latérale commune. L'espace de gestion (rôles et
+   comptes) a sa propre feuille : assets/css/direction.css. */
 
 /* Sélecteur d'établissement dans la barre latérale (portée « plusieurs » ou « tous ») */
 .bo-perimetre--choix { display: grid; gap: .4rem; }
@@ -1833,109 +1738,12 @@
 .bo-perimetre--choix select option { color: var(--encre); }
 .bo-perimetre--choix .icone { position: absolute; right: .6rem; top: 50%; translate: 0 -50%; pointer-events: none; }
 
-/* Cartes des rôles */
-.roles-grille { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); gap: 1.1rem; }
-.role-carte { display: grid; grid-template-rows: auto auto 1fr auto; gap: .85rem; padding: 1.25rem 1.3rem 1.1rem; border-radius: 20px; animation: ligne-entree .45s var(--ease-sortie) both; transition: box-shadow .25s, transform .25s var(--ease-sortie); }
-.roles-grille > :nth-child(2) { animation-delay: .05s; } .roles-grille > :nth-child(3) { animation-delay: .1s; } .roles-grille > :nth-child(4) { animation-delay: .15s; } .roles-grille > :nth-child(n+5) { animation-delay: .2s; }
-.role-carte:not(.role-carte--nouveau):hover { box-shadow: var(--ombre-2); transform: translateY(-2px); }
-.role-carte__tete { display: flex; align-items: flex-start; justify-content: space-between; gap: .75rem; }
-.role-carte__tete h2 { margin: 0; font-size: 1.3rem; line-height: 1.25; overflow-wrap: anywhere; }
-.role-carte__marque { flex: none; padding: .15rem .55rem; border-radius: 999px; background: var(--alerte-fond); font-size: .72rem; font-weight: 700; color: #6b4d00; }
-.role-carte__portee { display: flex; align-items: center; gap: .4rem; margin: 0; padding: .45rem .7rem; border-radius: 10px; background: var(--papier); font-size: .86rem; font-weight: 600; color: var(--foret-800); }
-.role-carte__droits { list-style: none; display: grid; gap: .35rem; margin: 0; padding: 0; }
-.role-carte__droits li { display: flex; align-items: center; gap: .5rem; font-size: .88rem; line-height: 1.35; }
-.role-carte__droits li .icone { flex: none; padding: 2px; border-radius: 50%; }
-.role-carte__droits .est-accorde { color: var(--encre); }
-.role-carte__droits .est-accorde .icone { background: var(--vert-bandeau); color: var(--blanc); }
-.role-carte__droits .est-refuse { color: var(--gris-clair); }
-.role-carte__droits .est-refuse .icone { background: var(--papier); color: var(--gris-clair); }
-.role-carte__pied { display: flex; align-items: center; justify-content: space-between; gap: .6rem; flex-wrap: wrap; padding-top: .85rem; border-top: 1px solid var(--filet); }
-.role-carte__comptes { display: inline-flex; align-items: center; gap: .5rem; font-size: .86rem; font-weight: 600; color: var(--gris); }
-.role-carte__avatars { display: inline-flex; }
-.role-carte__avatars .bo-avatar { width: 30px; height: 30px; font-size: .64rem; background: #e4ece5; box-shadow: 0 0 0 2px var(--blanc); }
-.role-carte__avatars .bo-avatar + .bo-avatar { margin-left: -6px; }
-.role-carte__actions { display: inline-flex; align-items: center; gap: .3rem; }
-.role-carte__actions form { display: contents; }
-.role-carte__actions .btn { border-radius: 10px; box-shadow: none; }
-.role-carte__icone { display: grid; place-items: center; width: 40px; height: 40px; border: 0; border-radius: 10px; background: transparent; color: var(--gris); cursor: pointer; transition: background-color .15s, color .15s; }
-.role-carte__icone:hover, .role-carte__icone:focus-visible { background: var(--papier); color: var(--encre); }
-.role-carte__icone--danger:hover, .role-carte__icone--danger:focus-visible { background: var(--danger-fond); color: var(--danger); }
-.role-carte__verrou { display: inline-flex; align-items: center; gap: .35rem; font-size: .82rem; font-weight: 600; color: var(--gris); }
-.role-carte--nouveau { display: grid; place-content: center; justify-items: center; gap: .35rem; min-height: 220px; border: 2px dashed var(--filet-fort); border-radius: 20px; background: transparent; color: var(--foret-800); text-align: center; text-decoration: none; transition: border-color .2s, background-color .2s; }
-.role-carte--nouveau span { display: grid; place-items: center; width: 52px; height: 52px; margin-bottom: .3rem; border-radius: 50%; background: var(--blanc); box-shadow: var(--ombre-1); transition: transform .3s var(--ease-sortie); }
-.role-carte--nouveau small { color: var(--gris); }
-.role-carte--nouveau:hover { border-color: var(--vert-bandeau); background: rgba(19, 53, 26, .03); }
-.role-carte--nouveau:hover span { transform: rotate(90deg); }
-.role-carte--nouveau:focus-visible { outline: 3px solid var(--or); outline-offset: 3px; }
-
-/* Dialogue de suppression */
-.dialogue { width: min(100% - 2rem, 480px); padding: 0; border: 0; border-radius: 20px; box-shadow: var(--ombre-3); }
-.dialogue::backdrop { background: rgba(8, 18, 12, .55); backdrop-filter: blur(2px); }
-.dialogue[open] { animation: camera-ouvrir .28s var(--ease-sortie); }
-.dialogue__contenu { display: grid; gap: .9rem; padding: 1.5rem; }
-.dialogue__icone { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 12px; background: var(--danger-fond); color: var(--danger); }
-.dialogue h2 { margin: 0; font-size: 1.3rem; }
-.dialogue p { margin: 0; color: var(--gris); line-height: 1.5; }
-.dialogue__champ { display: grid; gap: .35rem; font-size: .9rem; font-weight: 600; }
-.dialogue__champ select, .dialogue__champ input { min-height: 44px; padding: .5rem .7rem; border: 1px solid var(--filet-fort); border-radius: 10px; font: inherit; }
-.dialogue__actions { display: flex; justify-content: flex-end; gap: .5rem; margin-top: .3rem; }
-
-/* Assistant en trois étapes */
-.assistant__etapes { list-style: none; display: flex; gap: .4rem; margin: 0 0 1rem; padding: .3rem; border-radius: 14px; background: var(--blanc); box-shadow: 0 0 0 1px var(--filet); width: fit-content; max-width: 100%; }
-.assistant__etape { display: inline-flex; align-items: center; gap: .5rem; min-height: 40px; padding: 0 .9rem 0 .45rem; border: 0; border-radius: 10px; background: transparent; font: inherit; font-size: .9rem; font-weight: 600; color: var(--gris); cursor: pointer; transition: background-color .15s, color .15s; }
-.assistant__etape span { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: var(--papier); font-size: .8rem; font-weight: 800; transition: background-color .2s, color .2s; }
-.assistant__etape[aria-current="step"] { background: var(--papier); color: var(--encre); }
-.assistant__etape[aria-current="step"] span { background: var(--or); color: var(--encre); }
-.assistant__etape.est-faite span { background: var(--vert-bandeau); color: var(--blanc); }
-.assistant__etape:focus-visible { outline: 3px solid var(--or); outline-offset: 2px; }
-.assistant__corps { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 360px); gap: 1.25rem; align-items: start; }
-.assistant__panneaux { display: grid; gap: 1.5rem; padding: clamp(1.25rem, 2.5vw, 1.8rem); border-radius: 20px; }
-.assistant__panneau { display: grid; gap: .9rem; min-width: 0; }
-.assistant__panneau[hidden], .etabs-choix[hidden] { display: none; }
-.assistant__panneau h2 { margin: 0; font-size: 1.45rem; }
-.assistant__panneau h2:focus { outline: none; }
-.assistant__aide { margin: -.5rem 0 .2rem; font-size: .92rem; color: var(--gris); }
-.assistant:not(.est-pas-a-pas) .assistant__panneau + .assistant__panneau { padding-top: 1.5rem; border-top: 1px solid var(--filet); }
-.assistant:not(.est-pas-a-pas) [data-etape-suivante], .assistant:not(.est-pas-a-pas) [data-etape-precedente], .assistant:not(.est-pas-a-pas) [data-compteur-etape] { display: none; }
-.assistant__panneau.entre-avant { animation: etape-avant .28s var(--ease-sortie); }
-.assistant__panneau.entre-arriere { animation: etape-arriere .28s var(--ease-sortie); }
-@keyframes etape-avant { from { opacity: 0; transform: translateX(16px); } }
-@keyframes etape-arriere { from { opacity: 0; transform: translateX(-16px); } }
-.assistant__nav { display: flex; align-items: center; gap: .75rem; padding-top: 1.1rem; border-top: 1px solid var(--filet); }
-.assistant__nav [data-etape-suivante], .assistant__nav [data-enregistrer] { margin-left: auto; }
-.assistant__nav .btn { border-radius: 12px; min-height: 46px; }
-.assistant__nav [hidden] { display: none; }
-.assistant__compteur { font-size: .85rem; font-weight: 600; color: var(--gris); }
-.assistant__erreur { margin: 0; padding: .6rem .85rem; border-radius: 10px; background: var(--danger-fond); color: #7f1d18; font-size: .9rem; font-weight: 600; }
-
-/* Modèles */
-.modeles { margin: .4rem 0 0; padding: 0; border: 0; }
-.modeles legend { margin-bottom: .6rem; padding: 0; font-size: .9rem; font-weight: 700; color: var(--encre); }
-.modeles__grille { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr)); gap: .6rem; }
-.modele { display: grid; justify-items: start; gap: .25rem; padding: .85rem .9rem; border: 1.5px solid var(--filet); border-radius: 14px; background: var(--blanc); font: inherit; text-align: left; color: var(--encre); cursor: pointer; transition: border-color .15s, box-shadow .15s, transform .15s; }
-.modele b { font-size: .95rem; }
-.modele small { font-size: .8rem; line-height: 1.4; color: var(--gris); }
-.modele__icone { display: grid; place-items: center; width: 34px; height: 34px; margin-bottom: .2rem; border-radius: 10px; background: rgba(19, 53, 26, .07); color: var(--vert-bandeau); }
-.modele:hover:not(:disabled) { border-color: var(--gris-clair); transform: translateY(-1px); box-shadow: var(--ombre-1); }
-.modele.est-choisi { border-color: var(--vert-bandeau); box-shadow: inset 0 0 0 1px var(--vert-bandeau); }
-.modele.est-choisi .modele__icone { background: var(--vert-bandeau); color: var(--blanc); }
-.modele:disabled { opacity: .5; cursor: not-allowed; }
-.modele:focus-visible { outline: 3px solid var(--or); outline-offset: 2px; }
-
-/* Portée */
-.portees { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .7rem; }
-.portee { position: relative; display: flex; }
-.portee input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
-.portee input:disabled { cursor: not-allowed; }
-.portee__carte { display: grid; align-content: start; gap: .3rem; flex: 1; padding: 1rem; border: 1.5px solid var(--filet); border-radius: 16px; background: var(--blanc); transition: border-color .15s, box-shadow .15s, background-color .15s; }
-.portee__carte b { font-size: .98rem; }
-.portee__carte small { font-size: .82rem; line-height: 1.45; color: var(--gris); }
-.portee__icone { display: grid; place-items: center; width: 36px; height: 36px; margin-bottom: .2rem; border-radius: 10px; background: rgba(19, 53, 26, .07); color: var(--vert-bandeau); transition: background-color .15s, color .15s; }
-.portee input:checked + .portee__carte { border-color: var(--vert-bandeau); background: rgba(19, 53, 26, .03); box-shadow: inset 0 0 0 1px var(--vert-bandeau); }
-.portee input:checked + .portee__carte .portee__icone { background: var(--vert-bandeau); color: var(--blanc); }
-.portee input:focus-visible + .portee__carte { outline: 3px solid var(--or); outline-offset: 2px; }
-.portee input:disabled + .portee__carte { opacity: .5; }
+/* ---------- Choix d'établissements et sécurité du compte ----------
+   Hors de l'espace de gestion (qui a sa propre feuille, direction.css) :
+   tutelles de la fiche d'un IPES (templates/composants/ipes-admin.php) et
+   mot de passe de l'espace IPES (page-ipes.php). */
 .etabs-choix { margin: .2rem 0 0; padding: 0; border: 0; animation: deplier .25s var(--ease-sortie); }
+.etabs-choix[hidden] { display: none; }
 .etabs-choix legend { margin-bottom: .55rem; padding: 0; font-size: .9rem; font-weight: 700; }
 .etabs-choix__grille { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: .5rem; }
 .etab-case { position: relative; }
@@ -1945,75 +1753,44 @@
 .etab-case input:checked + span { border-color: var(--vert-bandeau); background: rgba(19, 53, 26, .04); box-shadow: inset 0 0 0 1px var(--vert-bandeau); }
 .etab-case input:focus-visible + span { outline: 3px solid var(--or); outline-offset: 2px; }
 .etab-case input:disabled + span { opacity: .45; }
-
-/* Permissions : cartes à interrupteur */
-.droits { display: grid; gap: .5rem; margin: 0; padding: 0; border: 0; }
-.droits legend { margin-bottom: .5rem; padding: 0; font-size: .8rem; font-weight: 800; letter-spacing: .02em; color: var(--foret-800); }
-.droit { position: relative; display: block; }
-.droit input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
-.droit input:disabled { cursor: not-allowed; }
-.droit__carte { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: .8rem; padding: .8rem .9rem; border: 1.5px solid var(--filet); border-radius: 14px; background: var(--blanc); transition: border-color .15s, background-color .15s; }
-.droit__icone { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 10px; background: var(--papier); color: var(--gris); transition: background-color .15s, color .15s; }
-.droit__texte { display: grid; gap: .1rem; min-width: 0; }
-.droit__texte b { font-size: .95rem; }
-.droit__texte small { font-size: .82rem; line-height: 1.4; color: var(--gris); }
-.droit__interrupteur { position: relative; width: 44px; height: 26px; border-radius: 999px; background: var(--filet-fort); transition: background-color .2s; }
-.droit__interrupteur i { position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: var(--blanc); box-shadow: 0 1px 3px rgba(0, 0, 0, .25); transition: transform .25s var(--ease-sortie); }
-.droit input:checked + .droit__carte { border-color: var(--vert-bandeau); background: rgba(19, 53, 26, .03); }
-.droit input:checked + .droit__carte .droit__icone { background: var(--vert-bandeau); color: var(--blanc); }
-.droit input:checked + .droit__carte .droit__interrupteur { background: var(--vert-bandeau); }
-.droit input:checked + .droit__carte .droit__interrupteur i { transform: translateX(18px); }
-.droit input:focus-visible + .droit__carte { outline: 3px solid var(--or); outline-offset: 2px; }
-.droit input:disabled + .droit__carte { opacity: .5; }
-
-/* Aperçu en direct */
-.apercu { position: sticky; top: calc(var(--bo-chrome, 0px) + 1.25rem); display: grid; gap: .6rem; padding: 1.3rem 1.35rem; border-radius: 20px; }
-.apercu__sur { margin: 0; font-size: .78rem; font-weight: 700; color: var(--foret-800); }
-.apercu h2 { margin: 0; font-size: 1.35rem; color: var(--encre); overflow-wrap: anywhere; }
-.apercu h3 { margin: .5rem 0 0; font: 700 .84rem var(--f-texte); color: var(--gris); }
-.apercu__portee { display: flex; align-items: center; gap: .4rem; margin: 0; padding: .45rem .7rem; border-radius: 10px; background: var(--papier); font-size: .86rem; font-weight: 600; color: var(--foret-800); }
-.apercu__liste { list-style: none; display: grid; gap: .4rem; margin: 0; padding: 0; }
-.apercu__liste li { position: relative; padding: .1rem 0 .1rem 1.6rem; font-size: .88rem; font-weight: 400; line-height: 1.45; color: var(--encre); }
-.apercu__liste li::before { content: ""; position: absolute; left: 0; top: .25rem; width: 16px; height: 16px; border-radius: 50%; }
-.apercu__liste--oui li::before { background: var(--vert-bandeau) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E") center / 10px no-repeat; }
-.apercu__liste--non li { color: var(--gris-clair); }
-.apercu__liste--non li::before { background: var(--papier); box-shadow: inset 0 0 0 1.5px var(--filet-fort); }
-.apercu__liste li.est-nouveau { animation: apercu-entree .35s var(--ease-sortie); }
-@keyframes apercu-entree { from { opacity: 0; transform: translateY(-4px); background: var(--succes-fond); } }
-.apercu__vide { margin: 0; font-size: .86rem; color: var(--gris); }
-.apercu__note { display: flex; align-items: flex-start; gap: .4rem; margin: .5rem 0 0; padding-top: .8rem; border-top: 1px solid var(--filet); font-size: .8rem; line-height: 1.45; color: var(--gris); }
-.apercu__note .icone { flex: none; margin-top: .1rem; color: var(--vert-bandeau); }
-
-/* Personnel */
-.nouveau-compte { gap: 0; }
-.nouveau-compte > summary { display: flex; align-items: center; gap: .85rem; cursor: pointer; list-style: none; }
-.nouveau-compte > summary::-webkit-details-marker { display: none; }
-.nouveau-compte > summary > span:nth-child(2) { display: grid; flex: 1; }
-.nouveau-compte > summary small { font-size: .86rem; color: var(--gris); }
-.nouveau-compte > summary > .icone:last-child { transition: rotate .2s var(--ease-sortie); }
-.nouveau-compte[open] > summary > .icone:last-child { rotate: 180deg; }
-.nouveau-compte[open] > form { margin-top: 1.2rem; animation: deplier .3s var(--ease-sortie); }
-.nouveau-compte .bo-formulaire__actions { display: flex; align-items: center; gap: .8rem; flex-wrap: wrap; }
-.nouveau-compte [data-champ-etab][hidden] { display: none; }
-.personnel-role { display: flex; align-items: center; gap: .4rem; flex-wrap: wrap; }
-.personnel-role .champ__select { position: relative; }
-.personnel-role select { min-height: 38px; padding: .35rem 1.9rem .35rem .6rem; border: 1px solid var(--filet-fort); border-radius: 10px; background: var(--blanc); font: inherit; font-size: .88rem; appearance: none; }
-.personnel-role .icone { position: absolute; right: .5rem; top: 50%; translate: 0 -50%; pointer-events: none; }
-.personnel-role [hidden] { display: none; }
 .direction-securite { max-width: 760px; }
-
-@media (max-width: 1100px) {
-	.assistant__corps { grid-template-columns: minmax(0, 1fr); }
-	.apercu { position: static; }
-}
-@media (max-width: 760px) {
-	.portees { grid-template-columns: minmax(0, 1fr); }
-	.assistant__etape { padding-right: .6rem; font-size: .82rem; }
-	.assistant__compteur { display: none; }
-}
 @media (prefers-reduced-motion: reduce) {
-	.role-carte, .assistant__panneau.entre-avant, .assistant__panneau.entre-arriere, .apercu__liste li.est-nouveau, .etabs-choix, .dialogue[open], .nouveau-compte[open] > form { animation: none; }
-	.role-carte, .role-carte:hover, .role-carte--nouveau span, .droit__interrupteur i, .modele { transition: none; transform: none; }
+	.etabs-choix { animation: none; }
+	.etab-case span { transition: none; }
+}
+
+/* ---------- Chiffres d'un tableau de bord IPES ----------
+   ueb_carte_hero() et ueb_carte_chiffre() (inc/vues.php) : tableau de bord de
+   l'espace IPES et vue IPES de l'espace scolarité. Le chiffre mis en avant,
+   puis quatre tuiles en deux colonnes fixes (un auto-fit laissait une tuile
+   seule en deuxième rangée). */
+.bo-tete { display: grid; grid-template-columns: minmax(220px, 280px) minmax(0, 1fr); gap: .85rem; align-items: stretch; }
+.bo-tete .bo-chiffres { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (max-width: 860px) { .bo-tete { grid-template-columns: 1fr; } }
+@media (max-width: 520px) { .bo-tete .bo-chiffres { grid-template-columns: 1fr; } }
+.bo-hero { display: grid; align-content: space-between; gap: .4rem; padding: 1.5rem 1.6rem; border-radius: var(--r-carte); background: var(--vert-bandeau); color: var(--blanc); box-shadow: var(--ombre-2); }
+.bo-hero__libelle { font-size: .92rem; color: rgba(255, 255, 255, .78); }
+.bo-hero__valeur { font: 700 clamp(2.6rem, 2rem + 2.4vw, 3.6rem)/1 var(--f-texte); letter-spacing: -.02em; }
+.bo-hero__note { font-size: .88rem; color: rgba(255, 255, 255, .72); }
+.bo-chiffres { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); gap: .85rem; }
+.bo-chiffre { display: grid; align-content: start; gap: .35rem; padding: 1.05rem 1.2rem; border-radius: var(--r-carte); background: var(--blanc); border: 1px solid var(--filet); box-shadow: var(--ombre-1); }
+.bo-chiffre__haut { display: flex; flex-direction: row-reverse; align-items: flex-start; justify-content: space-between; gap: .5rem; font-size: .88rem; color: var(--gris); }
+.bo-chiffre__haut .icone { box-sizing: content-box; padding: 6px; border-radius: 9px; background: rgba(46, 125, 50, .09); color: var(--vert); }
+.bo-chiffre--attente .bo-chiffre__haut .icone { background: rgba(250, 178, 25, .18); color: #8a6100; }
+.bo-chiffre--verifie .bo-chiffre__haut .icone { background: rgba(12, 163, 12, .12); color: #0a7a0a; }
+.bo-chiffre--rejete .bo-chiffre__haut .icone { background: var(--danger-fond); color: var(--danger); }
+.bo-chiffre b { font: 600 1.9rem/1.05 var(--f-texte); color: var(--encre); letter-spacing: -.01em; }
+.bo-chiffre__jauge { height: 5px; border-radius: 999px; background: var(--viz-piste); overflow: hidden; }
+.bo-chiffre__jauge span { display: block; height: 100%; border-radius: 999px; background: var(--viz-pas-2); }
+.bo-chiffre__note { font-size: .82rem; color: var(--gris-clair); }
+.bo-chiffre--attente b { color: #8a6100; }
+.bo-chiffre--attente .bo-chiffre__jauge span { background: var(--viz-attente); }
+.bo-chiffre--verifie b { color: #0a7a0a; }
+.bo-chiffre--verifie .bo-chiffre__jauge span { background: var(--viz-bien); }
+.bo-chiffre--rejete b { color: var(--danger); }
+.bo-chiffre--rejete .bo-chiffre__jauge span { background: var(--viz-critique); }
+@media print {
+	.bo-chiffre, .bo-hero { box-shadow: none; break-inside: avoid; }
 }
 
 /* ---------- Administration : IPES (établissements privés sous tutelle) ----------

@@ -11,6 +11,57 @@
 
 defined( 'ABSPATH' ) || exit;
 
+/** Bilan compact de la scolarité, à partir des mêmes agrégats que le suivi. */
+function ueb_bord_synthese( array $suivi, $url_paiements ) {
+	$g = $suivi['global'];
+	$indicateurs = array(
+		array( 'libelle' => 'Étudiants concernés', 'valeur' => ueb_formater_montant( $g['etudiants'] ), 'unite' => '', 'note' => 'Avec un quitus de droits universitaires' ),
+		array( 'libelle' => 'Droits attendus', 'valeur' => ueb_formater_montant( $g['attendu'] ), 'unite' => 'FCFA', 'note' => 'Pour l’année académique en cours' ),
+		array( 'libelle' => 'Montant encaissé', 'valeur' => ueb_formater_montant( $g['encaisse'] ), 'unite' => 'FCFA', 'note' => 'Paiements vérifiés par la scolarité' ),
+		array( 'libelle' => 'Reste à percevoir', 'valeur' => ueb_formater_montant( max( 0, $g['attendu'] - $g['encaisse'] ) ), 'unite' => 'FCFA', 'note' => 'Droits attendus moins montants encaissés' ),
+	);
+	$parts = array( 'encaisse' => 'Encaissé', 'verification' => 'En vérification', 'declare' => 'Déclaré', 'non_declare' => 'Pas encore déclaré' );
+	?>
+	<section class="scolarite-bilan" aria-label="Bilan des droits universitaires">
+		<dl class="scolarite-indicateurs">
+			<?php foreach ( $indicateurs as $indicateur ) : ?>
+				<div class="scolarite-indicateur">
+					<dt><?php echo esc_html( $indicateur['libelle'] ); ?></dt>
+					<dd><b><?php echo esc_html( $indicateur['valeur'] ); ?></b><?php if ( $indicateur['unite'] ) : ?> <small><?php echo esc_html( $indicateur['unite'] ); ?></small><?php endif; ?><span><?php echo esc_html( $indicateur['note'] ); ?></span></dd>
+				</div>
+			<?php endforeach; ?>
+		</dl>
+		<div class="scolarite-recouvrement">
+			<header class="scolarite-recouvrement__entete">
+				<div><h2>Recouvrement des droits</h2><p>Seuls les reçus vérifiés comptent comme encaissés.</p></div>
+				<?php if ( $url_paiements ) : ?><a class="bo-lien" href="<?php echo esc_url( $url_paiements ); ?>">Suivi des paiements<?php echo ueb_icone( 'fleche', 16 ); ?></a><?php endif; ?>
+			</header>
+			<?php if ( $g['attendu'] > 0 ) : ?>
+				<div class="scolarite-recouvrement__graphe">
+					<p class="scolarite-recouvrement__taux"><b><?php echo esc_html( ueb_pourcent( ueb_suivi_taux( $g ) ) ); ?></b><span>des droits recouvrés</span></p>
+					<div class="scolarite-recouvrement__repartition">
+						<?php ueb_suivi_barre( $g, 'suivi-barre--hero' ); ?>
+						<ul class="suivi-legende scolarite-recouvrement__legende">
+							<?php foreach ( $parts as $cle => $libelle ) : ?>
+								<li class="suivi-legende__item suivi-legende__item--<?php echo esc_attr( $cle ); ?>"><i aria-hidden="true"></i><span><?php echo esc_html( $libelle ); ?></span><b><?php echo esc_html( ueb_fcfa( $g[ $cle ] ) ); ?></b><small><?php echo esc_html( ueb_pourcent( ueb_suivi_taux( $g, $cle ) ) ); ?></small></li>
+							<?php endforeach; ?>
+						</ul>
+					</div>
+				</div>
+				<dl class="scolarite-recouvrement__situations">
+					<?php foreach ( array( 'soldes' => 'Soldés', 'partiels' => 'Paiements partiels', 'aucun' => 'Sans paiement vérifié' ) as $cle => $libelle ) : ?>
+						<div><dt><?php echo esc_html( $libelle ); ?></dt><dd><?php echo esc_html( ueb_formater_montant( $g[ $cle ] ) ); ?></dd></div>
+					<?php endforeach; ?>
+				</dl>
+				<?php if ( $g['trop_percu'] > 0 ) : ?><p class="bord-recouvrement__alerte"><?php echo ueb_icone( 'alerte', 16 ); ?><span><b><?php echo esc_html( ueb_fcfa( $g['trop_percu'] ) ); ?></b> vérifiés au-delà du montant attendu : à contrôler (le taux n’en tient pas compte).</span></p><?php endif; ?>
+			<?php else : ?>
+				<p class="scolarite-recouvrement__vide">Aucun quitus de droits cette année pour l’instant. Le recouvrement apparaîtra dès les premiers dossiers.</p>
+			<?php endif; ?>
+		</div>
+	</section>
+	<?php
+}
+
 /* ---------- Jauge : image fixe de repli ----------
    État final de la composition Remotion « jauge » (image JAUGE_DUREE - 1),
    affiché sans JavaScript et tant que le lecteur n'est pas monté. Géométrie

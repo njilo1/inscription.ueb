@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="660" viewBox="0 0 1200 660" fill="none">
+  <defs>
+    <linearGradient id="ribbon" x1="1000" y1="200" x2="1240" y2="-40" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#90b698" stop-opacity=".2"/>
+      <stop offset="1" stop-color="#c9a227" stop-opacity=".18"/>
+    </linearGradient>
+    <linearGradient id="arc" x1="950" y1="660" x2="1240" y2="410" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#8bac86" stop-opacity=".28"/>
+      <stop offset="1" stop-color="#8bac86" stop-opacity=".02"/>
+    </linearGradient>
+  </defs>
+  <path d="M314-40V181M355-40V181" stroke="#86a57c" stroke-opacity=".16" stroke-width="10" stroke-linecap="round"/>
+  <path d="m-95 635 219-219c56-56-34-110-72-59s21 84 58 47l67-67" stroke="#6b996f" stroke-opacity=".18" stroke-width="10" stroke-linecap="round"/>
+  <path d="m544 381 84-84c49-49-47-86-54-125-12-68 82-85 95-23" stroke="#739b74" stroke-opacity=".16" stroke-width="10" stroke-linecap="round"/>
+  <path d="m790-87 151 151c65 65-32 109-76 65l-46-46" stroke="#061d12" stroke-opacity=".28" stroke-width="12" stroke-linecap="round"/>
+  <path d="m1013 220 267-267" stroke="url(#ribbon)" stroke-width="112" stroke-linecap="round"/>
+  <path d="m1095 107 185-185" stroke="#9bbb98" stroke-opacity=".12" stroke-width="78" stroke-linecap="round"/>
+  <path d="M995 753c-96-126-21-300 125-320 72-10 147 11 195 72" stroke="url(#arc)" stroke-width="48"/>
+  <path d="m257 713 252-252 265 265" stroke="#071e12" stroke-opacity=".27" stroke-width="72"/>
+  <path d="m236 708 245-245" stroke="#53845a" stroke-opacity=".09" stroke-width="27"/>
+</svg>

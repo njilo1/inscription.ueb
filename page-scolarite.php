@@ -3,7 +3,7 @@
  * Template Name: Espace scolarité
  *
  * Espace de la scolarité d'un établissement, avec barre latérale :
- *   - Tableau de bord : chiffres de l'établissement et trois graphiques ;
+ *   - Tableau de bord : bilan des droits et quatre graphiques ;
  *   - Quitus : liste filtrable, fiche et décision ;
  *   - Comptes étudiants : recherche, réinitialisation, ajout d'un compte.
  *
@@ -268,18 +268,19 @@ ueb_page_debut( array( 'titre' => 'Espace scolarité', 'variante' => $autorise ?
 					$url_paiements = $peut_paiements ? $ici( array( 'vue' => 'paiements' ) ) : '';
 					$maintenant    = current_time( 'timestamp' );
 					?>
-					<div class="bord">
+					<div class="bord bord--scolarite">
 						<?php
-						ueb_bord_recouvrement( $suivi, $url_paiements, $etab ? $etab['sigle'] : 'Université' );
+						ueb_bord_synthese( $suivi, $url_paiements );
 						ueb_bord_parcours( $c, $ici );
 						?>
 
 						<div class="bord__rangee bord__rangee--2">
+							<?php ueb_graphe_courbes( 'Progression de l’année', 'Quitus cumulés, jour après jour', $activite ); ?>
 							<section class="carte file-verif" aria-labelledby="titre-file">
 								<header class="file-verif__entete">
 									<div>
-										<h2 id="titre-file">À vérifier</h2>
-										<p>Reçus envoyés par les étudiants, du plus ancien au plus récent. Compare-les aux originaux avant de décider.</p>
+										<h2 id="titre-file">Reçus à vérifier <span class="scolarite-compteur"><?php echo (int) $a_verifier; ?></span></h2>
+										<p>Compare les reçus aux originaux, en commençant par les plus anciens de cette sélection.</p>
 									</div>
 								</header>
 								<?php if ( ! $file ) : ?>
@@ -301,12 +302,11 @@ ueb_page_debut( array( 'titre' => 'Espace scolarité', 'variante' => $autorise ?
 										<?php endforeach; ?>
 									</ul>
 									<footer class="file-verif__pied">
-										<p><?php echo ueb_icone( 'horloge', 16 ); ?>Le plus ancien attend depuis <?php echo esc_html( human_time_diff( strtotime( $file[0]->date_modification ), $maintenant ) ); ?>.</p>
-										<a class="bo-lien" href="<?php echo $ici( array( 'vue' => 'quitus', 'statut' => 'recu_envoye' ) ); ?>">Tout voir (<?php echo count( $file ); ?>)<?php echo ueb_icone( 'fleche', 16 ); ?></a>
+										<p><?php echo ueb_icone( 'horloge', 16 ); ?>Le premier reçu affiché attend depuis <?php echo esc_html( human_time_diff( strtotime( $file[0]->date_modification ), $maintenant ) ); ?>.</p>
+										<a class="bo-lien" href="<?php echo $ici( array( 'vue' => 'quitus', 'statut' => 'recu_envoye' ) ); ?>">Tout voir (<?php echo (int) $a_verifier; ?>)<?php echo ueb_icone( 'fleche', 16 ); ?></a>
 									</footer>
 								<?php endif; ?>
 							</section>
-							<?php ueb_graphe_courbes( 'Progression de l’année', 'Quitus cumulés, jour après jour', $activite ); ?>
 						</div>
 
 						<div class="bord__rangee bord__rangee--3">
@@ -777,6 +777,7 @@ ueb_page_debut( array( 'titre' => 'Espace scolarité', 'variante' => $autorise ?
 					<section class="carte registre registre--quitus" aria-label="Quitus de l’année">
 						<div class="registre__barre">
 							<nav class="onglets-statut" aria-label="Filtrer par statut">
+								<span class="onglets-statut__titre" aria-hidden="true">Filtrer par statut</span>
 								<a class="<?php echo '' === $filtres['statut'] ? 'est-actif' : ''; ?>" href="<?php echo $ici( array( 'vue' => 'quitus', 'q' => $filtres['q'] ?: null ) ); ?>" <?php echo '' === $filtres['statut'] ? 'aria-current="page"' : ''; ?>>Tous <span class="onglets-statut__nb"><?php echo (int) $stats['total']; ?></span></a>
 								<?php foreach ( array( 'recu_envoye', 'genere', 'rejete', 'verifie' ) as $cle ) : $actif = $cle === $filtres['statut']; ?>
 									<a class="onglets-statut__<?php echo esc_attr( $cle ); ?><?php echo $actif ? ' est-actif' : ''; ?>" href="<?php echo $ici( array( 'vue' => 'quitus', 'statut' => $cle, 'q' => $filtres['q'] ?: null ) ); ?>" <?php echo $actif ? 'aria-current="page"' : ''; ?>><?php echo ueb_icone( $icones_statut[ $cle ], 16 ); ?><?php echo esc_html( UEB_STATUTS_QUITUS[ $cle ]['libelle'] ); ?> <span class="onglets-statut__nb"><?php echo (int) $stats['statuts'][ $cle ]; ?></span></a>

@@ -3,12 +3,18 @@
  * Template Name: Administration UEb
  *
  * Espace de l'administration, avec barre latérale :
- *   - Tableau de bord : chiffres de toute l'université, trois graphiques et
- *     le tableau « Par établissement », dont chaque ligne s'ouvre ;
- *   - Vue d'un établissement (?etab=FS) : ses cartes, ses graphiques et ses
- *     effectifs par filière ;
- *   - Scolarités : créer, rattacher, réinitialiser, suspendre, supprimer ;
- *   - IPES : établissements privés sous tutelle (templates/composants/ipes-admin.php).
+ *   - Tableau de bord : cinq indicateurs, anneau du recouvrement, évolution
+ *     cumulée sur 7, 30 ou 90 jours, statuts et comparaison des établissements ;
+ *   - Vue d'un établissement (?etab=FS) : mêmes indicateurs filtrés, avec
+ *     ses niveaux et ses filières ;
+ *   - Paiements (?vue=paiements[&etab=FS]) : suivi complet du recouvrement ;
+ *   - Personnel (?vue=scolarites) : créer, rattacher, réinitialiser,
+ *     suspendre, supprimer ;
+ *   - IPES (?vue=ipes) : établissements privés sous tutelle
+ *     (templates/composants/ipes-admin.php).
+ *
+ * Thème clair par défaut, sombre au choix (bascule mémorisée, voir
+ * inc/administration.php et assets/js/administration.js).
  *
  * Accès : capacité « manage_options ». La connexion se fait ici ou par la
  * page de connexion WordPress.
@@ -48,53 +54,76 @@ $autorise = ueb_est_admin_ueb();
 $annee    = ueb_annee_academique();
 
 if ( $autorise ) {
-	$vue     = sanitize_key( $_GET['vue'] ?? 'bord' );
-	$focus   = strtoupper( sanitize_text_field( wp_unslash( $_GET['etab'] ?? '' ) ) );
-	$focus   = ueb_etablissement( $focus ) ? $focus : '';
-	$ici     = static fn( array $args = array() ) => esc_url( add_query_arg( $args, ueb_url_administration() ) );
-	$chiffres       = ueb_gestion_chiffres( $annee['code'], $focus );
-	$stats          = ueb_gestion_stats( $annee['code'], $focus );
-	$etudiants_etab = ueb_gestion_etudiants_par_etab( $annee['code'] );
-	$niveaux_etab   = ueb_gestion_niveaux_par_etab( $annee['code'] );
-	$prov     = $_SESSION['ueb_mdp_agent'] ?? null;
+	$vue   = sanitize_key( $_GET['vue'] ?? 'bord' );
+	$vue   = in_array( $vue, array( 'bord', 'paiements', 'scolarites', 'ipes' ), true ) ? $vue : 'bord';
+	$focus = strtoupper( sanitize_text_field( wp_unslash( $_GET['etab'] ?? '' ) ) );
+	$focus = ueb_etablissement( $focus ) ? $focus : '';
+	$ici   = static fn( array $args = array() ) => esc_url( add_query_arg( $args, ueb_url_administration() ) );
+	$url   = static fn( array $args = array() ) => add_query_arg( $args, ueb_url_administration() );
+	$prov  = $_SESSION['ueb_mdp_agent'] ?? null;
 	unset( $_SESSION['ueb_mdp_agent'] );
-	if ( 'scolarites' === $vue ) {
+
+	if ( 'bord' === $vue ) {
+		$periode  = (int) ( $_GET['periode'] ?? 30 );
+		$periode  = in_array( $periode, array( 7, 30, 90 ), true ) ? $periode : 30;
+		$chiffres = ueb_gestion_chiffres( $annee['code'], $focus );
+		$suivi    = ueb_suivi_paiements( $annee['code'], $focus, $periode );
+		$activite = ueb_gestion_activite( $annee['code'], $focus, $periode );
+		$niveaux  = ueb_gestion_niveaux_par_etab( $annee['code'] );
+		$vide_niv = array_fill_keys( array_keys( UEB_NIVEAUX_INSCRIPTION ), 0 );
+	} elseif ( 'paiements' === $vue ) {
+		$suivi = ueb_suivi_paiements( $annee['code'], $focus, 366 );
+	} elseif ( 'scolarites' === $vue ) {
 		$agents = ueb_agents(); // tous les comptes du personnel, quel que soit leur rôle
 	}
 }
 
-/* Coque plein écran une fois connecté ; en-tête de site conservé sur l'écran
-   de connexion, qui n'a pas encore de barre latérale pour porter la marque. */
-ueb_page_debut( array( 'titre' => 'Administration', 'variante' => $autorise ? 'bo' : 'gestion' ) );
+/* Coque plein écran et bascule de thème une fois connecté ; l'écran de
+   connexion garde l'en-tête du site. */
+ueb_page_debut( array(
+	'titre'    => 'Administration',
+	'variante' => $autorise ? 'bo' : 'gestion',
+	'classe'   => $autorise ? 'espace-admin' : '',
+	'theme'    => $autorise,
+) );
 ?>
 <main id="contenu" class="page-app gestion<?php echo $autorise ? ' page-app--bo' : ''; ?>">
 
 	<?php if ( ! $autorise ) : ?>
 
 		<div class="conteneur">
-		<div class="espace-connexion">
-			<section class="carte carte__corps" aria-labelledby="titre-connexion">
-				<h1 id="titre-connexion">Administration</h1>
-				<p class="page-app__sous-titre">Réservé aux administrateurs de la plateforme.</p>
-
-				<?php if ( is_user_logged_in() ) : ?>
-					<?php ueb_alerte( 'erreur', "Ce compte n'est pas administrateur." ); ?>
-				<?php endif; ?>
-				<?php if ( $erreur_connexion ) : ?>
-					<?php ueb_alerte( 'erreur', $erreur_connexion ); ?>
-				<?php endif; ?>
-
-				<form class="formulaire" method="post" action="<?php echo esc_url( get_permalink() ); ?>" data-formulaire novalidate>
-					<?php wp_nonce_field( 'ueb_connexion_admin', 'ueb_connexion_nonce' ); ?>
-					<input type="hidden" name="ueb_connexion_admin" value="1">
-					<?php
-					ueb_champ( array( 'nom' => 'identifiant', 'libelle' => 'Identifiant', 'icone' => 'utilisateur', 'attrs' => array( 'autocomplete' => 'username', 'autocapitalize' => 'none', 'spellcheck' => 'false', 'autofocus' => true ) ) );
-					ueb_champ( array( 'nom' => 'mot_de_passe', 'libelle' => 'Mot de passe', 'type' => 'password', 'icone' => 'cadenas', 'attrs' => array( 'autocomplete' => 'current-password' ) ) );
-					?>
-					<button class="btn btn--primaire btn--large" type="submit"><?php echo ueb_icone( 'bouclier', 18 ); ?>Se connecter</button>
-				</form>
-			</section>
-		</div>
+			<div class="bo-connexion">
+				<aside class="bo-connexion__volet">
+					<?php ueb_animation( 'embleme', ueb_props_embleme(), 'animation--embleme bo-connexion__embleme', 'Sceau de l’Université d’Ebolowa' ); ?>
+					<p class="bo-connexion__marque">Université d’Ebolowa</p>
+					<h1 id="titre-connexion">Administration</h1>
+					<p class="bo-connexion__intro">Le pilotage des inscriptions dans les neuf établissements.</p>
+					<ul class="bo-connexion__points">
+						<li><?php echo ueb_icone( 'banque', 17 ); ?>Suivre le recouvrement des droits</li>
+						<li><?php echo ueb_icone( 'ecole', 17 ); ?>Comparer les établissements</li>
+						<li><?php echo ueb_icone( 'utilisateur', 17 ); ?>Gérer les comptes du personnel</li>
+					</ul>
+				</aside>
+				<section class="bo-connexion__formulaire" aria-labelledby="titre-connexion">
+					<h2>Connexion</h2>
+					<p class="bo-connexion__aide">Réservé aux administrateurs de la plateforme.</p>
+					<?php if ( is_user_logged_in() ) : ?>
+						<?php ueb_alerte( 'erreur', "Ce compte n'est pas administrateur." ); ?>
+					<?php endif; ?>
+					<?php if ( $erreur_connexion ) : ?>
+						<?php ueb_alerte( 'erreur', $erreur_connexion ); ?>
+					<?php endif; ?>
+					<form class="formulaire" method="post" action="<?php echo esc_url( get_permalink() ); ?>" data-formulaire novalidate>
+						<?php wp_nonce_field( 'ueb_connexion_admin', 'ueb_connexion_nonce' ); ?>
+						<input type="hidden" name="ueb_connexion_admin" value="1">
+						<?php
+						ueb_champ( array( 'nom' => 'identifiant', 'libelle' => 'Identifiant', 'icone' => 'utilisateur', 'attrs' => array( 'autocomplete' => 'username', 'autocapitalize' => 'none', 'spellcheck' => 'false', 'autofocus' => true ) ) );
+						ueb_champ( array( 'nom' => 'mot_de_passe', 'libelle' => 'Mot de passe', 'type' => 'password', 'icone' => 'cadenas', 'attrs' => array( 'autocomplete' => 'current-password' ) ) );
+						?>
+						<button class="btn btn--primaire btn--large" type="submit"><?php echo ueb_icone( 'bouclier', 18 ); ?>Se connecter</button>
+					</form>
+				</section>
+			</div>
 		</div>
 
 	<?php else : ?>
@@ -104,9 +133,9 @@ ueb_page_debut( array( 'titre' => 'Administration', 'variante' => $autorise ? 'b
 			ueb_bo_barre(
 				'Administration',
 				array(
-					array( 'url' => $ici(), 'libelle' => 'Tableau de bord', 'icone' => 'tampon', 'actif' => 'bord' === $vue ),
+					array( 'url' => $ici(), 'libelle' => 'Tableau de bord', 'icone' => 'tableau', 'actif' => 'bord' === $vue ),
 					array( 'url' => $ici( array( 'vue' => 'paiements' ) ), 'libelle' => 'Paiements', 'icone' => 'banque', 'actif' => 'paiements' === $vue ),
-					array( 'url' => $ici( array( 'vue' => 'scolarites' ) ), 'libelle' => 'Personnel', 'icone' => 'utilisateur', 'actif' => 'scolarites' === $vue ),
+					array( 'url' => $ici( array( 'vue' => 'scolarites' ) ), 'libelle' => 'Personnel', 'icone' => 'groupe', 'actif' => 'scolarites' === $vue ),
 					array( 'url' => $ici( array( 'vue' => 'ipes' ) ), 'libelle' => 'IPES', 'icone' => 'ecole', 'actif' => 'ipes' === $vue ),
 					array( 'url' => ueb_url_direction(), 'libelle' => 'Rôles (Direction)', 'icone' => 'bouclier', 'actif' => false ),
 				),
@@ -117,124 +146,135 @@ ueb_page_debut( array( 'titre' => 'Administration', 'variante' => $autorise ? 'b
 			);
 			?>
 
-			<div class="bo-contenu">
+			<div class="bo-contenu adm<?php echo 'bord' === $vue ? ' adm-dashboard' : ( 'paiements' === $vue ? ' adm-paiements' : '' ); ?>">
 
 				<?php if ( 'scolarites' === $vue ) : ?>
 
-					<header class="page-app__entete">
-						<div>
-							<h1>Comptes du personnel</h1>
-							<p class="page-app__sous-titre">Chaque compte agit selon son rôle et sa portée. Les rôles se gèrent dans l’espace Direction.</p>
-						</div>
-					</header>
-					<?php ueb_afficher_flash(); ?>
+					<?php
+					$suspendus = count( array_filter( $agents, static fn( $a ) => ueb_agent_suspendu( $a->ID ) ) );
+					ueb_adm_tete( array(
+						'titre'      => 'Personnel',
+						'sous_titre' => 'Chaque compte agit selon son rôle et sa portée. Les rôles se définissent dans l’espace Direction.',
+						'actions'    => ueb_adm_action( ueb_url_direction(), 'Gérer les rôles', 'bouclier' ),
+					) );
+					ueb_afficher_flash();
+					?>
 
 					<?php if ( $prov ) : ?>
 						<div class="provisoire carte" role="status">
 							<?php echo ueb_icone( 'cle', 26 ); ?>
 							<div>
-								<p>Mot de passe initial pour <b><?php echo esc_html( $prov['compte'] ); ?></b> — à communiquer à l’établissement, il ne sera plus affiché :</p>
-							<p class="provisoire__mdp"><?php echo esc_html( $prov['mdp'] ); ?></p>
-							<button type="button" class="btn btn--fantome btn--petit provisoire__copier" data-copier-mot-de-passe="<?php echo esc_attr( $prov['mdp'] ); ?>"><?php echo ueb_icone( 'fichier', 16 ); ?><span>Copier le mot de passe</span></button>
-								<p class="champ__aide">L'agent se connecte ensuite sur l'espace scolarité.</p>
+								<p>Mot de passe initial pour <b><?php echo esc_html( $prov['compte'] ); ?></b>, à communiquer à l’établissement. Il ne sera plus affiché :</p>
+								<p class="provisoire__mdp"><?php echo esc_html( $prov['mdp'] ); ?></p>
+								<button type="button" class="btn btn--fantome btn--petit provisoire__copier" data-copier-mot-de-passe="<?php echo esc_attr( $prov['mdp'] ); ?>"><?php echo ueb_icone( 'fichier', 16 ); ?><span>Copier le mot de passe</span></button>
+								<p class="champ__aide">L’agent se connecte ensuite sur son espace.</p>
 							</div>
 						</div>
 					<?php endif; ?>
 
-					<section class="carte section-form" aria-labelledby="titre-creer">
-						<header class="section-form__entete">
-							<span class="section-form__num"><?php echo ueb_icone( 'plus', 18 ); ?></span>
-							<div>
-								<h2 id="titre-creer">Créer un compte</h2>
-								<p>L'agent ne verra que les quitus de l'établissement choisi.</p>
-							</div>
-						</header>
-						<div class="section-form__corps formulaire">
-							<form class="formulaire administration-agent-form" method="post" action="<?php echo esc_url( ueb_url_administration() ); ?>" data-formulaire novalidate>
+					<div class="adm-personnel">
+						<section class="adm-panneau adm-comptes" aria-labelledby="adm-comptes-titre">
+							<header class="adm-panneau__tete">
+								<div>
+									<h2 id="adm-comptes-titre">Comptes du personnel</h2>
+									<p>
+										<?php
+										$nb = count( $agents );
+										echo esc_html( $nb ? sprintf( '%d compte%s, %s.', $nb, $nb > 1 ? 's' : '', $suspendus ? sprintf( 'dont %d suspendu%s', $suspendus, $suspendus > 1 ? 's' : '' ) : ( $nb > 1 ? 'tous actifs' : 'actif' ) ) : 'Aucun compte pour l’instant.' );
+										?>
+									</p>
+								</div>
+							</header>
+
+							<?php if ( ! $agents ) : ?>
+								<div class="bo-vide"><span><?php echo ueb_icone( 'groupe', 22 ); ?></span><p>Aucun compte du personnel pour l’instant. Crée le premier avec le formulaire.</p></div>
+							<?php else : ?>
+								<ul class="adm-comptes__liste">
+									<?php foreach ( $agents as $agent ) :
+										$sigle    = ueb_etab_agent( $agent->ID );
+										$suspendu = ueb_agent_suspendu( $agent->ID );
+										$id       = (int) $agent->ID;
+										?>
+										<li class="adm-compte<?php echo $suspendu ? ' est-suspendu' : ''; ?>">
+											<span class="bo-avatar adm-compte__avatar" aria-hidden="true"><?php echo esc_html( ueb_initiales( $agent->display_name ?: $agent->user_login ) ); ?></span>
+											<div class="adm-compte__identite">
+												<p class="adm-compte__nom"><b><?php echo esc_html( $agent->display_name ); ?></b><span class="adm-role"><?php echo esc_html( ueb_nom_role_du_compte( $agent->ID ) ); ?></span></p>
+												<p class="adm-compte__meta">
+													<span><?php echo ueb_icone( 'utilisateur', 14 ); ?><?php echo esc_html( $agent->user_login ); ?></span>
+													<?php if ( $agent->user_email ) : ?><span><?php echo ueb_icone( 'courriel', 14 ); ?><?php echo esc_html( $agent->user_email ); ?></span><?php endif; ?>
+													<span><?php echo ueb_icone( 'calendrier', 14 ); ?>Créé le <?php echo esc_html( $agent->user_registered ? mysql2date( 'd/m/Y', $agent->user_registered ) : '' ); ?></span>
+												</p>
+											</div>
+											<span class="adm-etat<?php echo $suspendu ? ' adm-etat--suspendu' : ''; ?>"><?php echo ueb_icone( $suspendu ? 'pause' : 'check', 14 ); ?><?php echo $suspendu ? 'Suspendu' : 'Actif'; ?></span>
+											<div class="adm-compte__outils">
+												<form method="post" action="<?php echo esc_url( ueb_url_administration() ); ?>" class="adm-compte__etab">
+													<?php ueb_champ_csrf(); ?>
+													<input type="hidden" name="ueb_action" value="gestion_agent_modifier">
+													<input type="hidden" name="agent_id" value="<?php echo $id; ?>">
+													<div class="champ__select">
+														<select name="etablissement" aria-label="Établissement de <?php echo esc_attr( $agent->user_login ); ?>">
+															<?php foreach ( ueb_etablissements() as $s => $e ) : ?>
+																<option value="<?php echo esc_attr( $s ); ?>" <?php selected( $sigle, $s ); ?>><?php echo esc_html( $s ); ?></option>
+															<?php endforeach; ?>
+														</select><?php echo ueb_icone( 'chevron', 16 ); ?>
+													</div>
+													<button class="adm-bouton adm-bouton--petit" type="submit">Changer</button>
+												</form>
+												<div class="adm-compte__actions">
+													<button class="adm-bouton adm-bouton--petit" type="button" data-ouvrir-agent-mdp="agent-mdp-<?php echo $id; ?>"><?php echo ueb_icone( 'cle', 15 ); ?>Mot de passe</button>
+													<dialog class="bo-agent-mdp" id="agent-mdp-<?php echo $id; ?>" aria-labelledby="agent-mdp-titre-<?php echo $id; ?>">
+														<h2 id="agent-mdp-titre-<?php echo $id; ?>">Nouveau mot de passe</h2>
+														<p>Définis le mot de passe que <?php echo esc_html( $agent->display_name ?: $agent->user_login ); ?> utilisera pour se connecter.</p>
+														<form method="post" action="<?php echo esc_url( ueb_url_administration() ); ?>">
+															<?php ueb_champ_csrf(); ?>
+															<input type="hidden" name="ueb_action" value="gestion_agent_mdp">
+															<input type="hidden" name="agent_id" value="<?php echo $id; ?>">
+															<label><span>Nouveau mot de passe</span><input type="password" name="mot_de_passe" minlength="8" autocomplete="new-password" required></label>
+															<label><span>Confirmer</span><input type="password" name="mot_de_passe_confirmation" minlength="8" autocomplete="new-password" required></label>
+															<div class="bo-agent-mdp__actions"><button class="btn btn--lien btn--petit" type="button" data-fermer-agent-mdp>Annuler</button><button class="btn btn--primaire btn--petit" type="submit">Enregistrer</button></div>
+														</form>
+													</dialog>
+													<form method="post" action="<?php echo esc_url( ueb_url_administration() ); ?>" data-confirmer="<?php echo $suspendu ? 'Rétablir l’accès de cet agent ?' : 'Suspendre l’accès de cet agent ? Son compte est conservé.'; ?>">
+														<?php ueb_champ_csrf(); ?>
+														<input type="hidden" name="ueb_action" value="gestion_agent_etat">
+														<input type="hidden" name="agent_id" value="<?php echo $id; ?>">
+														<button class="adm-bouton adm-bouton--petit" type="submit"><?php echo ueb_icone( $suspendu ? 'lecture' : 'pause', 15 ); ?><?php echo $suspendu ? 'Rétablir' : 'Suspendre'; ?></button>
+													</form>
+													<form method="post" action="<?php echo esc_url( ueb_url_administration() ); ?>" data-confirmer="Supprimer définitivement le compte <?php echo esc_attr( $agent->user_login ); ?> ? Les décisions qu'il a prises resteront enregistrées.">
+														<?php ueb_champ_csrf(); ?>
+														<input type="hidden" name="ueb_action" value="gestion_agent_supprimer">
+														<input type="hidden" name="agent_id" value="<?php echo $id; ?>">
+														<button class="adm-bouton adm-bouton--petit adm-bouton--danger" type="submit" aria-label="Supprimer le compte <?php echo esc_attr( $agent->user_login ); ?>" title="Supprimer"><?php echo ueb_icone( 'corbeille', 15 ); ?></button>
+													</form>
+												</div>
+											</div>
+										</li>
+									<?php endforeach; ?>
+								</ul>
+							<?php endif; ?>
+						</section>
+
+						<section class="adm-panneau adm-creer" aria-labelledby="adm-creer-titre">
+							<header class="adm-panneau__tete">
+								<div>
+									<h2 id="adm-creer-titre">Créer un compte</h2>
+									<p>L’agent ne verra que l’établissement choisi, avec les droits de son rôle.</p>
+								</div>
+							</header>
+							<form class="formulaire adm-creer__form" method="post" action="<?php echo esc_url( ueb_url_administration() ); ?>" data-formulaire novalidate>
 								<?php ueb_champ_csrf(); ?>
 								<input type="hidden" name="ueb_action" value="gestion_creer_agent">
-								<div class="formulaire__rangee">
-									<?php
-									ueb_champ( array( 'nom' => 'login', 'libelle' => 'Identifiant de connexion', 'icone' => 'utilisateur', 'attrs' => array( 'placeholder' => 'scolarite.fs', 'autocapitalize' => 'none', 'spellcheck' => 'false', 'autocomplete' => 'off' ) ) );
-									ueb_champ( array( 'nom' => 'nom', 'libelle' => 'Nom de l’agent', 'icone' => 'utilisateur', 'requis' => false, 'attrs' => array( 'placeholder' => 'Nom et prénom', 'autocomplete' => 'off' ) ) );
-									?>
-								</div>
-								<?php ueb_champ( array( 'nom' => 'mot_de_passe', 'libelle' => 'Mot de passe initial', 'type' => 'password', 'icone' => 'cadenas', 'aide' => '8 caractères minimum, avec une lettre et un chiffre.', 'attrs' => array( 'autocomplete' => 'new-password', 'minlength' => 8 ) ) ); ?>
-								<div class="formulaire__rangee">
-									<?php
-									ueb_champ( array( 'nom' => 'email', 'libelle' => 'Adresse e-mail', 'type' => 'email', 'icone' => 'courriel', 'requis' => false, 'aide' => 'Utile pour récupérer un mot de passe oublié.', 'attrs' => array( 'autocomplete' => 'off' ) ) );
-									ueb_champ( array( 'nom' => 'etablissement', 'libelle' => 'Établissement', 'type' => 'select', 'icone' => 'ecole', 'options' => array_map( static fn( $e ) => $e['fr'], ueb_etablissements() ) ) );
-									ueb_champ( array( 'nom' => 'role', 'libelle' => 'Rôle', 'type' => 'select', 'icone' => 'cle', 'options' => array_map( static fn( $r ) => $r['nom'], ueb_roles_attribuables() ), 'valeur' => ueb_role_par_defaut( UEB_CAP_GESTION ) ) );
-									?>
-								</div>
-								<div class="securite-form__actions">
-									<button class="btn btn--primaire" type="submit"><?php echo ueb_icone( 'plus', 18 ); ?>Créer le compte</button>
-								</div>
-							</form>
-						</div>
-					</section>
-
-					<div class="tableau-conteneur">
-						<table class="tableau">
-							<thead><tr><th>Agent</th><th>Établissement</th><th>Compte créé le</th><th>État</th><th><span class="sr">Actions</span></th></tr></thead>
-							<tbody>
-							<?php if ( ! $agents ) : ?>
-								<tr><td colspan="5" class="texte-discret">Aucun compte de scolarité pour l'instant.</td></tr>
-							<?php endif; ?>
-							<?php foreach ( $agents as $agent ) :
-								$sigle    = ueb_etab_agent( $agent->ID );
-								$suspendu = ueb_agent_suspendu( $agent->ID );
+								<?php
+								ueb_champ( array( 'nom' => 'login', 'libelle' => 'Identifiant de connexion', 'icone' => 'utilisateur', 'attrs' => array( 'placeholder' => 'scolarite.fs', 'autocapitalize' => 'none', 'spellcheck' => 'false', 'autocomplete' => 'off' ) ) );
+								ueb_champ( array( 'nom' => 'nom', 'libelle' => 'Nom de l’agent', 'icone' => 'utilisateur', 'requis' => false, 'attrs' => array( 'placeholder' => 'Nom et prénom', 'autocomplete' => 'off' ) ) );
+								ueb_champ( array( 'nom' => 'mot_de_passe', 'libelle' => 'Mot de passe initial', 'type' => 'password', 'icone' => 'cadenas', 'aide' => '8 caractères minimum, avec une lettre et un chiffre.', 'attrs' => array( 'autocomplete' => 'new-password', 'minlength' => 8 ) ) );
+								ueb_champ( array( 'nom' => 'email', 'libelle' => 'Adresse e-mail', 'type' => 'email', 'icone' => 'courriel', 'requis' => false, 'aide' => 'Utile pour récupérer un mot de passe oublié.', 'attrs' => array( 'autocomplete' => 'off' ) ) );
+								ueb_champ( array( 'nom' => 'etablissement', 'libelle' => 'Établissement', 'type' => 'select', 'icone' => 'ecole', 'options' => array_map( static fn( $e ) => $e['fr'], ueb_etablissements() ) ) );
+								ueb_champ( array( 'nom' => 'role', 'libelle' => 'Rôle', 'type' => 'select', 'icone' => 'cle', 'options' => array_map( static fn( $r ) => $r['nom'], ueb_roles_attribuables() ), 'valeur' => ueb_role_par_defaut( UEB_CAP_GESTION ) ) );
 								?>
-								<tr>
-									<td><b><?php echo esc_html( $agent->display_name ); ?></b> <span class="badge badge--recu_envoye"><?php echo esc_html( ueb_nom_role_du_compte( $agent->ID ) ); ?></span><br><small class="texte-discret"><?php echo esc_html( $agent->user_login ); ?><?php echo $agent->user_email ? ' · ' . esc_html( $agent->user_email ) : ''; ?></small></td>
-									<td>
-										<form method="post" action="<?php echo esc_url( ueb_url_administration() ); ?>" class="actions-ligne">
-											<?php ueb_champ_csrf(); ?>
-											<input type="hidden" name="ueb_action" value="gestion_agent_modifier">
-											<input type="hidden" name="agent_id" value="<?php echo (int) $agent->ID; ?>">
-											<div class="champ__select">
-												<select name="etablissement" aria-label="Établissement de <?php echo esc_attr( $agent->user_login ); ?>">
-													<?php foreach ( ueb_etablissements() as $s => $e ) : ?>
-														<option value="<?php echo esc_attr( $s ); ?>" <?php selected( $sigle, $s ); ?>><?php echo esc_html( $s ); ?></option>
-													<?php endforeach; ?>
-												</select><?php echo ueb_icone( 'chevron', 18 ); ?>
-											</div>
-											<button class="btn btn--lien btn--petit" type="submit">Changer</button>
-										</form>
-									</td>
-									<td class="num"><?php echo esc_html( $agent->user_registered ? mysql2date( 'd/m/Y', $agent->user_registered ) : '—' ); ?></td>
-									<td><?php echo $suspendu ? '<span class="badge badge--rejete"><i></i>Suspendu</span>' : '<span class="badge badge--verifie"><i></i>Actif</span>'; ?></td>
-					<td class="actions-ligne">
-						<button class="btn btn--fantome btn--petit" type="button" data-ouvrir-agent-mdp="agent-mdp-<?php echo (int) $agent->ID; ?>"><?php echo ueb_icone( 'cle', 16 ); ?>Mot de passe</button>
-						<dialog class="bo-agent-mdp" id="agent-mdp-<?php echo (int) $agent->ID; ?>" aria-labelledby="agent-mdp-titre-<?php echo (int) $agent->ID; ?>">
-							<h2 id="agent-mdp-titre-<?php echo (int) $agent->ID; ?>">Nouveau mot de passe</h2>
-							<p>Définis le mot de passe que l’agent utilisera pour se connecter à la scolarité.</p>
-							<form method="post" action="<?php echo esc_url( ueb_url_administration() ); ?>">
-								<?php ueb_champ_csrf(); ?>
-								<input type="hidden" name="ueb_action" value="gestion_agent_mdp">
-								<input type="hidden" name="agent_id" value="<?php echo (int) $agent->ID; ?>">
-								<label><span>Nouveau mot de passe</span><input type="password" name="mot_de_passe" minlength="8" autocomplete="new-password" required></label>
-								<label><span>Confirmer</span><input type="password" name="mot_de_passe_confirmation" minlength="8" autocomplete="new-password" required></label>
-								<div class="bo-agent-mdp__actions"><button class="btn btn--lien btn--petit" type="button" data-fermer-agent-mdp>Annuler</button><button class="btn btn--primaire btn--petit" type="submit">Enregistrer</button></div>
+								<button class="btn btn--primaire btn--large" type="submit"><?php echo ueb_icone( 'plus', 18 ); ?>Créer le compte</button>
 							</form>
-						</dialog>
-										<form method="post" action="<?php echo esc_url( ueb_url_administration() ); ?>" data-confirmer="<?php echo $suspendu ? 'Rétablir l’accès de cet agent ?' : 'Suspendre l’accès de cet agent ? Son compte est conservé.'; ?>">
-											<?php ueb_champ_csrf(); ?>
-											<input type="hidden" name="ueb_action" value="gestion_agent_etat">
-											<input type="hidden" name="agent_id" value="<?php echo (int) $agent->ID; ?>">
-											<button class="btn btn--lien btn--petit" type="submit"><?php echo $suspendu ? 'Rétablir' : 'Suspendre'; ?></button>
-										</form>
-										<form method="post" action="<?php echo esc_url( ueb_url_administration() ); ?>" data-confirmer="Supprimer définitivement le compte <?php echo esc_attr( $agent->user_login ); ?> ? Les décisions qu'il a prises resteront enregistrées.">
-											<?php ueb_champ_csrf(); ?>
-											<input type="hidden" name="ueb_action" value="gestion_agent_supprimer">
-											<input type="hidden" name="agent_id" value="<?php echo (int) $agent->ID; ?>">
-											<button class="btn btn--lien btn--petit" type="submit"><?php echo ueb_icone( 'corbeille', 16 ); ?>Supprimer</button>
-										</form>
-									</td>
-								</tr>
-							<?php endforeach; ?>
-							</tbody>
-						</table>
+						</section>
 					</div>
 
 				<?php elseif ( 'ipes' === $vue ) : ?>
@@ -244,143 +284,87 @@ ueb_page_debut( array( 'titre' => 'Administration', 'variante' => $autorise ? 'b
 				<?php elseif ( 'paiements' === $vue ) : ?>
 
 					<?php
-					$suivi = ueb_suivi_paiements( $annee['code'], $focus );
 					$e_suivi = $focus ? ueb_etablissement( $focus ) : null;
-					?>
-					<?php if ( $focus ) : ?>
-						<a class="fil" href="<?php echo $ici( array( 'vue' => 'paiements' ) ); ?>"><?php echo ueb_icone( 'fleche-g', 18 ); ?>Toute l’université</a>
-					<?php endif; ?>
-					<header class="bo-entete">
-						<div class="bo-entete__texte">
-							<p class="bo-entete__contexte">
-								<img src="<?php echo esc_url( ueb_logo_url( $focus ?: 'UEB' ) ); ?>" alt="" width="22" height="22">
-								<span><?php echo esc_html( $focus ?: 'Université d’Ebolowa' ); ?></span>
-								<span class="bo-entete__annee">Année <?php echo esc_html( $annee['libelle'] ); ?></span>
-							</p>
-							<h1>Suivi des paiements</h1>
-							<p class="bo-entete__sous-titre"><?php echo $focus ? 'Droits universitaires attendus et encaissés à ' . esc_html( $e_suivi['fr'] ) . ', filière par filière.' : 'Droits universitaires attendus et encaissés dans les neuf établissements. Ouvre un établissement pour le détail par filière.'; ?></p>
-						</div>
-					</header>
-					<?php ueb_afficher_flash(); ?>
-					<?php
-					ueb_suivi_paiements_vue( $suivi, array(
-						'perimetre'  => $focus ? $focus : 'Université',
-						'lignes'     => $focus ? 'filieres' : 'etabs',
-						'lien_ligne' => static fn( $sigle ) => add_query_arg( array( 'vue' => 'paiements', 'etab' => $sigle ), ueb_url_administration() ),
+					ueb_adm_tete( array(
+						'fil'        => $focus ? array( array( $url( array( 'vue' => 'paiements' ) ), 'Paiements' ), array( '', $focus ) ) : array(),
+						'titre'      => $focus ? 'Paiements de ' . $focus : 'Suivi des paiements',
+						'sous_titre' => $focus ? 'Droits universitaires et frais médicaux, ' . $e_suivi['fr'] . '.' : 'Droits universitaires et frais médicaux, du bilan global au détail des établissements.',
+						'actions'    => ( $focus ? ueb_adm_action( $url( array( 'etab' => $focus ) ), 'Tableau de bord de ' . $focus, 'tableau' ) : '' ) . ueb_adm_exports_menu( $focus ),
 					) );
+					ueb_afficher_flash();
+					ueb_adm_paiements( $suivi, $focus );
 					?>
-
-				<?php elseif ( $focus ) : ?>
-
-					<?php $e = ueb_etablissement( $focus ); ?>
-					<a class="fil" href="<?php echo $ici(); ?>"><?php echo ueb_icone( 'fleche-g', 18 ); ?>Tous les établissements</a>
-					<header class="page-app__entete">
-						<div>
-							<h1><?php echo esc_html( $e['fr'] ); ?></h1>
-							<p class="page-app__sous-titre"><?php echo esc_html( $focus ); ?> · <?php echo esc_html( $e['ville'] ); ?> · année <?php echo esc_html( $annee['libelle'] ); ?></p>
-						</div>
-					</header>
-					<?php ueb_afficher_flash(); ?>
-
-					<?php ueb_suivi_carte( ueb_suivi_paiements( $annee['code'], $focus ), add_query_arg( array( 'vue' => 'paiements', 'etab' => $focus ), ueb_url_administration() ), $focus ); ?>
-
-					<?php ueb_bo_palier( $chiffres, $e['fr'] ); ?>
-
-					<section class="carte section-form" aria-labelledby="titre-filieres">
-						<header class="section-form__entete">
-							<span class="section-form__num"><?php echo ueb_icone( 'ecole', 18 ); ?></span>
-							<div>
-								<h2 id="titre-filieres">Effectifs par filière</h2>
-								<p>D'après le département saisi par l'étudiant sur son quitus.</p>
-							</div>
-						</header>
-						<div class="section-form__corps">
-							<?php $filieres = ueb_gestion_par_filiere( $annee['code'], $focus ); ?>
-							<?php if ( ! $filieres ) : ?>
-								<p class="texte-discret">Aucun quitus dans cet établissement pour l'instant.</p>
-							<?php else : ?>
-								<div class="tableau-conteneur">
-									<table class="tableau">
-										<thead><tr><th>Filière ou département</th><th>Étudiants</th></tr></thead>
-										<tbody>
-										<?php foreach ( $filieres as $f ) : ?>
-											<tr><td><?php echo esc_html( $f->filiere ); ?></td><td class="num"><b><?php echo (int) $f->n; ?></b></td></tr>
-										<?php endforeach; ?>
-										</tbody>
-									</table>
-								</div>
-							<?php endif; ?>
-						</div>
-					</section>
 
 				<?php else : ?>
 
-					<header class="page-app__entete">
-						<div>
-							<h1>Tableau de bord</h1>
-							<p class="page-app__sous-titre">Tous les établissements · année <?php echo esc_html( $annee['libelle'] ); ?></p>
-						</div>
-					</header>
-					<?php ueb_afficher_flash(); ?>
+					<?php
+					$e = $focus ? ueb_etablissement( $focus ) : null;
+					ueb_adm_tete( $focus
+						? array(
+							'fil'        => array( array( $url(), 'Tableau de bord' ), array( '', $focus ) ),
+							'titre'      => $e['fr'],
+							'sous_titre' => sprintf( '%s, à %s : %d quitus pour %s cette année.', $focus, $e['ville'], $chiffres['quitus'], ueb_suivi_etudiants( $chiffres['etudiants'] ) ),
+							'actions'    => ueb_adm_action( $url( array( 'vue' => 'paiements', 'etab' => $focus ) ), 'Paiements de ' . $focus, 'banque', true ),
+						)
+						: array(
+							'titre'      => 'Tableau de bord',
+							'sous_titre' => 'Inscriptions, paiements et activité des établissements en un regard.',
+							'actions'    => ueb_adm_action( $url( array( 'vue' => 'paiements' ) ), 'Suivi des paiements', 'banque', true ),
+						)
+					);
+					ueb_afficher_flash();
 
-					<?php ueb_suivi_carte( ueb_suivi_paiements( $annee['code'] ), add_query_arg( 'vue', 'paiements', ueb_url_administration() ), 'Université' ); ?>
+					ueb_adm_dashboard( $chiffres, $suivi, $activite, $focus, $periode );
+					?>
 
-					<?php ueb_bo_palier( $chiffres, 'Tous les établissements' ); ?>
-
-					<div class="bo-etabs bo-anim">
-						<?php foreach ( ueb_etablissements() as $sigle => $etab ) : ?>
-							<a class="bo-etab" href="<?php echo $ici( array( 'etab' => $sigle ) ); ?>" style="--etab: <?php echo esc_attr( $etab['couleur'] ); ?>">
-								<b><?php echo (int) ( $etudiants_etab[ $sigle ] ?? 0 ); ?></b>
-								<span class="bo-etab__sigle"><?php echo esc_html( $sigle ); ?></span>
-								<span class="bo-etab__niveaux" aria-label="Effectifs par niveau">
-									<?php foreach ( UEB_NIVEAUX_INSCRIPTION as $niveau => $libelle ) : ?>
-										<span><b><?php echo esc_html( $niveau ); ?></b> : <?php echo esc_html( number_format( (int) ( $niveaux_etab[ $sigle ][ $niveau ] ?? 0 ), 0, ',', ' ' ) ); ?></span>
-									<?php endforeach; ?>
-								</span>
-								<span class="bo-etab__note">étudiants inscrits</span>
-							</a>
-						<?php endforeach; ?>
+					<div class="adm-grille adm-grille--graphes adm-complements">
+						<?php
+						ueb_adm_statistiques( $chiffres );
+						ueb_adm_comparaison( $suivi, $focus, $periode );
+						ueb_graphe_anneau( 'Répartition par sexe', 'Étudiants ayant au moins un quitus', array(
+							'Masculin' => array( 'valeur' => $chiffres['sexe']['M'], 'couleur' => 'var(--viz-id-1)' ),
+							'Féminin' => array( 'valeur' => $chiffres['sexe']['F'], 'couleur' => 'var(--viz-id-2)' ),
+						) );
+						?>
 					</div>
 
-					<section class="carte section-form" aria-labelledby="titre-etabs">
-						<header class="section-form__entete">
-							<span class="section-form__num"><?php echo ueb_icone( 'ecole', 18 ); ?></span>
-							<div>
-								<h2 id="titre-etabs">Par établissement</h2>
-								<p>Ouvre un établissement pour voir ses chiffres et ses effectifs par filière.</p>
-							</div>
-						</header>
-						<div class="tableau-conteneur">
-							<table class="tableau">
-								<thead>
-									<tr>
-										<th>Établissement</th>
-										<th>Étudiants</th>
-										<th>Total</th>
-										<?php foreach ( UEB_STATUTS_QUITUS as $s ) : ?>
-											<th><?php echo esc_html( $s['libelle'] ); ?></th>
-										<?php endforeach; ?>
-										<th><span class="sr">Ouvrir</span></th>
-									</tr>
-								</thead>
-								<tbody>
-								<?php foreach ( ueb_etablissements() as $sigle => $etab ) :
-									$lignes = $stats['etabs'][ $sigle ] ?? array();
-									?>
-									<tr>
-										<td><a href="<?php echo $ici( array( 'etab' => $sigle ) ); ?>"><span class="pastille-etab" style="--etab: <?php echo esc_attr( $etab['couleur'] ); ?>"><?php echo esc_html( $sigle ); ?></span></a><br><small class="texte-discret"><?php echo esc_html( $etab['fr'] ); ?></small></td>
-										<td class="num"><b><?php echo (int) ( $etudiants_etab[ $sigle ] ?? 0 ); ?></b></td>
-										<td class="num"><?php echo (int) array_sum( $lignes ); ?></td>
-										<?php foreach ( UEB_STATUTS_QUITUS as $cle => $s ) : ?>
-											<td class="num"><?php echo (int) ( $lignes[ $cle ] ?? 0 ); ?></td>
-										<?php endforeach; ?>
-										<td><a class="btn btn--fantome btn--petit" href="<?php echo $ici( array( 'etab' => $sigle ) ); ?>">Ouvrir</a></td>
-									</tr>
-								<?php endforeach; ?>
-								</tbody>
-							</table>
+					<?php if ( $focus ) : ?>
+
+						<div class="adm-grille adm-grille--etab">
+							<?php
+							ueb_adm_niveaux( array_merge( $vide_niv, array_intersect_key( $niveaux[ $focus ] ?? array(), $vide_niv ) ), $chiffres['etudiants'] );
+							ueb_adm_filieres( ueb_gestion_par_filiere( $annee['code'], $focus ) );
+							?>
 						</div>
-					</section>
+						<?php ueb_graphe_filieres( 'Recouvrement par filière', 'Part encaissée des droits attendus, les plus gros montants d’abord', $suivi['filieres'], $url( array( 'vue' => 'paiements', 'etab' => $focus ) ) ); ?>
+
+					<?php else : ?>
+
+						<?php
+						$stats          = ueb_gestion_stats( $annee['code'] );
+						$etudiants_etab = ueb_gestion_etudiants_par_etab( $annee['code'] );
+						$lignes         = array();
+						$rang           = 0;
+						foreach ( ueb_etablissements() as $sigle => $etab ) {
+							$statuts  = $stats['etabs'][ $sigle ] ?? array();
+							$lignes[] = array(
+								'sigle'     => $sigle,
+								'etab'      => $etab,
+								'etudiants' => (int) ( $etudiants_etab[ $sigle ] ?? 0 ),
+								'niveaux'   => array_merge( $vide_niv, array_intersect_key( $niveaux[ $sigle ] ?? array(), $vide_niv ) ),
+								'statuts'   => $statuts,
+								'quitus'    => (int) array_sum( $statuts ),
+								'suivi'     => $suivi['etabs'][ $sigle ] ?? null,
+								'url'       => $url( array( 'etab' => $sigle, 'periode' => $periode ) ),
+								'rang'      => $rang++,
+							);
+						}
+						/* Du plus grand effectif au plus petit ; à égalité, l'ordre de la configuration. */
+						usort( $lignes, static fn( $a, $b ) => $b['etudiants'] <=> $a['etudiants'] ?: $a['rang'] <=> $b['rang'] );
+						ueb_adm_etablissements( $lignes );
+						?>
+
+					<?php endif; ?>
 
 				<?php endif; ?>
 			</div>

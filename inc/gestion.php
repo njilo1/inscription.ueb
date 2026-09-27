@@ -364,12 +364,12 @@ function ueb_suivi_taux( array $a, $cle = 'encaisse' ) {
  * Suivi des paiements de l'année : global, par établissement, par filière,
  * par niveau, et frais médicaux. $etab limite à un établissement (scolarité).
  */
-function ueb_suivi_paiements( $annee_code, $etab = '' ) {
+function ueb_suivi_paiements( $annee_code, $etab = '', $jours_historique = 0 ) {
 	global $wpdb;
 	$etab   = ueb_etab_agent() ?: $etab;
 	$filtre = $etab ? $wpdb->prepare( ' AND q.etablissement = %s', $etab ) : '';
 	$lignes = $wpdb->get_results( $wpdb->prepare(
-		"SELECT q.compte_id, q.etablissement, q.type, q.filiere_id, q.departement, q.parcours, q.montant, q.statut, q.date_creation, q.id,
+		"SELECT q.compte_id, q.etablissement, q.type, q.filiere_id, q.departement, q.parcours, q.montant, q.statut, q.date_creation, q.date_verification, q.date_modification, q.id,
 		        fi.libelle AS filiere_libelle, fi.type_formation
 		   FROM ueb_insc_quitus q
 		   LEFT JOIN ueb_filieres fi ON fi.id = q.filiere_id
@@ -399,13 +399,21 @@ function ueb_suivi_paiements( $annee_code, $etab = '' ) {
 	};
 
 	$medicaux  = array( 'etudiants' => 0, 'attendu' => 0, 'encaisse' => 0, 'verification' => 0 );
+	$medicaux_etabs = array();
+	$quitus_statuts = array_fill_keys( array( 'droits', 'medicaux' ), array_fill_keys( array( 'genere', 'recu_envoye', 'verifie', 'rejete' ), 0 ) );
 	$etudiants = array();
 	foreach ( $lignes as $l ) {
+		$quitus_statuts[ $l->type ][ $l->statut ]++;
 		if ( 'medicaux' === $l->type ) {
 			$medicaux['etudiants']++;
 			$medicaux['attendu'] += (int) $l->montant;
 			$medicaux['encaisse'] += 'verifie' === $l->statut ? (int) $l->montant : 0;
 			$medicaux['verification'] += 'recu_envoye' === $l->statut ? (int) $l->montant : 0;
+			$medicaux_etabs[ $l->etablissement ] = $medicaux_etabs[ $l->etablissement ] ?? array( 'etudiants' => 0, 'attendu' => 0, 'encaisse' => 0, 'verification' => 0 );
+			$medicaux_etabs[ $l->etablissement ]['etudiants']++;
+			$medicaux_etabs[ $l->etablissement ]['attendu'] += (int) $l->montant;
+			$medicaux_etabs[ $l->etablissement ]['encaisse'] += 'verifie' === $l->statut ? (int) $l->montant : 0;
+			$medicaux_etabs[ $l->etablissement ]['verification'] += 'recu_envoye' === $l->statut ? (int) $l->montant : 0;
 			continue;
 		}
 		$cle = $l->compte_id . '|' . $l->etablissement;
@@ -457,7 +465,101 @@ function ueb_suivi_paiements( $annee_code, $etab = '' ) {
 	$ordre = array_flip( array_merge( array_keys( UEB_NIVEAUX_INSCRIPTION ), array( 'Non précisé' ) ) );
 	uksort( $niveaux, static fn( $a, $b ) => ( $ordre[ $a ] ?? 99 ) <=> ( $ordre[ $b ] ?? 99 ) );
 
-	return compact( 'global', 'etabs', 'filieres', 'niveaux', 'medicaux', 'etab' );
+	$resultat = compact( 'global', 'etabs', 'filieres', 'niveaux', 'medicaux', 'medicaux_etabs', 'quitus_statuts', 'etab' );
+	if ( $jours_historique > 0 ) {
+		$aujourdhui = current_time( 'Y-m-d' );
+		$debut = gmdate( 'Y-m-d', strtotime( $aujourdhui . ' -' . ( min( 366, max( 2, (int) $jours_historique ) ) - 1 ) . ' days' ) );
+		$depots = (array) $wpdb->get_results( $wpdb->prepare(
+			"SELECT DATE(r.date_envoi) AS jour, COUNT(DISTINCT r.quitus_id) AS nombre
+			 FROM ueb_insc_recus r JOIN ueb_insc_quitus q ON q.id = r.quitus_id
+			 WHERE q.annee_academique = %s $filtre AND r.date_envoi >= %s AND r.date_envoi < %s
+			 GROUP BY DATE(r.date_envoi)",
+			$annee_code, $debut, gmdate( 'Y-m-d', strtotime( $aujourdhui . ' +1 day' ) )
+		) );
+		$resultat['historique'] = ueb_suivi_series_indicateurs( (array) $lignes, $etudiants, $depots, $debut, $aujourdhui );
+	}
+	return $resultat;
+}
+
+/**
+ * Historique reconstitué depuis les dossiers conservés, sans requête par jour.
+ * Le type de formation actuel est le même que celui du bilan. Les validations
+ * annulées et pièces supprimées ne peuvent pas être reconstituées sans journal.
+ * « depots » est un flux quotidien de quitus distincts, pas la file d'attente.
+ * Les cumuls antérieurs à la fenêtre sont conservés ; zéro est une vraie valeur.
+ */
+function ueb_suivi_series_indicateurs( array $lignes, array $etudiants, array $depots, $debut, $fin ) {
+	$jours = array();
+	for ( $t = strtotime( $debut ); $t <= strtotime( $fin ); $t += DAY_IN_SECONDS ) {
+		$jours[] = gmdate( 'Y-m-d', $t );
+	}
+	$series = array_fill_keys( array( 'etudiants', 'encaisse', 'medicaux', 'quitus', 'taux', 'depots' ), array() );
+	$evenements = $vus = $groupes = array();
+	foreach ( $lignes as $l ) {
+		$creation = substr( $l->date_creation, 0, 10 );
+		if ( $creation > $fin ) {
+			continue;
+		}
+		$jour = max( $debut, $creation );
+		$evenements[ $jour ][] = array( 'quitus', 1 );
+		$vus[ $l->compte_id ] = isset( $vus[ $l->compte_id ] ) ? min( $vus[ $l->compte_id ], $jour ) : $jour;
+		if ( 'droits' !== $l->type ) {
+			if ( 'verifie' === $l->statut ) {
+				$date = max( $creation, substr( $l->date_verification ?: $l->date_modification, 0, 10 ) );
+				if ( $date <= $fin ) {
+					$evenements[ max( $debut, $date ) ][] = array( 'medical', (int) $l->montant );
+				}
+			}
+			continue;
+		}
+		$cle = $l->compte_id . '|' . $l->etablissement;
+		$pro = ! empty( $etudiants[ $cle ]['pro'] );
+		$evenements[ $jour ][] = array( 'droits', (int) $l->montant, $cle, $pro );
+		if ( 'verifie' === $l->statut ) {
+			$date = max( $creation, substr( $l->date_verification ?: $l->date_modification, 0, 10 ) );
+			if ( $date <= $fin ) {
+				$evenements[ max( $debut, $date ) ][] = array( 'validation', (int) $l->montant, $cle, $pro );
+			}
+		}
+	}
+	foreach ( $vus as $jour ) {
+		$evenements[ $jour ][] = array( 'etudiants', 1 );
+	}
+	$receptions = array();
+	foreach ( $depots as $depot ) {
+		$receptions[ $depot->jour ] = (int) $depot->nombre;
+	}
+	$effectif = $quitus = $attendu = $encaisse = $medical = 0;
+	foreach ( $jours as $jour ) {
+		foreach ( $evenements[ $jour ] ?? array() as $evt ) {
+			if ( 'quitus' === $evt[0] ) {
+				$quitus++;
+			} elseif ( 'etudiants' === $evt[0] ) {
+				$effectif++;
+			} elseif ( 'medical' === $evt[0] ) {
+				$medical += $evt[1];
+			} else {
+				$cle = $evt[2];
+				$avant = $groupes[ $cle ] ?? array( 'attendu' => 0, 'verifie' => 0 );
+				$apres = $avant;
+				if ( 'droits' === $evt[0] ) {
+					$apres['attendu'] = $evt[3] ? $avant['attendu'] + $evt[1] : UEB_DROITS_CLASSIQUES;
+				} else {
+					$apres['verifie'] += $evt[1];
+				}
+				$attendu += $apres['attendu'] - $avant['attendu'];
+				$encaisse += min( $apres['attendu'], $apres['verifie'] ) - min( $avant['attendu'], $avant['verifie'] );
+				$groupes[ $cle ] = $apres;
+			}
+		}
+		$series['etudiants'][] = $effectif;
+		$series['quitus'][] = $quitus;
+		$series['encaisse'][] = $encaisse;
+		$series['medicaux'][] = $medical;
+		$series['taux'][] = $attendu ? round( 100 * $encaisse / $attendu, 2 ) : null;
+		$series['depots'][] = $receptions[ $jour ] ?? 0;
+	}
+	return array( 'jours' => $jours ) + $series;
 }
 
 /**

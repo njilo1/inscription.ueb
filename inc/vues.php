@@ -31,6 +31,7 @@ function ueb_icone( $nom, $taille = 20, $classe = '' ) {
 		'oeil-barre'  => '<path d="M9.88 9.88a3 3 0 1 0 4.24 4.24M10.73 5.08A10.4 10.4 0 0 1 12 5c7 0 10 7 10 7a13.2 13.2 0 0 1-1.67 2.68M6.61 6.61A13.5 13.5 0 0 0 2 12s3 7 10 7a9.7 9.7 0 0 0 5.39-1.61M2 2l20 20"/>',
 		'alerte'      => '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4M12 17h.01"/>',
 		'info'        => '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>',
+		'balance'     => '<path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1ZM2 16l3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1ZM7 21h10M12 3v18M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/>',
 		'croix'       => '<path d="M18 6 6 18M6 6l12 12"/>',
 		'plus'        => '<path d="M12 5v14M5 12h14"/>',
 		'loupe'       => '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
@@ -47,6 +48,14 @@ function ueb_icone( $nom, $taille = 20, $classe = '' ) {
 		'lecture'     => '<path d="M6 4l14 8-14 8z"/>',
 		'reglages'    => '<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>',
 		'ecole'       => '<path d="M14 22v-4a2 2 0 1 0-4 0v4M18 10l4 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-8l4-2M18 5v17M4 6l8-4 8 4M6 5v17"/><circle cx="12" cy="9" r="2"/>',
+		'soleil'      => '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>',
+		'lune'        => '<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>',
+		'calendrier'  => '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
+		'chevron-d'   => '<path d="m9 18 6-6-6-6"/>',
+		'tableau'     => '<rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/>',
+		'groupe'      => '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>',
+		'copier'      => '<rect x="8" y="8" width="14" height="14" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>',
+		'ajout-compte' => '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/>',
 	);
 	if ( ! isset( $traces[ $nom ] ) ) {
 		return '';
@@ -63,11 +72,12 @@ function ueb_icone( $nom, $taille = 20, $classe = '' ) {
 /* ---------- Squelette de page ---------- */
 
 /**
- * @param array{titre?:string, variante?:string, classe?:string} $args
+ * @param array{titre?:string, variante?:string, classe?:string, theme?:bool} $args
  *        variante : landing | auth | espace | gestion | simple
+ *        theme    : la page propose la bascule clair / sombre (administration)
  */
 function ueb_page_debut( array $args = array() ) {
-	$args = wp_parse_args( $args, array( 'titre' => '', 'variante' => 'simple', 'classe' => '' ) );
+	$args = wp_parse_args( $args, array( 'titre' => '', 'variante' => 'simple', 'classe' => '', 'theme' => false ) );
 	$GLOBALS['ueb_titre_page'] = $args['titre'];
 	?><!doctype html>
 <html <?php language_attributes(); ?>>
@@ -76,6 +86,14 @@ function ueb_page_debut( array $args = array() ) {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#0f2c1f">
 <link rel="icon" href="<?php echo esc_url( ueb_logo_url( 'UEB' ) ); ?>">
+<?php if ( $args['theme'] ) : ?>
+<?php /* Avant tout affichage : le thème choisi s'applique sans éclair blanc.
+   Clair par défaut ; le sombre ne vient que d'un choix explicite (administration.js).
+   « adm-anime » : les tableaux de bord animés partent de leur état initial
+   (administration-mouvement.js), sauf en mouvement réduit. Filet de sécurité :
+   si le script ne s'est pas annoncé (« adm-anime-pret ») à 3 s, tout s'affiche. */ ?>
+<script>(function(h){try{if(localStorage.getItem('ueb-theme-bo')==='sombre'){h.dataset.theme='sombre';}}catch(e){}if(!matchMedia('(prefers-reduced-motion: reduce)').matches){h.classList.add('adm-anime');setTimeout(function(){if(!h.classList.contains('adm-anime-pret')){h.classList.remove('adm-anime');}},3000);}})(document.documentElement);</script>
+<?php endif; ?>
 <?php wp_head(); ?>
 </head>
 <body <?php body_class( 'variante-' . $args['variante'] . ' ' . $args['classe'] ); ?>>
@@ -132,28 +150,8 @@ function ueb_suivi_barre( array $a, $classe = '' ) {
 }
 
 /**
- * Carte compacte du tableau de bord : taux, barre, lien vers le suivi complet.
- */
-function ueb_suivi_carte( array $suivi, $url, $perimetre ) {
-	$g = $suivi['global'];
-	?>
-	<a class="carte suivi-carte" href="<?php echo esc_url( $url ); ?>">
-		<span class="suivi-carte__tete">
-			<span class="suivi-carte__titre">Recouvrement des droits · <?php echo esc_html( $perimetre ); ?></span>
-			<span class="suivi-carte__lien">Suivi des paiements<?php echo ueb_icone( 'fleche', 16 ); ?></span>
-		</span>
-		<span class="suivi-carte__corps">
-			<span class="suivi-carte__taux"><?php echo esc_html( ueb_pourcent( ueb_suivi_taux( $g ) ) ); ?></span>
-			<span class="suivi-carte__phrase"><b><?php echo esc_html( ueb_fcfa( $g['encaisse'] ) ); ?></b> encaissés sur <?php echo esc_html( ueb_fcfa( $g['attendu'] ) ); ?> attendus · <?php echo (int) $g['soldes']; ?> étudiant<?php echo $g['soldes'] > 1 ? 's' : ''; ?> soldé<?php echo $g['soldes'] > 1 ? 's' : ''; ?> sur <?php echo (int) $g['etudiants']; ?></span>
-		</span>
-		<?php ueb_suivi_barre( $g ); ?>
-	</a>
-	<?php
-}
-
-/**
  * Suivi complet des paiements, partagé par la scolarité et l'administration :
- * héros du recouvrement (jauge animée, inc/bord.php), tableau par établissement
+ * bilan compact du recouvrement (inc/bord.php), tableau par établissement
  * ou par filière en pleine largeur, puis niveaux et frais médicaux côte à côte,
  * et la méthode de calcul.
  *
@@ -163,9 +161,16 @@ function ueb_suivi_carte( array $suivi, $url, $perimetre ) {
 function ueb_suivi_paiements_vue( array $suivi, array $args ) {
 	$args = array_merge( array( 'perimetre' => '', 'lignes' => 'filieres', 'lien_ligne' => null ), $args );
 	?>
-	<div class="suivi">
+	<div class="suivi suivi--sobre">
 		<?php
-		ueb_bord_recouvrement( $suivi, '', $args['perimetre'], array( 'reste' => true, 'titre' => 'Taux de recouvrement des droits' ) );
+		ueb_bord_synthese( $suivi, '' );
+		?>
+		<nav class="paiements-reperes" aria-label="Sections du suivi des paiements">
+			<a href="#suivi-lignes-titre"><?php echo 'etabs' === $args['lignes'] ? 'Par établissement' : 'Par filière'; ?></a>
+			<a href="#suivi-niveaux-titre">Par niveau</a>
+			<a href="#suivi-medicaux-titre">Frais médicaux</a>
+		</nav>
+		<?php
 		ueb_suivi_tableau( $suivi, $args );
 		?>
 		<div class="suivi__rangee">
@@ -211,7 +216,7 @@ function ueb_suivi_tableau( array $suivi, array $args ) {
 	$lien_de  = $par_etab && is_callable( $args['lien_ligne'] ) ? $args['lien_ligne'] : null;
 	$rang     = 0;
 	?>
-	<section class="suivi-panneau suivi-lignes" aria-labelledby="suivi-lignes-titre">
+	<section class="suivi-panneau suivi-lignes" aria-labelledby="suivi-lignes-titre" data-paiements-liste data-unite="<?php echo $par_etab ? 'établissement' : 'filière'; ?>">
 		<header class="suivi-panneau__entete">
 			<div>
 				<h2 id="suivi-lignes-titre"><?php echo $par_etab ? 'Par établissement' : 'Par filière'; ?></h2>
@@ -225,7 +230,20 @@ function ueb_suivi_tableau( array $suivi, array $args ) {
 		<?php if ( ! $lignes ) : ?>
 			<div class="bo-vide"><span><?php echo ueb_icone( 'banque', 22 ); ?></span><p>Aucun quitus de droits universitaires cette année pour l’instant.</p></div>
 		<?php else : ?>
-			<table class="suivi-table">
+			<div class="paiements-filtres" data-paiements-filtres hidden>
+				<div class="paiements-recherche">
+					<label for="paiements-recherche"><?php echo $par_etab ? 'Rechercher un établissement' : 'Rechercher une filière'; ?></label>
+					<div><?php echo ueb_icone( 'loupe', 18 ); ?><input id="paiements-recherche" type="search" placeholder="<?php echo $par_etab ? 'Sigle ou nom de l’établissement' : 'Nom de la filière'; ?>" aria-controls="paiements-table" autocomplete="off" data-paiements-recherche></div>
+				</div>
+				<div class="paiements-filtre">
+					<label for="paiements-situation">Recouvrement</label>
+					<select id="paiements-situation" aria-controls="paiements-table" data-paiements-situation><option value="tous">Toutes les situations</option><option value="reste">Reste à percevoir</option><option value="solde">Entièrement recouvré</option></select>
+				</div>
+				<button type="button" class="btn btn--fantome btn--petit" data-paiements-effacer>Réinitialiser</button>
+				<p class="paiements-resultats" role="status" aria-live="polite" data-paiements-resultats></p>
+			</div>
+			<div class="paiements-vide" data-paiements-vide hidden><b>Aucun résultat pour ces filtres.</b><p>Essaie un autre nom ou réinitialise les filtres pour retrouver toutes les lignes.</p></div>
+			<table class="suivi-table" id="paiements-table">
 				<caption class="sr">Recouvrement des droits universitaires <?php echo $par_etab ? 'par établissement' : 'par filière'; ?>, montants en FCFA</caption>
 				<thead>
 					<tr>
@@ -243,7 +261,7 @@ function ueb_suivi_tableau( array $suivi, array $args ) {
 					$e     = ueb_etablissement( $sigle );
 					$lien  = $lien_de ? call_user_func( $lien_de, $sigle ) : '';
 					?>
-					<tr class="suivi-table__ligne<?php echo $lien ? ' est-cliquable' : ''; ?>" style="--i: <?php echo (int) min( $rang++, 6 ); ?>">
+					<tr class="suivi-table__ligne<?php echo $lien ? ' est-cliquable' : ''; ?>" data-paiement-ligne data-recherche="<?php echo esc_attr( $par_etab ? $sigle . ' ' . ( $e['fr'] ?? '' ) : $a['libelle'] ); ?>" data-situation="<?php echo $a['attendu'] > 0 && $a['encaisse'] >= $a['attendu'] ? 'solde' : ( $a['attendu'] > $a['encaisse'] ? 'reste' : 'aucun' ); ?>" style="--i: <?php echo (int) min( $rang++, 6 ); ?>">
 						<th scope="row" class="suivi-table__nom">
 							<span class="suivi-table__nom-corps">
 								<?php if ( $par_etab ) : ?>
@@ -280,7 +298,7 @@ function ueb_suivi_tableau( array $suivi, array $args ) {
 							<th scope="row" class="suivi-table__nom">
 								<span class="suivi-table__nom-corps">
 									<span class="suivi-table__texte">
-										<span class="suivi-table__intitule">Total</span>
+										<span class="suivi-table__intitule">Total du périmètre</span>
 										<small class="suivi-table__effectif-ligne"><?php echo esc_html( ueb_suivi_etudiants( $g['etudiants'] ) ); ?></small>
 									</span>
 								</span>
@@ -754,7 +772,7 @@ function ueb_graphe_barres( $titre, $sous_titre, array $parts ) {
 							<?php echo esc_html( $libelle ); ?>
 						</span>
 						<span class="graphe__barre" aria-hidden="true">
-							<span style="width: <?php echo esc_attr( max( 2, round( 100 * $p['valeur'] / $maximum, 1 ) ) ); ?>%; background: <?php echo esc_attr( $p['couleur'] ); ?>"></span>
+							<span style="width: <?php echo esc_attr( $p['valeur'] > 0 ? max( 2, round( 100 * $p['valeur'] / $maximum, 1 ) ) : 0 ); ?>%; background: <?php echo esc_attr( $p['couleur'] ); ?>"></span>
 						</span>
 						<b><?php echo (int) $p['valeur']; ?></b>
 					</li>
@@ -768,7 +786,8 @@ function ueb_graphe_barres( $titre, $sous_titre, array $parts ) {
 /**
  * Le chiffre que le tableau de bord met en avant : un seul par écran.
  * Police de l'interface et chiffres proportionnels (des chiffres tabulaires
- * espacent trop un grand nombre).
+ * espacent trop un grand nombre). Utilisé par les tableaux de bord des IPES
+ * (templates/composants/ipes-espace-bord.php et scolarite-ipes.php).
  */
 function ueb_carte_hero( $valeur, $libelle, $note = '' ) {
 	?>
@@ -814,7 +833,8 @@ function ueb_carte_chiffre( $valeur, $libelle, $icone = '', $variante = '', arra
  * si le script ne se charge pas.
  *
  * @param string $espace Nom de l'espace, affiché au-dessus de la navigation.
- * @param array  $liens  array( array( 'url', 'libelle', 'icone', 'actif' ) )
+ * @param array  $liens  array( array( 'url', 'libelle', 'icone', 'actif' ) ) ; une entrée
+ *                       array( 'groupe' => 'Autres espaces' ) ouvre un second groupe.
  * @param array  $pied   array( 'titre' => string, 'note' => string )
  * @param array  $marque En-tête propre à l'espace (celui d'un IPES) :
  *                       array( 'nom', 'note', 'url', 'logo' ) ; logo vide = icône.
@@ -844,7 +864,11 @@ function ueb_bo_barre( $espace, array $liens, array $pied = array(), array $marq
 		<p class="bo-sidebar__titre"><?php echo esc_html( $espace ); ?></p>
 		<nav class="bo-sidebar__nav" aria-label="<?php echo esc_attr( $espace ); ?>">
 			<?php foreach ( $liens as $lien ) : ?>
-				<a href="<?php echo esc_url( $lien['url'] ); ?>" <?php echo empty( $lien['actif'] ) ? '' : 'aria-current="page"'; ?>><?php echo ueb_icone( $lien['icone'], 18 ); ?><?php echo esc_html( $lien['libelle'] ); ?></a>
+				<?php if ( isset( $lien['groupe'] ) ) : /* intertitre d'un second groupe de liens */ ?>
+					<p class="bo-sidebar__titre bo-sidebar__titre--groupe"><?php echo esc_html( $lien['groupe'] ); ?></p>
+				<?php else : ?>
+					<a href="<?php echo esc_url( $lien['url'] ); ?>" <?php echo empty( $lien['actif'] ) ? '' : 'aria-current="page"'; ?>><?php echo ueb_icone( $lien['icone'], 18 ); ?><?php echo esc_html( $lien['libelle'] ); ?></a>
+				<?php endif; ?>
 			<?php endforeach; ?>
 		</nav>
 
@@ -880,90 +904,6 @@ function ueb_bo_barre( $espace, array $liens, array $pied = array(), array $marq
 			<a class="bo-sortie" href="<?php echo esc_url( wp_logout_url( home_url( '/' ) ) ); ?>"><?php echo ueb_icone( 'sortie', 16 ); ?>Déconnexion</a>
 		</div>
 	</aside>
-	<?php
-}
-
-/**
- * Cartes et graphiques d'un palier : toute l'université, un établissement, ou
- * l'établissement d'un agent de scolarité. Partagée par les deux espaces.
- *
- * Un seul chiffre mis en avant par écran, puis les tuiles, puis les figures.
- * Couleurs : identité (vert / bleu) pour le sexe, rampe d'un seul vert pour
- * les tranches, jeu de statuts réservé pour l'avancement — chaque statut
- * portant une icône et un libellé, jamais la couleur seule.
- */
-function ueb_bo_palier( array $c, $perimetre = '' ) {
-	$part = static fn( $valeur, $sur ) => $sur > 0 ? 100 * $valeur / $sur : 0;
-	?>
-	<div class="bo-tete">
-		<?php
-		ueb_carte_hero(
-			$c['etudiants'],
-			'Étudiants inscrits',
-			$perimetre ? $perimetre . ' · ' . $c['quitus'] . ' quitus générés' : $c['quitus'] . ' quitus générés'
-		);
-		?>
-		<div class="bo-chiffres bo-anim">
-			<?php
-			ueb_carte_chiffre( $c['recus_envoyes'], 'Reçus à vérifier', 'horloge', 'attente', array(
-				'part' => $part( $c['recus_envoyes'], $c['quitus'] ),
-				'note' => $c['quitus'] ? round( $part( $c['recus_envoyes'], $c['quitus'] ) ) . ' % des quitus' : 'Aucun quitus',
-			) );
-			ueb_carte_chiffre( $c['recus_verifies'], 'Reçus vérifiés', 'check', 'verifie', array(
-				'part' => $part( $c['recus_verifies'], $c['quitus'] ),
-				'note' => $c['quitus'] ? round( $part( $c['recus_verifies'], $c['quitus'] ) ) . ' % des quitus' : 'Aucun quitus',
-			) );
-			ueb_carte_chiffre( $c['recus_rejetes'], 'Reçus rejetés', 'alerte', 'rejete', array(
-				'part' => $part( $c['recus_rejetes'], $c['quitus'] ),
-				'note' => 'À corriger par l’étudiant',
-			) );
-			ueb_carte_chiffre( $c['a_payer'], 'Quitus à payer', 'banque', '', array(
-				'part' => $part( $c['a_payer'], $c['quitus'] ),
-				'note' => 'En attente de paiement',
-			) );
-			?>
-		</div>
-	</div>
-
-	<div class="bo-chiffres">
-		<?php
-		ueb_carte_chiffre( $c['tranches']['tranche1'], 'Ont payé la tranche 1', 'banque', '', array(
-			'part' => $part( $c['tranches']['tranche1'], $c['etudiants'] ),
-			'note' => $c['etudiants'] ? 'sur ' . $c['etudiants'] . ' étudiants' : '',
-		) );
-		ueb_carte_chiffre( $c['tranches']['tranche2'], 'Ont payé la tranche 2', 'banque', '', array(
-			'part' => $part( $c['tranches']['tranche2'], $c['etudiants'] ),
-			'note' => $c['etudiants'] ? 'sur ' . $c['etudiants'] . ' étudiants' : '',
-		) );
-		ueb_carte_chiffre( $c['tranches']['totalite'], 'Ont payé la totalité', 'bouclier', '', array(
-			'part' => $part( $c['tranches']['totalite'], $c['etudiants'] ),
-			'note' => $c['etudiants'] ? 'sur ' . $c['etudiants'] . ' étudiants' : '',
-		) );
-		ueb_carte_chiffre( ueb_formater_montant( $c['montant_verifie'] ), 'Encaissé et vérifié', 'tampon', '', array(
-			'note' => 'FCFA confirmés par la scolarité',
-		) );
-		?>
-	</div>
-
-	<div class="bo-graphes bo-anim">
-		<?php
-		ueb_graphe_anneau( 'Répartition par sexe', 'Étudiants ayant au moins un quitus', array(
-			'Masculin' => array( 'valeur' => $c['sexe']['M'], 'couleur' => 'var(--viz-id-1)' ),
-			'Féminin'  => array( 'valeur' => $c['sexe']['F'], 'couleur' => 'var(--viz-id-2)' ),
-		) );
-		ueb_graphe_barres( 'Avancement des quitus', 'Où en sont les ' . $c['quitus'] . ' quitus de l’année', array(
-			'À payer'     => array( 'valeur' => $c['a_payer'], 'couleur' => 'var(--viz-attente)', 'icone' => 'horloge' ),
-			'Reçu envoyé' => array( 'valeur' => $c['recus_envoyes'], 'couleur' => 'var(--viz-id-2)', 'icone' => 'envoyer' ),
-			'Vérifié'     => array( 'valeur' => $c['recus_verifies'], 'couleur' => 'var(--viz-bien)', 'icone' => 'check' ),
-			'À corriger'  => array( 'valeur' => $c['recus_rejetes'], 'couleur' => 'var(--viz-critique)', 'icone' => 'alerte' ),
-		) );
-		ueb_graphe_barres( 'Étudiants par tranche réglée', 'Paiements vérifiés par la scolarité', array(
-			'Tranche 1' => array( 'valeur' => $c['tranches']['tranche1'], 'couleur' => 'var(--viz-pas-1)' ),
-			'Tranche 2' => array( 'valeur' => $c['tranches']['tranche2'], 'couleur' => 'var(--viz-pas-2)' ),
-			'Totalité'  => array( 'valeur' => $c['tranches']['totalite'], 'couleur' => 'var(--viz-pas-3)' ),
-		) );
-		?>
-	</div>
 	<?php
 }
 

@@ -69,7 +69,7 @@ try:
     assert UID, 'préparation impossible'
     d = session(UID)
     st, html = get(d, '/direction/?vue=role')
-    verifier('la Direction FS ouvre l’assistant', st == 200 and 'Que peut-il faire' in html)
+    verifier('la Direction FS ouvre l’assistant', st == 200 and 'Quels accès lui accorder' in html)
     verifier('permission non détenue affichée désactivée', 'value="ueb_gerer_quitus"  disabled' in html or re.search(r'value="ueb_gerer_quitus"[^>]*disabled', html) is not None)
     csrf, nonce = jetons(html, 'direction_role_enregistrer')
     base = {'ueb_action': 'direction_role_enregistrer', 'ueb_csrf': csrf, 'ueb_nonce_direction': nonce, 'role': ''}
@@ -141,12 +141,12 @@ try:
     st, html = get(d, '/scolarite/')
     verifier('Direction FS avec suivi : espace scolarité en vue Paiements seulement', 'Suivi des paiements' in html and 'À vérifier' not in html)
     st, html = get(session(0), '/direction/')
-    verifier('visiteur non connecté : écran de connexion', 'bo-connexion' in html and 'Rôles et accès' not in html)
+    verifier('visiteur non connecté : écran de connexion', 'gestion-connexion' in html and 'Rôles et accès' not in html)
 
     # suppression d'un rôle utilisé : réaffectation exigée, aucun compte supprimé
     st, html = get(d, '/direction/')
     def dialogue(html, nom):
-        m = re.search(r'<dialog class="dialogue" id="suppr-(ueb_r_[a-z0-9]+)"[^>]*>(?:(?!</dialog>).)*?Supprimer « ' + re.escape(nom) + ' » \\?(?:(?!</dialog>).)*</dialog>', html, re.S)
+        m = re.search(r'<dialog class="gestion-dialogue gestion-dialogue--petit" id="suppr-(ueb_r_[a-z0-9]+)"[^>]*>(?:(?!</dialog>).)*?Supprimer « ' + re.escape(nom) + ' » \\?(?:(?!</dialog>).)*</dialog>', html, re.S)
         return m.group(1), m.group(0)
     slug, bloc = dialogue(html, 'TEST Lecteur paiements FS')
     csrf = re.search(r'name="ueb_csrf" value="([^"]+)"', bloc).group(1)

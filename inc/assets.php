@@ -38,24 +38,70 @@ add_action( 'wp_enqueue_scripts', function () {
 		ueb_script( 'ueb-landing', 'assets/js/landing.js', array( 'gsap', 'gsap-scrolltrigger' ) );
 	}
 
-	/* Emblème animé aussi sur les écrans de connexion des espaces scolarité et Direction. */
+	$page_admin = is_page_template( 'page-administration.php' );
+	$admin      = $page_admin && function_exists( 'ueb_est_admin_ueb' ) && ueb_est_admin_ueb();
+	/* Emblème animé aussi sur les écrans de connexion des espaces scolarité, Direction et Administration. */
 	$connexion_scolarite = ( is_page_template( 'page-scolarite.php' ) && ! ( is_user_logged_in() && function_exists( 'ueb_est_scolarite' ) && ueb_est_scolarite() ) )
 		|| ( is_page_template( 'page-direction.php' ) && ! ( function_exists( 'ueb_peut' ) && ueb_peut( UEB_CAP_DIRECTION ) ) )
-		|| ( is_page_template( 'page-ipes.php' ) && ! ( function_exists( 'ueb_ipes_du_compte' ) && ueb_ipes_du_compte() ) );
+		|| ( is_page_template( 'page-ipes.php' ) && ! ( function_exists( 'ueb_ipes_du_compte' ) && ueb_ipes_du_compte() ) )
+		|| ( $page_admin && ! $admin );
 	/* Vues de travail de la scolarité (tableau de bord, quitus, dossier, paiements)
-	   et suivi des paiements de l'administration, qui partage le même rendu :
-	   graphiques, infobulles, jauge et suivi animés. */
+	   et tableau de bord + suivi des paiements de l'administration, qui partagent
+	   le même rendu : graphiques, infobulles, jauge, anneau et suivi animés. */
 	$vue_bo         = sanitize_key( $_GET['vue'] ?? 'bord' ); // phpcs:ignore -- lecture seule
 	$bord_scolarite = ( is_page_template( 'page-scolarite.php' ) && is_user_logged_in() && function_exists( 'ueb_est_scolarite' ) && ueb_est_scolarite()
 			&& ( in_array( $vue_bo, array( 'bord', 'quitus', 'paiements' ), true ) || isset( $_GET['quitus'] ) ) ) // phpcs:ignore
-		|| ( is_page_template( 'page-administration.php' ) && function_exists( 'ueb_est_admin_ueb' ) && ueb_est_admin_ueb() && 'paiements' === $vue_bo );
+		|| ( $admin && in_array( $vue_bo, array( 'bord', 'paiements' ), true ) );
 	if ( $bord_scolarite ) {
 		ueb_style( 'ueb-bord', 'assets/css/bord.css', array( 'ueb-pages' ) );
 		ueb_style( 'ueb-bord-graphes', 'assets/css/bord-graphes.css', array( 'ueb-bord' ) );
+		if ( 'paiements' === $vue_bo || ( is_page_template( 'page-scolarite.php' ) && 'bord' === $vue_bo && ! isset( $_GET['quitus'] ) ) ) {
+			ueb_style( 'ueb-scolarite-dashboard', 'assets/css/scolarite-dashboard.css', array( 'ueb-bord-graphes' ) );
+		}
+		if ( 'paiements' === $vue_bo ) {
+			ueb_style( 'ueb-paiements', 'assets/css/paiements.css', array( 'ueb-scolarite-dashboard' ) );
+			ueb_script( 'ueb-paiements', 'assets/js/paiements.js' );
+		}
 		ueb_script( 'ueb-bord', 'assets/js/bord.js' );
 	}
-	/* Espace Direction : assistant de rôle et aperçu en direct. */
+	/* Administration : coque, composants et thème clair / sombre, chargés en
+	   dernier pour habiller aussi les composants partagés. */
+	if ( $admin ) {
+		$deps = array( 'ueb-pages' );
+		if ( $bord_scolarite ) {
+			$deps[] = 'ueb-bord-graphes';
+		}
+		if ( 'paiements' === $vue_bo ) {
+			$deps[] = 'ueb-paiements';
+		}
+		ueb_style( 'ueb-administration', 'assets/css/administration.css', $deps );
+		if ( 'paiements' === $vue_bo ) {
+			ueb_style( 'ueb-administration-paiements', 'assets/css/administration-paiements.css', array( 'ueb-administration' ) );
+			ueb_script( 'ueb-administration-paiements', 'assets/js/administration-paiements.js' );
+		}
+		if ( 'bord' === $vue_bo ) {
+			ueb_style( 'ueb-administration-dashboard', 'assets/css/administration-dashboard.css', array( 'ueb-administration' ) );
+			ueb_style( 'ueb-administration-analytics', 'assets/css/administration-analytics.css', array( 'ueb-administration-dashboard' ) );
+			ueb_script( 'ueb-administration-sparklines', 'assets/js/administration-sparklines.js' );
+		}
+		if ( in_array( $vue_bo, array( 'bord', 'paiements' ), true ) ) {
+			/* Mouvement du tableau de bord et du suivi des paiements : GSAP (livré
+			   avec le thème) et les anneaux Remotion, montés à leur entrée à l'écran. */
+			ueb_script( 'gsap', 'assets/js/vendor/gsap.min.js' );
+			ueb_script( 'ueb-administration-mouvement', 'assets/js/administration-mouvement.js', array( 'gsap', 'ueb-remotion' ) );
+		}
+		ueb_script( 'ueb-administration', 'assets/js/administration.js' );
+	}
+	/* Espace de gestion (Direction) : même rendu que celui de la préinscription.
+	   Connecté, il reprend la couche de l'administration (boutons, jetons,
+	   thème clair / sombre) ; l'écran de connexion n'a que direction.css. */
 	if ( is_page_template( 'page-direction.php' ) ) {
+		$direction = function_exists( 'ueb_peut' ) && ueb_peut( UEB_CAP_DIRECTION );
+		if ( $direction ) {
+			ueb_style( 'ueb-administration', 'assets/css/administration.css', array( 'ueb-pages' ) );
+			ueb_script( 'ueb-administration', 'assets/js/administration.js' );
+		}
+		ueb_style( 'ueb-direction', 'assets/css/direction.css', array( $direction ? 'ueb-administration' : 'ueb-pages' ) );
 		ueb_script( 'ueb-direction', 'assets/js/direction.js', array( 'ueb-app' ) );
 	}
 	if ( ( is_front_page() && ! $page ) || in_array( $page, array( 'connexion', 'creer-compte' ), true ) || $connexion_scolarite || $bord_scolarite ) {

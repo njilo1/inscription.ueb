@@ -326,3 +326,62 @@ function ueb_action_direction_compte_mdp() {
 	ueb_flash( 'succes', 'Nouveau mot de passe provisoire créé.' );
 	ueb_rediriger( $retour );
 }
+
+/* ---------- Affichage de l'espace de gestion ----------
+   Même rendu que l'espace de gestion de la préinscription (templates/
+   access-portal.php) : barre du haut avec le rôle du compte et la date,
+   cartes de rôles, assistant en fenêtre avec aperçu de la barre latérale. */
+
+/**
+ * Barre du haut : titre, plateforme et rôle du compte à gauche ; date et
+ * bascule clair / sombre à droite.
+ */
+function ueb_gestion_tete( $titre ) {
+	$role = ueb_nom_role_du_compte();
+	?>
+	<header class="gestion-tete">
+		<div class="gestion-tete__texte">
+			<h1><?php echo esc_html( $titre ); ?></h1>
+			<div class="gestion-tete__contexte">
+				<p>Plateforme d’inscription de l’Université d’Ebolowa</p>
+				<?php if ( $role ) : ?>
+					<span class="gestion-etiquette gestion-etiquette--role"><?php echo ueb_icone( 'bouclier', 14 ); ?><?php echo esc_html( $role ); ?></span>
+				<?php endif; ?>
+			</div>
+		</div>
+		<div class="gestion-tete__actions">
+			<span class="gestion-date"><?php echo ueb_icone( 'calendrier', 15 ); ?><?php echo esc_html( wp_date( 'j F Y' ) ); ?></span>
+			<?php ueb_adm_bascule_theme(); ?>
+		</div>
+	</header>
+	<?php
+}
+
+/** Portée d'un rôle en quelques mots, pour son étiquette. */
+function ueb_gestion_portee_courte( array $def ) {
+	if ( 'tous' === $def['portee'] ) {
+		return 'Tous les établissements';
+	}
+	if ( 'plusieurs' === $def['portee'] ) {
+		return implode( ', ', (array) $def['etablissements'] );
+	}
+	return 'Un établissement par compte';
+}
+
+/**
+ * Écrans ouverts par chaque permission, dans l'ordre des barres latérales :
+ * l'aperçu de l'assistant montre au titulaire l'interface qu'il aura.
+ *
+ * @return array<int, array{0: string, 1: string, 2: string}> permission, libellé, icône
+ */
+function ueb_gestion_ecrans() {
+	return array(
+		array( UEB_CAP_GESTION, 'Tableau de bord', 'tableau' ),
+		array( UEB_CAP_GESTION, 'Quitus', 'recu' ),
+		array( 'ueb_voir_paiements', 'Paiements', 'banque' ),
+		array( UEB_CAP_COMPTES, 'Comptes étudiants', 'utilisateur' ),
+		array( 'ueb_creer_agents', 'Comptes du personnel', 'cle' ),
+		array( UEB_CAP_DIRECTION, 'Rôles et accès', 'bouclier' ),
+		array( UEB_CAP_DIRECTION, 'Comptes', 'groupe' ),
+	);
+}

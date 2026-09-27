@@ -1,0 +1,88 @@
+/* ==========================================================================
+   Tableau de bord de l'administration : mouvement et micro-interactions
+   (administration-mouvement.js avec GSAP ; anneau financier animé par
+   Remotion). La composition du tableau vit dans administration-analytics.css ;
+   cette feuille ne touche qu'aux états de départ des animations et aux
+   réactions au survol.
+
+   Une ouverture orchestrée (les cartes comptent, leurs mini-courbes se
+   tracent), puis des données qui se révèlent au défilement. Les conteneurs
+   ne bougent jamais : seules les marques de données s'animent.
+
+   html.adm-anime est posé avant l'affichage (ueb_page_debut), jamais en
+   mouvement réduit, et retiré à 3 s si le script ne s'est pas annoncé :
+   aucune valeur ne peut rester cachée.
+   ========================================================================== */
+
+/* ---------- États de départ (seulement si l'animation va jouer) ---------- */
+
+/* Nombres : cachés jusqu'à leur comptage. */
+.adm-anime .adm-dashboard :is(
+	.adm-kpi__valeur, .adm-spark figcaption b,
+	.adm-donut p b, .adm-finances__legende b, .adm-finances__total b,
+	.adm-evolution__bilan b, .adm-statistiques__total b, .adm-barres-statut li > b, .adm-comparaison a > b,
+	.adm-solde__montant, .adm-solde dd,
+	.adm-registre__effectif b, .adm-registre__total b, .adm-registre__mesure > b
+) { opacity: 0; }
+
+/* Mini-courbes des cartes : le tracé se révèle de gauche à droite. */
+.adm-anime .adm-dashboard .adm-spark__zone svg { clip-path: inset(-8px 100% -8px -8px); }
+.adm-anime .adm-dashboard .adm-spark__ligne { animation: none; }
+
+/* Anneau financier : remplacé par sa version Remotion à l'entrée à l'écran. */
+.adm-anime .adm-dashboard .adm-donut > svg circle:not(.adm-donut__piste) { opacity: 0; }
+.adm-anime .adm-dashboard .adm-finances__legende li { opacity: .35; }
+
+/* Courbes d'évolution : tracé caché, points et étiquettes de fin aussi. */
+.adm-anime .adm-dashboard .adm-evolution .courbes__trace { clip-path: inset(0px 100% 0px 0px); animation: none; }
+.adm-anime .adm-dashboard .adm-evolution :is(.courbes__point--fin, .courbes__fin) { opacity: 0; animation: none; }
+
+/* Barres : à zéro, elles grandiront depuis leur origine. */
+.adm-anime .adm-dashboard .adm-barre i { transform: scaleX(0); animation: none; }
+.adm-anime .adm-dashboard .adm-registre__mesure .suivi-barre { clip-path: inset(0px 100% 0px 0px); }
+.adm-anime .adm-dashboard .graphe--filieres .suivi-barre { animation: none; }
+
+/* Origines des croissances. */
+.adm-dashboard .adm-colonnes__barre i { transform-origin: center bottom; }
+.adm-dashboard .adm-filieres__barre i { transform-origin: left center; }
+
+/* Paiements vérifiés et répartition par sexe : colonnes à zéro, nombres cachés. */
+.adm-anime .adm-dashboard .adm-parcours__colonne i { transform: scaleY(0); }
+.adm-anime .adm-dashboard :is(.adm-verifies__montant b, .adm-verifies__constat b, .adm-parcours__valeur, .adm-parcours small),
+.adm-anime .adm-dashboard .adm-complements :is(.graphe__anneau-centre b, .graphe__legende b) { opacity: 0; }
+
+/* Nombre en cours de comptage : sa largeur finale est réservée. */
+adm-compte { display: inline-block; }
+
+/* ---------- Anneau financier animé (Remotion) ---------- */
+
+.adm-donut .animation--donut { position: absolute; top: 0; left: 0; width: 100%; aspect-ratio: 1; max-width: none; }
+.adm-donut .animation--donut svg { transform: none; }
+.adm-donut:has(.animation--donut.est-pret) > svg { visibility: hidden; }
+
+/* Survol de la légende : sa part reste, les autres s'effacent. */
+/* Surlignage par ombre : la mise en page de la légende ne bouge pas. */
+.adm-finances__legende li { border-radius: 4px; transition: background-color .2s var(--ease-sortie), box-shadow .2s var(--ease-sortie); }
+.adm-finances__legende li:hover { background: var(--adm-puce); box-shadow: 0 0 0 5px var(--adm-puce); }
+.adm-donut .donut-part { transition: opacity .25s var(--ease-sortie); }
+.adm-finances:has(.adm-finances__legende li:nth-child(1):hover) .donut-part:not(.donut-part--encaisse),
+.adm-finances:has(.adm-finances__legende li:nth-child(2):hover) .donut-part:not(.donut-part--verification),
+.adm-finances:has(.adm-finances__legende li:nth-child(3):hover) .donut-part:not(.donut-part--declare),
+.adm-finances:has(.adm-finances__legende li:nth-child(4):hover) .donut-part:not(.donut-part--non_declare) { opacity: .2; }
+
+/* ---------- Comparaison et registre : la ligne survolée ravive ses données ---------- */
+
+.adm-comparaison .adm-barre i { transition: filter .22s var(--ease-sortie); }
+.adm-comparaison a:hover .adm-barre i { filter: brightness(1.18) saturate(1.2); }
+
+.adm-registre__ligne .suivi-barre { transition: filter .22s var(--ease-sortie); }
+.adm-registre__ligne .adm-registre__logo { transition: box-shadow .22s var(--ease-sortie); }
+.adm-registre__ligne:hover .suivi-barre { filter: saturate(1.3) brightness(1.05); }
+.adm-registre__ligne:hover .adm-registre__logo { box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--etab) 60%, transparent); }
+
+/* ---------- Mouvement réduit ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+	.adm-finances__legende li, .adm-donut .donut-part, .adm-comparaison .adm-barre i,
+	.adm-registre__ligne .suivi-barre, .adm-registre__ligne .adm-registre__logo { transition: none; }
+}

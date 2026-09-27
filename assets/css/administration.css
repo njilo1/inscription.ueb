@@ -1,0 +1,567 @@
+/* ==========================================================================
+   Espace Administration — page-administration.php, inc/administration.php
+   Style « tableau de bord dense » du back-office de préinscription, repris
+   sur la charte de l'inscription : vert de la charte pour la barre latérale
+   et le seul panneau fort de chaque écran (le héros du recouvrement), or
+   réservé à l'onglet actif, au focus et au point de l'anneau. Tout le reste
+   est calme : panneaux blancs à filet d'un pixel, sans ombre portée au
+   survol, textes en police d'interface, titre de page en Source Serif.
+
+   Thème clair par défaut, sombre au choix : html[data-theme="sombre"] est
+   posé avant l'affichage (ueb_page_debut) et par la bascule
+   (administration.js). Le sombre redéfinit les jetons de base dans la page ;
+   les composants partagés (graphiques, suivi des paiements, formulaires)
+   suivent sans être réécrits, la barre latérale et le héros gardent leurs
+   propres couleurs.
+
+   Sommaire
+     1. Jetons propres à l'administration
+     2. Zone de travail et barre du haut
+     3. Boutons de la barre du haut, bascule de thème
+     4. Héros du recouvrement
+     5. Panneaux et grilles
+     6. Quitus de l'année (parcours)
+     7. Paiements vérifiés et tranches
+     8. Registre des établissements
+     9. Un établissement : niveaux et filières
+    10. Personnel
+    11. Thème sombre
+    12. Responsive, mouvement réduit, impression
+   ========================================================================== */
+
+/* ---------- 1. Jetons ---------- */
+
+.espace-admin {
+	--adm-rayon: 16px;
+	--adm-rayon-hero: 22px;
+	--adm-ombre: 0 1px 2px rgba(15, 44, 31, .05);
+	--adm-ombre-hero: 0 28px 56px -32px rgba(10, 31, 22, .6);
+	--adm-hero: var(--vert-bandeau);
+	--adm-survol: #f5f8f4;
+	--adm-puce: #eef3ee;
+	/* Statuts : texte et icône (≥ 4.5:1 sur blanc) ; les marques de données
+	   gardent le jeu réservé --viz-attente / --viz-bien / --viz-critique. */
+	--adm-st-genere: #8a6100;
+	--adm-st-recu: #1f6f94;
+	--adm-st-verifie: #0f7a2c;
+	--adm-st-rejete: #b3261e;
+	--adm-st-genere-fond: rgba(250, 178, 25, .16);
+	--adm-st-recu-fond: rgba(55, 141, 183, .13);
+	--adm-st-verifie-fond: rgba(12, 163, 12, .11);
+	--adm-st-rejete-fond: rgba(208, 59, 59, .1);
+	/* Rampe du héros (validée sur #13351a et #0f2a15) : une seule teinte,
+	   de la part la plus avancée (encaissé) à la moins avancée (déclaré). */
+	--adm-hero-pas-3: #f4faf5;
+	--adm-hero-pas-2: #a7d3b3;
+	--adm-hero-pas-1: #5e9a70;
+	--adm-hero-piste: rgba(255, 255, 255, .12);
+}
+
+/* ---------- 2. Zone de travail et barre du haut ---------- */
+
+.espace-admin .bo-contenu.adm { gap: 1.25rem; padding: 1.6rem 2rem 3rem; }
+
+.adm-tete { display: flex; align-items: flex-end; justify-content: space-between; flex-wrap: wrap; gap: 1rem 2rem; padding-bottom: .35rem; }
+.adm-tete__texte { min-width: 0; max-width: 72ch; }
+.adm-tete h1 { margin: 0; font: 700 clamp(1.6rem, 1.3rem + .9vw, 2.05rem)/1.15 var(--f-titre); letter-spacing: -.015em; color: var(--encre); }
+.adm-tete__sous-titre { margin: .35rem 0 0; font-size: .95rem; line-height: 1.5; color: var(--gris); }
+.adm-tete__actions { display: flex; align-items: center; flex-wrap: wrap; gap: .5rem; }
+
+.adm-fil ol { display: flex; flex-wrap: wrap; align-items: center; gap: .3rem; margin: 0 0 .45rem; padding: 0; list-style: none; font-size: .86rem; }
+.adm-fil li { display: inline-flex; align-items: center; gap: .3rem; }
+.adm-fil a { color: var(--gris); font-weight: 600; text-decoration: none; }
+.adm-fil a:hover { color: var(--encre); text-decoration: underline; text-underline-offset: 3px; }
+.adm-fil .icone { color: var(--gris-clair); }
+.adm-fil [aria-current] { font-weight: 700; color: var(--encre); }
+
+.adm-annee { display: inline-flex; align-items: center; gap: .45rem; min-height: 40px; padding: 0 .9rem; border-radius: 999px; background: var(--adm-puce); font-size: .86rem; font-weight: 600; color: var(--gris); white-space: nowrap; }
+.adm-annee .icone { color: var(--foret-700); }
+
+/* ---------- 3. Boutons de la barre du haut ---------- */
+
+.adm-bouton { display: inline-flex; align-items: center; justify-content: center; gap: .45rem; min-height: 40px; padding: 0 1rem; border: 1px solid var(--filet-fort); border-radius: 999px; background: var(--blanc); color: var(--encre); font: 600 .88rem/1 var(--f-texte); text-decoration: none; white-space: nowrap; cursor: pointer; transition: background-color .15s var(--ease-sortie), border-color .15s var(--ease-sortie), color .15s var(--ease-sortie), transform .15s var(--ease-sortie); }
+.adm-bouton:hover { border-color: var(--foret-700); background: var(--adm-survol); color: var(--encre); }
+.adm-bouton:active { transform: scale(.97); }
+.adm-bouton .icone { flex: none; color: var(--foret-700); }
+.adm-bouton--primaire { border-color: var(--foret-700); background: var(--foret-700); color: #fff; }
+.adm-bouton--primaire .icone { color: currentColor; }
+.adm-bouton--primaire:hover { border-color: var(--foret-800); background: var(--foret-800); color: #fff; }
+.adm-bouton--icone { width: 40px; padding: 0; }
+.adm-bouton--petit { min-height: 36px; padding: 0 .8rem; font-size: .84rem; }
+.adm-bouton--petit.adm-bouton--icone, .adm-bouton--petit[aria-label] { width: 36px; padding: 0; }
+.adm-bouton--danger .icone { color: var(--danger); }
+.adm-bouton--danger:hover { border-color: var(--danger); background: var(--danger-fond); }
+
+/* Bascule : la lune propose le sombre, le soleil ramène le clair. L'icône
+   pivote à l'arrivée : le mouvement répond au geste, rien d'autre ne bouge. */
+.adm-theme .adm-theme__soleil { display: none; }
+:root[data-theme="sombre"] .adm-theme .adm-theme__lune { display: none; }
+:root[data-theme="sombre"] .adm-theme .adm-theme__soleil { display: block; }
+.adm-theme.est-bascule .icone { animation: adm-pivot .45s var(--ease-sortie); }
+@keyframes adm-pivot { from { rotate: -70deg; scale: .6; opacity: 0; } }
+
+/* Le changement de thème se révèle en cercle depuis le bouton (View
+   Transitions) ; sans prise en charge, il est instantané. */
+::view-transition-old(root), ::view-transition-new(root) { animation: none; mix-blend-mode: normal; }
+
+/* ---------- 4. Héros du recouvrement ---------- */
+
+.adm-hero { display: grid; grid-template-columns: minmax(250px, 340px) minmax(0, 1fr); align-items: center; gap: clamp(1.5rem, 3vw, 3rem); padding: clamp(1.25rem, 2vw, 1.9rem) clamp(1.25rem, 2.5vw, 2.4rem); border-radius: var(--adm-rayon-hero); background: var(--adm-hero); color: #fff; box-shadow: var(--adm-ombre-hero); }
+.adm-hero__visuel { min-width: 0; }
+.adm-hero .animation--anneau, .adm-hero .animation--jauge { width: 100%; aspect-ratio: 1; }
+.adm-hero .animation--jauge { width: 88%; margin-inline: auto; }
+.adm-hero .animation__pause { display: none; } /* jouée une seule fois */
+.adm-hero .animation__scene, .adm-hero .anneau-repli, .adm-hero .jauge-repli { display: block; width: 100%; height: 100%; }
+
+.adm-hero__corps { display: grid; gap: 1.1rem; min-width: 0; }
+.adm-hero__tete { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: .75rem 1.5rem; }
+.adm-hero__tete h2 { margin: 0 0 .25rem; font: 700 1.2rem/1.25 var(--f-texte); letter-spacing: -.005em; color: #fff; }
+.adm-hero__tete p { margin: 0; font-size: .9rem; color: rgba(255, 255, 255, .72); }
+.adm-hero__lien { display: inline-flex; align-items: center; gap: .4rem; min-height: 38px; padding: 0 .95rem; border: 1px solid rgba(255, 255, 255, .28); border-radius: 999px; color: #fff; font-size: .86rem; font-weight: 700; text-decoration: none; white-space: nowrap; transition: background-color .15s, border-color .15s; }
+.adm-hero__lien:hover { border-color: rgba(255, 255, 255, .55); background: rgba(255, 255, 255, .08); color: #fff; }
+.adm-hero__lien .icone { transition: translate .2s var(--ease-sortie); }
+.adm-hero__lien:hover .icone { translate: 3px 0; }
+
+.adm-hero__montant { display: grid; gap: .3rem; margin: 0; }
+.adm-hero__montant b { display: flex; align-items: baseline; gap: .45rem; font: 700 clamp(2.2rem, 1.7rem + 1.6vw, 3rem)/1 var(--f-texte); letter-spacing: -.025em; color: #fff; }
+.adm-hero__montant small { font-size: .95rem; font-weight: 600; letter-spacing: 0; color: rgba(255, 255, 255, .7); }
+.adm-hero__montant span { font-size: .95rem; color: rgba(255, 255, 255, .78); }
+
+/* Barre en quatre parts sur le vert : rampe du héros, tooltip clair. */
+.adm-hero .suivi-barre { height: 14px; }
+.adm-hero .suivi-barre__part--encaisse, .adm-hero__legende .suivi-legende__item--encaisse i { background: var(--adm-hero-pas-3); }
+.adm-hero .suivi-barre__part--verification, .adm-hero__legende .suivi-legende__item--verification i { background: var(--adm-hero-pas-2); }
+.adm-hero .suivi-barre__part--declare, .adm-hero__legende .suivi-legende__item--declare i { background: var(--adm-hero-pas-1); }
+.adm-hero .suivi-barre__part--non_declare, .adm-hero__legende .suivi-legende__item--non_declare i { background: var(--adm-hero-piste); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .22); }
+.adm-hero .suivi-barre__part::after { background: #fff; color: var(--vert-bandeau); }
+
+.adm-hero__legende { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .8rem 1.25rem; margin: 0; padding: 0; list-style: none; }
+.adm-hero__legende li { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: .5rem; align-items: baseline; }
+.adm-hero__legende i { grid-row: span 3; align-self: start; width: 11px; height: 11px; margin-top: .25rem; border-radius: 3px; }
+.adm-hero__legende span { font-size: .82rem; font-weight: 600; color: rgba(255, 255, 255, .72); }
+.adm-hero__legende b { font-size: 1rem; font-weight: 700; color: #fff; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.adm-hero__legende small { font-size: .78rem; color: rgba(255, 255, 255, .62); }
+
+.adm-hero__situations { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 0; padding-top: 1rem; border-top: 1px solid rgba(255, 255, 255, .14); }
+.adm-hero__situations div { display: grid; gap: .15rem; padding-right: 1rem; }
+.adm-hero__situations div + div { padding-left: 1rem; box-shadow: inset 1px 0 0 rgba(255, 255, 255, .12); }
+.adm-hero__situations dt { font-size: .8rem; color: rgba(255, 255, 255, .68); }
+.adm-hero__situations dd { margin: 0; font-size: 1.45rem; font-weight: 700; line-height: 1.15; color: #fff; }
+
+.adm-hero__alerte { display: flex; align-items: flex-start; gap: .55rem; margin: 0; padding: .7rem .9rem; border: 1px solid rgba(227, 168, 34, .38); border-radius: 12px; background: rgba(227, 168, 34, .12); font-size: .86rem; line-height: 1.45; color: #ffe7ad; }
+.adm-hero__alerte .icone { flex: none; margin-top: .1rem; color: var(--or); }
+.adm-hero__alerte b { color: #fff; }
+.adm-hero__vide { display: flex; align-items: center; gap: .6rem; margin: 0; font-size: .95rem; color: rgba(255, 255, 255, .8); }
+
+/* ---------- 5. Panneaux et grilles ---------- */
+
+.adm-panneau, .adm .graphe { min-width: 0; margin: 0; padding: 1.25rem 1.4rem 1.4rem; border: 1px solid var(--filet); border-radius: var(--adm-rayon); background: var(--blanc); box-shadow: var(--adm-ombre); }
+/* Aucun panneau ne se soulève au survol : seuls les éléments cliquables réagissent. */
+.adm .graphe:hover { transform: none; border-color: var(--filet); box-shadow: var(--adm-ombre); }
+.adm-panneau__tete { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: .6rem 1.5rem; margin-bottom: 1.15rem; }
+.adm-panneau__tete h2, .adm .graphe__titre { margin: 0 0 .2rem; font: 700 1.05rem/1.3 var(--f-texte); letter-spacing: -.005em; color: var(--encre); }
+.adm-panneau__tete p, .adm .graphe__sous-titre { max-width: 62ch; margin: 0; font-size: .88rem; line-height: 1.45; color: var(--gris); }
+.adm .graphe__entete { margin-bottom: 1.1rem; }
+
+.adm-grille { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 1.25rem; align-items: stretch; }
+.adm-grille > .adm-quitus { grid-column: span 7; }
+.adm-grille > .adm-verifies { grid-column: span 5; }
+.adm-grille--graphes > .graphe--courbes { grid-column: span 8; }
+.adm-grille--graphes > .graphe:not(.graphe--courbes) { grid-column: span 4; }
+.adm-grille--etab > .adm-par-niveau { grid-column: span 5; }
+.adm-grille--etab > .adm-filieres { grid-column: span 7; }
+
+/* ---------- 6. Quitus de l'année ---------- */
+
+.adm-etapes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 0; padding: 0; list-style: none; }
+.adm-etape { position: relative; display: grid; align-content: start; gap: .3rem; padding: 0 1.25rem; }
+.adm-etape:first-child { padding-left: 0; }
+.adm-etape:last-child { padding-right: 0; }
+/* Entre deux étapes : un filet et un chevron, le sens du parcours. */
+.adm-etape + .adm-etape { background: linear-gradient(var(--filet), var(--filet)) left center / 1px 78% no-repeat; }
+.adm-etape + .adm-etape::before { content: ""; position: absolute; left: -12px; top: 50%; width: 24px; height: 24px; translate: 0 -50%; border: 1px solid var(--filet); border-radius: 50%; background: var(--blanc); }
+.adm-etape + .adm-etape::after { content: ""; position: absolute; left: -6px; top: 50%; width: 12px; height: 12px; translate: 0 -50%; background: var(--gris); -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m9 18 6-6-6-6'/%3E%3C/svg%3E") center / contain no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m9 18 6-6-6-6'/%3E%3C/svg%3E") center / contain no-repeat; }
+.adm-etape__nom { display: flex; align-items: center; gap: .55rem; font-size: .92rem; font-weight: 600; color: var(--gris); }
+.adm-etape__icone { flex: none; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 9px; }
+.adm-etape__nombre { margin-top: .55rem; font: 700 2.15rem/1 var(--f-texte); letter-spacing: -.02em; color: var(--encre); }
+.adm-etape__part { font-size: .82rem; color: var(--gris); }
+.adm-etape__barre { display: block; height: 6px; margin: .45rem 0 .2rem; border-radius: 999px; background: var(--viz-piste); overflow: hidden; }
+.adm-etape__barre i { display: block; width: var(--part); height: 100%; min-width: 0; border-radius: 999px; }
+.adm-etape__note { font-size: .8rem; line-height: 1.4; color: var(--gris); }
+
+.adm-etape--genere .adm-etape__icone { background: var(--adm-st-genere-fond); color: var(--adm-st-genere); }
+.adm-etape--genere .adm-etape__barre i { background: var(--viz-attente); }
+.adm-etape--recu_envoye .adm-etape__icone { background: var(--adm-st-recu-fond); color: var(--adm-st-recu); }
+.adm-etape--recu_envoye .adm-etape__barre i { background: var(--viz-id-2); }
+.adm-etape--verifie .adm-etape__icone { background: var(--adm-st-verifie-fond); color: var(--adm-st-verifie); }
+.adm-etape--verifie .adm-etape__barre i { background: var(--viz-bien); }
+.adm-etape--rejete .adm-etape__icone { background: var(--adm-st-rejete-fond); color: var(--adm-st-rejete); }
+
+.adm-quitus__derive { display: flex; align-items: center; gap: .65rem; margin: 1.25rem 0 0; padding: .7rem .85rem; border-radius: 12px; background: var(--papier); font-size: .88rem; color: var(--gris); }
+.adm-quitus__derive b { color: var(--encre); }
+
+/* ---------- 7. Paiements vérifiés : le parcours de paiement ----------
+   Colonnes sur une base commune : tous les étudiants en neutre (la
+   référence), une tranche en vert moyen, tout payé en vert foncé. */
+
+.adm-verifies { display: flex; flex-direction: column; --parcours-plein: var(--dash-foret, #1d5a38); --parcours-partiel: #5f9373; --parcours-reference: var(--dash-neutre, #dce6df); }
+:root[data-theme="sombre"] .adm-verifies { --parcours-partiel: #4d8a61; }
+.adm-verifies__haut { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 1rem 2rem; margin-bottom: 1.4rem; }
+.adm-verifies__montant { display: grid; gap: .25rem; margin: 0; }
+.adm-verifies__montant b { display: flex; align-items: baseline; gap: .4rem; font: 700 2.15rem/1 var(--f-texte); letter-spacing: -.02em; color: var(--encre); }
+.adm-verifies__montant small { font-size: .9rem; font-weight: 600; letter-spacing: 0; color: var(--gris); }
+.adm-verifies__montant span { font-size: .86rem; color: var(--gris); }
+.adm-verifies__constat { display: flex; align-items: center; gap: .55rem; max-width: 24rem; margin: 0; padding: .6rem .8rem; border: 1px solid var(--filet); border-radius: 10px; background: var(--papier); font-size: .86rem; line-height: 1.4; color: var(--gris); }
+.adm-verifies__constat .icone { flex: none; color: var(--or-fonce); }
+.adm-verifies__constat b { font-size: 1rem; color: var(--encre); }
+.adm-parcours { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0 clamp(.6rem, 2.5vw, 2rem); margin: auto 0 0; padding: 0; list-style: none; }
+.adm-parcours__etape { display: grid; grid-template-rows: 200px auto auto; justify-items: center; text-align: center; }
+/* Le nombre se pose sur sa colonne : la hauteur utile est celle du cadre moins l'étiquette. */
+.adm-parcours__colonne { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; width: 100%; height: 100%; border-bottom: 1px solid var(--filet-fort); }
+.adm-parcours__valeur { margin-bottom: .35rem; font-size: 1.35rem; font-weight: 700; line-height: 1.1; color: var(--encre); }
+.adm-parcours__colonne i { display: block; flex: none; width: min(100%, 76px); height: calc((100% - 2.2rem) * var(--part)); border-radius: 5px 5px 0 0; transform-origin: center bottom; }
+.adm-parcours__etape--reference i { background: var(--parcours-reference); }
+.adm-parcours__etape--partiel i { background: var(--parcours-partiel); }
+.adm-parcours__etape--plein i { background: var(--parcours-plein); }
+.adm-parcours__nom { margin-top: .6rem; font-size: .86rem; font-weight: 600; line-height: 1.3; color: var(--encre); }
+.adm-parcours small { margin-top: .15rem; font-size: .76rem; color: var(--gris); }
+@media (max-width: 520px) {
+	.adm-parcours__etape { grid-template-rows: 160px auto auto; }
+	.adm-parcours__nom { font-size: .78rem; }
+	.adm-verifies__constat { max-width: none; }
+}
+
+/* ---------- 8. Registre des établissements ----------
+   Une ligne courte par établissement actif : identité, effectif, quitus (le
+   total et seulement ce qui attend l'administration), recouvrement. La ligne
+   s'ouvre sur un tiroir (niveaux, quitus par statut, montants) ; les
+   établissements sans activité sont regroupés en pied. */
+
+.adm-registre { padding: 0; overflow: clip; }
+.adm-registre > .adm-panneau__tete { align-items: flex-end; padding: 1.25rem 1.4rem 0; }
+.adm-registre__table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: .92rem; }
+.adm-registre__table th, .adm-registre__table td { padding: .95rem 1rem; border-bottom: 1px solid var(--filet); text-align: left; vertical-align: middle; font-weight: 400; }
+.adm-registre__table tr > :first-child { padding-left: 1.4rem; }
+.adm-registre__table tr > :last-child { padding-right: 1.1rem; }
+.adm-registre__table thead th { padding-block: .6rem; border-bottom-color: var(--filet-fort); background: var(--papier); font-size: .8rem; font-weight: 700; color: var(--gris); white-space: nowrap; }
+.adm-registre__table .num { text-align: right; }
+
+.adm-registre__ligne { cursor: pointer; }
+.adm-registre__ligne > * { transition: background-color .15s; }
+.adm-registre__ligne:hover > *, .adm-registre__ligne.est-ouvert > * { background: var(--adm-survol); }
+.adm-registre__ligne.est-ouvert > * { border-bottom-color: transparent; }
+.adm-registre__col-nom { width: 33%; }
+.adm-registre__col-quitus { width: 27%; }
+.adm-registre__col-taux { width: 27%; }
+.adm-registre__col-ouvrir { width: 4rem; }
+.adm-registre__nom, .adm-registre__nom > * { vertical-align: middle; }
+.adm-registre__nom { white-space: nowrap; }
+.adm-registre__logo { display: inline-grid; place-items: center; width: 40px; height: 40px; margin-right: .75rem; border-radius: 50%; background: color-mix(in srgb, var(--etab) 9%, var(--blanc)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--etab) 28%, transparent); }
+.adm-registre__logo img { width: 28px; height: 28px; object-fit: contain; }
+.adm-registre__texte { display: inline-grid; max-width: calc(100% - 3.5rem); vertical-align: middle; }
+.adm-registre__lien { justify-self: start; font-size: 1rem; font-weight: 700; color: var(--encre); text-decoration: none; }
+.adm-registre__lien:hover { text-decoration: underline; text-underline-offset: 3px; }
+.adm-registre__lien:focus-visible { outline: 3px solid var(--or); outline-offset: 2px; border-radius: 4px; }
+.adm-registre__texte small { overflow: hidden; font-size: .8rem; color: var(--gris); text-overflow: ellipsis; white-space: nowrap; }
+.adm-registre__effectif b { font-size: 1.35rem; font-weight: 700; color: var(--encre); font-variant-numeric: tabular-nums; }
+
+/* Quitus : le total, puis seulement ce qui attend l'administration. */
+.adm-registre__quitus { line-height: 1.4; }
+.adm-registre__total { display: inline-block; margin-right: .6rem; font-size: .86rem; color: var(--gris); vertical-align: middle; }
+.adm-registre__total b { font-size: 1.05rem; font-weight: 700; color: var(--encre); font-variant-numeric: tabular-nums; }
+.adm-a-traiter { display: inline-flex; align-items: center; gap: .3rem; margin: .15rem .35rem .15rem 0; padding: .22rem .6rem; border-radius: 999px; font-size: .8rem; font-weight: 600; white-space: nowrap; vertical-align: middle; }
+.adm-a-traiter--recu { background: var(--adm-st-recu-fond); color: var(--adm-st-recu); }
+.adm-a-traiter--rejete { background: var(--adm-st-rejete-fond); color: var(--adm-st-rejete); }
+.adm-registre__calme { font-size: .8rem; color: var(--gris); vertical-align: middle; }
+
+.adm-registre__mesure { display: grid; grid-template-columns: minmax(80px, 1fr) 3.6rem; align-items: center; gap: .75rem; }
+.adm-registre__mesure > b { font-size: .98rem; font-weight: 700; color: var(--encre); text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.adm-registre__mesure .suivi-barre { position: relative; height: 9px; }
+.adm-registre__rien { margin: 0; font-size: .84rem; color: var(--gris); }
+.adm-registre__mesure > .adm-registre__rien { grid-column: 1 / -1; }
+
+/* Bouton d'ouverture : il porte l'état ; toute la ligne l'actionne aussi. */
+.adm-registre__bouton { display: grid; place-items: center; width: 40px; height: 40px; margin-left: auto; padding: 0; border: 1px solid var(--filet); border-radius: 50%; background: var(--blanc); color: var(--gris); cursor: pointer; transition: border-color .15s, background-color .15s, color .15s; }
+.adm-registre__bouton .icone { transition: rotate .3s var(--ease-sortie); }
+.adm-registre__ligne:hover .adm-registre__bouton { border-color: var(--filet-fort); color: var(--encre); }
+.adm-registre__bouton[aria-expanded="true"] { border-color: var(--encre); background: var(--encre); color: var(--blanc); }
+.adm-registre__bouton[aria-expanded="true"] .icone { rotate: 180deg; }
+.adm-registre__bouton:focus-visible { outline: 3px solid var(--or); outline-offset: 2px; }
+
+/* Tiroir : il se déplie en hauteur (grille 0fr → 1fr), la ligne reste en place. */
+.adm-registre__detail > td { padding: 0 !important; background: var(--adm-survol); }
+.adm-registre__tiroir { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .38s var(--ease-sortie); }
+.adm-registre__detail.est-ouvert .adm-registre__tiroir { grid-template-rows: 1fr; }
+.adm-registre__tiroir-corps { min-height: 0; overflow: hidden; }
+.adm-registre__tiroir-contenu { display: grid; grid-template-columns: auto minmax(0, 1fr) minmax(0, 1.2fr); align-items: start; gap: 1.25rem 3rem; padding: .3rem 1.4rem 1.35rem calc(1.4rem + 40px + .75rem); }
+.adm-detail { min-width: 0; }
+.adm-detail__titre { margin: 0 0 .75rem; font: 700 .8rem/1.3 var(--f-texte); letter-spacing: 0; color: var(--gris); }
+.adm-detail__liste { display: grid; margin: 0; padding: 0; list-style: none; }
+.adm-detail__liste li { display: grid; grid-template-columns: 16px minmax(0, 1fr) auto; align-items: center; gap: .6rem; min-height: 30px; font-size: .86rem; color: var(--gris); }
+.adm-detail__liste li b { font-weight: 700; color: var(--encre); font-variant-numeric: tabular-nums; }
+.adm-detail__liste li > i { justify-self: center; width: 10px; height: 10px; border-radius: 3px; }
+.adm-detail__statut--genere .icone { color: var(--adm-st-genere); }
+.adm-detail__statut--recu_envoye .icone { color: var(--adm-st-recu); }
+.adm-detail__statut--verifie .icone { color: var(--adm-st-verifie); }
+.adm-detail__statut--rejete .icone { color: var(--adm-st-rejete); }
+.adm-detail__statut.est-nul .icone, .adm-detail__statut.est-nul b { font-weight: 400; color: var(--gris-clair); }
+.adm-detail__attendu { margin: .45rem 0 0; padding-top: .55rem; border-top: 1px solid var(--filet); font-size: .8rem; color: var(--gris); }
+.adm-detail__attendu b { color: var(--encre); }
+.adm-detail__aller { grid-column: 1 / -1; justify-self: end; }
+
+/* Étudiants par niveau : chiffre au-dessus, colonne, niveau dessous ; les
+   colonnes montent à l'ouverture du tiroir. */
+.adm-niveaux { display: inline-grid; grid-template-columns: repeat(5, 36px); gap: 8px; }
+.adm-niveaux__col { display: grid; grid-template-rows: 18px 64px 18px; justify-items: center; }
+.adm-niveaux__col b { font-size: .84rem; font-weight: 700; line-height: 18px; color: var(--encre); font-variant-numeric: tabular-nums; }
+.adm-niveaux__col i { align-self: end; width: 24px; height: max(3px, var(--h)); border-radius: 4px 4px 0 0; background: var(--viz-pas-2); transform-origin: center bottom; }
+.adm-niveaux__col small { font-size: .74rem; line-height: 18px; color: var(--gris); }
+.adm-niveaux__col.est-nul b { font-weight: 400; color: var(--gris-clair); }
+.adm-niveaux__col.est-nul i { height: 2px; border-radius: 0; background: var(--filet-fort); }
+.adm-registre__detail .adm-niveaux__col:not(.est-nul) i { transform: scaleY(0); transition: transform .6s var(--ease-sortie) calc(var(--rang) * 60ms + 140ms); }
+.adm-registre__detail.est-ouvert .adm-niveaux__col i { transform: none; }
+
+/* Établissements sans activité : une seule ligne, un accès chacun. */
+.adm-registre__calmes { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem 1.25rem; padding: 1rem 1.4rem 1.15rem; border-top: 1px solid var(--filet); background: var(--papier); }
+.adm-registre__calmes p { margin: 0; font-size: .86rem; color: var(--gris); }
+.adm-registre__calmes p b { color: var(--encre); }
+.adm-registre__calmes ul { display: flex; flex-wrap: wrap; gap: .45rem; margin: 0; padding: 0; list-style: none; }
+.adm-registre__calmes a { display: inline-flex; align-items: center; gap: .45rem; min-height: 36px; padding: .25rem .75rem .25rem .3rem; border: 1px solid var(--filet); border-radius: 999px; background: var(--blanc); font-size: .82rem; font-weight: 600; color: var(--encre); text-decoration: none; transition: border-color .15s; }
+.adm-registre__calmes a:hover { border-color: var(--filet-fort); }
+.adm-registre__calmes a:focus-visible { outline: 3px solid var(--or); outline-offset: 2px; }
+.adm-registre__calmes img { width: 26px; height: 26px; padding: 2px; border-radius: 50%; background: #fff; object-fit: contain; }
+
+/* ---------- 9. Un établissement : niveaux et filières ---------- */
+
+.adm-colonnes { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: .9rem; height: 210px; margin: 0; padding: 0 0 0; list-style: none; border-bottom: 1px solid var(--filet-fort); }
+.adm-colonnes li { display: grid; grid-template-rows: auto minmax(0, 1fr); justify-items: center; gap: .35rem; min-width: 0; }
+.adm-colonnes b { font-size: 1.05rem; font-weight: 700; color: var(--encre); font-variant-numeric: tabular-nums; }
+.adm-colonnes__barre { position: relative; width: min(100%, 56px); height: 100%; }
+.adm-colonnes__barre i { position: absolute; inset: auto 0 0; height: max(3px, var(--h)); border-radius: 4px 4px 0 0; background: var(--viz-pas-2); }
+.adm-colonnes li.est-nul b { font-weight: 400; color: var(--gris-clair); }
+.adm-colonnes li.est-nul .adm-colonnes__barre i { height: 0; }
+.adm-colonnes__nom { grid-row: 3; margin-top: .45rem; font-size: .85rem; font-weight: 600; color: var(--gris); }
+.adm-par-niveau .adm-colonnes { margin-bottom: 1.9rem; }
+
+.adm-filieres__liste { display: grid; gap: .7rem; margin: 0; padding: 0; list-style: none; }
+.adm-filieres__liste li { display: grid; grid-template-columns: minmax(0, 19rem) minmax(0, 1fr) 2.5rem; align-items: center; gap: .9rem; font-size: .9rem; }
+.adm-filieres__nom { overflow: hidden; color: var(--gris); text-overflow: ellipsis; white-space: nowrap; }
+.adm-filieres__barre { display: block; height: 10px; border-radius: 999px; background: var(--viz-piste); overflow: hidden; }
+.adm-filieres__barre i { display: block; width: var(--part); height: 100%; border-radius: 0 4px 4px 0; background: var(--viz-pas-2); }
+.adm-filieres__liste b { text-align: right; color: var(--encre); font-variant-numeric: tabular-nums; }
+.adm-filieres__suite { margin-top: .8rem; }
+.adm-filieres__suite > summary { display: inline-flex; align-items: center; gap: .4rem; min-height: 40px; font-size: .88rem; font-weight: 700; color: var(--foret-800); cursor: pointer; list-style: none; }
+.adm-filieres__suite > summary::-webkit-details-marker { display: none; }
+.adm-filieres__suite > summary .icone { transition: rotate .2s var(--ease-sortie); }
+.adm-filieres__suite[open] > summary .icone { rotate: 180deg; }
+.adm-filieres__suite .adm-filieres__liste { margin-top: .5rem; }
+
+/* ---------- 10. Personnel ---------- */
+
+.adm-personnel { display: grid; grid-template-columns: minmax(0, 1fr) minmax(320px, 380px); gap: 1.25rem; align-items: start; }
+.adm-creer { position: sticky; top: calc(var(--bo-chrome, 0px) + 1.25rem); }
+.adm-creer__form { display: grid; gap: .95rem; }
+.adm-creer__form .champ label { font-size: .9rem; }
+.adm-creer__form .champ input, .adm-creer__form .champ select { min-height: 46px; font-size: .95rem; }
+.adm-creer__form .btn { margin-top: .25rem; }
+
+.adm-comptes__liste { display: grid; margin: 0; padding: 0; list-style: none; }
+.adm-compte { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "avatar identite etat" "avatar outils outils"; align-items: center; gap: .7rem 1rem; padding: 1rem 0; }
+.adm-compte__avatar { grid-area: avatar; align-self: start; }
+.adm-compte__identite { grid-area: identite; }
+.adm-compte .adm-etat { grid-area: etat; align-self: start; }
+.adm-compte__outils { grid-area: outils; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .6rem 1rem; }
+.adm-compte + .adm-compte { box-shadow: inset 0 1px 0 var(--filet); }
+.adm-compte__avatar { width: 40px; height: 40px; }
+.adm-compte__identite { min-width: 0; }
+.adm-compte__actions { flex-wrap: wrap; }
+.adm-compte__nom { display: flex; align-items: center; flex-wrap: wrap; gap: .3rem .55rem; margin: 0; }
+.adm-compte__nom b { font-size: .98rem; color: var(--encre); }
+.adm-role { padding: .12rem .55rem; border-radius: 999px; background: var(--info-fond); font-size: .76rem; font-weight: 700; color: #134c66; }
+.adm-compte__meta { display: flex; flex-wrap: wrap; gap: .2rem 1rem; margin: .25rem 0 0; font-size: .82rem; color: var(--gris); }
+.adm-compte__meta span { display: inline-flex; align-items: center; gap: .3rem; min-width: 0; overflow-wrap: anywhere; }
+.adm-compte__meta .icone { flex: none; color: var(--gris-clair); }
+.adm-compte__etab { display: flex; align-items: center; gap: .35rem; }
+.adm-compte__etab .champ__select select { min-height: 36px; padding: .3rem 2.1rem .3rem .7rem; border: 1px solid var(--filet-fort); border-radius: 10px; background: var(--blanc); color: var(--encre); font: 600 .86rem var(--f-texte); }
+.adm-compte__etab .champ__select > .icone { right: .55rem; }
+.adm-etat { display: inline-flex; align-items: center; gap: .3rem; padding: .22rem .6rem; border-radius: 999px; background: var(--succes-fond); font-size: .78rem; font-weight: 700; color: #1b5e20; white-space: nowrap; }
+.adm-etat--suspendu { background: var(--alerte-fond); color: #6b4d00; }
+.adm-compte__actions { display: flex; align-items: center; gap: .35rem; }
+.adm-compte__actions > form { display: contents; }
+.adm-compte.est-suspendu .adm-compte__avatar { filter: grayscale(1); opacity: .6; }
+.adm-compte.est-suspendu .adm-compte__nom b { color: var(--gris); }
+.adm .provisoire { margin: 0; }
+
+/* Vue Paiements (bilan partagé avec la scolarité, inc/bord.php) : dans
+   l'administration, les quatre indicateurs forment un seul bandeau à
+   séparateurs plutôt que quatre cartes identiques. */
+.adm .scolarite-indicateurs { gap: 0; overflow: hidden; border: 1px solid var(--filet); border-radius: var(--adm-rayon); background: var(--blanc); box-shadow: var(--adm-ombre); }
+.adm .scolarite-indicateur { border: 0; border-radius: 0; background: none; }
+.adm .scolarite-indicateur + .scolarite-indicateur { box-shadow: inset 1px 0 0 var(--filet); }
+.adm .scolarite-recouvrement, .adm .suivi-panneau { border-radius: var(--adm-rayon); box-shadow: var(--adm-ombre); }
+
+/* ---------- 11. Thème sombre ----------
+   Jetons de base redéfinis pour toute la page : les composants partagés
+   suivent. Palette des graphiques validée sur la surface sombre (#161f19) :
+   identité #46a05a / #4f8fe0, rampe #3a7b50 → #58a674 → #8fd6a8 ; les
+   statuts sont fixes et gardent icône + libellé. */
+
+:root[data-theme="sombre"] { color-scheme: dark; }
+:root[data-theme="sombre"] .espace-admin {
+	--papier: #0e1511;
+	--blanc: #161f19;
+	--encre: #e4ebe6;
+	--gris: #b1beb6;
+	--gris-clair: #87958c;
+	--filet: #26322b;
+	--filet-fort: #36463c;
+	--foret-700: #3f8f5c;
+	--foret-800: #8fcca3;
+	--ciel-fonce: #7cc0e6;
+	--danger: #f2837b;
+	--danger-fond: #2b1614;
+	--succes-fond: #13291b;
+	--alerte-fond: #2a2310;
+	--info-fond: #10232d;
+	--or-fonce: #e9b949;
+	--ombre-1: 0 1px 2px rgba(0, 0, 0, .4);
+	--ombre-2: 0 14px 34px -14px rgba(0, 0, 0, .7);
+	--ombre-3: 0 40px 80px -30px rgba(0, 0, 0, .85);
+	--adm-ombre: 0 1px 2px rgba(0, 0, 0, .35);
+	--adm-ombre-hero: 0 28px 56px -30px rgba(0, 0, 0, .8);
+	--adm-hero: #0f2a15;
+	--adm-survol: #1b261f;
+	--adm-puce: #1e2922;
+	--adm-st-genere: #f0c05a;
+	--adm-st-recu: #7cc0e6;
+	--adm-st-verifie: #6fd08a;
+	--adm-st-rejete: #f2837b;
+	--adm-st-genere-fond: rgba(250, 178, 25, .14);
+	--adm-st-recu-fond: rgba(79, 143, 224, .16);
+	--adm-st-verifie-fond: rgba(12, 163, 12, .16);
+	--adm-st-rejete-fond: rgba(208, 59, 59, .16);
+	background: var(--papier);
+	color: var(--encre);
+}
+:root[data-theme="sombre"] .espace-admin .bo-contenu,
+:root[data-theme="sombre"] .espace-admin .suivi--sobre {
+	--viz-bien: #0ca30c;
+	--viz-attente: #fab219;
+	--viz-critique: #d03b3b;
+	--viz-id-1: #46a05a;
+	--viz-id-2: #4f8fe0;
+	--viz-pas-1: #3a7b50;
+	--viz-pas-2: #58a674;
+	--viz-pas-3: #8fd6a8;
+	--viz-piste: #25312a;
+}
+
+/* La barre latérale garde ses jetons clairs sur fond sombre. */
+:root[data-theme="sombre"] .espace-admin .bo-sidebar { --blanc: #fff; --encre: #15231b; --papier: #f4f7f3; background: #0a140d; box-shadow: inset -1px 0 0 rgba(255, 255, 255, .06); }
+
+/* Textes posés sur une couleur : ils restent blancs. */
+:root[data-theme="sombre"] .espace-admin .btn--primaire,
+:root[data-theme="sombre"] .espace-admin .btn--sombre,
+:root[data-theme="sombre"] .espace-admin .btn--danger { --btn-texte: #fff; box-shadow: none; }
+:root[data-theme="sombre"] .espace-admin .btn--clair { --btn-texte: var(--encre); }
+:root[data-theme="sombre"] .espace-admin .btn--fantome:hover { --btn-fond: rgba(143, 204, 163, .08); }
+:root[data-theme="sombre"] .espace-admin .champ__icone { background: rgba(143, 204, 163, .1); color: var(--foret-800); }
+:root[data-theme="sombre"] .espace-admin .champ__boite:focus-within .champ__icone { background: var(--foret-700); color: #fff; }
+:root[data-theme="sombre"] .espace-admin .champ input,
+:root[data-theme="sombre"] .espace-admin .champ select,
+:root[data-theme="sombre"] .espace-admin .bo-agent-mdp input { background: #111a14; color: var(--encre); border-color: var(--filet-fort); }
+:root[data-theme="sombre"] .espace-admin .bo-avatar { background: rgba(143, 204, 163, .12); color: var(--foret-800); }
+:root[data-theme="sombre"] .espace-admin .bo-vide > span { color: var(--foret-800); }
+
+/* Messages, pastilles et badges : fonds sombres teintés, textes clairs. */
+:root[data-theme="sombre"] .espace-admin .alerte--succes { border-color: #24533a; color: #a9dcb8; }
+:root[data-theme="sombre"] .espace-admin .alerte--erreur { border-color: #5a2723; color: #f6b3ad; }
+:root[data-theme="sombre"] .espace-admin .alerte--alerte { border-color: #54451b; color: #f0d48a; }
+:root[data-theme="sombre"] .espace-admin .alerte--info { border-color: #1d4459; color: #a6d4ec; }
+:root[data-theme="sombre"] .espace-admin .adm-role { color: #a6d4ec; }
+:root[data-theme="sombre"] .espace-admin .adm-etat { color: #a9dcb8; }
+:root[data-theme="sombre"] .espace-admin .adm-etat--suspendu { color: #f0d48a; }
+:root[data-theme="sombre"] .espace-admin .provisoire { border-color: #54451b; }
+:root[data-theme="sombre"] .espace-admin .provisoire__mdp { color: #f0d48a; }
+:root[data-theme="sombre"] .espace-admin .suivi-table__trop { color: #f0d48a; }
+:root[data-theme="sombre"] .espace-admin .suivi-table__pro { background: transparent; }
+:root[data-theme="sombre"] .espace-admin .suivi-barre__part::after { background: #e4ebe6; color: #0e1511; }
+:root[data-theme="sombre"] .espace-admin .adm-hero .suivi-barre__part::after { background: #fff; color: #0f2a15; }
+:root[data-theme="sombre"] .espace-admin .fenetre,
+:root[data-theme="sombre"] .espace-admin .bo-agent-mdp { background: var(--blanc); color: var(--encre); box-shadow: 0 0 0 1px var(--filet-fort), var(--ombre-3); }
+:root[data-theme="sombre"] .espace-admin .adm-registre__logo,
+:root[data-theme="sombre"] .espace-admin .suivi-table__logo { background: #f4f7f3; box-shadow: none; }
+
+/* Vue Paiements : couleurs écrites en dur dans paiements.css et bord.css. */
+:root[data-theme="sombre"] .espace-admin .suivi--sobre .suivi-table thead th,
+:root[data-theme="sombre"] .espace-admin .suivi--sobre .suivi-table tfoot :is(th, td),
+:root[data-theme="sombre"] .espace-admin .suivi--sobre .suivi-table tfoot tr { background: #1b2620; }
+:root[data-theme="sombre"] .espace-admin .suivi--sobre .suivi-barre--niveau .suivi-barre__part--verification,
+:root[data-theme="sombre"] .espace-admin .suivi--sobre .suivi-niveaux .suivi-cles .suivi-legende__item--verification i { background: rgba(88, 166, 116, .2); }
+:root[data-theme="sombre"] .espace-admin .bord-recouvrement__alerte { color: #f0d48a; }
+
+/* ---------- 12. Responsive, mouvement réduit, impression ---------- */
+
+@media (max-width: 1180px) {
+	.adm-grille > .adm-quitus, .adm-grille > .adm-verifies,
+	.adm-grille--graphes > .graphe--courbes { grid-column: 1 / -1; }
+	.adm-grille--graphes > .graphe:not(.graphe--courbes) { grid-column: 1 / -1; }
+	.adm-grille--etab > .adm-par-niveau, .adm-grille--etab > .adm-filieres { grid-column: 1 / -1; }
+	.adm-hero__legende, .adm-hero__situations { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: .9rem; }
+	.adm-hero__situations div:nth-child(3) { padding-left: 0; box-shadow: none; }
+	.adm-personnel { grid-template-columns: minmax(0, 1fr); }
+	.adm-creer { position: static; }
+}
+@media (min-width: 761px) and (max-width: 1180px) {
+	/* Le sexe tient à côté de rien : on le couche, anneau et légende côte à côte. */
+	.adm-grille--graphes > .graphe:not(.graphe--courbes) { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 2rem; align-items: center; }
+	.adm-grille--graphes > .graphe:not(.graphe--courbes) .graphe__entete { grid-column: 1 / -1; }
+	.adm-grille--graphes > .graphe:not(.graphe--courbes) .graphe__anneau { margin: 0; }
+}
+/* Registre en cartes : identité et bouton, puis effectif, quitus, recouvrement. */
+@media (max-width: 980px) {
+	.adm-registre__table, .adm-registre__table tbody { display: block; }
+	.adm-registre__table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+	.adm-registre__ligne { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: .9rem 1.75rem; padding: 1rem 1.25rem; border-top: 1px solid var(--filet); }
+	.adm-registre__ligne > * { display: block; width: auto !important; padding: 0 !important; border: 0 !important; background: none !important; }
+	.adm-registre__nom { grid-column: 1 / 3; white-space: normal; }
+	.adm-registre__ouvrir { grid-column: 3; grid-row: 1; align-self: center; }
+	.adm-registre__quitus { grid-column: 2 / -1; }
+	.adm-registre__taux { grid-column: 1 / -1; }
+	.adm-registre__table .num { text-align: left; }
+	.adm-registre__table td[data-titre]::before { content: attr(data-titre); display: block; margin-bottom: .3rem; font-size: .75rem; font-weight: 600; color: var(--gris); }
+	.adm-registre__ligne:hover, .adm-registre__ligne.est-ouvert { background: var(--adm-survol); }
+	.adm-registre__detail:not([hidden]), .adm-registre__detail > td { display: block; }
+	.adm-registre__tiroir-contenu { grid-template-columns: minmax(0, 1fr); gap: 1.25rem; padding: 0 1.25rem 1.25rem; }
+	.adm-detail__aller { justify-self: stretch; }
+}
+@media (max-width: 960px) {
+	.espace-admin .bo-contenu.adm { padding: 1.25rem 1rem 2.5rem; }
+	.adm-tete { align-items: flex-start; }
+	.adm-hero { grid-template-columns: minmax(0, 1fr); justify-items: stretch; }
+	.adm-hero__visuel { width: min(100%, 300px); justify-self: center; }
+}
+@media (max-width: 640px) {
+	.adm-etapes { grid-template-columns: minmax(0, 1fr); gap: 1.1rem; }
+	.adm-etape { padding: 0; }
+	.adm-etape + .adm-etape { padding-top: 1.1rem; background: linear-gradient(var(--filet), var(--filet)) top center / 100% 1px no-repeat; }
+	.adm-etape + .adm-etape::before { left: 50%; top: 0; translate: -50% -50%; }
+	.adm-etape + .adm-etape::after { left: 50%; top: 0; translate: -50% -50%; rotate: 90deg; }
+	.adm-hero__legende, .adm-hero__situations { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+	.adm-filieres__liste li { grid-template-columns: minmax(0, 1fr) 2.5rem; row-gap: .35rem; }
+	.adm-filieres__barre { grid-column: 1 / -1; grid-row: 2; }
+	.adm-colonnes { gap: .5rem; }
+	.adm-compte { grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "avatar identite" "avatar etat" "outils outils"; }
+	.adm-compte .adm-etat { justify-self: start; }
+	.adm-annee { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+	.adm-bouton, .adm-registre__bouton, .adm-registre__bouton .icone, .adm-registre__tiroir, .adm-hero__lien .icone, .adm-filieres__suite > summary .icone, .adm-registre__ligne > *, .adm-registre__calmes a { transition: none; }
+	.adm-registre__detail .adm-niveaux__col:not(.est-nul) i { transform: none; transition: none; }
+	.adm-theme.est-bascule .icone { animation: none; }
+}
+@media print {
+	.adm-tete__actions, .adm-registre__bouton { display: none; }
+	.adm-hero { box-shadow: none; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+	.adm-panneau, .adm .graphe { break-inside: avoid; box-shadow: none; }
+}

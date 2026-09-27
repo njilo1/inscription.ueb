@@ -1,0 +1,133 @@
+/* Scolarité et bilan des paiements : surfaces mates et chiffres lisibles.
+   Les règles du dashboard restent limitées à .bord--scolarite. */
+.bord--scolarite, .suivi--sobre {
+	--viz-id-1: #28634c;
+	--viz-id-2: #527a99;
+	--viz-pas-1: #a9c6b4;
+	--viz-pas-2: #608e74;
+	--viz-pas-3: #20583e;
+	--viz-bien: #28634c;
+	--viz-attente: #b58a32;
+	--viz-critique: #b35248;
+	--viz-piste: #edf1ee;
+	gap: 1.25rem;
+}
+.scolarite-bilan { display: grid; gap: 1.25rem; min-width: 0; }
+.scolarite-indicateurs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1rem; margin: 0; }
+.scolarite-indicateur { min-width: 0; padding: 1.2rem 1.3rem; border: 1px solid var(--filet); border-radius: 12px; background: var(--blanc); }
+.scolarite-indicateur dt { color: var(--gris); font-size: .94rem; font-weight: 600; }
+.scolarite-indicateur dd { display: flex; align-items: baseline; flex-wrap: wrap; gap: .15rem .4rem; margin: .75rem 0 0; }
+.scolarite-indicateur dd b { font: 650 clamp(1.65rem, 1.1rem + .9vw, 2.15rem)/1.15 var(--f-texte); letter-spacing: -.035em; overflow-wrap: anywhere; }
+.scolarite-indicateur dd small { color: var(--gris); font-size: .75rem; font-weight: 600; }
+.scolarite-indicateur dd > span { flex-basis: 100%; margin-top: .4rem; color: var(--gris); font-size: .8rem; line-height: 1.4; }
+.scolarite-indicateur:nth-child(3) dd b { color: var(--viz-pas-3); }
+
+.scolarite-recouvrement { display: grid; gap: 1.2rem; min-width: 0; padding: 1.4rem 1.5rem 1.1rem; background: var(--blanc); border: 1px solid var(--filet); border-radius: 12px; }
+.scolarite-recouvrement__entete { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .6rem 1rem; }
+.scolarite-recouvrement__entete h2 { margin: 0; font: 650 1.1rem/1.3 var(--f-texte); }
+.scolarite-recouvrement__entete p { margin: .3rem 0 0; font-size: .88rem; color: var(--gris); }
+.scolarite-recouvrement__entete .bo-lien { min-height: 44px; white-space: normal; }
+.scolarite-recouvrement__graphe { display: grid; grid-template-columns: minmax(130px, .7fr) minmax(0, 4fr); align-items: center; gap: 1.6rem; }
+.scolarite-recouvrement__taux { display: grid; gap: .3rem; margin: 0; padding-right: 1.3rem; border-right: 1px solid var(--filet); }
+.scolarite-recouvrement__taux b { color: var(--viz-pas-3); font: 600 2.65rem/1.1 var(--f-texte); letter-spacing: -.04em; }
+.scolarite-recouvrement__taux span { color: var(--gris); font-size: .82rem; }
+.scolarite-recouvrement__repartition { min-width: 0; }
+.scolarite-recouvrement .suivi-barre { height: 12px; }
+.scolarite-recouvrement__legende { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .8rem; margin-top: 1rem; }
+.scolarite-recouvrement__legende .suivi-legende__item { grid-template-columns: 10px minmax(0, 1fr); gap: .15rem .45rem; align-content: start; }
+.scolarite-recouvrement__legende .suivi-legende__item i { grid-column: 1; grid-row: 1; align-self: center; width: 8px; height: 8px; margin: 0; border-radius: 2px; }
+.scolarite-recouvrement__legende .suivi-legende__item > span { font-size: .8rem; line-height: 1.35; color: var(--gris); }
+.scolarite-recouvrement__legende .suivi-legende__item b { grid-column: 2; font-size: .95rem; overflow-wrap: anywhere; }
+.scolarite-recouvrement__legende .suivi-legende__item small { grid-column: 2; font-size: .78rem; color: var(--gris); }
+.scolarite-recouvrement__situations { display: flex; flex-wrap: wrap; gap: .6rem 2rem; margin: 0; padding-top: .9rem; border-top: 1px solid var(--filet); }
+.scolarite-recouvrement__situations > div { display: flex; flex-direction: row-reverse; align-items: baseline; gap: .45rem; }
+.scolarite-recouvrement__situations dt { color: var(--gris); font-size: .85rem; }
+.scolarite-recouvrement__situations dd { margin: 0; font-size: 1rem; font-weight: 700; }
+.scolarite-recouvrement__vide { margin: 0; padding-block: .5rem; color: var(--gris); }
+
+/* Les statuts sont des raccourcis vers le registre, tous au même niveau. */
+.bord--scolarite .bord-parcours { padding: 1.2rem 1.5rem; border-radius: 12px; }
+.bord--scolarite .bord-parcours__entete { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: .35rem 1rem; margin-bottom: .8rem; }
+.bord--scolarite .bord-parcours__entete h2 { font: 650 1.1rem/1.3 var(--f-texte); }
+.bord--scolarite .bord-parcours__entete p { font-size: .85rem; }
+.bord--scolarite .bord-parcours__corps { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1rem; }
+.bord--scolarite .bord-parcours__etapes { grid-column: span 3; grid-row: auto; grid-template-rows: none; gap: 1rem; }
+.bord--scolarite .bord-parcours__derive { grid-column: auto; grid-row: auto; }
+.bord--scolarite .bord-parcours__suite, .bord--scolarite .bord-parcours__filet, .bord--scolarite .bord-etape__numero { display: none; }
+.bord--scolarite .bord-etape { padding: .7rem .8rem; border-color: transparent; border-radius: 8px; background: var(--blanc); }
+.bord--scolarite .bord-etape:hover { background: var(--papier); border-color: var(--filet); }
+.bord--scolarite .bord-etape.est-a-traiter { background: #f1f5f8; border-color: #dbe5ed; }
+.bord--scolarite .bord-etape__icone { width: 24px; height: 24px; background: none; border-radius: 0; }
+.bord--scolarite .bord-etape__nombre { font-size: 1.9rem; font-weight: 600; }
+.bord--scolarite .bord-etape__part { font-size: .8rem; }
+.bord--scolarite .bord-etape__barre { height: 4px; margin-block: .6rem; }
+
+/* La progression est le graphique principal, la file reste à portée de main. */
+.bord--scolarite .bord__rangee--2 { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); }
+.bord--scolarite .bord__rangee--3 { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.35fr); }
+.bord--scolarite .graphe, .bord--scolarite .file-verif { padding: 1.3rem 1.5rem; border-radius: 12px; }
+.bord--scolarite .graphe__titre, .bord--scolarite .file-verif__entete h2 { font: 650 1.1rem/1.35 var(--f-texte); }
+.bord--scolarite .graphe__sous-titre { font-size: .85rem; }
+.bord--scolarite .courbes { --courbes-h: 240px; }
+.bord--scolarite .courbes__aire { fill-opacity: .12; }
+.bord--scolarite .courbes__ligne--generes { stroke: #668573; }
+.bord--scolarite .courbes__cle--generes path { stroke: #668573; }
+.bord--scolarite .courbes__point--generes { background: #668573; }
+.bord--scolarite .file-verif__entete h2 { display: flex; align-items: center; justify-content: space-between; gap: .6rem; }
+.scolarite-compteur { padding: .15rem .55rem; border-radius: 6px; background: #edf2f6; color: #355c77; font: 700 .8rem/1.4 var(--f-texte); }
+.bord--scolarite .file-verif__liste { border-radius: 0; border-inline: 0; }
+.bord--scolarite .file-verif__ligne { padding-inline: 0; }
+.bord--scolarite .file-verif__ligne .bo-avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--papier); color: var(--foret-800); font-size: .8rem; }
+.bord--scolarite .file-verif__qui b { font-size: .92rem; }
+.bord--scolarite .file-verif__qui small { font-size: .78rem; }
+.bord--scolarite .file-verif__attente { font-size: .78rem; }
+.bord--scolarite .graphe__anneau svg { width: 154px; }
+.bord--scolarite .graphe:has(> .graphe__anneau) { display: flex; align-items: stretch; }
+.bord--scolarite .graphe__anneau circle { stroke-width: 14px; }
+.bord--scolarite .graphe__anneau-centre b { font-size: 2rem; font-weight: 600; }
+.bord--scolarite .graphe__barres { margin-block: .75rem; gap: 1.5rem; }
+.bord--scolarite .graphe__barre { height: 10px; }
+.bord--scolarite .filieres__nom { white-space: normal; overflow: visible; }
+.bord--scolarite .suivi-barre { position: relative; }
+.bord--scolarite .suivi-barre__part { position: static; }
+.bord--scolarite .suivi-barre__part::after { width: max-content; max-width: 100%; white-space: normal; text-align: center; visibility: hidden; }
+.bord--scolarite .suivi-barre__part:hover::after { visibility: visible; }
+.bord--scolarite .graphe__vide { min-height: 150px; padding: 1.2rem; }
+.bord--scolarite :is(a, summary):focus-visible { outline: 2px solid var(--foret-700); outline-offset: 3px; }
+
+@media (max-width: 1280px) {
+	.scolarite-indicateurs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+	.scolarite-recouvrement__legende { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+	.bord--scolarite .bord__rangee--2 { grid-template-columns: minmax(0, 1fr); }
+	.bord--scolarite .bord__rangee--3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+	.bord--scolarite .bord__rangee--3 > :last-child { grid-column: 1 / -1; }
+}
+@media (max-width: 1100px) {
+	.bord--scolarite .bord-parcours__etapes { display: contents; }
+	.bord--scolarite .bord-parcours__corps { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .6rem; }
+	.bord--scolarite .bord-parcours__etapes > li { display: block; }
+	.bord--scolarite .bord-etape { height: 100%; }
+}
+@media (max-width: 600px) {
+	.scolarite-indicateurs { gap: .6rem; }
+	.scolarite-indicateur { padding: 1rem; }
+	.scolarite-indicateur dd b { font-size: 1.5rem; }
+	.scolarite-indicateur dt { font-size: .85rem; }
+	.scolarite-recouvrement, .bord--scolarite .bord-parcours, .bord--scolarite .graphe, .bord--scolarite .file-verif { padding: 1.1rem; }
+	.scolarite-recouvrement__graphe { grid-template-columns: minmax(0, 1fr); gap: 1rem; }
+	.scolarite-recouvrement__taux { display: flex; align-items: baseline; flex-wrap: wrap; gap: .6rem; border-right: 0; padding: 0; }
+	.scolarite-recouvrement__situations { gap: .5rem 1rem; }
+	.bord--scolarite .bord__rangee--3 { grid-template-columns: minmax(0, 1fr); }
+	.bord--scolarite .bord-etape { grid-template-columns: minmax(0, 1fr); padding: .65rem .4rem; }
+	.bord--scolarite .bord-etape__part { margin-top: .3rem; }
+	.bord--scolarite .bord-etape__nom { font-size: .88rem; }
+	.bord--scolarite .bord-etape__tete { gap: .25rem; }
+	.bord--scolarite .courbes { --courbes-h: 200px; }
+}
+@media (prefers-reduced-motion: reduce) {
+	.bord--scolarite *, .bord--scolarite *::before, .bord--scolarite *::after { animation: none; transition: none; }
+}
+@media print {
+	.scolarite-indicateurs { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+	.scolarite-bilan, .bord--scolarite .bord-parcours, .bord--scolarite .graphe { break-inside: avoid; }
+}

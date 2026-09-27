@@ -1,0 +1,98 @@
+/* Paiements : même bilan que la scolarité, puis registre et analyses.
+   Source Sans 3 pour les valeurs ; Source Serif 4 conservée au titre de page. */
+.suivi--sobre { min-width: 0; }
+.suivi--sobre [hidden] { display: none !important; }
+.suivi--sobre :is(h2, section) { scroll-margin-top: calc(var(--bo-chrome, 0px) + 1rem); }
+.paiements-reperes { display: flex; flex-wrap: wrap; gap: .35rem 1.5rem; padding: 0 .15rem; border-bottom: 1px solid var(--filet); }
+.paiements-reperes a { display: inline-flex; align-items: center; min-height: 44px; padding: .3rem 0 .6rem; font-size: .9rem; font-weight: 650; color: var(--foret-800); text-decoration: none; border-bottom: 2px solid transparent; }
+.paiements-reperes a:hover { border-bottom-color: var(--foret-700); }
+.suivi--sobre :is(a, input, select, button, summary):focus-visible { outline: 2px solid var(--foret-700); outline-offset: 3px; }
+.suivi--sobre .suivi-panneau { border-radius: 12px; box-shadow: none; }
+.suivi--sobre .suivi-panneau__entete { gap: .8rem 1.5rem; }
+.suivi--sobre .suivi-panneau__entete h2 { font: 650 1.1rem/1.35 var(--f-texte); }
+.suivi--sobre .suivi-panneau__entete p { font-size: .88rem; }
+.suivi--sobre .suivi-cles { gap: .5rem 1rem; font-size: .8rem; }
+.suivi--sobre .suivi-lignes { container: paiements / inline-size; }
+.paiements-filtres { display: flex; align-items: end; flex-wrap: wrap; gap: .9rem 1rem; padding: 0 1.5rem 1.1rem; }
+.paiements-filtres label { display: block; margin-bottom: .35rem; font-size: .84rem; color: var(--gris); font-weight: 600; }
+.paiements-recherche { flex: 1 1 240px; min-width: 0; }
+.paiements-recherche > div { position: relative; }
+.paiements-recherche .icone { position: absolute; left: .8rem; top: 50%; translate: 0 -50%; color: var(--gris); pointer-events: none; }
+.paiements-filtres input, .paiements-filtres select { width: 100%; min-height: 44px; border: 1px solid var(--filet-fort); border-radius: 8px; background: var(--blanc); color: var(--encre); font: inherit; font-size: .95rem; }
+.paiements-filtres input { padding: .55rem .8rem .55rem 2.5rem; }
+.paiements-filtres input::placeholder { color: var(--gris); }
+.paiements-filtres select { padding: .55rem 2rem .55rem .8rem; }
+.paiements-filtre { flex: 0 1 220px; min-width: 0; }
+.paiements-filtres button { min-height: 44px; }
+.paiements-filtres button:disabled { opacity: .55; cursor: default; }
+.paiements-resultats { flex-basis: 100%; margin: 0; font-size: .8rem; color: var(--gris); }
+.paiements-vide { margin: 0 1.5rem 1.5rem; padding: 1.5rem; background: var(--papier); border-radius: 8px; }
+.paiements-vide b { font-size: 1rem; }
+.paiements-vide p { margin: .35rem 0 0; color: var(--gris); font-size: .9rem; }
+.suivi--sobre .suivi-table { font-size: .94rem; }
+.suivi--sobre .suivi-table__nom-corps { min-width: 0; }
+.suivi--sobre .suivi-table__intitule--long { display: block; overflow: visible; overflow-wrap: anywhere; }
+.suivi--sobre .suivi-table thead th { background: #f4f6f4; border-bottom-color: var(--filet); padding-block: .85rem; }
+.suivi--sobre .suivi-table__encaisse, .suivi--sobre .suivi-table__mesure > b { color: var(--viz-pas-3); }
+.suivi--sobre .suivi-table tfoot :is(th, td) { background: #f4f6f4; }
+.suivi--sobre .suivi-table__mesure { grid-template-columns: minmax(50px, 1fr) 3.6rem; }
+.suivi--sobre .suivi-table__mesure:has(.suivi-table__aller) { grid-template-columns: minmax(50px, 1fr) 3.6rem 16px; }
+.suivi--sobre .suivi-table__pro { border-radius: 4px; }
+.suivi--sobre .suivi__rangee { grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); }
+.suivi--sobre .suivi-niveau { min-height: 4rem; }
+.suivi--sobre .suivi-niveaux__liste { row-gap: .6rem; }
+.suivi--sobre .suivi-barre--niveau { height: 14px; }
+.suivi--sobre .suivi-barre--niveau .suivi-barre__part--verification,
+.suivi--sobre .suivi-niveaux .suivi-cles .suivi-legende__item--verification i { background: #dce8df; border: 1px dashed var(--viz-pas-2); box-shadow: none; }
+.suivi--sobre .suivi-medicaux__montant > b { font: 600 2rem/1.15 var(--f-texte); letter-spacing: -.025em; color: var(--viz-pas-3); overflow-wrap: anywhere; }
+.suivi--sobre .suivi-medicaux__barre { height: 10px; }
+.suivi--sobre .suivi-medicaux__chiffres { gap: 1rem; padding-top: 1.1rem; border-top: 1px solid var(--filet); }
+.suivi--sobre .suivi-medicaux__chiffres div { padding: 0; background: none; border-radius: 0; }
+.suivi--sobre .suivi-medicaux__compte { border-top: 1px solid var(--filet); margin-top: 1.3rem; padding-top: 1rem; }
+.suivi--sobre .suivi-methode { border-radius: 12px; }
+.suivi--sobre .suivi-methode__icone { background: none; width: 22px; height: 22px; }
+.suivi--sobre .bo-vide { background: var(--papier); border-radius: 8px; padding: 1.4rem; }
+
+/* Infobulles attachées à la barre entière : aucun débordement sur mobile. */
+.suivi--sobre .suivi-barre { position: relative; }
+.suivi--sobre .suivi-barre__part { position: static; }
+.suivi--sobre .suivi-barre__part::after { left: 50%; right: auto; translate: -50% 4px; width: max-content; max-width: 100%; white-space: normal; text-align: center; visibility: hidden; }
+.suivi--sobre .suivi-barre__part:hover::after { translate: -50% 0; visibility: visible; }
+
+/* La largeur réelle du tableau détermine son passage en fiches. */
+@container paiements (max-width: 900px) {
+	.suivi--sobre .suivi-table, .suivi--sobre .suivi-table tbody, .suivi--sobre .suivi-table tfoot { display: block; }
+	.suivi--sobre .suivi-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+	.suivi--sobre .suivi-table tr { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .8rem; padding: 1.1rem 1.5rem; border-top: 1px solid var(--filet); }
+	.suivi--sobre .suivi-table tr > * { display: block; padding: 0 !important; border: 0 !important; background: none !important; }
+	.suivi--sobre .suivi-table__nom, .suivi--sobre .suivi-table__taux { grid-column: 1 / -1; }
+	.suivi--sobre .suivi-table__taux { grid-row: 2; }
+	.suivi--sobre .suivi-table .num { text-align: left; white-space: normal; overflow-wrap: anywhere; }
+	.suivi--sobre .suivi-table td[data-titre]::before { content: attr(data-titre); display: block; margin-bottom: .2rem; font-size: .78rem; font-weight: 600; color: var(--gris); }
+	.suivi--sobre .suivi-table__effectif-ligne { display: none; }
+	.suivi--sobre .suivi-table tfoot tr { background: #f4f6f4; }
+}
+@media (max-width: 1100px) {
+	.suivi--sobre .suivi__rangee { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 600px) {
+	.paiements-filtres { padding-inline: 1.1rem; }
+	.paiements-filtre { flex: 1 1 160px; }
+	.paiements-reperes { gap: .25rem 1rem; }
+	.paiements-reperes a { font-size: .85rem; }
+	.suivi--sobre .suivi-table tr { grid-template-columns: repeat(2, minmax(0, 1fr)); padding-inline: 1.1rem; }
+	.suivi--sobre .suivi-niveaux__graphe { display: block; }
+	.suivi--sobre .suivi-niveaux__grille { display: none; }
+	.suivi--sobre .suivi-niveaux__liste { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.3rem; }
+	.suivi--sobre .suivi-niveau { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .6rem; }
+	.suivi--sobre .suivi-niveau__valeur { grid-column: 2; grid-row: 1; }
+	.suivi--sobre .suivi-barre--niveau { grid-column: 1 / -1; }
+	.suivi--sobre .suivi-niveaux__axe { margin-top: .8rem; }
+	.suivi--sobre .suivi-medicaux__montant > b { white-space: normal; }
+}
+@media (prefers-reduced-motion: reduce) {
+	.suivi--sobre *, .suivi--sobre *::after { animation: none; transition: none; }
+}
+@media print {
+	.paiements-reperes, .paiements-filtres { display: none; }
+}
