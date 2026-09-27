@@ -106,3 +106,62 @@ function ueb_ipes_filiere_changer_etat( $id, $actif ) {
 	}
 	return false !== $wpdb->update( 'ueb_insc_ipes_filieres', array( 'actif' => $actif ? 1 : 0 ), array( 'id' => (int) $id ) );
 }
+
+/* ---------- Actions de l'administration ----------
+   Bloc « Filières » de la fiche d'un IPES (?vue=ipes&ipes={id}#filieres). */
+
+/** Adresse du bloc Filières de la fiche d'un IPES. */
+function ueb_url_ipes_filieres( $ipes_id ) {
+	return ueb_url_ipes( $ipes_id ) . '#filieres';
+}
+
+/** Filière désignée par « filiere_id », si elle appartient bien à cet IPES. */
+function ueb_ipes_filiere_du_formulaire( $ipes ) {
+	$filiere = ueb_ipes_filiere( (int) ( $_POST['filiere_id'] ?? 0 ) );
+	if ( ! $filiere || (int) $filiere->ipes_id !== (int) $ipes->id ) {
+		ueb_flash( 'erreur', 'Cette filière n’appartient pas à cet IPES.' );
+		ueb_rediriger( ueb_url_ipes_filieres( $ipes->id ) );
+	}
+	return $filiere;
+}
+
+function ueb_action_ipes_filiere_ajouter() {
+	ueb_exiger_admin();
+	$ipes     = ueb_ipes_du_formulaire();
+	$libelle  = sanitize_text_field( wp_unslash( $_POST['libelle'] ?? '' ) );
+	$resultat = ueb_ipes_filiere_ajouter( $ipes->id, $libelle );
+	if ( is_wp_error( $resultat ) ) {
+		ueb_memoriser_saisie( array( 'libelle' => $libelle ), array( 'libelle' => $resultat->get_error_message() ) );
+		ueb_flash( 'erreur', $resultat->get_error_message() );
+	} else {
+		ueb_flash( 'succes', 'Filière ajoutée.' );
+	}
+	ueb_rediriger( ueb_url_ipes_filieres( $ipes->id ) );
+}
+
+function ueb_action_ipes_filiere_renommer() {
+	ueb_exiger_admin();
+	$ipes     = ueb_ipes_du_formulaire();
+	$filiere  = ueb_ipes_filiere_du_formulaire( $ipes );
+	$resultat = ueb_ipes_filiere_renommer( $filiere->id, sanitize_text_field( wp_unslash( $_POST['libelle'] ?? '' ) ) );
+	if ( is_wp_error( $resultat ) ) {
+		ueb_flash( 'erreur', $resultat->get_error_message() );
+	} else {
+		ueb_flash( 'succes', 'Filière renommée.' );
+	}
+	ueb_rediriger( ueb_url_ipes_filieres( $ipes->id ) );
+}
+
+/** Retire une filière active, rétablit une filière retirée. */
+function ueb_action_ipes_filiere_etat() {
+	ueb_exiger_admin();
+	$ipes    = ueb_ipes_du_formulaire();
+	$filiere = ueb_ipes_filiere_du_formulaire( $ipes );
+	$active  = ! (int) $filiere->actif;
+	if ( ueb_ipes_filiere_changer_etat( $filiere->id, $active ) ) {
+		ueb_flash( 'succes', $active ? 'Filière rétablie.' : 'Filière retirée. Elle reste dans l’historique.' );
+	} else {
+		ueb_flash( 'erreur', 'La filière n’a pas pu être modifiée. Réessaie dans un instant.' );
+	}
+	ueb_rediriger( ueb_url_ipes_filieres( $ipes->id ) );
+}
