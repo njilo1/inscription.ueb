@@ -492,10 +492,10 @@
 .quitus-cms { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--filet); }
 .quitus-cms h3 { margin: 0; color: var(--foret-800); font-size: 1.1rem; }
 .quitus-cms__corps { padding-top: .85rem; }
-.quitus-erreurs > div { min-width: 0; }
-.quitus-erreurs ul { margin: .5rem 0 0; padding-left: 1.2rem; }
-.quitus-erreurs li + li { margin-top: .4rem; }
-.quitus-erreurs a { color: inherit; text-decoration: underline; text-underline-offset: .15em; }
+.quitus-erreurs > div, .ipes-erreurs > div { min-width: 0; }
+.quitus-erreurs ul, .ipes-erreurs ul { margin: .5rem 0 0; padding-left: 1.2rem; }
+.quitus-erreurs li + li, .ipes-erreurs li + li { margin-top: .4rem; }
+.quitus-erreurs a, .ipes-erreurs a { color: inherit; text-decoration: underline; text-underline-offset: .15em; }
 
 /* Montant, récapitulatif et génération */
 .champ-montant { display: grid; gap: .4rem; align-content: start; }
@@ -2015,3 +2015,35 @@
 	.role-carte, .assistant__panneau.entre-avant, .assistant__panneau.entre-arriere, .apercu__liste li.est-nouveau, .etabs-choix, .dialogue[open], .nouveau-compte[open] > form { animation: none; }
 	.role-carte, .role-carte:hover, .role-carte--nouveau span, .droit__interrupteur i, .modele { transition: none; transform: none; }
 }
+
+/* ---------- Administration : IPES (établissements privés sous tutelle) ----------
+   Mêmes codes que le reste du back-office : logo rond comme .suivi-table__logo,
+   tutelles en .pastille-etab à la couleur de chaque établissement. Un IPES n'a
+   pas de couleur d'identité : son logo repose sur le papier du site. */
+.ipes-nom { display: flex; align-items: center; gap: .75rem; min-width: 14rem; }
+.ipes-logo { flex: none; display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; background: var(--papier); box-shadow: inset 0 0 0 1px var(--filet); color: var(--gris); overflow: hidden; }
+.ipes-logo img { width: 26px; height: 26px; object-fit: contain; }
+.ipes-tableau .pastille-etab { margin: .1rem .25rem .1rem 0; }
+/* Filtres en direct (data-filtres-direct, assets/js/app.js) : le bouton
+   Rechercher n'est masqué que si le JavaScript a pris le relais. */
+.filtres [data-filtres-bouton][hidden] { display: none; }
+[data-filtres-direct] ~ [aria-busy="true"] { opacity: .55; transition: opacity .2s ease; }
+.ipes-resultats__nombre { margin: 0 0 .6rem; font-size: .9rem; }
+@media (prefers-reduced-motion: reduce) {
+	[data-filtres-direct] ~ [aria-busy="true"] { transition: none; }
+}
+/* Fiche d'un IPES : mêmes sections numérotées que les autres formulaires,
+   espacées comme les blocs de .bo-contenu. */
+.ipes-fiche { display: grid; gap: 1.4rem; }
+.ipes-fiche .etabs-choix { animation: none; }
+.ipes-logo--grand { width: 56px; height: 56px; }
+.ipes-logo--grand img { width: 40px; height: 40px; }
+.ipes-logo--apercu { width: 88px; height: 88px; }
+.ipes-logo--apercu img { width: 64px; height: 64px; }
+.ipes-logo-choix { display: flex; align-items: center; flex-wrap: wrap; gap: 1.25rem; }
+.ipes-logo-choix .ipes-logo [hidden] { display: none; }
+.ipes-depot { flex: 1 1 18rem; padding: 1.25rem; }
+.ipes-logo-choix .champ__erreur { flex-basis: 100%; }
+.ipes-fiche__actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .75rem; }.ipes-filiere-ajout { display: flex; flex-wrap: wrap; align-items: flex-start; gap: .75rem; max-width: 680px; margin-bottom: 1.25rem; }
+.ipes-filiere-ajout .champ { flex: 1 1 16rem; margin: 0; }
+.ipes-filiere-ajout .btn { margin-top: 1.85rem; }

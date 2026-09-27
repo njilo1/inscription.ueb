@@ -989,12 +989,14 @@ function ueb_badge_statut( $statut ) {
  * Champ avec libellé visible, aide et erreur reliées par aria-describedby.
  *
  * @param array $a nom, libelle, type, valeur, erreur, aide, attrs (tableau), options (select), requis,
- *                 icone (nom d'une icône ueb_icone() affichée dans le champ)
+ *                 icone (nom d'une icône ueb_icone() affichée dans le champ),
+ *                 id (facultatif, « champ-{nom} » par défaut)
  */
 function ueb_champ( array $a ) {
-	$a      = wp_parse_args( $a, array( 'type' => 'text', 'valeur' => '', 'erreur' => '', 'aide' => '', 'attrs' => array(), 'options' => array(), 'requis' => true, 'classe' => '', 'icone' => '' ) );
+	$a      = wp_parse_args( $a, array( 'type' => 'text', 'valeur' => '', 'erreur' => '', 'aide' => '', 'attrs' => array(), 'options' => array(), 'requis' => true, 'classe' => '', 'icone' => '', 'id' => '' ) );
 	$icone  = $a['icone'] ? '<span class="champ__icone">' . ueb_icone( $a['icone'], 18 ) . '</span>' : '';
-	$id     = 'champ-' . $a['nom'];
+	/* « id » : utile quand deux formulaires d'une même page ont un champ du même nom. */
+	$id     = $a['id'] ?: 'champ-' . $a['nom'];
 	$decrit = array();
 	if ( $a['aide'] ) {
 		$decrit[] = $id . '-aide';

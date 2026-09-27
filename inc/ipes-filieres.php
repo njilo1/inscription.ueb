@@ -127,12 +127,13 @@ function ueb_ipes_filiere_du_formulaire( $ipes ) {
 
 function ueb_action_ipes_filiere_ajouter() {
 	ueb_exiger_admin();
+	ueb_ipes_retour_bloc( 'filieres' );
 	$ipes     = ueb_ipes_du_formulaire();
 	$libelle  = sanitize_text_field( wp_unslash( $_POST['libelle'] ?? '' ) );
 	$resultat = ueb_ipes_filiere_ajouter( $ipes->id, $libelle );
 	if ( is_wp_error( $resultat ) ) {
+		/* L'erreur s'affiche sous le champ, dans le bloc Filières. */
 		ueb_memoriser_saisie( array( 'libelle' => $libelle ), array( 'libelle' => $resultat->get_error_message() ) );
-		ueb_flash( 'erreur', $resultat->get_error_message() );
 	} else {
 		ueb_flash( 'succes', 'Filière ajoutée.' );
 	}
@@ -141,6 +142,7 @@ function ueb_action_ipes_filiere_ajouter() {
 
 function ueb_action_ipes_filiere_renommer() {
 	ueb_exiger_admin();
+	ueb_ipes_retour_bloc( 'filieres' );
 	$ipes     = ueb_ipes_du_formulaire();
 	$filiere  = ueb_ipes_filiere_du_formulaire( $ipes );
 	$resultat = ueb_ipes_filiere_renommer( $filiere->id, sanitize_text_field( wp_unslash( $_POST['libelle'] ?? '' ) ) );
@@ -155,6 +157,7 @@ function ueb_action_ipes_filiere_renommer() {
 /** Retire une filière active, rétablit une filière retirée. */
 function ueb_action_ipes_filiere_etat() {
 	ueb_exiger_admin();
+	ueb_ipes_retour_bloc( 'filieres' );
 	$ipes    = ueb_ipes_du_formulaire();
 	$filiere = ueb_ipes_filiere_du_formulaire( $ipes );
 	$active  = ! (int) $filiere->actif;
