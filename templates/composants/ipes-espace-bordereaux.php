@@ -81,6 +81,9 @@ $pastille          = static function ( $sigle ) {
 				<h1><?php echo esc_html( $numero ); ?></h1>
 				<p class="bo-entete__sous-titre">Pour <?php echo $pastille( $bordereau->etablissement ); // phpcs:ignore -- échappé ci-dessus ?> · <?php echo ueb_ipes_badge_bordereau( $bordereau->statut ); // phpcs:ignore -- échappé par la fonction ?></p>
 			</div>
+			<?php if ( ueb_ipes_bordereau_a_pdf( $bordereau ) ) : ?>
+				<a class="btn btn--primaire bo-entete__action" href="<?php echo $ici( array( 'vue' => 'bordereaux', 'bordereau' => (int) $bordereau->id, 'pdf' => 1 ) ); ?>"><?php echo ueb_icone( 'telecharger', 18 ); ?>Télécharger le PDF</a>
+			<?php endif; ?>
 			<?php if ( 'brouillon' === $bordereau->statut ) : ?>
 				<form method="post" action="<?php echo esc_url( ueb_url_espace_ipes() ); ?>" data-confirmer="Supprimer ce brouillon ? Ses versements redeviendront libres.">
 					<?php ueb_champ_csrf(); ?>

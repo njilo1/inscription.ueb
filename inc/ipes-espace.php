@@ -180,3 +180,16 @@ function ueb_action_ipes_bordereau_supprimer() {
 	ueb_flash( is_wp_error( $resultat ) ? 'erreur' : 'succes', is_wp_error( $resultat ) ? $resultat->get_error_message() : 'Brouillon supprimé : ses versements sont de nouveau libres.' );
 	ueb_rediriger( ueb_url_espace_ipes_vue( 'bordereaux' ) );
 }
+/* PDF d'un bordereau depuis l'espace : ?vue=bordereaux&bordereau={id}&pdf=1.
+   Seulement un bordereau de l'IPES du compte, et déjà envoyé (numéro officiel). */
+add_action( 'template_redirect', function () {
+	if ( ! isset( $_GET['pdf'], $_GET['bordereau'] ) || ! is_page_template( 'page-ipes.php' ) ) {
+		return;
+	}
+	$ipes      = ueb_ipes_du_compte();
+	$bordereau = $ipes ? ueb_ipes_bordereau( $ipes->id, (int) $_GET['bordereau'] ) : null;
+	if ( ueb_ipes_bordereau_a_pdf( $bordereau ) ) {
+		ueb_ipes_envoyer_pdf_bordereau( $ipes, $bordereau );
+	}
+	/* Sinon la page s'affiche normalement : connexion, ou « Bordereau introuvable ». */
+}, 20 );
