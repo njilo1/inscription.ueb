@@ -71,3 +71,112 @@ function ueb_exiger_admin_ipes() {
 	}
 	return $ipes;
 }
+
+/* ---------- Actions de l'espace ----------
+   Chaque action commence par ueb_exiger_admin_ipes() : l'IPES vient du compte
+   connecté. Les identifiants postés (étudiant, versement, bordereau) sont
+   ensuite cherchés DANS cet IPES par les fonctions de données. */
+
+/** Adresse d'une vue de l'espace IPES : ueb_url_espace_ipes_vue( 'etudiants', array( 'etudiant' => 12 ) ). */
+function ueb_url_espace_ipes_vue( $vue, array $args = array() ) {
+	return add_query_arg( array( 'vue' => $vue ) + $args, ueb_url_espace_ipes() );
+}
+
+/** Erreurs d'un WP_Error de validation (champ => message), ou son message en « general ». */
+function ueb_ipes_erreurs_de( WP_Error $erreur ) {
+	$donnees = $erreur->get_error_data();
+	return is_array( $donnees ) && $donnees ? $donnees : array( 'general' => $erreur->get_error_message() );
+}
+
+function ueb_action_ipes_etudiant_enregistrer() {
+	$ipes   = ueb_exiger_admin_ipes();
+	$id     = (int) ( $_POST['etudiant_id'] ?? 0 );
+	$saisie = array();
+	foreach ( array( 'matricule', 'nom', 'prenom', 'filiere_id', 'niveau', 'telephone' ) as $champ ) {
+		$saisie[ $champ ] = sanitize_text_field( wp_unslash( $_POST[ $champ ] ?? '' ) );
+	}
+	$resultat = ueb_ipes_etudiant_enregistrer( $ipes->id, $saisie, $id );
+	if ( is_wp_error( $resultat ) ) {
+		ueb_memoriser_saisie( $saisie, ueb_ipes_erreurs_de( $resultat ) );
+		ueb_rediriger( $id ? ueb_url_espace_ipes_vue( 'etudiants', array( 'etudiant' => $id ) ) : ueb_url_espace_ipes_vue( 'etudiants', array( 'ajout' => 1 ) ) . '#ajout' );
+	}
+	ueb_flash( 'succes', $id ? 'Étudiant mis à jour.' : 'Étudiant ajouté. Enregistre maintenant ses versements.' );
+	ueb_rediriger( ueb_url_espace_ipes_vue( 'etudiants', array( 'etudiant' => $resultat ) ) );
+}
+
+function ueb_action_ipes_etudiant_supprimer() {
+	$ipes     = ueb_exiger_admin_ipes();
+	$id       = (int) ( $_POST['etudiant_id'] ?? 0 );
+	$resultat = ueb_ipes_etudiant_supprimer( $ipes->id, $id );
+	if ( is_wp_error( $resultat ) ) {
+		ueb_flash( 'erreur', $resultat->get_error_message() );
+		ueb_rediriger( ueb_url_espace_ipes_vue( 'etudiants', array( 'etudiant' => $id ) ) );
+	}
+	ueb_flash( 'succes', 'Étudiant supprimé.' );
+	ueb_rediriger( ueb_url_espace_ipes_vue( 'etudiants' ) );
+}
+
+function ueb_action_ipes_paiement_enregistrer() {
+	$ipes        = ueb_exiger_admin_ipes();
+	$etudiant_id = (int) ( $_POST['etudiant_id'] ?? 0 );
+	$id          = (int) ( $_POST['paiement_id'] ?? 0 );
+	$saisie      = array(
+		'montant'       => sanitize_text_field( wp_unslash( $_POST['montant'] ?? '' ) ),
+		'date_paiement' => sanitize_text_field( wp_unslash( $_POST['date_paiement'] ?? '' ) ),
+	);
+	$retour   = ueb_url_espace_ipes_vue( 'etudiants', array( 'etudiant' => $etudiant_id ) ) . '#versements';
+	$resultat = ueb_ipes_paiement_enregistrer( $ipes->id, $etudiant_id, $saisie, $id );
+	if ( is_wp_error( $resultat ) ) {
+		ueb_memoriser_saisie( $saisie + array( 'paiement_id' => $id ), ueb_ipes_erreurs_de( $resultat ) );
+		ueb_rediriger( $retour );
+	}
+	ueb_flash( 'succes', $id ? 'Versement modifié.' : 'Versement enregistré.' );
+	ueb_rediriger( $retour );
+}
+
+function ueb_action_ipes_paiement_supprimer() {
+	$ipes        = ueb_exiger_admin_ipes();
+	$etudiant_id = (int) ( $_POST['etudiant_id'] ?? 0 );
+	$resultat    = ueb_ipes_paiement_supprimer( $ipes->id, (int) ( $_POST['paiement_id'] ?? 0 ) );
+	ueb_flash( is_wp_error( $resultat ) ? 'erreur' : 'succes', is_wp_error( $resultat ) ? $resultat->get_error_message() : 'Versement supprimé.' );
+	ueb_rediriger( ueb_url_espace_ipes_vue( 'etudiants', array( 'etudiant' => $etudiant_id ) ) . '#versements' );
+}
+
+function ueb_action_ipes_bordereau_creer() {
+	$ipes     = ueb_exiger_admin_ipes();
+	$resultat = ueb_ipes_bordereau_creer( $ipes->id, sanitize_text_field( wp_unslash( $_POST['etablissement'] ?? '' ) ) );
+	if ( is_wp_error( $resultat ) ) {
+		ueb_flash( 'erreur', $resultat->get_error_message() );
+		ueb_rediriger( ueb_url_espace_ipes_vue( 'bordereaux' ) );
+	}
+	ueb_flash( 'succes', 'Brouillon créé : coche les versements à reverser.' );
+	ueb_rediriger( ueb_url_espace_ipes_vue( 'bordereaux', array( 'bordereau' => $resultat ) ) );
+}
+
+/** Enregistre les versements cochés ; avec le bouton « envoyer », envoie aussi le bordereau. */
+function ueb_action_ipes_bordereau_enregistrer() {
+	$ipes     = ueb_exiger_admin_ipes();
+	$id       = (int) ( $_POST['bordereau_id'] ?? 0 );
+	$retour   = ueb_url_espace_ipes_vue( 'bordereaux', array( 'bordereau' => $id ) );
+	$resultat = ueb_ipes_bordereau_definir_paiements( $ipes->id, $id, array_map( 'intval', (array) wp_unslash( $_POST['paiements'] ?? array() ) ) );
+	if ( ! is_wp_error( $resultat ) && isset( $_POST['envoyer'] ) ) {
+		$resultat = ueb_ipes_bordereau_envoyer( $ipes->id, $id );
+		if ( ! is_wp_error( $resultat ) ) {
+			ueb_flash( 'succes', 'Bordereau envoyé à l’UEb. Il n’est plus modifiable ; tu seras informé de sa vérification ici.' );
+			ueb_rediriger( $retour );
+		}
+	}
+	if ( is_wp_error( $resultat ) ) {
+		ueb_flash( 'erreur', $resultat->get_error_message() );
+	} else {
+		ueb_flash( 'succes', 'Sélection enregistrée.' );
+	}
+	ueb_rediriger( $retour );
+}
+
+function ueb_action_ipes_bordereau_supprimer() {
+	$ipes     = ueb_exiger_admin_ipes();
+	$resultat = ueb_ipes_bordereau_supprimer( $ipes->id, (int) ( $_POST['bordereau_id'] ?? 0 ) );
+	ueb_flash( is_wp_error( $resultat ) ? 'erreur' : 'succes', is_wp_error( $resultat ) ? $resultat->get_error_message() : 'Brouillon supprimé : ses versements sont de nouveau libres.' );
+	ueb_rediriger( ueb_url_espace_ipes_vue( 'bordereaux' ) );
+}
