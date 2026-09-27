@@ -178,6 +178,9 @@ function ueb_traiter_action( $action ) {
 		'ipes_compte_creer'          => 'ueb_action_ipes_compte_creer',
 		'ipes_compte_mdp'            => 'ueb_action_ipes_compte_mdp',
 		'ipes_compte_etat'           => 'ueb_action_ipes_compte_etat',
+		'ipes_filiere_ajouter'       => 'ueb_action_ipes_filiere_ajouter',
+		'ipes_filiere_renommer'      => 'ueb_action_ipes_filiere_renommer',
+		'ipes_filiere_etat'          => 'ueb_action_ipes_filiere_etat',
 	);
 	if ( ! isset( $traitements[ $action ] ) ) {
 		return;
