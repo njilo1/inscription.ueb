@@ -60,27 +60,32 @@ if ( isset( $_POST['ueb_connexion_gestion'] ) ) {
 	}
 }
 
-/* Accès par capacité et portée (inc/roles.php) : examiner les quitus ou suivre les paiements. */
+/* Accès par capacité et portée (inc/roles.php) : examiner les quitus, suivre les
+   paiements ou suivre les IPES sous tutelle (inc/ipes-tutelle.php). */
 $peut_quitus    = ueb_peut( UEB_CAP_GESTION );
 $peut_paiements = ueb_peut( 'ueb_voir_paiements' );
-$autorise       = ueb_est_scolarite() && ( $peut_quitus || $peut_paiements );
+$peut_ipes      = ueb_peut( 'ueb_voir_ipes' );
+$autorise       = ueb_est_scolarite() && ( $peut_quitus || $peut_paiements || $peut_ipes );
+/* Première vue permise : tableau de bord, sinon paiements, sinon IPES. */
+$vue_defaut     = $peut_quitus ? 'bord' : ( $peut_paiements ? 'paiements' : 'ipes' );
 $annee    = ueb_annee_academique();
 
 if ( $autorise ) {
 	$etab_agent = ueb_etab_agent();
 	$etab       = $etab_agent ? ueb_etablissement( $etab_agent ) : null;
-	$vue        = sanitize_key( $_GET['vue'] ?? ( $peut_quitus ? 'bord' : 'paiements' ) );
+	$vue        = sanitize_key( $_GET['vue'] ?? $vue_defaut );
 	/* Chaque vue exige sa permission ; sinon retour à la première vue permise. */
 	$permises = array_filter( array(
 		'bord'      => $peut_quitus,
 		'quitus'    => $peut_quitus,
 		'paiements' => $peut_paiements,
+		'ipes'      => $peut_ipes,
 		'cellule'   => ueb_peut( 'ueb_creer_agents' ),
 		'securite'  => true,
 		'comptes'   => true,
 	) );
 	if ( ! isset( $permises[ $vue ] ) ) {
-		$vue = $peut_quitus ? 'bord' : 'paiements';
+		$vue = $vue_defaut;
 	}
 	$fiche      = $peut_quitus && isset( $_GET['quitus'] ) ? ueb_quitus_par_id( (int) $_GET['quitus'] ) : null;
 	if ( $fiche && ! ueb_peut( UEB_CAP_GESTION, $fiche->etablissement ) ) {
@@ -160,6 +165,7 @@ ueb_page_debut( array( 'titre' => 'Espace scolarité', 'variante' => $autorise ?
 					$peut_quitus ? array( 'url' => $ici(), 'libelle' => 'Tableau de bord', 'icone' => 'tampon', 'actif' => 'bord' === $vue ) : null,
 					$peut_quitus ? array( 'url' => $ici( array( 'vue' => 'quitus' ) ), 'libelle' => 'Quitus', 'icone' => 'recu', 'actif' => 'quitus' === $vue ) : null,
 					$peut_paiements ? array( 'url' => $ici( array( 'vue' => 'paiements' ) ), 'libelle' => 'Paiements', 'icone' => 'banque', 'actif' => 'paiements' === $vue ) : null,
+					$peut_ipes ? array( 'url' => $ici( array( 'vue' => 'ipes' ) ), 'libelle' => 'IPES', 'icone' => 'ecole', 'actif' => 'ipes' === $vue ) : null,
 					$roles_creables ? array( 'url' => $ici( array( 'vue' => 'cellule' ) ), 'libelle' => 'Comptes du personnel', 'icone' => 'cle', 'actif' => 'cellule' === $vue ) : null,
 					ueb_peut( UEB_CAP_COMPTES ) ? array( 'url' => ueb_url_cellule(), 'libelle' => 'Comptes étudiants', 'icone' => 'utilisateur', 'actif' => false ) : null,
 					ueb_peut( UEB_CAP_DIRECTION ) ? array( 'url' => ueb_url_direction(), 'libelle' => 'Direction', 'icone' => 'bouclier', 'actif' => false ) : null,
@@ -179,6 +185,7 @@ ueb_page_debut( array( 'titre' => 'Espace scolarité', 'variante' => $autorise ?
 					'quitus'   => array( 'Quitus', 'Retrouve un dossier, examine ses reçus et rends ta décision après la vérification des originaux.' ),
 					'paiements' => array( 'Suivi des paiements', 'Droits universitaires attendus et encaissés, filière par filière. Seuls les reçus vérifiés comptent comme encaissés.' ),
 					'cellule'  => array( 'Comptes du personnel', 'Les comptes que tu crées pour ton établissement, avec un rôle aux droits inférieurs aux tiens.' ),
+					'ipes'     => array( 'IPES sous tutelle', 'Les établissements privés placés sous la tutelle de ton établissement : leurs étudiants, leurs versements et leurs reversements.' ),
 					'securite' => array( 'Sécurité', 'Le mot de passe de ton accès à l’espace scolarité.' ),
 				);
 				list( $titre_vue, $sous_titre_vue ) = $titres[ $vue ] ?? $titres['bord'];
@@ -716,7 +723,11 @@ ueb_page_debut( array( 'titre' => 'Espace scolarité', 'variante' => $autorise ?
 						</div>
 					</div>
 
-				<?php else : ?>
+				<?php elseif ( 'ipes' === $vue ) : ?>
+
+					<?php include UEB_INSC_DIR . '/templates/composants/scolarite-ipes.php'; ?>
+
+				<?php elseif ( 'quitus' === $vue ) : /* jamais un « else » : une vue sans branche n'affiche rien, surtout pas les quitus */ ?>
 
 					<?php
 					$filtres = array(
