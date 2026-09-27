@@ -1,0 +1,458 @@
+/* ==========================================================================
+   IPES : onglet de l'administration, espace IPES, vue de la scolarité
+   inc/ipes-vues.php, templates/composants/ipes-*.php, scolarite-ipes.php
+
+   Posé sur la couche de l'administration (administration.css) : mêmes
+   panneaux à filet d'un pixel, même héros vert avec la jauge Remotion, mêmes
+   boutons ronds, même thème sombre. Dans l'espace scolarité, qui n'a pas la
+   coque de l'administration, .ipes-zone reprend ses jetons.
+
+   Sommaire
+     1. Jetons hors de l'administration
+     2. Mise en page des vues
+     3. Petits éléments : logo, pastilles, statuts
+     4. Registres (IPES, bordereaux, étudiants) et barre d'outils
+     5. Héros des reversements
+     6. Fiche d'un IPES : formulaire, tutelles, logo, filières, compte
+     7. Espace IPES : à faire, étudiant, bordereau
+     8. Thème sombre
+     9. Responsive, mouvement réduit, impression
+   ========================================================================== */
+
+/* ---------- 1. Jetons hors de l'administration ---------- */
+
+body:not(.espace-admin) .ipes-zone {
+	--adm-rayon: 16px;
+	--adm-rayon-hero: 22px;
+	--adm-ombre: 0 1px 2px rgba(15, 44, 31, .05);
+	--adm-ombre-hero: 0 28px 56px -32px rgba(10, 31, 22, .6);
+	--adm-hero: var(--vert-bandeau);
+	--adm-survol: #f5f8f4;
+	--adm-puce: #eef3ee;
+	--adm-st-genere: #8a6100;
+	--adm-st-recu: #1f6f94;
+	--adm-st-verifie: #0f7a2c;
+	--adm-st-rejete: #b3261e;
+	--adm-st-genere-fond: rgba(250, 178, 25, .16);
+	--adm-st-recu-fond: rgba(55, 141, 183, .13);
+	--adm-st-verifie-fond: rgba(12, 163, 12, .11);
+	--adm-st-rejete-fond: rgba(208, 59, 59, .1);
+	--adm-hero-pas-3: #f4faf5;
+	--adm-hero-pas-2: #a7d3b3;
+	--adm-hero-pas-1: #5e9a70;
+	--adm-hero-piste: rgba(255, 255, 255, .12);
+}
+
+/* ---------- 2. Mise en page des vues ---------- */
+
+.ipes-zone { display: grid; gap: 1.25rem; min-width: 0; }
+
+/* Liste à gauche, formulaire collant à droite (comme le Personnel). */
+.ipes-deux { display: grid; grid-template-columns: minmax(0, 1fr) minmax(320px, 380px); gap: 1.25rem; align-items: start; }
+.ipes-cote { position: sticky; top: calc(var(--bo-chrome, 0px) + 1.25rem); display: grid; gap: 1.25rem; }
+.ipes-cote .formulaire__rangee { grid-template-columns: minmax(0, 1fr); gap: .95rem; }
+.ipes-cote .formulaire { display: grid; gap: .95rem; }
+.ipes-cote .champ input, .ipes-cote .champ select { min-height: 46px; font-size: .95rem; }
+
+/* Fiche : colonne principale et colonne d'appoint. */
+.ipes-grille { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(300px, 1fr); gap: 1.25rem; align-items: start; }
+.ipes-pile { display: grid; gap: 1.25rem; min-width: 0; }
+
+/* Barre du haut avec un logo ou un avatar à gauche du titre (ueb_adm_tete, « visuel »). */
+.adm-tete__identite { display: flex; align-items: center; gap: 1rem; min-width: 0; }
+.adm-tete__identite > div { min-width: 0; }
+/* Avec un visuel, le texte prend la place restante : les actions restent à droite. */
+.adm-tete:has(.adm-tete__identite) .adm-tete__texte { flex: 1 1 26rem; }
+.adm-tete:has(.adm-tete__identite) { align-items: center; }
+
+/* Deux panneaux de même poids côte à côte (compte et filières d'un IPES). */
+.ipes-duo { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.25rem; align-items: start; }
+
+/* ---------- 3. Petits éléments ---------- */
+
+.ipes-logo { flex: none; display: grid; place-items: center; width: 40px; height: 40px; overflow: hidden; border-radius: 50%; background: var(--blanc); box-shadow: inset 0 0 0 1px var(--filet-fort); color: var(--foret-700); }
+.ipes-logo img { width: 28px; height: 28px; object-fit: contain; }
+.ipes-logo--grand { width: 58px; height: 58px; box-shadow: inset 0 0 0 1px var(--filet-fort), 0 1px 2px rgba(15, 44, 31, .06); }
+.ipes-logo--grand img { width: 42px; height: 42px; }
+.ipes-logo--grand .icone { width: 26px; height: 26px; }
+.ipes-logo--apercu { width: 88px; height: 88px; }
+.ipes-logo--apercu img { width: 64px; height: 64px; }
+
+.ipes-tutelles { display: inline-flex; flex-wrap: wrap; gap: .3rem; }
+.ipes-tutelle { padding: .18rem .55rem; font-size: .78rem; line-height: 1.3; }
+
+.ipes-statut { display: inline-flex; align-items: center; gap: .35rem; padding: .24rem .65rem; border-radius: 999px; font-size: .8rem; font-weight: 700; white-space: nowrap; }
+.ipes-statut .icone { flex: none; }
+.ipes-statut--brouillon { background: var(--adm-puce); color: var(--gris); }
+.ipes-statut--envoye { background: var(--adm-st-recu-fond); color: var(--adm-st-recu); }
+.ipes-statut--verifie { background: var(--adm-st-verifie-fond); color: var(--adm-st-verifie); }
+.ipes-statut--rejete { background: var(--adm-st-rejete-fond); color: var(--adm-st-rejete); }
+
+.ipes-doc { flex: none; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; background: var(--adm-puce); color: var(--foret-700); }
+.ipes-ligne--envoye .ipes-doc { background: var(--adm-st-recu-fond); color: var(--adm-st-recu); }
+.ipes-ligne--rejete .ipes-doc { background: var(--adm-st-rejete-fond); color: var(--adm-st-rejete); }
+
+/* ---------- 4. Registres et barre d'outils ---------- */
+
+.ipes-registre { padding: 0; overflow: clip; }
+.ipes-registre > .adm-panneau__tete { align-items: center; margin: 0; padding: 1.1rem 1.4rem; border-bottom: 1px solid var(--filet); }
+.ipes-registre > .adm-panneau__tete h2 { margin-bottom: .15rem; }
+
+/* Barre d'outils de la tête : recherche et filtres, au même gabarit que les boutons. */
+.ipes-outils { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin: 0; }
+.ipes-outils .champ { margin: 0; }
+.ipes-recherche { position: relative; display: block; }
+.ipes-recherche .icone { position: absolute; left: .8rem; top: 50%; translate: 0 -50%; color: var(--gris-clair); pointer-events: none; }
+.ipes-recherche input { width: min(100%, 17rem); min-height: 40px; padding: .45rem .9rem .45rem 2.35rem; border: 1px solid var(--filet-fort); border-radius: 999px; background: var(--blanc); color: var(--encre); font: inherit; font-size: .9rem; }
+.ipes-selecteur { position: relative; display: block; }
+.ipes-selecteur select { min-height: 40px; max-width: 16rem; padding: .4rem 2.2rem .4rem .9rem; border: 1px solid var(--filet-fort); border-radius: 999px; background: var(--blanc); color: var(--encre); font: 600 .86rem var(--f-texte); appearance: none; cursor: pointer; }
+.ipes-selecteur .icone { position: absolute; right: .75rem; top: 50%; translate: 0 -50%; color: var(--gris); pointer-events: none; }
+.ipes-recherche input:focus-visible, .ipes-selecteur select:focus-visible { outline: 3px solid var(--or); outline-offset: 2px; border-color: var(--foret-700); }
+.ipes-outils [data-filtres-bouton][hidden] { display: none; }
+
+.ipes-resultats { min-width: 0; transition: opacity .2s; }
+.ipes-resultats[aria-busy="true"] { opacity: .55; }
+.ipes-compte { margin: 0; padding: .7rem 1.4rem; border-bottom: 1px solid var(--filet); background: var(--papier); font-size: .84rem; color: var(--gris); }
+.ipes-compte b { color: var(--encre); }
+
+/* Lignes : toute la ligne mène à la fiche (lien étiré), sans JavaScript. */
+.ipes-table { table-layout: auto; }
+.ipes-table tbody tr { position: relative; }
+.ipes-table tbody tr > * { transition: background-color .15s; }
+.ipes-table tbody tr:hover > *, .ipes-table tbody tr:focus-within > * { background: var(--adm-survol); }
+.ipes-table tbody tr:last-child > * { border-bottom: 0; }
+.ipes-ligne__qui { display: flex; align-items: center; gap: .8rem; min-width: 12rem; }
+.ipes-ligne__texte { display: grid; min-width: 0; }
+.ipes-ligne__texte b { font-size: .98rem; font-weight: 700; color: var(--encre); }
+.ipes-ligne__texte small { overflow: hidden; max-width: 34ch; font-size: .8rem; line-height: 1.4; color: var(--gris); text-overflow: ellipsis; white-space: nowrap; }
+.ipes-table--bordereaux .ipes-ligne__texte small { max-width: 44ch; white-space: normal; }
+.ipes-ligne__motif { max-width: 46ch !important; white-space: normal !important; color: var(--adm-st-rejete) !important; }
+.ipes-ligne__nombre b { font-size: 1.2rem; font-weight: 700; color: var(--encre); font-variant-numeric: tabular-nums; }
+.ipes-ligne__montant { font-weight: 700; color: var(--encre); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.ipes-ligne__montant small { font-size: .74rem; font-weight: 600; color: var(--gris); }
+.ipes-ligne__rien { font-size: .84rem; color: var(--gris); }
+.ipes-ligne__mesure small { display: block; margin-top: .25rem; font-size: .78rem; color: var(--gris); white-space: nowrap; }
+.ipes-ligne.est-inactif .ipes-ligne__texte b, .ipes-ligne.est-inactif .ipes-ligne__nombre b { color: var(--gris); }
+.ipes-ligne.est-inactif .ipes-logo { filter: grayscale(1); opacity: .7; }
+
+.ipes-mesure { display: grid; grid-template-columns: minmax(70px, 9rem) 3.4rem; align-items: center; gap: .65rem; }
+.ipes-mesure__barre { display: block; height: 8px; overflow: hidden; border-radius: 999px; background: var(--viz-piste); }
+.ipes-mesure__barre i { display: block; width: var(--part); height: 100%; border-radius: 999px; background: var(--viz-pas-2); }
+.ipes-mesure b { font-size: .95rem; font-weight: 700; color: var(--encre); text-align: right; font-variant-numeric: tabular-nums; }
+
+.ipes-ligne__aller { width: 3.5rem; text-align: right; }
+.ipes-ouvrir { display: inline-grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; color: var(--gris-clair); transition: background-color .15s, color .15s, translate .2s var(--ease-sortie); }
+.ipes-ouvrir::after { content: ""; position: absolute; inset: 0; }
+.ipes-table tbody tr:hover .ipes-ouvrir { background: var(--blanc); color: var(--foret-700); translate: 2px 0; box-shadow: inset 0 0 0 1px var(--filet-fort); }
+.ipes-ouvrir:focus-visible { outline: 0; color: var(--foret-700); }
+.ipes-ouvrir:focus-visible::after { outline: 3px solid var(--or); outline-offset: -3px; }
+
+.ipes-ligne__actions { width: 1%; }
+.ipes-actions { display: flex; align-items: center; justify-content: flex-end; gap: .4rem; }
+.ipes-actions > form { display: contents; }
+.ipes-actions .adm-bouton { white-space: nowrap; }
+
+.ipes-vide { margin: 1.25rem; }
+.ipes-panneau-pied { display: flex; justify-content: flex-end; padding: .85rem 1.4rem; border-top: 1px solid var(--filet); }
+
+/* Bandeau de la file (comme les reçus à vérifier de la scolarité). */
+.ipes-file { border-radius: var(--adm-rayon); box-shadow: var(--adm-ombre); }
+.ipes-file .registre-file__action { border-radius: 999px; }
+
+/* ---------- 5. Héros des reversements ---------- */
+
+.ipes-hero--sans-jauge { grid-template-columns: minmax(0, 1fr); }
+.ipes-hero .adm-hero__montant span { max-width: 62ch; }
+.ipes-hero__legende { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+.ipes-hero .adm-hero__situations dd { white-space: nowrap; }
+/* Infobulles des parts : la première et la dernière s'alignent sur le bord de
+   la barre, jamais au-delà de l'écran. */
+.ipes-hero .suivi-barre__part:first-child::after { left: 0; translate: 0 4px; }
+.ipes-hero .suivi-barre__part:last-child::after { left: auto; right: 0; translate: 0 4px; }
+.ipes-hero .suivi-barre__part:first-child:hover::after, .ipes-hero .suivi-barre__part:last-child:hover::after { translate: 0 0; }
+.ipes-hero .suivi-barre__part:only-child::after { left: 50%; right: auto; translate: -50% 4px; }
+.ipes-hero .adm-hero__situations dd small { margin-left: .3rem; font-size: .8rem; font-weight: 600; color: rgba(255, 255, 255, .68); }
+
+/* ---------- 6. Fiche d'un IPES ---------- */
+
+.ipes-fiche-form { display: grid; gap: 0; padding: 0; }
+.ipes-fiche-form > .adm-panneau__tete { margin: 0; padding: 1.25rem 1.4rem; border-bottom: 1px solid var(--filet); }
+.ipes-groupes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.ipes-groupe { display: grid; align-content: start; gap: .95rem; min-width: 0; margin: 0; padding: 1.35rem 1.4rem 1.5rem; border: 0; }
+.ipes-groupe:nth-child(even) { box-shadow: inset 1px 0 0 var(--filet); }
+.ipes-groupe:nth-child(n + 3) { border-top: 1px solid var(--filet); }
+.ipes-groupe--large { grid-column: 1 / -1; box-shadow: none !important; }
+.ipes-groupe__tete { display: flex; align-items: flex-start; gap: .75rem; }
+.ipes-groupe__icone { flex: none; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 10px; background: var(--adm-puce); color: var(--foret-700); }
+.ipes-groupe h3 { margin: 0; font: 700 .98rem/1.3 var(--f-texte); color: var(--encre); }
+.ipes-groupe__tete p { margin: .15rem 0 0; font-size: .85rem; line-height: 1.45; color: var(--gris); }
+.ipes-groupe .formulaire__rangee { gap: .95rem; }
+.ipes-fiche-form__pied { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: .6rem; padding: 1rem 1.4rem; border-top: 1px solid var(--filet); background: var(--papier); border-radius: 0 0 var(--adm-rayon) var(--adm-rayon); }
+
+/* Tutelles : une case par établissement, logo et sigle ; l'état coché se lit
+   à la bordure, au fond et à la coche, jamais à la couleur seule. */
+.ipes-etabs { margin: 0; padding: 0; border: 0; min-width: 0; }
+.ipes-etabs legend { margin-bottom: .6rem; padding: 0; font-size: .9rem; font-weight: 700; color: var(--encre); }
+.ipes-etabs__grille { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: .5rem; }
+.ipes-etab { position: relative; display: block; }
+.ipes-etab input { position: absolute; inset: 0; z-index: 1; margin: 0; opacity: 0; cursor: pointer; }
+.ipes-etab span { display: flex; align-items: center; gap: .5rem; min-height: 46px; padding: .45rem .6rem; border: 1px solid var(--filet-fort); border-radius: 12px; background: var(--blanc); font-size: .88rem; font-weight: 700; color: var(--encre); transition: border-color .15s, background-color .15s, box-shadow .15s; }
+.ipes-etab img { flex: none; width: 26px; height: 26px; padding: 1px; border-radius: 50%; background: #fff; object-fit: contain; }
+.ipes-etab .icone { margin-left: auto; color: var(--foret-700); opacity: 0; transform: scale(.6); transition: opacity .15s, transform .2s var(--ease-sortie); }
+.ipes-etab:hover span { border-color: var(--foret-700); }
+.ipes-etab input:checked + span { border-color: var(--foret-700); background: var(--adm-survol); box-shadow: inset 0 0 0 1px var(--foret-700); }
+.ipes-etab input:checked + span .icone { opacity: 1; transform: none; }
+.ipes-etab input:focus-visible + span { outline: 3px solid var(--or); outline-offset: 2px; }
+.champ--invalide .ipes-etab span { border-color: var(--danger); }
+
+.ipes-logo-choix { display: flex; align-items: center; flex-wrap: wrap; gap: 1.1rem; }
+.ipes-logo-choix .ipes-logo [hidden] { display: none; }
+.ipes-logo-choix .depot { flex: 1 1 16rem; padding: 1.1rem 1rem; }
+.ipes-logo-choix .champ__erreur { flex-basis: 100%; }
+
+/* Filières : ajout sur une ligne, liste compacte. */
+.ipes-ajout { display: flex; align-items: flex-end; gap: .5rem; margin: 0; }
+.ipes-ajout .champ { flex: 1 1 auto; margin: 0; }
+.ipes-ajout .champ input { min-height: 44px; }
+.ipes-ajout .adm-bouton { min-height: 44px; flex: none; }
+.ipes-ajout.a-erreur { align-items: flex-start; }
+.ipes-ajout.a-erreur .adm-bouton { margin-top: 1.8rem; }
+.ipes-liste { display: grid; margin: 0; padding: 0; list-style: none; }
+.ipes-liste > li { display: flex; align-items: center; justify-content: space-between; gap: .6rem 1rem; min-height: 52px; padding: .5rem 0; }
+.ipes-liste > li + li { box-shadow: inset 0 1px 0 var(--filet); }
+.ipes-liste__nom { display: flex; align-items: center; gap: .55rem; min-width: 0; font-size: .92rem; font-weight: 600; color: var(--encre); }
+.ipes-liste__nom .icone { flex: none; color: var(--foret-700); }
+.ipes-liste > li.est-retiree .ipes-liste__nom { font-weight: 400; color: var(--gris); text-decoration: line-through; text-decoration-color: var(--filet-fort); }
+.ipes-liste > li.est-retiree .ipes-liste__nom .icone { color: var(--gris-clair); }
+.ipes-liste__actions { display: flex; align-items: center; gap: .35rem; flex: none; }
+.ipes-liste__actions > form { display: contents; }
+.ipes-panneau-corps { display: grid; gap: 1rem; }
+
+/* Compte de l'administrateur de l'IPES. */
+.ipes-compte-carte { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "avatar identite etat" "outils outils outils"; align-items: center; gap: .75rem 1rem; padding: 1rem 0; }
+.ipes-compte-carte + .ipes-compte-carte { box-shadow: inset 0 1px 0 var(--filet); }
+.ipes-compte-carte .bo-avatar { grid-area: avatar; width: 40px; height: 40px; }
+.ipes-compte-carte .adm-etat { grid-area: etat; align-self: start; }
+.ipes-compte-carte__identite { grid-area: identite; min-width: 0; }
+.ipes-compte-carte__identite b { display: block; font-size: .96rem; color: var(--encre); }
+.ipes-compte-carte__identite small { display: block; overflow: hidden; font-size: .8rem; color: var(--gris); text-overflow: ellipsis; white-space: nowrap; }
+.ipes-compte-carte__outils { grid-area: outils; display: flex; flex-wrap: wrap; gap: .4rem; }
+.ipes-compte-carte__outils > form { display: contents; }
+.ipes-compte-carte.est-suspendu .bo-avatar { filter: grayscale(1); opacity: .6; }
+.ipes-creer-compte { display: grid; gap: .9rem; padding-top: .25rem; }
+.ipes-creer-compte .formulaire__rangee { grid-template-columns: minmax(0, 1fr); gap: .9rem; }
+.ipes-creer-compte .champ input { min-height: 44px; }
+.ipes-creer-compte details > summary { display: inline-flex; align-items: center; gap: .45rem; min-height: 40px; font-size: .9rem; font-weight: 700; color: var(--foret-800); cursor: pointer; list-style: none; }
+.ipes-creer-compte details > summary::-webkit-details-marker { display: none; }
+.ipes-creer-compte details > summary .icone { transition: rotate .2s var(--ease-sortie); }
+.ipes-creer-compte details[open] > summary .icone { rotate: 45deg; }
+.ipes-creer-compte details[open] > form { display: grid; gap: .9rem; margin-top: .6rem; }
+.adm .provisoire.ipes-provisoire { margin: 0; border: 1px solid #f0d68a; border-radius: var(--adm-rayon); }
+.ipes-provisoire .provisoire__mdp { font-size: 1.35rem; }
+
+/* Coordonnées en clair (fiche vue par la tutelle). */
+.ipes-faits { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: .9rem 1.5rem; margin: 0; }
+.ipes-faits div { display: grid; gap: .15rem; min-width: 0; }
+.ipes-faits dt { font-size: .8rem; color: var(--gris); }
+.ipes-faits dd { margin: 0; overflow-wrap: anywhere; font-size: .92rem; font-weight: 600; color: var(--encre); }
+
+.ipes-faits--pile { grid-template-columns: minmax(0, 1fr); }
+.ipes-faits a { color: var(--foret-800); text-underline-offset: 3px; }
+
+/* Scolarité : en-tête de la fiche d'un IPES ou d'un étudiant (sans filet du bas). */
+.ipes-sco-entete { margin: 0; padding-bottom: 0; border: 0; }
+.ipes-sco-entete h1 { margin: 0; }
+.ipes-zone > .fil { justify-self: start; margin: 0; }
+
+/* ---------- 7. Espace IPES ---------- */
+
+/* À faire : une ligne par action attendue, la plus urgente d'abord. */
+.ipes-a-faire { display: grid; margin: 0; padding: 0; list-style: none; }
+.ipes-a-faire li { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: .8rem; padding: .95rem 0; }
+.ipes-a-faire li + li { box-shadow: inset 0 1px 0 var(--filet); }
+.ipes-a-faire__icone { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; background: var(--adm-puce); color: var(--foret-700); }
+.ipes-a-faire--rejete .ipes-a-faire__icone { background: var(--adm-st-rejete-fond); color: var(--adm-st-rejete); }
+.ipes-a-faire--brouillon .ipes-a-faire__icone { background: var(--adm-st-genere-fond); color: var(--adm-st-genere); }
+.ipes-a-faire--libre .ipes-a-faire__icone { background: var(--adm-st-recu-fond); color: var(--adm-st-recu); }
+.ipes-a-faire__texte { display: grid; gap: .2rem; min-width: 0; }
+.ipes-a-faire__texte b { font-size: .95rem; color: var(--encre); }
+.ipes-a-faire__texte p { margin: 0; font-size: .86rem; line-height: 1.45; color: var(--gris); }
+.ipes-a-faire__texte .adm-bouton { justify-self: start; margin-top: .45rem; }
+.ipes-a-jour { display: flex; align-items: center; gap: .75rem; margin: 0; padding: .9rem 1rem; border-radius: 12px; background: var(--succes-fond); color: var(--adm-st-verifie); font-size: .92rem; font-weight: 600; }
+.ipes-a-jour .icone { flex: none; }
+
+/* Étudiant : en-tête d'identité. */
+.ipes-personne { display: flex; align-items: center; gap: 1rem; min-width: 0; }
+.ipes-personne .bo-avatar { width: 56px; height: 56px; background: var(--vert-bandeau); color: #fff; font: 700 1.15rem var(--f-titre); }
+.ipes-reperes { display: flex; flex-wrap: wrap; gap: .4rem; margin: .5rem 0 0; padding: 0; list-style: none; }
+.ipes-reperes li { display: inline-flex; align-items: center; gap: .35rem; min-height: 30px; padding: 0 .7rem; border-radius: 999px; background: var(--adm-puce); font-size: .82rem; font-weight: 600; color: var(--gris); }
+.ipes-reperes .icone { color: var(--foret-700); }
+
+/* Versements d'un étudiant : total, ajout, liste. */
+.ipes-total { display: flex; align-items: baseline; flex-wrap: wrap; gap: .35rem .6rem; margin: 0; }
+.ipes-total b { font: 700 clamp(1.7rem, 1.4rem + .8vw, 2.1rem)/1 var(--f-texte); letter-spacing: -.02em; color: var(--encre); }
+.ipes-total small { font-size: .9rem; font-weight: 600; color: var(--gris); }
+.ipes-versement-ajout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 11rem) auto; align-items: end; gap: .6rem; margin: 0; padding: 1rem; border-radius: 14px; background: var(--papier); }
+.ipes-versement-ajout .champ { margin: 0; }
+.ipes-versement-ajout .champ input { min-height: 44px; background: var(--blanc); }
+.ipes-versement-ajout .adm-bouton { min-height: 44px; }
+.ipes-versement-ajout.a-erreur { align-items: start; }
+.ipes-versement-ajout.a-erreur .adm-bouton { margin-top: 1.8rem; }
+
+/* Bordereau modifiable : cases, puis barre d'envoi collée au bas de l'écran. */
+.ipes-bordereau { padding: 0; overflow: visible; }
+.ipes-bordereau > .adm-panneau__tete { margin: 0; padding: 1.1rem 1.4rem; border-bottom: 1px solid var(--filet); }
+.ipes-case { width: 3.25rem; text-align: center; }
+.adm-registre__table tr > .ipes-case:first-child { padding-left: 1.2rem; }
+.ipes-case input { width: 20px; height: 20px; margin: 0; accent-color: var(--foret-700); cursor: pointer; vertical-align: middle; }
+.ipes-table--selection tbody tr:has(input:checked) > * { background: var(--adm-survol); }
+.ipes-table--selection label { cursor: pointer; }
+.ipes-envoi { position: sticky; bottom: 0; z-index: 3; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .75rem 1.5rem; padding: .9rem 1.4rem; border-top: 1px solid var(--filet-fort); border-radius: 0 0 var(--adm-rayon) var(--adm-rayon); background: var(--blanc); box-shadow: 0 -12px 24px -18px rgba(10, 31, 22, .35); }
+.ipes-envoi__total { display: grid; gap: .1rem; margin: 0; }
+.ipes-envoi__total span { font-size: .8rem; color: var(--gris); }
+.ipes-envoi__total b { font: 700 1.45rem/1.1 var(--f-texte); letter-spacing: -.01em; color: var(--encre); font-variant-numeric: tabular-nums; }
+.ipes-envoi__total small { font-size: .84rem; font-weight: 600; color: var(--gris); }
+.ipes-envoi__actions { display: flex; flex-wrap: wrap; gap: .5rem; }
+.ipes-envoi [data-total-affiche] { transition: color .2s; }
+
+/* Bordereau figé : le total, en chiffres et en lettres, comme sur le PDF. */
+.ipes-recap { display: flex; align-items: flex-end; justify-content: space-between; flex-wrap: wrap; gap: .75rem 2rem; margin: 0; padding: 1.1rem 1.4rem; border-bottom: 1px solid var(--filet); background: var(--papier); }
+.ipes-recap b { display: block; font: 700 1.9rem/1.05 var(--f-texte); letter-spacing: -.02em; color: var(--encre); }
+.ipes-recap span { font-size: .88rem; color: var(--gris); }
+.ipes-recap__lettres { max-width: 48ch; text-align: right; }
+
+.ipes-nouveau { display: flex; align-items: center; flex-wrap: wrap; gap: .75rem 1.25rem; }
+.ipes-nouveau__texte { flex: 1 1 18rem; min-width: 0; }
+.ipes-nouveau__texte h2 { margin: 0 0 .2rem; font: 700 1.05rem/1.3 var(--f-texte); color: var(--encre); }
+.ipes-nouveau__texte p { margin: 0; font-size: .88rem; color: var(--gris); }
+.ipes-nouveau__texte p b { color: var(--encre); }
+.ipes-nouveau form { display: flex; align-items: center; flex-wrap: wrap; gap: .5rem; margin: 0; }
+
+.ipes-alerte { margin: 0; }
+
+/* Tableau de bord : « à faire » à gauche, derniers bordereaux à droite. */
+.ipes-bord { display: grid; grid-template-columns: minmax(0, .85fr) minmax(0, 1.4fr); gap: 1.25rem; align-items: start; }
+
+/* Contenus des panneaux à tableau (sans marge intérieure) et panneaux étroits. */
+.ipes-corps { padding: 1.1rem 1.4rem; border-bottom: 1px solid var(--filet); }
+.ipes-registre > .alerte, .ipes-registre > .ipes-erreurs { margin: 1rem 1.4rem 0; }
+.adm-panneau > .ipes-erreurs { margin-bottom: 1rem; }
+.ipes-etroit .formulaire, .ipes-cote .formulaire { display: grid; gap: .95rem; }
+.ipes-etroit .formulaire__rangee { grid-template-columns: minmax(0, 1fr); gap: .95rem; }
+.ipes-bouton-large { width: 100%; min-height: 46px; margin-top: .25rem; font-size: .92rem; }
+
+/* Étudiant : avatar de la barre du haut, date et lien de bordereau. */
+.ipes-avatar { width: 58px; height: 58px; background: var(--vert-bandeau); color: #fff; font: 700 1.15rem var(--f-titre); }
+.ipes-ligne__date b { font-weight: 700; color: var(--encre); font-variant-numeric: tabular-nums; }
+.ipes-lien-bordereau { display: inline-block; margin-right: .45rem; font-size: .88rem; font-weight: 700; color: var(--foret-800); text-underline-offset: 3px; }
+.ipes-statut--libre { background: var(--adm-st-genere-fond); color: var(--adm-st-genere); }
+.ipes-registre > .adm-panneau__tete .ipes-total { flex: none; text-align: right; }
+
+/* Bordereau : statut sous le titre, destinataire du nouveau bordereau. */
+.ipes-tete-statut { margin: .6rem 0 0; }
+.ipes-destinataire { display: inline-flex; align-items: center; gap: .4rem; font-size: .88rem; font-weight: 600; color: var(--gris); }
+.ipes-nouveau > .ipes-doc { background: var(--adm-st-verifie-fond); color: var(--adm-st-verifie); }
+
+/* Sécurité : formulaire et bons réflexes côte à côte. */
+.ipes-securite { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 360px); gap: 1.25rem; align-items: start; }
+.ipes-securite .formulaire { display: grid; gap: 1rem; }
+.ipes-reflexes { display: grid; gap: .9rem; }
+.ipes-reflexes ul { display: grid; gap: .85rem; margin: 0; padding: 0; list-style: none; }
+.ipes-reflexes li { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: .6rem; font-size: .9rem; line-height: 1.5; color: var(--gris); }
+.ipes-reflexes li .icone { margin-top: .2rem; color: var(--foret-700); }
+.ipes-reflexes li b { color: var(--encre); }
+
+/* ---------- 8. Thème sombre ---------- */
+
+:root[data-theme="sombre"] .espace-admin .ipes-logo { background: #f4f7f3; box-shadow: none; color: #13351a; }
+:root[data-theme="sombre"] .espace-admin .pastille-etab { background: color-mix(in srgb, var(--etab) 26%, #161f19); color: color-mix(in srgb, var(--etab) 38%, #fff); }
+:root[data-theme="sombre"] .espace-admin .ipes-etab img { background: #f4f7f3; }
+:root[data-theme="sombre"] .espace-admin .ipes-recherche input,
+:root[data-theme="sombre"] .espace-admin .ipes-selecteur select { background: #111a14; }
+:root[data-theme="sombre"] .espace-admin .ipes-envoi { box-shadow: 0 -12px 24px -16px rgba(0, 0, 0, .8); }
+:root[data-theme="sombre"] .espace-admin .ipes-personne .bo-avatar { background: #0f2a15; color: #e4ebe6; }
+:root[data-theme="sombre"] .espace-admin .ipes-a-jour { color: #a9dcb8; }
+:root[data-theme="sombre"] .espace-admin .adm .provisoire.ipes-provisoire { border-color: #54451b; }
+:root[data-theme="sombre"] .espace-admin .depot { background-color: #111a14; }
+
+/* ---------- 9. Responsive, mouvement réduit, impression ---------- */
+
+@media (max-width: 1180px) {
+	.ipes-grille, .ipes-deux, .ipes-securite, .ipes-duo, .ipes-bord { grid-template-columns: minmax(0, 1fr); }
+	.ipes-cote { position: static; }
+}
+@media (max-width: 900px) {
+	.ipes-groupes { grid-template-columns: minmax(0, 1fr); }
+	.ipes-groupe:nth-child(even) { box-shadow: none; }
+	.ipes-groupe + .ipes-groupe { border-top: 1px solid var(--filet); }
+	.ipes-registre > .adm-panneau__tete { align-items: flex-start; }
+}
+/* Registres en fiches quand leur panneau devient étroit (requête de
+   conteneur : la barre latérale et les colonnes comptent) : identité en
+   tête, puis chaque valeur avec son titre. Le registre des IPES et les
+   bordereaux avec décision basculent plus tôt, ils ont plus de colonnes. */
+.ipes-registre, .ipes-bordereau { container: ipes-panneau / inline-size; }
+@container ipes-panneau (max-width: 880px) {
+	.ipes-table--registre, .ipes-table--registre tbody { display: block; }
+	.ipes-table--registre thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+	.ipes-table--registre tbody tr { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: .85rem 1.25rem; padding: 1rem 1.25rem; border-bottom: 1px solid var(--filet); }
+	.ipes-table--registre tbody tr:last-child { border-bottom: 0; }
+	.ipes-table--registre tbody tr > * { display: block; width: auto !important; min-width: 0; padding: 0 !important; border: 0 !important; background: none !important; }
+	.ipes-table--registre tbody tr:hover, .ipes-table--registre tbody tr:focus-within { background: var(--adm-survol); }
+	.ipes-table--registre .ipes-c-qui { grid-column: 1 / -1; padding-right: 2.5rem !important; }
+	.ipes-table--registre .ipes-ligne__aller { position: absolute; top: 1rem; right: 1rem; width: auto; }
+	.ipes-table--registre .ipes-ligne__actions { grid-column: 1 / -1; }
+	.ipes-table--registre .ipes-actions { justify-content: flex-start; flex-wrap: wrap; }
+	.ipes-table--registre .num { text-align: left; }
+	.ipes-table--registre td[data-titre]::before { content: attr(data-titre); display: block; margin-bottom: .3rem; font-size: .75rem; font-weight: 600; color: var(--gris); }
+	.ipes-table--decision, .ipes-table--decision tbody { display: block; }
+	.ipes-table--decision thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+	.ipes-table--decision tbody tr { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: .85rem 1.25rem; padding: 1rem 1.25rem; border-bottom: 1px solid var(--filet); }
+	.ipes-table--decision tbody tr:last-child { border-bottom: 0; }
+	.ipes-table--decision tbody tr > * { display: block; width: auto !important; min-width: 0; padding: 0 !important; border: 0 !important; background: none !important; }
+	.ipes-table--decision tbody tr:hover, .ipes-table--decision tbody tr:focus-within { background: var(--adm-survol); }
+	.ipes-table--decision .ipes-c-qui { grid-column: 1 / -1; padding-right: 2.5rem !important; }
+	.ipes-table--decision .ipes-ligne__aller { position: absolute; top: 1rem; right: 1rem; width: auto; }
+	.ipes-table--decision .ipes-ligne__actions { grid-column: 1 / -1; }
+	.ipes-table--decision .ipes-actions { justify-content: flex-start; flex-wrap: wrap; }
+	.ipes-table--decision .num { text-align: left; }
+	.ipes-table--decision td[data-titre]::before { content: attr(data-titre); display: block; margin-bottom: .3rem; font-size: .75rem; font-weight: 600; color: var(--gris); }
+}
+@container ipes-panneau (max-width: 600px) {
+	.ipes-table, .ipes-table tbody { display: block; }
+	.ipes-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+	.ipes-table tbody tr { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: .85rem 1.25rem; padding: 1rem 1.25rem; border-bottom: 1px solid var(--filet); }
+	.ipes-table tbody tr:last-child { border-bottom: 0; }
+	.ipes-table tbody tr > * { display: block; width: auto !important; min-width: 0; padding: 0 !important; border: 0 !important; background: none !important; }
+	.ipes-table tbody tr:hover, .ipes-table tbody tr:focus-within { background: var(--adm-survol); }
+	.ipes-table .ipes-c-qui { grid-column: 1 / -1; padding-right: 2.5rem !important; }
+	.ipes-table .ipes-ligne__aller { position: absolute; top: 1rem; right: 1rem; width: auto; }
+	.ipes-table .ipes-ligne__actions { grid-column: 1 / -1; }
+	.ipes-table .ipes-actions { justify-content: flex-start; flex-wrap: wrap; }
+	.ipes-table .num { text-align: left; }
+	.ipes-table td[data-titre]::before { content: attr(data-titre); display: block; margin-bottom: .3rem; font-size: .75rem; font-weight: 600; color: var(--gris); }
+	.ipes-table--selection tbody tr { grid-template-columns: auto minmax(0, 1fr) auto; gap: .35rem 1rem; }
+	.ipes-table--selection .ipes-case { grid-row: 1 / span 2; align-self: center; }
+	.ipes-table--selection tbody tr > :nth-child(2) { grid-area: 1 / 2; padding-right: 0 !important; }
+	.ipes-table--selection tbody tr > :nth-child(3) { grid-area: 2 / 2; }
+	.ipes-table--selection tbody tr > :nth-child(4) { grid-area: 2 / 3; text-align: right; font-size: .84rem; color: var(--gris); }
+	.ipes-table--selection tbody tr > :nth-child(5) { grid-area: 1 / 3; text-align: right; }
+	.ipes-table--selection td[data-titre]::before { display: none; }
+}
+@media (max-width: 640px) {
+	.ipes-outils { width: 100%; }
+	.ipes-recherche, .ipes-recherche input, .ipes-selecteur, .ipes-selecteur select { width: 100%; max-width: none; }
+	.ipes-versement-ajout { grid-template-columns: minmax(0, 1fr); }
+	.ipes-envoi { padding: .8rem 1rem; }
+	.ipes-envoi__actions, .ipes-envoi__actions .adm-bouton { width: 100%; }
+	.ipes-recap__lettres { text-align: left; }
+	.ipes-compte-carte { grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "avatar identite" "avatar etat" "outils outils"; }
+	.ipes-compte-carte .adm-etat { justify-self: start; }
+}
+@media (prefers-reduced-motion: reduce) {
+	.ipes-ouvrir, .ipes-table tbody tr > *, .ipes-etab span, .ipes-etab .icone, .ipes-resultats, .ipes-creer-compte details > summary .icone { transition: none; }
+}
+@media print {
+	.ipes-outils, .ipes-ligne__aller, .ipes-actions, .ipes-envoi__actions { display: none; }
+	.ipes-envoi { position: static; box-shadow: none; }
+}

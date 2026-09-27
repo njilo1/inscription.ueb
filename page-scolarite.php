@@ -192,7 +192,7 @@ ueb_page_debut( array( 'titre' => 'Espace scolarité', 'variante' => $autorise ?
 				$stats_entete = ueb_gestion_stats( $annee['code'], $etab_agent );
 				$a_verifier   = (int) ( $stats_entete['statuts']['recu_envoye'] ?? 0 );
 				?>
-				<?php if ( ! $fiche ) : ?>
+				<?php if ( ! $fiche && ! ( 'ipes' === $vue && isset( $_GET['ipes'] ) ) ) : /* la fiche d'un IPES a son propre en-tête */ ?>
 					<header class="bo-entete">
 						<div class="bo-entete__texte">
 							<p class="bo-entete__contexte">

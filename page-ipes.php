@@ -5,7 +5,7 @@
  * Espace de l'administrateur d'un IPES (établissement privé sous tutelle).
  * Accès : rôle « ueb_admin_ipes », compte non suspendu, IPES actif
  * (inc/ipes-espace.php). Vues par ?vue= :
- *   - bord (défaut) : chiffres de l'année et reversement ;
+ *   - bord (défaut) : reversements de l'année (héros et jauge), à faire, derniers bordereaux ;
  *   - etudiants     : les étudiants et leurs versements de pension ;
  *   - bordereaux    : les reversements à la tutelle ;
  *   - securite      : son propre mot de passe.
@@ -54,12 +54,20 @@ if ( $autorise ) {
 	$vue   = sanitize_key( $_GET['vue'] ?? 'bord' );
 	$vue   = in_array( $vue, array( 'bord', 'etudiants', 'bordereaux', 'securite' ), true ) ? $vue : 'bord';
 	$ici   = static fn( array $args = array() ) => esc_url( add_query_arg( $args, ueb_url_espace_ipes() ) );
+	$url   = static fn( array $args = array() ) => add_query_arg( $args, ueb_url_espace_ipes() ); // adresse brute, pour ueb_adm_action()
 	$annee = ueb_annee_academique();
 }
 
-ueb_page_debut( array( 'titre' => 'Espace IPES', 'variante' => $autorise ? 'bo' : 'gestion' ) );
+/* Connecté : coque de l'administration (barre du haut, panneaux, thème clair /
+   sombre mémorisé) ; l'écran de connexion garde l'en-tête du site. */
+ueb_page_debut( array(
+	'titre'    => 'Espace IPES',
+	'variante' => $autorise ? 'bo' : 'gestion',
+	'classe'   => $autorise ? 'espace-admin espace-ipes' : '',
+	'theme'    => $autorise,
+) );
 ?>
-<main id="contenu" class="page-app gestion espace-ipes<?php echo $autorise ? ' page-app--bo' : ''; ?>">
+<main id="contenu" class="page-app gestion<?php echo $autorise ? ' page-app--bo' : ''; ?>">
 
 	<?php if ( ! $autorise ) : ?>
 
@@ -102,14 +110,14 @@ ueb_page_debut( array( 'titre' => 'Espace IPES', 'variante' => $autorise ? 'bo' 
 			ueb_bo_barre(
 				'Espace IPES',
 				array(
-					array( 'url' => $ici(), 'libelle' => 'Tableau de bord', 'icone' => 'tampon', 'actif' => 'bord' === $vue ),
-					array( 'url' => $ici( array( 'vue' => 'etudiants' ) ), 'libelle' => 'Étudiants', 'icone' => 'utilisateur', 'actif' => 'etudiants' === $vue ),
+					array( 'url' => $ici(), 'libelle' => 'Tableau de bord', 'icone' => 'tableau', 'actif' => 'bord' === $vue ),
+					array( 'url' => $ici( array( 'vue' => 'etudiants' ) ), 'libelle' => 'Étudiants', 'icone' => 'groupe', 'actif' => 'etudiants' === $vue ),
 					array( 'url' => $ici( array( 'vue' => 'bordereaux' ) ), 'libelle' => 'Bordereaux', 'icone' => 'recu', 'actif' => 'bordereaux' === $vue ),
 					array( 'url' => $ici( array( 'vue' => 'securite' ) ), 'libelle' => 'Sécurité', 'icone' => 'cadenas', 'actif' => 'securite' === $vue ),
 				),
 				array(
 					'titre' => 1 === count( $ipes->tutelles ) ? 'Tutelle' : 'Tutelles',
-					'note'  => implode( ', ', array_map( static fn( $s ) => $s . ' — ' . ( ueb_etablissement( $s )['fr'] ?? $s ), $ipes->tutelles ) ),
+					'note'  => implode( ', ', array_map( static fn( $s ) => ueb_etablissement( $s )['fr'] ?? $s, $ipes->tutelles ) ),
 				),
 				array(
 					'nom'  => $ipes->sigle,
@@ -120,31 +128,49 @@ ueb_page_debut( array( 'titre' => 'Espace IPES', 'variante' => $autorise ? 'bo' 
 			);
 			?>
 
-			<div class="bo-contenu">
+			<div class="bo-contenu adm">
 
 				<?php if ( 'securite' === $vue ) : ?>
 
-					<header class="bo-entete"><div class="bo-entete__texte"><h1>Sécurité</h1><p class="bo-entete__sous-titre">Le mot de passe de ton accès à l’espace de <?php echo esc_html( $ipes->sigle ); ?>. Ne le communique à personne.</p></div></header>
-					<?php ueb_afficher_flash(); ?>
-					<section class="carte bo-panneau direction-securite" aria-labelledby="titre-mdp-ipes">
-						<header class="bo-panneau__entete"><span class="bo-panneau__icone"><?php echo ueb_icone( 'cadenas', 20 ); ?></span><div><h2 id="titre-mdp-ipes">Modifier mon mot de passe</h2><p>Tu seras déconnecté ensuite : reconnecte-toi avec le nouveau.</p></div></header>
-						<form class="formulaire bo-formulaire" method="post" action="<?php echo esc_url( ueb_url_espace_ipes() ); ?>" data-formulaire novalidate>
-							<?php ueb_champ_csrf(); ?>
-							<input type="hidden" name="ueb_action" value="gestion_changer_mdp_personnel">
-							<?php ueb_champ( array( 'nom' => 'mot_de_passe_actuel', 'libelle' => 'Mot de passe actuel', 'type' => 'password', 'icone' => 'cadenas', 'attrs' => array( 'autocomplete' => 'current-password' ) ) ); ?>
-							<div class="formulaire__rangee">
-								<?php ueb_champ( array( 'nom' => 'mot_de_passe_nouveau', 'libelle' => 'Nouveau mot de passe', 'type' => 'password', 'icone' => 'cle', 'attrs' => array( 'autocomplete' => 'new-password', 'minlength' => 8 ) ) ); ?>
-								<?php ueb_champ( array( 'nom' => 'mot_de_passe_confirmation', 'libelle' => 'Confirmation', 'type' => 'password', 'icone' => 'cle', 'attrs' => array( 'autocomplete' => 'new-password', 'minlength' => 8, 'data-confirme' => 'champ-mot_de_passe_nouveau' ) ) ); ?>
-							</div>
-							<div class="force-mdp" data-force-mdp="champ-mot_de_passe_nouveau" data-niveau="0"><div class="force-mdp__jauge" aria-hidden="true"><i></i><i></i><i></i><i></i></div><p class="force-mdp__libelle" aria-live="polite">Solidité : <b data-force-libelle>à saisir</b></p></div>
-							<div class="bo-formulaire__actions"><button class="btn btn--primaire" type="submit"><?php echo ueb_icone( 'bouclier', 18 ); ?>Changer le mot de passe</button></div>
-						</form>
-					</section>
+					<?php
+					ueb_adm_tete( array(
+						'titre'      => 'Sécurité',
+						'sous_titre' => 'Le mot de passe de ton accès à l’espace de ' . $ipes->sigle . '. Ne le communique à personne.',
+					) );
+					ueb_afficher_flash();
+					?>
+					<div class="ipes-securite">
+						<section class="adm-panneau" aria-labelledby="titre-mdp-ipes">
+							<header class="adm-panneau__tete">
+								<div><h2 id="titre-mdp-ipes">Modifier mon mot de passe</h2><p>Tu seras déconnecté ensuite : reconnecte-toi avec le nouveau.</p></div>
+							</header>
+							<form class="formulaire bo-formulaire" method="post" action="<?php echo esc_url( ueb_url_espace_ipes() ); ?>" data-formulaire novalidate>
+								<?php ueb_champ_csrf(); ?>
+								<input type="hidden" name="ueb_action" value="gestion_changer_mdp_personnel">
+								<?php ueb_champ( array( 'nom' => 'mot_de_passe_actuel', 'libelle' => 'Mot de passe actuel', 'type' => 'password', 'icone' => 'cadenas', 'attrs' => array( 'autocomplete' => 'current-password' ) ) ); ?>
+								<div class="formulaire__rangee">
+									<?php ueb_champ( array( 'nom' => 'mot_de_passe_nouveau', 'libelle' => 'Nouveau mot de passe', 'type' => 'password', 'icone' => 'cle', 'attrs' => array( 'autocomplete' => 'new-password', 'minlength' => 8 ) ) ); ?>
+									<?php ueb_champ( array( 'nom' => 'mot_de_passe_confirmation', 'libelle' => 'Confirmation', 'type' => 'password', 'icone' => 'cle', 'attrs' => array( 'autocomplete' => 'new-password', 'minlength' => 8, 'data-confirme' => 'champ-mot_de_passe_nouveau' ) ) ); ?>
+								</div>
+								<div class="force-mdp" data-force-mdp="champ-mot_de_passe_nouveau" data-niveau="0"><div class="force-mdp__jauge" aria-hidden="true"><i></i><i></i><i></i><i></i></div><p class="force-mdp__libelle" aria-live="polite">Solidité : <b data-force-libelle>à saisir</b></p></div>
+								<div><button class="adm-bouton adm-bouton--primaire" type="submit"><?php echo ueb_icone( 'bouclier', 16 ); ?>Changer le mot de passe</button></div>
+							</form>
+						</section>
+						<aside class="adm-panneau ipes-reflexes" aria-labelledby="titre-reflexes-ipes">
+							<header class="adm-panneau__tete"><div><h2 id="titre-reflexes-ipes">Les bons réflexes</h2><p>Ce compte déclare les étudiants et les reversements de <?php echo esc_html( $ipes->sigle ); ?>.</p></div></header>
+							<ul>
+								<li><?php echo ueb_icone( 'cadenas', 17 ); ?><span><b>Un mot de passe à toi seul.</b> Ne le communique pas, même à l’UEb : personne ne te le demandera.</span></li>
+								<li><?php echo ueb_icone( 'cle', 17 ); ?><span><b>Au moins 8 caractères</b>, avec des lettres et des chiffres. Une courte phrase se retient mieux qu’un mot.</span></li>
+								<li><?php echo ueb_icone( 'sortie', 17 ); ?><span><b>Déconnecte-toi</b> à la fin de chaque session sur un ordinateur partagé.</span></li>
+								<li><?php echo ueb_icone( 'info', 17 ); ?><span><b>Mot de passe oublié ?</b> L’administration de l’UEb t’en créera un nouveau, provisoire.</span></li>
+							</ul>
+						</aside>
+					</div>
 
 				<?php else : ?>
 
 					<?php
-					/* Chaque vue dispose de $ipes (celui du compte), $annee et $ici. */
+					/* Chaque vue dispose de $ipes (celui du compte), $annee, $ici (échappée) et $url (brute). */
 					include UEB_INSC_DIR . '/templates/composants/ipes-espace-' . $vue . '.php';
 					?>
 

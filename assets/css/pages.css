@@ -1738,103 +1738,16 @@
 .bo-perimetre--choix select option { color: var(--encre); }
 .bo-perimetre--choix .icone { position: absolute; right: .6rem; top: 50%; translate: 0 -50%; pointer-events: none; }
 
-/* ---------- Choix d'établissements et sécurité du compte ----------
-   Hors de l'espace de gestion (qui a sa propre feuille, direction.css) :
-   tutelles de la fiche d'un IPES (templates/composants/ipes-admin.php) et
-   mot de passe de l'espace IPES (page-ipes.php). */
-.etabs-choix { margin: .2rem 0 0; padding: 0; border: 0; animation: deplier .25s var(--ease-sortie); }
-.etabs-choix[hidden] { display: none; }
-.etabs-choix legend { margin-bottom: .55rem; padding: 0; font-size: .9rem; font-weight: 700; }
-.etabs-choix__grille { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: .5rem; }
-.etab-case { position: relative; }
-.etab-case input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
-.etab-case span { display: flex; align-items: center; gap: .5rem; padding: .55rem .65rem; border: 1.5px solid var(--filet); border-radius: 12px; background: var(--blanc); transition: border-color .15s, background-color .15s; }
-.etab-case img { width: 26px; height: 26px; padding: 1px; border-radius: 50%; background: color-mix(in srgb, var(--etab) 12%, var(--blanc)); object-fit: contain; }
-.etab-case input:checked + span { border-color: var(--vert-bandeau); background: rgba(19, 53, 26, .04); box-shadow: inset 0 0 0 1px var(--vert-bandeau); }
-.etab-case input:focus-visible + span { outline: 3px solid var(--or); outline-offset: 2px; }
-.etab-case input:disabled + span { opacity: .45; }
-.direction-securite { max-width: 760px; }
-@media (prefers-reduced-motion: reduce) {
-	.etabs-choix { animation: none; }
-	.etab-case span { transition: none; }
-}
-
-/* ---------- Chiffres d'un tableau de bord IPES ----------
-   ueb_carte_hero() et ueb_carte_chiffre() (inc/vues.php) : tableau de bord de
-   l'espace IPES et vue IPES de l'espace scolarité. Le chiffre mis en avant,
-   puis quatre tuiles en deux colonnes fixes (un auto-fit laissait une tuile
-   seule en deuxième rangée). */
-.bo-tete { display: grid; grid-template-columns: minmax(220px, 280px) minmax(0, 1fr); gap: .85rem; align-items: stretch; }
-.bo-tete .bo-chiffres { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-@media (max-width: 860px) { .bo-tete { grid-template-columns: 1fr; } }
-@media (max-width: 520px) { .bo-tete .bo-chiffres { grid-template-columns: 1fr; } }
-.bo-hero { display: grid; align-content: space-between; gap: .4rem; padding: 1.5rem 1.6rem; border-radius: var(--r-carte); background: var(--vert-bandeau); color: var(--blanc); box-shadow: var(--ombre-2); }
-.bo-hero__libelle { font-size: .92rem; color: rgba(255, 255, 255, .78); }
-.bo-hero__valeur { font: 700 clamp(2.6rem, 2rem + 2.4vw, 3.6rem)/1 var(--f-texte); letter-spacing: -.02em; }
-.bo-hero__note { font-size: .88rem; color: rgba(255, 255, 255, .72); }
-.bo-chiffres { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); gap: .85rem; }
-.bo-chiffre { display: grid; align-content: start; gap: .35rem; padding: 1.05rem 1.2rem; border-radius: var(--r-carte); background: var(--blanc); border: 1px solid var(--filet); box-shadow: var(--ombre-1); }
-.bo-chiffre__haut { display: flex; flex-direction: row-reverse; align-items: flex-start; justify-content: space-between; gap: .5rem; font-size: .88rem; color: var(--gris); }
-.bo-chiffre__haut .icone { box-sizing: content-box; padding: 6px; border-radius: 9px; background: rgba(46, 125, 50, .09); color: var(--vert); }
-.bo-chiffre--attente .bo-chiffre__haut .icone { background: rgba(250, 178, 25, .18); color: #8a6100; }
-.bo-chiffre--verifie .bo-chiffre__haut .icone { background: rgba(12, 163, 12, .12); color: #0a7a0a; }
-.bo-chiffre--rejete .bo-chiffre__haut .icone { background: var(--danger-fond); color: var(--danger); }
-.bo-chiffre b { font: 600 1.9rem/1.05 var(--f-texte); color: var(--encre); letter-spacing: -.01em; }
-.bo-chiffre__jauge { height: 5px; border-radius: 999px; background: var(--viz-piste); overflow: hidden; }
-.bo-chiffre__jauge span { display: block; height: 100%; border-radius: 999px; background: var(--viz-pas-2); }
-.bo-chiffre__note { font-size: .82rem; color: var(--gris-clair); }
-.bo-chiffre--attente b { color: #8a6100; }
-.bo-chiffre--attente .bo-chiffre__jauge span { background: var(--viz-attente); }
-.bo-chiffre--verifie b { color: #0a7a0a; }
-.bo-chiffre--verifie .bo-chiffre__jauge span { background: var(--viz-bien); }
-.bo-chiffre--rejete b { color: var(--danger); }
-.bo-chiffre--rejete .bo-chiffre__jauge span { background: var(--viz-critique); }
-@media print {
-	.bo-chiffre, .bo-hero { box-shadow: none; break-inside: avoid; }
-}
-
-/* ---------- Administration : IPES (établissements privés sous tutelle) ----------
-   Mêmes codes que le reste du back-office : logo rond comme .suivi-table__logo,
-   tutelles en .pastille-etab à la couleur de chaque établissement. Un IPES n'a
-   pas de couleur d'identité : son logo repose sur le papier du site. */
-.ipes-nom { display: flex; align-items: center; gap: .75rem; min-width: 14rem; }
-.ipes-logo { flex: none; display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; background: var(--papier); box-shadow: inset 0 0 0 1px var(--filet); color: var(--gris); overflow: hidden; }
-.ipes-logo img { width: 26px; height: 26px; object-fit: contain; }
-.ipes-tableau .pastille-etab { margin: .1rem .25rem .1rem 0; }
+/* ---------- Composants communs aux espaces IPES ----------
+   Le reste des pages IPES vit dans assets/css/ipes.css. */
 /* Filtres en direct (data-filtres-direct, assets/js/app.js) : le bouton
    Rechercher n'est masqué que si le JavaScript a pris le relais. */
 .filtres [data-filtres-bouton][hidden] { display: none; }
 [data-filtres-direct] ~ [aria-busy="true"] { opacity: .55; transition: opacity .2s ease; }
-.ipes-resultats__nombre { margin: 0 0 .6rem; font-size: .9rem; }
 @media (prefers-reduced-motion: reduce) {
 	[data-filtres-direct] ~ [aria-busy="true"] { transition: none; }
 }
-/* Fiche d'un IPES : mêmes sections numérotées que les autres formulaires,
-   espacées comme les blocs de .bo-contenu. */
-.ipes-fiche { display: grid; gap: 1.4rem; }
-.ipes-fiche .etabs-choix { animation: none; }
-.ipes-logo--grand { width: 56px; height: 56px; }
-.ipes-logo--grand img { width: 40px; height: 40px; }
-.ipes-logo--apercu { width: 88px; height: 88px; }
-.ipes-logo--apercu img { width: 64px; height: 64px; }
-.ipes-logo-choix { display: flex; align-items: center; flex-wrap: wrap; gap: 1.25rem; }
-.ipes-logo-choix .ipes-logo [hidden] { display: none; }
-.ipes-depot { flex: 1 1 18rem; padding: 1.25rem; }
-.ipes-logo-choix .champ__erreur { flex-basis: 100%; }
-.ipes-fiche__actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .75rem; }.ipes-filiere-ajout, .ipes-versement-ajout { display: flex; flex-wrap: wrap; align-items: flex-start; gap: .75rem; max-width: 680px; margin-bottom: 1.25rem; }
-.ipes-filiere-ajout .champ, .ipes-versement-ajout .champ { flex: 1 1 13rem; margin: 0; }
-.ipes-filiere-ajout .btn, .ipes-versement-ajout .btn { margin-top: 1.85rem; }
 /* Barre latérale d'un IPES sans logo : une icône d'école à la place, dans le même carré blanc. */
 .bo-marque__icone { flex: none; display: grid; place-items: center; width: 38px; height: 38px; border-radius: 10px; background: var(--blanc); color: var(--vert-bandeau); }
-/* Espace IPES, bordereaux : création sur une ligne, cases à cocher, total en pied. */
-.ipes-bordereau-nouveau { display: flex; flex-wrap: wrap; align-items: flex-end; gap: .75rem 1rem; }
-.ipes-bordereau-nouveau .champ { flex: 1 1 18rem; margin: 0; }
-.ipes-bordereau-nouveau > p { margin: 0; flex: 1 1 18rem; }
-.ipes-case { width: 2.75rem; text-align: center; }
-.ipes-case input { width: 20px; height: 20px; accent-color: var(--vert-bandeau); cursor: pointer; }
-.ipes-bordereau__pied { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .75rem 1.25rem; padding-top: .9rem; border-top: 1px solid var(--filet); }
-.ipes-bordereau__total { margin: 0; font-size: 1.05rem; }
-.ipes-bordereau__total b { font-size: 1.35rem; font-variant-numeric: tabular-nums; }
 /* Motif de rejet d'un bordereau : même apparence que les champs de la fenêtre. */
 .bo-agent-mdp textarea { width: 100%; min-height: 5.5rem; padding: .6rem .75rem; border: 1px solid var(--filet-fort); border-radius: 8px; font: inherit; font-size: .95rem; color: var(--encre); resize: vertical; }
-.ipes-tableau .badge--recu_envoye { margin-top: .3rem; }

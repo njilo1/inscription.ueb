@@ -92,6 +92,24 @@ add_action( 'wp_enqueue_scripts', function () {
 		}
 		ueb_script( 'ueb-administration', 'assets/js/administration.js' );
 	}
+	/* IPES : onglet de l'administration, espace de l'IPES connecté et vue de la
+	   scolarité. Même couche que l'administration (panneaux, boutons, héros ;
+	   thème clair / sombre hors scolarité), plus ipes.css. La jauge Remotion ne
+	   sert qu'aux écrans qui portent le héros des reversements. */
+	$ipes_espace    = is_page_template( 'page-ipes.php' ) && function_exists( 'ueb_ipes_du_compte' ) && ueb_ipes_du_compte();
+	$ipes_scolarite = is_page_template( 'page-scolarite.php' ) && 'ipes' === $vue_bo && is_user_logged_in() && function_exists( 'ueb_est_scolarite' ) && ueb_est_scolarite();
+	$ipes_admin     = $admin && 'ipes' === $vue_bo;
+	if ( $ipes_espace || $ipes_scolarite || $ipes_admin ) {
+		if ( ! $admin ) {
+			ueb_style( 'ueb-administration', 'assets/css/administration.css', array( 'ueb-pages' ) );
+		}
+		if ( $ipes_espace ) {
+			ueb_script( 'ueb-administration', 'assets/js/administration.js' );
+		}
+		ueb_style( 'ueb-ipes', 'assets/css/ipes.css', array( 'ueb-administration' ) );
+	}
+	$ipes_heros = ( ( $ipes_admin || $ipes_scolarite ) && ctype_digit( (string) ( $_GET['ipes'] ?? '' ) ) && ! isset( $_GET['etudiant'] ) ) // phpcs:ignore -- lecture seule
+		|| ( $ipes_espace && ! isset( $_GET['vue'] ) ) || ( $ipes_espace && 'bord' === $vue_bo );
 	/* Espace de gestion (Direction) : même rendu que celui de la préinscription.
 	   Connecté, il reprend la couche de l'administration (boutons, jetons,
 	   thème clair / sombre) ; l'écran de connexion n'a que direction.css. */
@@ -104,7 +122,7 @@ add_action( 'wp_enqueue_scripts', function () {
 		ueb_style( 'ueb-direction', 'assets/css/direction.css', array( $direction ? 'ueb-administration' : 'ueb-pages' ) );
 		ueb_script( 'ueb-direction', 'assets/js/direction.js', array( 'ueb-app' ) );
 	}
-	if ( ( is_front_page() && ! $page ) || in_array( $page, array( 'connexion', 'creer-compte' ), true ) || $connexion_scolarite || $bord_scolarite ) {
+	if ( ( is_front_page() && ! $page ) || in_array( $page, array( 'connexion', 'creer-compte' ), true ) || $connexion_scolarite || $bord_scolarite || $ipes_heros ) {
 		ueb_script( 'ueb-remotion', 'assets/js/remotion-ueb.js' );
 	}
 } );

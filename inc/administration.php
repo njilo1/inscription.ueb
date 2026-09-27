@@ -24,10 +24,12 @@ require_once __DIR__ . '/administration-exports.php';
  * Fil d'Ariane, titre et phrase utile à gauche ; année, thème et actions à droite.
  *
  * @param array $a titre, sous_titre, fil (array( array( url, libellé ) ), le
- *                 dernier élément étant la page courante), actions (HTML déjà échappé).
+ *                 dernier élément étant la page courante), actions (HTML déjà échappé),
+ *                 visuel (HTML posé à gauche du titre, ex. un logo), apres (HTML
+ *                 sous la phrase, ex. des repères) — tous deux déjà échappés.
  */
 function ueb_adm_tete( array $a ) {
-	$a     = array_merge( array( 'titre' => '', 'sous_titre' => '', 'fil' => array(), 'actions' => '' ), $a );
+	$a     = array_merge( array( 'titre' => '', 'sous_titre' => '', 'fil' => array(), 'actions' => '', 'visuel' => '', 'apres' => '' ), $a );
 	$annee = ueb_annee_academique();
 	$n     = count( $a['fil'] );
 	?>
@@ -48,10 +50,13 @@ function ueb_adm_tete( array $a ) {
 					</ol>
 				</nav>
 			<?php endif; ?>
+			<?php if ( $a['visuel'] ) : ?><div class="adm-tete__identite"><?php echo $a['visuel']; // phpcs:ignore -- échappé par l'appelant ?><div><?php endif; ?>
 			<h1><?php echo esc_html( $a['titre'] ); ?></h1>
 			<?php if ( $a['sous_titre'] ) : ?>
 				<p class="adm-tete__sous-titre"><?php echo esc_html( $a['sous_titre'] ); ?></p>
 			<?php endif; ?>
+			<?php echo $a['apres']; // phpcs:ignore -- échappé par l'appelant ?>
+			<?php if ( $a['visuel'] ) : ?></div></div><?php endif; ?>
 		</div>
 		<div class="adm-tete__actions">
 			<span class="adm-annee"><?php echo ueb_icone( 'calendrier', 16 ); ?>Année <?php echo esc_html( $annee['libelle'] ); ?></span>

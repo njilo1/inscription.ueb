@@ -43,6 +43,7 @@ function ueb_icone( $nom, $taille = 20, $classe = '' ) {
 		'lieu'        => '<path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/>',
 		'qr'          => '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM20 14v.01M14 20h.01M17 20h4v-3"/>',
 		'appareil'    => '<path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3z"/><circle cx="12" cy="13" r="3"/>',
+		'image'       => '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.09-3.09a2 2 0 0 0-2.82 0L6 21"/>',
 		'cle'         => '<circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6M15.5 7.5l3 3L22 7l-3-3"/>',
 		'pause'       => '<rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/>',
 		'lecture'     => '<path d="M6 4l14 8-14 8z"/>',
@@ -780,47 +781,6 @@ function ueb_graphe_barres( $titre, $sous_titre, array $parts ) {
 			</ul>
 		<?php endif; ?>
 	</figure>
-	<?php
-}
-
-/**
- * Le chiffre que le tableau de bord met en avant : un seul par écran.
- * Police de l'interface et chiffres proportionnels (des chiffres tabulaires
- * espacent trop un grand nombre). Utilisé par les tableaux de bord des IPES
- * (templates/composants/ipes-espace-bord.php et scolarite-ipes.php).
- */
-function ueb_carte_hero( $valeur, $libelle, $note = '' ) {
-	?>
-	<div class="bo-hero">
-		<span class="bo-hero__libelle"><?php echo esc_html( $libelle ); ?></span>
-		<b class="bo-hero__valeur"><?php echo esc_html( $valeur ); ?></b>
-		<?php if ( $note ) : ?>
-			<span class="bo-hero__note"><?php echo esc_html( $note ); ?></span>
-		<?php endif; ?>
-	</div>
-	<?php
-}
-
-/**
- * Tuile de chiffre : libellé, valeur, et une note ou une jauge facultative.
- *
- * @param array $options note (string), part (float 0-100), variante (string)
- */
-function ueb_carte_chiffre( $valeur, $libelle, $icone = '', $variante = '', array $options = array() ) {
-	?>
-	<div class="bo-chiffre <?php echo esc_attr( $variante ? 'bo-chiffre--' . $variante : '' ); ?>">
-		<span class="bo-chiffre__haut">
-			<?php echo $icone ? ueb_icone( $icone, 18 ) : ''; // phpcs:ignore -- SVG interne ?>
-			<span><?php echo esc_html( $libelle ); ?></span>
-		</span>
-		<b><?php echo esc_html( $valeur ); ?></b>
-		<?php if ( isset( $options['part'] ) ) : ?>
-			<span class="bo-chiffre__jauge" aria-hidden="true"><span style="width: <?php echo esc_attr( max( 0, min( 100, round( $options['part'] ) ) ) ); ?>%"></span></span>
-		<?php endif; ?>
-		<?php if ( ! empty( $options['note'] ) ) : ?>
-			<span class="bo-chiffre__note"><?php echo esc_html( $options['note'] ); ?></span>
-		<?php endif; ?>
-	</div>
 	<?php
 }
 
