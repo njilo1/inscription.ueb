@@ -14,7 +14,7 @@ $ipes_demande = sanitize_key( wp_unslash( $_GET['ipes'] ?? '' ) );
 
 /* Bloc de la fiche où afficher les messages (voir ueb_ipes_retour_bloc()) ;
    lu une seule fois, quelle que soit la vue, pour ne jamais servir deux fois. */
-$bloc_messages = in_array( $_SESSION['ueb_ipes_bloc'] ?? '', array( 'filieres', 'comptes' ), true ) ? $_SESSION['ueb_ipes_bloc'] : '';
+$bloc_messages = in_array( $_SESSION['ueb_ipes_bloc'] ?? '', array( 'filieres', 'bordereaux', 'comptes' ), true ) ? $_SESSION['ueb_ipes_bloc'] : '';
 unset( $_SESSION['ueb_ipes_bloc'] );
 
 /** Date AAAA-MM-JJ affichée JJ/MM/AAAA, ou tiret. */
@@ -35,12 +35,13 @@ $ipes_date = static fn( $date ) => $date ? mysql2date( 'd/m/Y', $date ) : '—';
 		'actif'         => array( 'actif' => 1, 'inactif' => 0 )[ $filtres_ipes['etat'] ] ?? '',
 	) );
 	$filtre_actif = '' !== $filtres_ipes['recherche'] || '' !== $filtres_ipes['etablissement'] || '' !== $filtres_ipes['etat'];
+	$a_verifier   = ueb_ipes_bordereaux_a_verifier(); // ipes_id => nombre de bordereaux envoyés
 	?>
 
 	<header class="page-app__entete">
 		<div>
 			<h1>Établissements sous tutelle (IPES)</h1>
-			<p class="page-app__sous-titre">Instituts privés liés par convention à un ou plusieurs établissements de l’UEb.</p>
+			<p class="page-app__sous-titre">Instituts privés liés par convention à un ou plusieurs établissements de l’UEb.<?php $total_a_verifier = array_sum( $a_verifier ); echo $total_a_verifier ? esc_html( ' ' . $total_a_verifier . ' bordereau' . ( $total_a_verifier > 1 ? 'x' : '' ) . ' à vérifier.' ) : ''; ?></p>
 		</div>
 		<a class="btn btn--primaire" href="<?php echo esc_url( ueb_url_ipes( 'nouveau' ) ); ?>"><?php echo ueb_icone( 'plus', 18 ); ?>Créer un IPES</a>
 	</header>
@@ -100,7 +101,12 @@ $ipes_date = static fn( $date ) => $date ? mysql2date( 'd/m/Y', $date ) : '—';
 					</td>
 					<td><?php echo esc_html( $ipes->ville ?: '—' ); ?></td>
 					<td><?php echo esc_html( $ipes->convention_ref ?: '—' ); ?><?php if ( $ipes->convention_signee_le ) : ?><br><small class="texte-discret">signée le <?php echo esc_html( $ipes_date( $ipes->convention_signee_le ) ); ?></small><?php endif; ?></td>
-					<td><?php echo (int) $ipes->actif ? '<span class="badge badge--verifie"><i></i>Actif</span>' : '<span class="badge badge--rejete"><i></i>Désactivé</span>'; ?></td>
+					<td>
+						<?php echo (int) $ipes->actif ? '<span class="badge badge--verifie"><i></i>Actif</span>' : '<span class="badge badge--rejete"><i></i>Désactivé</span>'; ?>
+						<?php if ( ! empty( $a_verifier[ (int) $ipes->id ] ) ) : $n = $a_verifier[ (int) $ipes->id ]; ?>
+							<br><a class="badge badge--recu_envoye" href="<?php echo esc_url( ueb_url_ipes( (int) $ipes->id ) . '#bordereaux' ); ?>"><i></i><?php echo (int) $n . ' bordereau' . ( $n > 1 ? 'x' : '' ) . ' à vérifier'; ?></a>
+						<?php endif; ?>
+					</td>
 					<td class="actions-ligne"><a class="btn btn--lien btn--petit" href="<?php echo esc_url( ueb_url_ipes( (int) $ipes->id ) ); ?>">Ouvrir<?php echo ueb_icone( 'fleche', 16 ); ?></a></td>
 				</tr>
 			<?php endforeach; ?>
@@ -228,6 +234,11 @@ $ipes_date = static fn( $date ) => $date ? mysql2date( 'd/m/Y', $date ) : '—';
 						ueb_champ( array( 'nom' => 'convention_fin_le', 'libelle' => 'Fin de la convention', 'type' => 'date', 'requis' => false, 'valeur' => $valeur( 'convention_fin_le' ), 'erreur' => $erreur( 'convention_fin_le' ), 'aide' => 'Laisse vide si la convention n’a pas de terme.' ) );
 						?>
 					</div>
+					<?php
+					/* Après un échec, la saisie telle quelle ; sinon le montant enregistré, lisible. */
+					$montant_du = array_key_exists( 'montant_annuel_du', $saisie ) ? (string) $saisie['montant_annuel_du'] : ( null === ( $ipes->montant_annuel_du ?? null ) ? '' : ueb_formater_montant( (int) $ipes->montant_annuel_du ) );
+					ueb_champ( array( 'nom' => 'montant_annuel_du', 'libelle' => 'Montant annuel dû à la tutelle (FCFA)', 'icone' => 'banque', 'requis' => false, 'valeur' => $montant_du, 'erreur' => $erreur( 'montant_annuel_du' ), 'aide' => 'Indicatif, en attendant la règle définitive : il sert à la jauge de reversement de l’IPES.', 'attrs' => array( 'inputmode' => 'numeric', 'autocomplete' => 'off', 'placeholder' => '50 000' ) ) );
+					?>
 				</div>
 			</section>
 
@@ -335,6 +346,77 @@ $ipes_date = static fn( $date ) => $date ? mysql2date( 'd/m/Y', $date ) : '—';
 												<input type="hidden" name="filiere_id" value="<?php echo (int) $filiere->id; ?>">
 												<button class="btn btn--lien btn--petit" type="submit"><?php echo $active ? 'Retirer' : 'Rétablir'; ?></button>
 											</form>
+										</td>
+									</tr>
+								<?php endforeach; ?>
+								</tbody>
+							</table>
+						</div>
+					<?php endif; ?>
+				</div>
+			</section>
+
+			<?php
+			$bordereaux  = ueb_ipes_bordereaux_pour_ueb( $ipes->id );
+			$jauge       = ueb_ipes_jauge( $ipes->id );
+			$en_attente  = count( array_filter( $bordereaux, static fn( $b ) => 'envoye' === $b->statut ) );
+			?>
+			<section id="bordereaux" class="carte section-form" aria-labelledby="ipes-bordereaux-titre">
+				<header class="section-form__entete">
+					<span class="section-form__num"><?php echo ueb_icone( 'recu', 18 ); ?></span>
+					<div>
+						<h2 id="ipes-bordereaux-titre">Bordereaux de reversement<?php echo $en_attente ? ' <span class="badge badge--recu_envoye"><i></i>' . (int) $en_attente . ' à vérifier</span>' : ''; ?></h2>
+						<p>Les reversements de l’IPES à sa tutelle. Vérifie chaque bordereau avec son PDF et les pièces reçues, ou rejette-le avec un motif : l’IPES le corrigera.</p>
+					</div>
+				</header>
+				<div class="section-form__corps">
+					<?php if ( 'bordereaux' === $bloc_messages ) { ueb_afficher_flash(); } ?>
+					<p class="texte-discret ipes-resultats__nombre">
+						<?php echo esc_html( ueb_annee_academique()['libelle'] ); ?> :
+						<?php echo esc_html( ueb_fcfa( $jauge['verifie'] ) ); ?> vérifiés
+						<?php echo $jauge['envoye'] > $jauge['verifie'] ? esc_html( '· ' . ueb_fcfa( $jauge['envoye'] - $jauge['verifie'] ) . ' en attente' ) : ''; ?>
+						<?php echo null === $jauge['du'] ? '· montant annuel dû non renseigné' : esc_html( '· sur ' . ueb_fcfa( $jauge['du'] ) . ' dus (indicatif)' ); ?>
+					</p>
+					<?php if ( ! $bordereaux ) : ?>
+						<div class="bo-vide"><span><?php echo ueb_icone( 'recu', 22 ); ?></span><p>L’IPES n’a encore envoyé aucun bordereau.</p></div>
+					<?php else : ?>
+						<div class="tableau-conteneur">
+							<table class="tableau">
+								<thead><tr><th>Bordereau</th><th>Tutelle</th><th class="num">Total</th><th>État</th><th><span class="sr">Actions</span></th></tr></thead>
+								<tbody>
+								<?php foreach ( $bordereaux as $b ) : $e = ueb_etablissement( $b->etablissement ); ?>
+									<tr>
+										<td><b><?php echo esc_html( $b->numero ); ?></b><br><small class="texte-discret"><?php echo esc_html( str_replace( '-', ' – ', $b->annee_academique ) . ' · ' . (int) $b->nb_versements . ' versement' . ( (int) $b->nb_versements > 1 ? 's' : '' ) . ( $b->date_envoi ? ' · envoyé le ' . mysql2date( 'd/m/Y', $b->date_envoi ) : '' ) ); ?></small>
+											<?php if ( 'rejete' === $b->statut && $b->motif_rejet ) : ?><br><small class="texte-discret">Motif : <?php echo esc_html( $b->motif_rejet ); ?></small><?php endif; ?></td>
+										<td><span class="pastille-etab" style="--etab: <?php echo esc_attr( $e['couleur'] ?? 'var(--vert)' ); ?>" title="<?php echo esc_attr( $e['fr'] ?? '' ); ?>"><?php echo esc_html( $b->etablissement ); ?></span></td>
+										<td class="num"><b><?php echo esc_html( ueb_fcfa( $b->total ) ); ?></b></td>
+										<td><?php echo ueb_ipes_badge_bordereau( $b->statut ); // phpcs:ignore -- échappé par la fonction ?></td>
+										<td class="actions-ligne">
+											<a class="btn btn--fantome btn--petit" href="<?php echo esc_url( add_query_arg( array( 'bordereau' => (int) $b->id, 'pdf' => 1 ), ueb_url_ipes( (int) $ipes->id ) ) ); ?>"><?php echo ueb_icone( 'telecharger', 16 ); ?>PDF</a>
+											<?php if ( 'envoye' === $b->statut ) : ?>
+												<form method="post" action="<?php echo esc_url( ueb_url_administration() ); ?>" data-confirmer="Marquer le bordereau <?php echo esc_attr( $b->numero ); ?> (<?php echo esc_attr( ueb_fcfa( $b->total ) ); ?>) comme vérifié ? La décision est définitive.">
+													<?php ueb_champ_csrf(); ?>
+													<input type="hidden" name="ueb_action" value="ipes_bordereau_decider">
+													<input type="hidden" name="ipes_id" value="<?php echo (int) $ipes->id; ?>">
+													<input type="hidden" name="bordereau_id" value="<?php echo (int) $b->id; ?>">
+													<input type="hidden" name="decision" value="verifie">
+													<button class="btn btn--primaire btn--petit" type="submit"><?php echo ueb_icone( 'check', 16 ); ?>Vérifié</button>
+												</form>
+												<button class="btn btn--lien btn--petit" type="button" data-ouvrir-agent-mdp="rejet-<?php echo (int) $b->id; ?>">Rejeter</button>
+												<dialog class="bo-agent-mdp" id="rejet-<?php echo (int) $b->id; ?>" aria-labelledby="rejet-titre-<?php echo (int) $b->id; ?>">
+													<h2 id="rejet-titre-<?php echo (int) $b->id; ?>">Rejeter <?php echo esc_html( $b->numero ); ?></h2>
+													<p>L’IPES verra ce motif, corrigera son bordereau et le renverra avec le même numéro.</p>
+													<form method="post" action="<?php echo esc_url( ueb_url_administration() ); ?>">
+														<?php ueb_champ_csrf(); ?>
+														<input type="hidden" name="ueb_action" value="ipes_bordereau_decider">
+														<input type="hidden" name="ipes_id" value="<?php echo (int) $ipes->id; ?>">
+														<input type="hidden" name="bordereau_id" value="<?php echo (int) $b->id; ?>">
+														<input type="hidden" name="decision" value="rejete">
+														<label><span>Motif du rejet</span><textarea name="motif" rows="3" minlength="5" maxlength="255" required placeholder="Par exemple : le versement de Paul Mbarga ne figure pas sur le relevé bancaire."></textarea></label>
+														<div class="bo-agent-mdp__actions"><button class="btn btn--lien btn--petit" type="button" data-fermer-agent-mdp>Annuler</button><button class="btn btn--danger btn--petit" type="submit">Rejeter le bordereau</button></div>
+													</form>
+												</dialog>
+											<?php endif; ?>
 										</td>
 									</tr>
 								<?php endforeach; ?>
