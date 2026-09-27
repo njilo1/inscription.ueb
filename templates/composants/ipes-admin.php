@@ -41,7 +41,7 @@ $ipes_date = static fn( $date ) => $date ? mysql2date( 'd/m/Y', $date ) : '—';
 	</header>
 	<?php ueb_afficher_flash(); ?>
 
-	<form class="filtres carte" method="get" action="<?php echo esc_url( ueb_url_administration() ); ?>" role="search">
+	<form class="filtres carte" method="get" action="<?php echo esc_url( ueb_url_administration() ); ?>" role="search" data-filtres-direct="ipes-resultats">
 		<input type="hidden" name="vue" value="ipes">
 		<div class="champ">
 			<label for="ipes-q">Rechercher</label>
@@ -68,9 +68,11 @@ $ipes_date = static fn( $date ) => $date ? mysql2date( 'd/m/Y', $date ) : '—';
 				</select><?php echo ueb_icone( 'chevron', 18 ); ?>
 			</div>
 		</div>
-		<button class="btn btn--primaire" type="submit"><?php echo ueb_icone( 'loupe', 18 ); ?>Rechercher</button>
+		<button class="btn btn--primaire" type="submit" data-filtres-bouton><?php echo ueb_icone( 'loupe', 18 ); ?>Rechercher</button>
 	</form>
 
+	<div id="ipes-resultats" class="ipes-resultats">
+	<p class="texte-discret ipes-resultats__nombre" role="status"><?php echo esc_html( count( $liste_ipes ) . ' IPES' . ( $filtre_actif ? ' correspondant' . ( count( $liste_ipes ) > 1 ? 's' : '' ) . ' aux filtres' : '' ) ); ?></p>
 	<div class="tableau-conteneur">
 		<table class="tableau ipes-tableau">
 			<thead><tr><th>IPES</th><th>Tutelle</th><th>Ville</th><th>Convention</th><th>État</th><th><span class="sr">Actions</span></th></tr></thead>
@@ -99,6 +101,7 @@ $ipes_date = static fn( $date ) => $date ? mysql2date( 'd/m/Y', $date ) : '—';
 			<?php endforeach; ?>
 			</tbody>
 		</table>
+	</div>
 	</div>
 
 <?php endif; ?>

@@ -121,6 +121,49 @@
 	ouvrirDossier();
 	addEventListener("hashchange", ouvrirDossier);
 
+	/* ---------- Filtres en direct ----------
+	   <form data-filtres-direct="id-du-bloc"> : chaque saisie ou choix recharge la
+	   même page en arrière-plan et n'en remplace que le bloc des résultats ;
+	   l'adresse suit les filtres. Sans JavaScript, le bouton Rechercher reste. */
+	$$("[data-filtres-direct]").forEach((form) => {
+		const bloc = document.getElementById(form.dataset.filtresDirect);
+		if (!bloc || !window.fetch || !window.DOMParser) return;
+		$("[data-filtres-bouton]", form)?.setAttribute("hidden", "");
+		let controle = null;
+		let attente = null;
+		const actualiser = async () => {
+			const params = new URLSearchParams(new FormData(form));
+			[...params.keys()].forEach((cle) => { if (params.get(cle) === "" && cle !== "vue") params.delete(cle); });
+			const url = new URL(form.action, location.href);
+			url.search = params.toString();
+			controle?.abort();
+			controle = new AbortController();
+			bloc.setAttribute("aria-busy", "true");
+			try {
+				const reponse = await fetch(url, { credentials: "same-origin", cache: "no-store", signal: controle.signal });
+				if (!reponse.ok) throw new Error("Réponse " + reponse.status);
+				const page = new DOMParser().parseFromString(await reponse.text(), "text/html");
+				const nouveau = page.getElementById(bloc.id);
+				if (!nouveau) throw new Error("Bloc absent");
+				bloc.innerHTML = nouveau.innerHTML;
+				history.replaceState(null, "", url);
+			} catch (erreur) {
+				if (erreur.name !== "AbortError") form.submit(); // repli : rechargement classique
+			} finally {
+				bloc.removeAttribute("aria-busy");
+			}
+		};
+		form.addEventListener("input", (e) => {
+			clearTimeout(attente);
+			attente = setTimeout(actualiser, e.target.type === "search" ? 300 : 0);
+		});
+		form.addEventListener("submit", (e) => {
+			e.preventDefault();
+			clearTimeout(attente);
+			actualiser();
+		});
+	});
+
 	/* ---------- Menu mobile ---------- */
 	const boutonMenu = $("[data-menu-mobile]");
 	if (boutonMenu) {

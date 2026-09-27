@@ -2024,3 +2024,11 @@
 .ipes-logo { flex: none; display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; background: var(--papier); box-shadow: inset 0 0 0 1px var(--filet); color: var(--gris); overflow: hidden; }
 .ipes-logo img { width: 26px; height: 26px; object-fit: contain; }
 .ipes-tableau .pastille-etab { margin: .1rem .25rem .1rem 0; }
+/* Filtres en direct (data-filtres-direct, assets/js/app.js) : le bouton
+   Rechercher n'est masqué que si le JavaScript a pris le relais. */
+.filtres [data-filtres-bouton][hidden] { display: none; }
+[data-filtres-direct] ~ [aria-busy="true"] { opacity: .55; transition: opacity .2s ease; }
+.ipes-resultats__nombre { margin: 0 0 .6rem; font-size: .9rem; }
+@media (prefers-reduced-motion: reduce) {
+	[data-filtres-direct] ~ [aria-busy="true"] { transition: none; }
+}
