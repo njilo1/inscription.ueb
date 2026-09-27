@@ -174,7 +174,33 @@ $logo_ipes = static function ( $ipes, $classe = '' ) {
 								<td><?php $pastilles( array( $b->etablissement ) ); ?></td>
 								<td class="num"><b><?php echo esc_html( ueb_fcfa( $b->total ) ); ?></b></td>
 								<td><?php echo ueb_ipes_badge_bordereau( $b->statut ); // phpcs:ignore -- échappé par la fonction ?></td>
-								<td class="actions-ligne"><?php /* PDF et décision : étape suivante */ ?></td>
+								<td class="actions-ligne">
+									<a class="btn btn--fantome btn--petit" href="<?php echo $ici( array( 'vue' => 'ipes', 'ipes' => (int) $ipes->id, 'bordereau' => (int) $b->id, 'pdf' => 1 ) ); ?>"><?php echo ueb_icone( 'telecharger', 16 ); ?>PDF</a>
+									<?php if ( ueb_peut_verifier_bordereau( $b ) ) : ?>
+										<form method="post" action="<?php echo esc_url( ueb_url_scolarite() ); ?>" data-confirmer="Marquer le bordereau <?php echo esc_attr( $b->numero ); ?> (<?php echo esc_attr( ueb_fcfa( $b->total ) ); ?>) comme vérifié ? La décision est définitive.">
+											<?php ueb_champ_csrf(); ?>
+											<input type="hidden" name="ueb_action" value="ipes_bordereau_decider_tutelle">
+											<input type="hidden" name="ipes_id" value="<?php echo (int) $ipes->id; ?>">
+											<input type="hidden" name="bordereau_id" value="<?php echo (int) $b->id; ?>">
+											<input type="hidden" name="decision" value="verifie">
+											<button class="btn btn--primaire btn--petit" type="submit"><?php echo ueb_icone( 'check', 16 ); ?>Vérifié</button>
+										</form>
+										<button class="btn btn--lien btn--petit" type="button" data-ouvrir-agent-mdp="rejet-<?php echo (int) $b->id; ?>">Rejeter</button>
+										<dialog class="bo-agent-mdp" id="rejet-<?php echo (int) $b->id; ?>" aria-labelledby="rejet-titre-<?php echo (int) $b->id; ?>">
+											<h2 id="rejet-titre-<?php echo (int) $b->id; ?>">Rejeter <?php echo esc_html( $b->numero ); ?></h2>
+											<p>L’IPES verra ce motif, corrigera son bordereau et le renverra avec le même numéro.</p>
+											<form method="post" action="<?php echo esc_url( ueb_url_scolarite() ); ?>">
+												<?php ueb_champ_csrf(); ?>
+												<input type="hidden" name="ueb_action" value="ipes_bordereau_decider_tutelle">
+												<input type="hidden" name="ipes_id" value="<?php echo (int) $ipes->id; ?>">
+												<input type="hidden" name="bordereau_id" value="<?php echo (int) $b->id; ?>">
+												<input type="hidden" name="decision" value="rejete">
+												<label><span>Motif du rejet</span><textarea name="motif" rows="3" minlength="5" maxlength="255" required></textarea></label>
+												<div class="bo-agent-mdp__actions"><button class="btn btn--lien btn--petit" type="button" data-fermer-agent-mdp>Annuler</button><button class="btn btn--danger btn--petit" type="submit">Rejeter le bordereau</button></div>
+											</form>
+										</dialog>
+									<?php endif; ?>
+								</td>
 							</tr>
 						<?php endforeach; ?>
 						</tbody>

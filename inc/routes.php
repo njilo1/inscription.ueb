@@ -182,6 +182,7 @@ function ueb_traiter_action( $action ) {
 		'ipes_filiere_renommer'      => 'ueb_action_ipes_filiere_renommer',
 		'ipes_filiere_etat'          => 'ueb_action_ipes_filiere_etat',
 		'ipes_bordereau_decider'     => 'ueb_action_ipes_bordereau_decider',
+		'ipes_bordereau_decider_tutelle' => 'ueb_action_ipes_bordereau_decider_tutelle',
 		/* Espace de l'administrateur d'un IPES (inc/ipes-espace.php). */
 		'ipes_etudiant_enregistrer'  => 'ueb_action_ipes_etudiant_enregistrer',
 		'ipes_etudiant_supprimer'    => 'ueb_action_ipes_etudiant_supprimer',
