@@ -10,7 +10,7 @@ if ( PHP_SAPI !== 'cli' ) {
 define( 'SHORTINIT', true );
 require dirname( __DIR__, 4 ) . '/wp-load.php';
 define( 'UEB_INSC_DIR', dirname( __DIR__ ) );
-foreach ( array( 'config', 'db-schema', 'ipes' ) as $module ) {
+foreach ( array( 'config', 'db-schema', 'ipes', 'ipes-filieres' ) as $module ) {
 	require UEB_INSC_DIR . '/inc/' . $module . '.php';
 }
 /* SHORTINIT ne charge pas les utilisateurs : personne n'est connecté. */
@@ -111,5 +111,32 @@ verifier( array( 'IS' ) === array_map( static fn( $i ) => $i->sigle, ueb_ipes_li
 verifier( array( 'IUTE' ) === array_map( static fn( $i ) => $i->sigle, ueb_ipes_liste( array( 'actif' => 0 ) ) ), 'filtre désactivés' );
 verifier( ueb_ipes_changer_etat( $autre, true ) && '1' === (string) ueb_ipes( $autre )->actif, 'réactivation' );
 verifier( ! ueb_ipes_changer_etat( 999999, false ), 'IPES inexistant : changement d’état refusé' );
+
+/* ---------- Filières ---------- */
+$libelles = static fn( $filieres ) => array_map( static fn( $f ) => $f->libelle, $filieres );
+$genie    = ueb_ipes_filiere_ajouter( $id, '  Génie   logiciel ' );
+$compta   = ueb_ipes_filiere_ajouter( $id, 'Comptabilité' );
+verifier( is_int( $genie ) && is_int( $compta ), 'deux filières ajoutées' );
+verifier( 'Génie logiciel' === ueb_ipes_filiere( $genie )->libelle, 'libellé rogné, espaces multiples réduits' );
+verifier( array( 'Comptabilité', 'Génie logiciel' ) === $libelles( ueb_ipes_filieres( $id ) ), 'filières par ordre alphabétique' );
+verifier( is_wp_error( ueb_ipes_filiere_ajouter( $id, 'génie LOGICIEL' ) ), 'doublon qui ne diffère que par les majuscules refusé' );
+verifier( is_wp_error( ueb_ipes_filiere_ajouter( $id, 'Genie logiciel' ) ), 'doublon qui ne diffère que par les accents refusé' );
+verifier( is_int( ueb_ipes_filiere_ajouter( $autre, 'Génie logiciel' ) ), 'même libellé accepté dans un autre IPES' );
+verifier( is_wp_error( ueb_ipes_filiere_ajouter( $id, 'IA' ) ), 'libellé de 2 caractères refusé' );
+verifier( is_wp_error( ueb_ipes_filiere_ajouter( $id, str_repeat( 'é', 151 ) ) ), 'libellé de 151 caractères refusé' );
+verifier( is_wp_error( ueb_ipes_filiere_ajouter( 999999, 'Informatique' ) ), 'filière d’un IPES inexistant refusée' );
+verifier( 2 === count( ueb_ipes_filieres( $id ) ), 'aucun refus n’a laissé de ligne' );
+
+verifier( true === ueb_ipes_filiere_renommer( $genie, 'Génie Logiciel' ), 'renommage qui ne change que la casse accepté' );
+verifier( is_wp_error( ueb_ipes_filiere_renommer( $genie, 'comptabilite' ) ), 'renommage en doublon refusé' );
+verifier( 'Génie Logiciel' === ueb_ipes_filiere( $genie )->libelle, 'libellé inchangé après un renommage refusé' );
+verifier( is_wp_error( ueb_ipes_filiere_renommer( 999999, 'Informatique' ) ), 'renommage d’une filière inexistante refusé' );
+
+verifier( ueb_ipes_filiere_changer_etat( $genie, false ), 'filière retirée' );
+verifier( array( 'Comptabilité' ) === $libelles( ueb_ipes_filieres( $id, true ) ), 'filière retirée absente des actives' );
+verifier( array( 'Comptabilité', 'Génie Logiciel' ) === $libelles( ueb_ipes_filieres( $id ) ), 'filière retirée conservée dans l’historique' );
+verifier( is_wp_error( ueb_ipes_filiere_ajouter( $id, 'génie logiciel' ) ), 'une filière retirée bloque toujours son libellé' );
+verifier( ueb_ipes_filiere_changer_etat( $genie, true ) && '1' === (string) ueb_ipes_filiere( $genie )->actif, 'filière rétablie' );
+verifier( ! ueb_ipes_filiere_changer_etat( 999999, false ), 'filière inexistante : changement d’état refusé' );
 
 echo $GLOBALS['assertions'] . " vérifications réussies.\n";
