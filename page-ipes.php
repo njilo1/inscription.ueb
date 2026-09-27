@@ -143,14 +143,10 @@ ueb_page_debut( array( 'titre' => 'Espace IPES', 'variante' => $autorise ? 'bo' 
 
 				<?php else : ?>
 
-					<header class="bo-entete">
-						<div class="bo-entete__texte">
-							<p class="bo-entete__contexte"><span><?php echo esc_html( $ipes->sigle ); ?></span><span class="bo-entete__annee"><?php echo esc_html( $annee['libelle'] ); ?></span></p>
-							<h1><?php echo esc_html( array( 'bord' => 'Tableau de bord', 'etudiants' => 'Étudiants', 'bordereaux' => 'Bordereaux' )[ $vue ] ); ?></h1>
-							<p class="bo-entete__sous-titre"><?php echo esc_html( $ipes->nom_fr ); ?></p>
-						</div>
-					</header>
-					<?php ueb_afficher_flash(); ?>
+					<?php
+					/* Chaque vue dispose de $ipes (celui du compte), $annee et $ici. */
+					include UEB_INSC_DIR . '/templates/composants/ipes-espace-' . $vue . '.php';
+					?>
 
 				<?php endif; ?>
 
