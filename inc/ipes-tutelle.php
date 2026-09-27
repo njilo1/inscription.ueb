@@ -58,3 +58,15 @@ function ueb_ipes_sous_tutelle_par_id( $id ) {
 	$ipes = ueb_ipes( (int) $id );
 	return ueb_peut_voir_ipes( $ipes ) ? $ipes : null;
 }
+
+/**
+ * Bordereaux d'un IPES que la tutelle voit : ceux adressés à un établissement
+ * de la portée du compte (jamais les brouillons, ni ceux d'une autre tutelle).
+ */
+function ueb_ipes_bordereaux_pour_tutelle( $ipes_id ) {
+	$sigles = ueb_etabs_autorises();
+	return array_values( array_filter(
+		ueb_ipes_bordereaux_pour_ueb( $ipes_id ),
+		static fn( $b ) => in_array( $b->etablissement, $sigles, true )
+	) );
+}
