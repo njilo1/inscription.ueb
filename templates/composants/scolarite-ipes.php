@@ -219,7 +219,6 @@ $adresse = static fn( array $args = array() ) => add_query_arg( array_merge( arr
 					<?php if ( $ipes->convention_signee_le || $ipes->convention_fin_le ) : ?>
 						<div><dt>Validité</dt><dd><?php echo esc_html( trim( ( $ipes->convention_signee_le ? 'Signée le ' . mysql2date( 'd/m/Y', $ipes->convention_signee_le ) : '' ) . ( $ipes->convention_fin_le ? ( $ipes->convention_signee_le ? ', jusqu’au ' : 'Jusqu’au ' ) . mysql2date( 'd/m/Y', $ipes->convention_fin_le ) : '' ) ) ); ?></dd></div>
 					<?php endif; ?>
-					<div><dt>Montant annuel dû</dt><dd><?php echo null === $ipes->montant_annuel_du ? 'Non renseigné' : esc_html( ueb_fcfa( (int) $ipes->montant_annuel_du ) . ' (indicatif)' ); ?></dd></div>
 				</dl>
 			</aside>
 		</div>

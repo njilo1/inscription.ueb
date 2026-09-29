@@ -116,9 +116,6 @@ function ueb_ipes_normaliser( array $d ) {
 		$date             = trim( (string) ( $d[ $champ ] ?? '' ) );
 		$propre[ $champ ] = '' === $date ? null : $date;
 	}
-	/* Montant annuel dû (indicatif) : vide = non renseigné ; « 50 000 FCFA » → 50000. */
-	$montant                     = trim( (string) ( $d['montant_annuel_du'] ?? '' ) );
-	$propre['montant_annuel_du'] = '' === $montant ? null : (int) preg_replace( '/\D+/', '', $montant );
 	$propre['tutelles'] = array_values( array_unique( array_map(
 		static fn( $s ) => strtoupper( trim( (string) $s ) ),
 		(array) ( $d['tutelles'] ?? array() )
@@ -170,6 +167,16 @@ function ueb_ipes_valider( array $d, $id = 0 ) {
 		$erreurs['tutelles'] = 'Choisis au moins un établissement de tutelle.';
 	} elseif ( array_filter( $d['tutelles'], static fn( $s ) => ! ueb_etablissement( $s ) ) ) {
 		$erreurs['tutelles'] = 'Établissement de tutelle inconnu.';
+	} elseif ( $id ) {
+		/* Une tutelle qui a encore des filières actives ne peut pas être retirée :
+		   ses filières et leurs étudiants resteraient sans faculté destinataire. */
+		$retirees = array_diff( ueb_ipes_tutelles( $id ), $d['tutelles'] );
+		foreach ( $retirees as $sigle ) {
+			if ( $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ueb_insc_ipes_filieres WHERE ipes_id = %d AND etablissement = %s AND actif = 1', $id, $sigle ) ) ) {
+				$erreurs['tutelles'] = sprintf( '%s a encore des filières actives : retire-les d’abord, puis retire la tutelle.', $sigle );
+				break;
+			}
+		}
 	}
 
 	foreach ( array( 'convention_signee_le', 'convention_fin_le' ) as $champ ) {
@@ -181,9 +188,6 @@ function ueb_ipes_valider( array $d, $id = 0 ) {
 		&& null !== $d['convention_signee_le'] && null !== $d['convention_fin_le']
 		&& $d['convention_fin_le'] <= $d['convention_signee_le'] ) {
 		$erreurs['convention_fin_le'] = 'La fin de la convention doit suivre sa signature.';
-	}
-	if ( null !== $d['montant_annuel_du'] && ( $d['montant_annuel_du'] <= 0 || $d['montant_annuel_du'] > 1000000000 ) ) {
-		$erreurs['montant_annuel_du'] = 'Saisis un montant en FCFA, ou laisse vide s’il n’est pas encore connu.';
 	}
 
 	return $erreurs;
@@ -210,7 +214,7 @@ function ueb_ipes_enregistrer( array $d, $id = 0 ) {
 		return new WP_Error( 'ueb_ipes_invalide', 'Corrige les champs signalés.', $erreurs );
 	}
 
-	$ligne = array_intersect_key( $d, array_flip( array( 'sigle', 'nom_fr', 'nom_en', 'ville', 'telephone', 'email', 'convention_ref', 'convention_signee_le', 'convention_fin_le', 'montant_annuel_du' ) ) );
+	$ligne = array_intersect_key( $d, array_flip( array( 'sigle', 'nom_fr', 'nom_en', 'ville', 'telephone', 'email', 'convention_ref', 'convention_signee_le', 'convention_fin_le' ) ) );
 	$ligne['modifie_par'] = get_current_user_id() ?: null;
 
 	$wpdb->query( 'START TRANSACTION' );
@@ -309,7 +313,7 @@ function ueb_action_ipes_enregistrer() {
 		ueb_rediriger( ueb_url_ipes() );
 	}
 	$saisie = array();
-	foreach ( array( 'sigle', 'nom_fr', 'nom_en', 'ville', 'telephone', 'email', 'convention_ref', 'convention_signee_le', 'convention_fin_le', 'montant_annuel_du' ) as $champ ) {
+	foreach ( array( 'sigle', 'nom_fr', 'nom_en', 'ville', 'telephone', 'email', 'convention_ref', 'convention_signee_le', 'convention_fin_le' ) as $champ ) {
 		$saisie[ $champ ] = sanitize_text_field( wp_unslash( $_POST[ $champ ] ?? '' ) );
 	}
 	$saisie['tutelles'] = array_map( 'sanitize_text_field', (array) wp_unslash( $_POST['tutelles'] ?? array() ) );
