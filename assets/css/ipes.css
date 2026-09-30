@@ -323,6 +323,9 @@ body:not(.espace-admin) .ipes-zone {
 .ipes-recus__depot { display: grid; gap: .25rem; }
 .ipes-recus__depot .depot-camera { margin-top: .5rem; }
 .ipes-recus__depot [data-depot-envoyer] { justify-self: start; }
+.ipes-dialogue--recus { width: min(560px, calc(100vw - 2rem)); }
+.ipes-dialogue--recus .recus-liste { margin: .75rem 0 1rem; }
+.ipes-sans-recu { display: inline-flex; align-items: center; gap: .3rem; font-size: .8rem; font-weight: 600; color: var(--gris); }
 .ipes-envoi__manque { display: flex; align-items: center; gap: .4rem; margin: 0; font-size: .88rem; color: var(--gris); }
 .ipes-envoi__manque a { font-weight: 700; color: var(--foret-800); text-underline-offset: 3px; }
 

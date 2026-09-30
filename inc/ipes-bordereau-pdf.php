@@ -166,7 +166,12 @@ function ueb_ipes_generer_pdf_bordereau( $ipes, $bordereau ) {
 	$pdf->SetFont( 'uebserifi', '', 9 );
 	$pdf->SetTextColorArray( $c['encre'] );
 	$pdf->MultiCell( $W, 4, $lettres, 0, 'L', false, 1, $x, $y, true, 0, false, true, 0, 'T' );
-	$y += $hLettres + 8;
+	$y += $hLettres + 2;
+	/* Pièces jointes : les reçus bancaires du virement, consultables sur la plateforme. */
+	$nb_recus = ueb_ipes_nb_recus( $ipes->id, $bordereau->id );
+	$pdf->SetFont( 'uebsans', '', 8 );
+	ueb_pdf_texte( $pdf, $x, $y, 4, 'Pièces jointes : ' . ( $nb_recus ? $nb_recus . ' reçu' . ( $nb_recus > 1 ? 's' : '' ) . ' bancaire' . ( $nb_recus > 1 ? 's' : '' ) . ' du virement, consultable' . ( $nb_recus > 1 ? 's' : '' ) . ' sur la plateforme d’inscription.' : 'aucun reçu bancaire.' ), $c['gris'] );
+	$y += 4 + 6;
 
 	/* ---- Signatures ---- */
 	$verification = 'verifie' === $bordereau->statut && $bordereau->date_verification
