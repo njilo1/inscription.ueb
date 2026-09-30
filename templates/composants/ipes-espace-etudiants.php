@@ -57,9 +57,10 @@ $champs_etudiant = static function ( callable $valeur, array $erreurs, $garder =
 	$filtres = array(
 		'recherche'  => sanitize_text_field( wp_unslash( $_GET['q'] ?? '' ) ),
 		'filiere_id' => (int) ( $_GET['filiere'] ?? 0 ),
+		'tutelle'    => in_array( strtoupper( sanitize_key( $_GET['tutelle'] ?? '' ) ), $ipes->tutelles, true ) ? strtoupper( sanitize_key( $_GET['tutelle'] ?? '' ) ) : '',
 	);
 	$liste  = ueb_ipes_etudiants( $ipes->id, $filtres );
-	$filtre = '' !== $filtres['recherche'] || $filtres['filiere_id'];
+	$filtre = '' !== $filtres['recherche'] || $filtres['filiere_id'] || '' !== $filtres['tutelle'];
 	$jauge  = ueb_ipes_jauge( $ipes->id );
 
 	ueb_adm_tete( array(
@@ -91,6 +92,16 @@ $champs_etudiant = static function ( callable $valeur, array $erreurs, $garder =
 									<?php endforeach; ?>
 								</select><?php echo ueb_icone( 'chevron', 16 ); ?>
 							</label>
+							<?php if ( count( $ipes->tutelles ) > 1 ) : ?>
+								<label class="ipes-selecteur"><span class="sr">Tutelle</span>
+									<select name="tutelle">
+										<option value="">Toutes les tutelles</option>
+										<?php foreach ( $ipes->tutelles as $s ) : ?>
+											<option value="<?php echo esc_attr( $s ); ?>" <?php selected( $filtres['tutelle'], $s ); ?>><?php echo esc_html( 'Reversés à la ' . $s ); ?></option>
+										<?php endforeach; ?>
+									</select><?php echo ueb_icone( 'chevron', 16 ); ?>
+								</label>
+							<?php endif; ?>
 							<button class="adm-bouton" type="submit" data-filtres-bouton><?php echo ueb_icone( 'loupe', 16 ); ?>Rechercher</button>
 						</form>
 					<?php endif; ?>

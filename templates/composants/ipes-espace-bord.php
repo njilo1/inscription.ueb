@@ -20,7 +20,8 @@ foreach ( $bordereaux as $b ) {
 }
 foreach ( $bordereaux as $b ) {
 	if ( 'brouillon' === $b->statut && (int) $b->nb_etudiants ) {
-		$a_faire[] = array( 'brouillon', 'envoyer', ueb_ipes_numero( $b ) . ' prêt à envoyer', ueb_ipes_pluriel( $b->nb_etudiants, 'étudiant' ) . ' pour ' . ueb_fcfa( ueb_ipes_montant_bordereau( $b ) ) . '. Envoie-le à la ' . $b->etablissement . ' quand il est complet.', $fiche( $b ), 'Ouvrir le brouillon' );
+		$recu      = ueb_ipes_nb_recus( $ipes->id, $b->id );
+		$a_faire[] = array( 'brouillon', $recu ? 'envoyer' : 'recu', ueb_ipes_numero( $b ) . ( $recu ? ' prêt à envoyer' : ' : reçu bancaire à joindre' ), ueb_ipes_pluriel( $b->nb_etudiants, 'étudiant' ) . ' pour ' . ueb_fcfa( ueb_ipes_montant_bordereau( $b ) ) . '. ' . ( $recu ? 'Envoie-le à la ' . $b->etablissement . ' quand il est complet.' : 'Joins le reçu du virement à la ' . $b->etablissement . ' pour pouvoir l’envoyer.' ), $fiche( $b ), 'Ouvrir le brouillon' );
 	}
 }
 if ( $jauge['libres'] > 0 ) {

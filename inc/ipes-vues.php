@@ -493,10 +493,13 @@ function ueb_ipes_bandeau_a_verifier( array $envoyes, callable $url ) {
  *
  * @param object $b Bordereau.
  * @param array  $o modifiable (bool : l'IPES peut ajouter et retirer),
- *                  action (adresse des formulaires).
+ *                  action (adresse des formulaires),
+ *                  selection (sélecteur du formulaire d'étudiants dont les cases
+ *                  cochées non enregistrées partent avec chaque envoi).
  */
 function ueb_ipes_recus_panneau( $b, array $o = array() ) {
-	$o        = array_merge( array( 'modifiable' => false, 'action' => '' ), $o );
+	$o        = array_merge( array( 'modifiable' => false, 'action' => '', 'selection' => '' ), $o );
+	$garder   = $o['selection'] ? ' data-garder-selection="' . esc_attr( $o['selection'] ) . '"' : '';
 	$recus    = ueb_ipes_recus( (int) $b->ipes_id, (int) $b->id );
 	$restants = max( 0, UEB_IPES_RECUS_MAX - count( $recus ) );
 	?>
@@ -528,7 +531,7 @@ function ueb_ipes_recus_panneau( $b, array $o = array() ) {
 							</div>
 							<a class="recus-liste__telecharger" href="<?php echo esc_url( ueb_url_recu_ipes( $r->id, true ) ); ?>" aria-label="<?php echo esc_attr( 'Télécharger ' . $r->nom_original ); ?>" title="Télécharger"><?php echo ueb_icone( 'telecharger', 18 ); ?></a>
 							<?php if ( $o['modifiable'] ) : ?>
-								<form method="post" action="<?php echo esc_url( $o['action'] ); ?>" data-confirmer="Retirer ce reçu du bordereau ?">
+								<form method="post" action="<?php echo esc_url( $o['action'] ); ?>" data-confirmer="Retirer ce reçu du bordereau ?"<?php echo $garder; // phpcs:ignore -- échappé ?>>
 									<?php ueb_champ_csrf(); ?>
 									<input type="hidden" name="ueb_action" value="ipes_recu_supprimer">
 									<input type="hidden" name="bordereau_id" value="<?php echo (int) $b->id; ?>">
@@ -542,7 +545,7 @@ function ueb_ipes_recus_panneau( $b, array $o = array() ) {
 			<?php endif; ?>
 
 			<?php if ( $o['modifiable'] && $restants > 0 ) : ?>
-				<form class="ipes-recus__depot" method="post" action="<?php echo esc_url( $o['action'] ); ?>" enctype="multipart/form-data" data-formulaire data-envoi-recus data-libelle-un="Joindre ce reçu" data-libelle-plusieurs="Joindre ces {n} reçus">
+				<form class="ipes-recus__depot" method="post" action="<?php echo esc_url( $o['action'] ); ?>" enctype="multipart/form-data" data-formulaire data-envoi-recus data-libelle-un="Joindre ce reçu" data-libelle-plusieurs="Joindre ces {n} reçus"<?php echo $garder; // phpcs:ignore -- échappé ?>>
 					<?php ueb_champ_csrf(); ?>
 					<input type="hidden" name="ueb_action" value="ipes_recus_envoyer">
 					<input type="hidden" name="bordereau_id" value="<?php echo (int) $b->id; ?>">

@@ -308,6 +308,16 @@ body:not(.espace-admin) .ipes-zone {
 .ipes-filieres__vide { margin: 0; font-size: .88rem; color: var(--gris); }
 .ipes-filieres .ipes-liste { margin: 0; }
 
+/* Repère des trois étapes d'un bordereau modifiable : reçu, étudiants, envoi. */
+.ipes-etapes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .6rem; margin: 0 0 1rem; padding: 0; list-style: none; counter-reset: none; }
+.ipes-etapes li { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; column-gap: .6rem; padding: .7rem .85rem; border: 1px solid var(--filet); border-radius: 14px; background: var(--blanc); }
+.ipes-etapes li > span:first-child { grid-row: span 2; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: var(--adm-puce); font-weight: 700; font-size: .85rem; color: var(--gris); }
+.ipes-etapes li.est-fait > span:first-child { background: var(--vert-bandeau); color: #fff; }
+.ipes-etapes a, .ipes-etapes li > span:nth-child(2) { font-weight: 700; font-size: .92rem; color: var(--encre); text-decoration: none; }
+.ipes-etapes a:hover { text-decoration: underline; text-underline-offset: 3px; }
+.ipes-etapes small { font-size: .8rem; color: var(--gris); }
+@media (max-width: 640px) { .ipes-etapes { grid-template-columns: minmax(0, 1fr); } }
+
 /* Reçus bancaires d'un bordereau : liste, puis dépôt (composant des reçus étudiants). */
 .ipes-recus__corps { display: grid; gap: 1rem; }
 .ipes-recus__depot { display: grid; gap: .25rem; }

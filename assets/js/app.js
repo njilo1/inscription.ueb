@@ -185,9 +185,32 @@
 				tout.indeterminate = cochees.length > 0 && cochees.length < cases.length;
 			}
 		};
-		cases.forEach((c) => c.addEventListener("change", maj));
-		tout?.addEventListener("change", () => { cases.forEach((c) => { c.checked = tout.checked; }); maj(); });
+		const modifie = () => { form.dataset.modifie = "1"; };
+		cases.forEach((c) => c.addEventListener("change", () => { modifie(); maj(); }));
+		tout?.addEventListener("change", () => { cases.forEach((c) => { c.checked = tout.checked; }); modifie(); maj(); });
 		maj();
+	});
+
+	/* Formulaires [data-garder-selection="#id"] (reçus d'un bordereau) : si la
+	   sélection du formulaire visé a changé sans être enregistrée, ses cases
+	   cochées partent avec l'envoi et le serveur les enregistre d'abord. */
+	$$("form[data-garder-selection]").forEach((form) => {
+		form.addEventListener("submit", (ev) => {
+			if (ev.defaultPrevented) return;
+			const cible = $(form.dataset.garderSelection);
+			$$("[data-selection-emportee]", form).forEach((champ) => champ.remove());
+			if (!cible || cible.dataset.modifie !== "1") return;
+			const cachee = (nom, valeur) => {
+				const champ = document.createElement("input");
+				champ.type = "hidden";
+				champ.name = nom;
+				champ.value = valeur;
+				champ.dataset.selectionEmportee = "";
+				form.appendChild(champ);
+			};
+			cachee("selection_etudiants", "1");
+			$$("input[type=checkbox][name='etudiants[]']:checked", cible).forEach((c) => cachee("etudiants[]", c.value));
+		});
 	});
 
 	/* ---------- Logo d'un IPES : aperçu de l'image choisie avant l'envoi ---------- */
