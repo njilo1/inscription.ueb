@@ -299,6 +299,14 @@ body:not(.espace-admin) .ipes-zone {
 .ipes-reversement-etat { display: flex; align-items: center; flex-wrap: wrap; gap: .5rem .6rem; margin: 0 0 .9rem; }
 .ipes-reversement-etat > span:last-child { flex-basis: 100%; font-size: .9rem; color: var(--gris); }
 
+/* Reçus bancaires d'un bordereau : liste, puis dépôt (composant des reçus étudiants). */
+.ipes-recus__corps { display: grid; gap: 1rem; }
+.ipes-recus__depot { display: grid; gap: .25rem; }
+.ipes-recus__depot .depot-camera { margin-top: .5rem; }
+.ipes-recus__depot [data-depot-envoyer] { justify-self: start; }
+.ipes-envoi__manque { display: flex; align-items: center; gap: .4rem; margin: 0; font-size: .88rem; color: var(--gris); }
+.ipes-envoi__manque a { font-weight: 700; color: var(--foret-800); text-underline-offset: 3px; }
+
 /* Bordereau modifiable : cases, puis barre d'envoi collée au bas de l'écran. */
 .ipes-bordereau { padding: 0; overflow: visible; }
 .ipes-bordereau > .adm-panneau__tete { margin: 0; padding: 1.1rem 1.4rem; border-bottom: 1px solid var(--filet); }

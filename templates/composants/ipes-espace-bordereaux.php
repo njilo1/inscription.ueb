@@ -4,7 +4,7 @@
  *   - sans « bordereau » : la création d'un brouillon pour une tutelle, puis
  *     la liste de l'année ;
  *   - ?bordereau={id}    : la fiche. Modifiable (brouillon ou rejeté) : les
- *     étudiants à cocher (ceux des filières de sa tutelle, dans aucun autre
+ *     reçus bancaires à joindre, puis les étudiants à cocher (ceux des filières de sa tutelle, dans aucun autre
  *     bordereau), avec le total en direct dans une barre d'envoi collée au
  *     bas de l'écran. Envoyé ou vérifié : lecture seule, total figé.
  * Attend $ipes, $annee, $ici et $url (page-ipes.php).
@@ -100,6 +100,7 @@ $unitaire          = UEB_IPES_REVERSEMENT_PAR_ETUDIANT;
 		$tutelle    = ueb_etablissement( $bordereau->etablissement );
 		/* Envoyé : montant figé à l'envoi ; sinon celui en vigueur. */
 		$prix       = $modifiable ? $unitaire : (int) $bordereau->montant_unitaire;
+		$nb_recus   = ueb_ipes_nb_recus( $ipes->id, $bordereau->id );
 
 		ob_start();
 		if ( ueb_ipes_bordereau_a_pdf( $bordereau ) ) {
@@ -128,7 +129,7 @@ $unitaire          = UEB_IPES_REVERSEMENT_PAR_ETUDIANT;
 		?>
 
 		<?php if ( 'rejete' === $bordereau->statut ) : ?>
-			<?php ueb_alerte( 'erreur', 'Rejeté : « ' . $bordereau->motif_rejet . ' » Corrige le bordereau puis renvoie-le ; il garde son numéro.' ); ?>
+			<?php ueb_alerte( 'erreur', 'Rejeté : « ' . $bordereau->motif_rejet . ' » Corrige les étudiants ou remplace les reçus, puis renvoie le bordereau ; il garde son numéro.' ); ?>
 		<?php elseif ( 'envoye' === $bordereau->statut ) : ?>
 			<div class="alerte alerte--info" role="status"><?php echo ueb_icone( 'horloge', 20 ); ?><p>Envoyé le <?php echo esc_html( mysql2date( 'd/m/Y à H:i', $bordereau->date_envoi ) ); ?>, en attente de vérification. Il n’est plus modifiable.</p></div>
 		<?php elseif ( 'verifie' === $bordereau->statut ) : ?>
@@ -136,6 +137,8 @@ $unitaire          = UEB_IPES_REVERSEMENT_PAR_ETUDIANT;
 		<?php endif; ?>
 
 		<?php if ( $modifiable ) : ?>
+
+			<?php ueb_ipes_recus_panneau( $bordereau, array( 'modifiable' => true, 'action' => ueb_url_espace_ipes() ) ); ?>
 
 			<form class="adm-panneau ipes-bordereau" method="post" action="<?php echo esc_url( ueb_url_espace_ipes() ); ?>" data-total-coches data-total-unite="étudiant">
 				<?php ueb_champ_csrf(); ?>
@@ -166,9 +169,12 @@ $unitaire          = UEB_IPES_REVERSEMENT_PAR_ETUDIANT;
 				<?php endif; ?>
 				<footer class="ipes-envoi">
 					<p class="ipes-envoi__total" aria-live="polite"><span>Total du bordereau</span><b data-total-affiche><?php echo esc_html( ueb_fcfa( count( $dedans ) * $unitaire ) ); ?></b><small data-total-nombre><?php echo esc_html( ueb_ipes_pluriel( count( $dedans ), 'étudiant' ) ); ?></small></p>
+					<?php if ( ! $nb_recus ) : ?>
+						<p class="ipes-envoi__manque"><?php echo ueb_icone( 'info', 16 ); ?><a href="#recus">Joins d’abord un reçu bancaire</a> pour pouvoir envoyer.</p>
+					<?php endif; ?>
 					<div class="ipes-envoi__actions">
 						<button class="adm-bouton" type="submit"><?php echo ueb_icone( 'check', 16 ); ?>Enregistrer la sélection</button>
-						<button class="adm-bouton adm-bouton--primaire" type="submit" name="envoyer" value="1" data-confirmer="Envoyer ce bordereau ? Il ne sera plus modifiable, sauf s’il est rejeté."><?php echo ueb_icone( 'envoyer', 16 ); ?><?php echo 'rejete' === $bordereau->statut ? 'Renvoyer le bordereau' : 'Envoyer le bordereau'; ?></button>
+						<button class="adm-bouton adm-bouton--primaire" type="submit" name="envoyer" value="1" <?php disabled( ! $nb_recus ); ?> data-confirmer="Envoyer ce bordereau ? Il ne sera plus modifiable, sauf s’il est rejeté."><?php echo ueb_icone( 'envoyer', 16 ); ?><?php echo 'rejete' === $bordereau->statut ? 'Renvoyer le bordereau' : 'Envoyer le bordereau'; ?></button>
 					</div>
 				</footer>
 			</form>
@@ -196,6 +202,8 @@ $unitaire          = UEB_IPES_REVERSEMENT_PAR_ETUDIANT;
 					</tbody>
 				</table>
 			</section>
+
+			<?php ueb_ipes_recus_panneau( $bordereau ); ?>
 
 		<?php endif; ?>
 

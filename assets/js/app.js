@@ -551,6 +551,9 @@
 		const titre = $("[data-depot-titre]", form);
 		const titreInitial = titre?.textContent || "";
 		const libelle = $("[data-depot-libelle]", form);
+		/* Libellés du bouton, surchargeables par data-libelle-un / data-libelle-plusieurs (« {n} » = nombre). */
+		const libelleUn = form.dataset.libelleUn || "Envoyer mon reçu";
+		const libellePlusieurs = form.dataset.libellePlusieurs || "Envoyer {n} reçus";
 		const max = parseInt(champ.dataset.max, 10);
 		const maxOctets = parseInt(champ.dataset.maxOctets, 10);
 		const types = ["image/jpeg", "image/png", "application/pdf"];
@@ -640,7 +643,7 @@
 			envoyer.disabled = occupe || selection.length === 0 || problemes.length > 0;
 			depot.classList.toggle("est-rempli", selection.length > 0);
 			if (titre) titre.textContent = occupe ? "Compression des photos…" : selection.length ? `${selection.length} fichier${selection.length > 1 ? "s" : ""} prêt${selection.length > 1 ? "s" : ""} à l’envoi` : titreInitial;
-			if (libelle) libelle.textContent = selection.length > 1 ? `Envoyer ${selection.length} reçus` : "Envoyer mon reçu";
+			if (libelle) libelle.textContent = selection.length > 1 ? libellePlusieurs.replace("{n}", selection.length) : libelleUn;
 		};
 
 		const ajouter = async (fichiers) => {

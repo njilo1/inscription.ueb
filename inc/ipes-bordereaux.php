@@ -216,7 +216,7 @@ function ueb_ipes_prochain_numero_bordereau( $ipes, $annee_code ) {
 
 /**
  * Envoie un bordereau modifiable : montant par étudiant et total figés,
- * numéro officiel au premier envoi. Refusé sans étudiant.
+ * numéro officiel au premier envoi. Refusé sans étudiant ou sans reçu bancaire.
  *
  * @return true|WP_Error
  */
@@ -244,6 +244,10 @@ function ueb_ipes_bordereau_envoyer( $ipes_id, $id ) {
 		$wpdb->query( 'ROLLBACK' );
 		return new WP_Error( 'ueb_ipes_bordereau', 'Coche au moins un étudiant avant d’envoyer le bordereau.' );
 	}
+	if ( ! ueb_ipes_nb_recus( $ipes_id, $id ) ) {
+		$wpdb->query( 'ROLLBACK' );
+		return new WP_Error( 'ueb_ipes_bordereau', 'Joins au moins un reçu bancaire du virement avant d’envoyer le bordereau.' );
+	}
 	$numero = $bordereau->numero;
 	if ( str_starts_with( $numero, 'BROUILLON-' ) ) {
 		$numero = ueb_ipes_prochain_numero_bordereau( ueb_ipes( $ipes_id ), $bordereau->annee_academique );
@@ -267,7 +271,7 @@ function ueb_ipes_bordereau_envoyer( $ipes_id, $id ) {
 	return true;
 }
 
-/** Supprime un brouillon jamais envoyé ; ses étudiants redeviennent à reverser. */
+/** Supprime un brouillon jamais envoyé ; ses étudiants redeviennent à reverser, ses reçus sont effacés. */
 function ueb_ipes_bordereau_supprimer( $ipes_id, $id ) {
 	global $wpdb;
 	$bordereau = ueb_ipes_bordereau( $ipes_id, $id );
@@ -284,7 +288,10 @@ function ueb_ipes_bordereau_supprimer( $ipes_id, $id ) {
 		return new WP_Error( 'ueb_ipes_bordereau', 'Seul un brouillon jamais envoyé peut être supprimé.' );
 	}
 	$wpdb->query( $wpdb->prepare( 'UPDATE ueb_insc_ipes_etudiants SET bordereau_id = NULL WHERE ipes_id = %d AND bordereau_id = %d', $ipes_id, $id ) );
+	$recus = ueb_ipes_recus( $ipes_id, $id );
+	$wpdb->query( $wpdb->prepare( 'DELETE FROM ueb_insc_ipes_recus WHERE ipes_id = %d AND bordereau_id = %d', $ipes_id, $id ) );
 	$wpdb->query( 'COMMIT' );
+	array_map( 'ueb_ipes_recu_effacer_fichier', $recus );
 	return true;
 }
 

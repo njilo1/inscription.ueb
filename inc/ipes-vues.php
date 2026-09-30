@@ -3,8 +3,8 @@
  * Composants d'affichage des IPES, partagés par l'onglet IPES de
  * l'administration (templates/composants/ipes-admin.php), l'espace IPES
  * (page-ipes.php) et la vue IPES de la scolarité (scolarite-ipes.php) :
- * héros des reversements, registre des IPES, liste des bordereaux, décision
- * de l'UEb, statut, logo et pastilles de tutelle.
+ * héros des reversements, registre des IPES, liste des bordereaux, reçus
+ * bancaires, décision de l'UEb, statut, logo et pastilles de tutelle.
  *
  * Même principe que le reste du back-office : rendu serveur, un seul moment
  * animé par écran (la jauge Remotion du héros, jouée une fois, avec un repli
@@ -479,6 +479,95 @@ function ueb_ipes_bandeau_a_verifier( array $envoyes, callable $url ) {
 			<p><?php echo esc_html( ueb_fcfa( $total ) . ' reversés au total.' . ( $attente ? ' Le plus ancien attend depuis ' . $attente . '.' : '' ) ); ?></p>
 		</div>
 		<a class="adm-bouton adm-bouton--primaire registre-file__action" href="<?php echo esc_url( $url( $ancien ) ); ?>"><?php echo esc_html( 1 === $n ? 'Ouvrir le bordereau' : 'Ouvrir le plus ancien' ); ?><?php echo ueb_icone( 'fleche', 17 ); ?></a>
+	</section>
+	<?php
+}
+
+/* ---------- Reçus bancaires d'un bordereau ---------- */
+
+/**
+ * Panneau des reçus d'un bordereau : la liste (vignette, ouverture,
+ * téléchargement) et, si $o['modifiable'], le retrait de chaque reçu et le
+ * dépôt de nouveaux (même composant que les reçus des étudiants : glisser,
+ * aperçus, photos compressées dans le navigateur).
+ *
+ * @param object $b Bordereau.
+ * @param array  $o modifiable (bool : l'IPES peut ajouter et retirer),
+ *                  action (adresse des formulaires).
+ */
+function ueb_ipes_recus_panneau( $b, array $o = array() ) {
+	$o        = array_merge( array( 'modifiable' => false, 'action' => '' ), $o );
+	$recus    = ueb_ipes_recus( (int) $b->ipes_id, (int) $b->id );
+	$restants = max( 0, UEB_IPES_RECUS_MAX - count( $recus ) );
+	?>
+	<section id="recus" class="adm-panneau ipes-recus" aria-labelledby="ipes-recus-titre" tabindex="-1">
+		<header class="adm-panneau__tete">
+			<div>
+				<h2 id="ipes-recus-titre">Reçus bancaires</h2>
+				<p><?php echo esc_html( $o['modifiable'] ? 'La preuve du virement à la ' . $b->etablissement . ' : au moins un reçu pour envoyer le bordereau, ' . UEB_IPES_RECUS_MAX . ' au plus.' : 'La preuve du virement jointe par l’IPES, figée avec le bordereau.' ); ?></p>
+			</div>
+			<span class="envoi-carte__compteur"><?php echo count( $recus ) . ' sur ' . (int) UEB_IPES_RECUS_MAX; ?></span>
+		</header>
+		<div class="ipes-corps ipes-recus__corps">
+			<?php if ( ! $recus ) : ?>
+				<div class="bo-vide ipes-vide"><span><?php echo ueb_icone( 'recu', 22 ); ?></span><p><?php echo $o['modifiable'] ? '<b>Aucun reçu pour l’instant.</b> Joins la photo ou le scan du reçu bancaire du virement.' : '<b>Aucun reçu joint.</b>'; ?></p></div>
+			<?php else : ?>
+				<ul class="recus-liste">
+					<?php foreach ( $recus as $rang => $r ) : $adresse = ueb_url_recu_ipes( $r->id ); ?>
+						<li class="recus-liste__item" style="--i: <?php echo (int) $rang; ?>">
+							<a class="recus-liste__vignette" href="<?php echo esc_url( $adresse ); ?>" target="_blank" rel="noopener" aria-label="<?php echo esc_attr( 'Ouvrir ' . $r->nom_original ); ?>">
+								<?php if ( 'application/pdf' === $r->type_mime ) : ?>
+									<span class="recus-liste__pdf"><?php echo ueb_icone( 'fichier', 26 ); ?>PDF</span>
+								<?php else : ?>
+									<img src="<?php echo esc_url( $adresse ); ?>" alt="" loading="lazy">
+								<?php endif; ?>
+							</a>
+							<div class="recus-liste__infos">
+								<b title="<?php echo esc_attr( $r->nom_original ); ?>"><?php echo esc_html( $r->nom_original ); ?></b>
+								<span>Joint le <?php echo esc_html( mysql2date( 'j F Y à H:i', $r->date_envoi ) ); ?> · <?php echo esc_html( size_format( $r->taille, 1 ) ); ?></span>
+							</div>
+							<a class="recus-liste__telecharger" href="<?php echo esc_url( ueb_url_recu_ipes( $r->id, true ) ); ?>" aria-label="<?php echo esc_attr( 'Télécharger ' . $r->nom_original ); ?>" title="Télécharger"><?php echo ueb_icone( 'telecharger', 18 ); ?></a>
+							<?php if ( $o['modifiable'] ) : ?>
+								<form method="post" action="<?php echo esc_url( $o['action'] ); ?>" data-confirmer="Retirer ce reçu du bordereau ?">
+									<?php ueb_champ_csrf(); ?>
+									<input type="hidden" name="ueb_action" value="ipes_recu_supprimer">
+									<input type="hidden" name="bordereau_id" value="<?php echo (int) $b->id; ?>">
+									<input type="hidden" name="recu_id" value="<?php echo (int) $r->id; ?>">
+									<button class="recus-liste__supprimer" type="submit" aria-label="<?php echo esc_attr( 'Retirer ' . $r->nom_original ); ?>" title="Retirer"><?php echo ueb_icone( 'corbeille', 18 ); ?></button>
+								</form>
+							<?php endif; ?>
+						</li>
+					<?php endforeach; ?>
+				</ul>
+			<?php endif; ?>
+
+			<?php if ( $o['modifiable'] && $restants > 0 ) : ?>
+				<form class="ipes-recus__depot" method="post" action="<?php echo esc_url( $o['action'] ); ?>" enctype="multipart/form-data" data-formulaire data-envoi-recus data-libelle-un="Joindre ce reçu" data-libelle-plusieurs="Joindre ces {n} reçus">
+					<?php ueb_champ_csrf(); ?>
+					<input type="hidden" name="ueb_action" value="ipes_recus_envoyer">
+					<input type="hidden" name="bordereau_id" value="<?php echo (int) $b->id; ?>">
+					<label class="depot" data-depot>
+						<input type="file" name="recus[]" accept="image/jpeg,image/png,application/pdf" multiple data-max="<?php echo (int) $restants; ?>" data-max-octets="<?php echo (int) UEB_RECUS_MAX_OCTETS; ?>" aria-describedby="ipes-depot-aide">
+						<span class="depot__icone"><?php echo ueb_icone( 'fichier', 28 ); ?></span>
+						<span class="depot__titre" data-depot-titre>Choisis la photo ou le scan du reçu bancaire</span>
+						<span class="depot__aide" id="ipes-depot-aide">Glisse-le ici ou clique pour le choisir · JPG, PNG ou PDF, 5 Mo au plus. Le reçu entier, cachet de la banque et montant lisibles.</span>
+						<span class="depot__places"><?php echo esc_html( $restants . ' fichier' . ( $restants > 1 ? 's' : '' ) . ' encore possible' . ( $restants > 1 ? 's' : '' ) ); ?></span>
+					</label>
+					<div class="depot-camera">
+						<span>ou</span>
+						<label class="btn btn--fantome btn--petit depot-camera__natif" data-camera-natif>
+							<input type="file" name="recus[]" accept="image/*" capture="environment" data-capture>
+							<?php echo ueb_icone( 'appareil', 18 ); ?>Prendre une photo
+						</label>
+					</div>
+					<ul class="depot__apercus" data-apercus aria-live="polite"></ul>
+					<p class="champ__erreur" data-depot-erreur hidden></p>
+					<button class="adm-bouton adm-bouton--primaire" type="submit" disabled data-depot-envoyer><?php echo ueb_icone( 'envoyer', 16 ); ?><span data-depot-libelle>Joindre ce reçu</span></button>
+				</form>
+			<?php elseif ( $o['modifiable'] ) : ?>
+				<div class="depot-plein"><?php echo ueb_icone( 'info', 20 ); ?><p><?php echo esc_html( 'Limite de ' . UEB_IPES_RECUS_MAX . ' reçus atteinte. Retire un reçu pour en joindre un autre.' ); ?></p></div>
+			<?php endif; ?>
+		</div>
 	</section>
 	<?php
 }
