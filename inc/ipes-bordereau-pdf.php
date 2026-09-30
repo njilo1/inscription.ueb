@@ -4,8 +4,9 @@
  *
  * A4 portrait : en-tête officiel bilingue dans la couleur de la tutelle (le
  * même que les quitus, inc/quitus-pdf.php), bandeau du bordereau, IPES et
- * tutelle, tableau des versements (en-tête répété à chaque page), total en
- * chiffres et en lettres, signatures, pied de page numéroté.
+ * tutelle, tableau des étudiants reversés, au montant par étudiant figé à
+ * l'envoi (en-tête répété à chaque page), total en chiffres et en lettres,
+ * signatures, pied de page numéroté.
  *
  * Disponible dès l'envoi : un brouillon n'a pas encore de numéro officiel.
  *
@@ -38,14 +39,15 @@ function ueb_ipes_generer_pdf_bordereau( $ipes, $bordereau ) {
 
 	$tutelle    = ueb_etablissement( $bordereau->etablissement );
 	$c          = ueb_pdf_couleurs( $tutelle['couleur'] );
-	$versements = ueb_ipes_bordereau_paiements( $ipes->id, $bordereau->id );
+	$etudiants  = ueb_ipes_bordereau_etudiants( $ipes->id, $bordereau->id );
+	$unitaire   = (int) $bordereau->montant_unitaire;
 	$annee      = str_replace( '-', ' – ', $bordereau->annee_academique );
 
 	$pdf = new TCPDF( 'P', 'mm', 'A4', true, 'UTF-8', false );
 	$pdf->SetCreator( 'Plateforme d’inscription — ' . UEB_UNIVERSITE['fr'] );
 	$pdf->SetAuthor( $ipes->nom_fr );
 	$pdf->SetTitle( 'Bordereau ' . $bordereau->numero );
-	$pdf->SetSubject( 'Reversement des pensions ' . $annee . ' — ' . $ipes->sigle . ' → ' . $bordereau->etablissement );
+	$pdf->SetSubject( 'Reversement par étudiant ' . $annee . ' — ' . $ipes->sigle . ' → ' . $bordereau->etablissement );
 	$pdf->setFontSubsetting( false );
 	$pdf->setPrintHeader( false );
 	$pdf->setPrintFooter( false );
@@ -66,7 +68,7 @@ function ueb_ipes_generer_pdf_bordereau( $ipes, $bordereau ) {
 	$pdf->SetFont( 'uebsansb', '', 11 );
 	$pdf->setFontSpacing( 0.2 );
 	$pdf->SetXY( $x + 4, $y );
-	$pdf->Cell( $W - 8, 11, 'BORDEREAU DE REVERSEMENT DES PENSIONS', 0, 0, 'L', false, '', 0, false, 'T', 'M' );
+	$pdf->Cell( $W - 8, 11, 'BORDEREAU DE REVERSEMENT', 0, 0, 'L', false, '', 0, false, 'T', 'M' );
 	$pdf->setFontSpacing( 0 );
 	$pdf->SetFont( 'uebsansb', '', 10 );
 	$pdf->SetXY( $x + 4, $y );
@@ -95,17 +97,16 @@ function ueb_ipes_generer_pdf_bordereau( $ipes, $bordereau ) {
 	ueb_brd_encadre( $pdf, $x + $demi + 6, $y, $demi, 'ÉTABLISSEMENT DE TUTELLE', $tutelle['fr'] . ' (' . $tutelle['sigle'] . ')', $tutelle_lignes, $c, true, $hEnc );
 	$y += $hEnc + 7;
 
-	/* ---- Tableau des versements ---- */
+	/* ---- Tableau des étudiants ---- */
 	$colonnes = array(
-		array( 'N°', 9, 'C' ),
-		array( 'Matricule', 26, 'L' ),
-		array( 'Nom et prénom', 58, 'L' ),
-		array( 'Filière · niveau', 44, 'L' ),
-		array( 'Date', 20, 'C' ),
-		array( 'Montant (FCFA)', 25, 'R' ),
+		array( 'N°', 10, 'C' ),
+		array( 'Matricule', 28, 'L' ),
+		array( 'Nom et prénom', 64, 'L' ),
+		array( 'Filière · niveau', 54, 'L' ),
+		array( 'Montant (FCFA)', 26, 'R' ),
 	);
 	$y = ueb_brd_ligne_entete( $pdf, $colonnes, $x, $y, $c );
-	foreach ( array_values( $versements ) as $i => $v ) {
+	foreach ( array_values( $etudiants ) as $i => $v ) {
 		/* Un nom trop long passe sur plusieurs lignes : la ligne du tableau grandit (jamais de nom tronqué). */
 		$pdf->SetFont( 'uebsans', '', 8.2 );
 		$lignes_nom = max( 1, $pdf->getNumLines( $v->nom . ' ' . $v->prenom, $colonnes[2][1] - 3 ) );
@@ -123,8 +124,7 @@ function ueb_ipes_generer_pdf_bordereau( $ipes, $bordereau ) {
 			$v->matricule,
 			$v->nom . ' ' . $v->prenom,
 			trim( ( $v->filiere ?? '' ) . ' · ' . $v->niveau, ' ·' ),
-			mysql2date( 'd/m/Y', $v->date_paiement ),
-			ueb_formater_montant( (int) $v->montant ),
+			ueb_formater_montant( $unitaire ),
 		);
 		$xc = $x;
 		foreach ( $colonnes as $k => $col ) {
@@ -133,7 +133,7 @@ function ueb_ipes_generer_pdf_bordereau( $ipes, $bordereau ) {
 				$pdf->SetFont( 'uebsans', '', 8.2 );
 				$pdf->MultiCell( $col[1] - 3, $hLigne, $valeurs[ $k ], 0, 'L', false, 0, $xc + 1.5, $y, true, 0, false, true, $hLigne, 'M' );
 			} else {
-				ueb_pdf_ajuster( $pdf, $valeurs[ $k ], 5 === $k ? 'uebsemi' : 'uebsans', '', 8.2, $col[1] - 3, 6.2 );
+				ueb_pdf_ajuster( $pdf, $valeurs[ $k ], 4 === $k ? 'uebsemi' : 'uebsans', '', 8.2, $col[1] - 3, 6.2 );
 				$pdf->SetXY( $xc + 1.5, $y );
 				$pdf->Cell( $col[1] - 3, $hLigne, $valeurs[ $k ], 0, 0, $col[2], false, '', 0, false, 'T', 'M' );
 			}
@@ -146,7 +146,7 @@ function ueb_ipes_generer_pdf_bordereau( $ipes, $bordereau ) {
 
 	/* ---- Total ---- */
 	$total = (int) $bordereau->total;
-	$lettres = 'Arrêté le présent bordereau à la somme de ' . ueb_nombre_en_lettres( $total ) . ' (' . ueb_formater_montant( $total ) . ') francs CFA, pour ' . count( $versements ) . ' versement' . ( count( $versements ) > 1 ? 's' : '' ) . '.';
+	$lettres = 'Arrêté le présent bordereau à la somme de ' . ueb_nombre_en_lettres( $total ) . ' (' . ueb_formater_montant( $total ) . ') francs CFA, pour ' . count( $etudiants ) . ' étudiant' . ( count( $etudiants ) > 1 ? 's' : '' ) . ' à ' . ueb_formater_montant( $unitaire ) . ' francs CFA chacun.';
 	$pdf->SetFont( 'uebserifi', '', 9 );
 	$hLettres = $pdf->getNumLines( $lettres, $W ) * 9 * 0.3528 * 1.25;
 	if ( $y + 10 + 4 + $hLettres + 42 > UEB_BRD_BAS ) {

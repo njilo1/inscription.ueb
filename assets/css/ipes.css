@@ -172,6 +172,9 @@ body:not(.espace-admin) .ipes-zone {
 .ipes-hero .suivi-barre__part:first-child:hover::after, .ipes-hero .suivi-barre__part:last-child:hover::after { translate: 0 0; }
 .ipes-hero .suivi-barre__part:only-child::after { left: 50%; right: auto; translate: -50% 4px; }
 .ipes-hero .adm-hero__situations dd small { margin-left: .3rem; font-size: .8rem; font-weight: 600; color: rgba(255, 255, 255, .68); }
+/* Plusieurs tutelles : une ligne par tutelle, sous les chiffres de l'IPES. */
+.ipes-hero__tutelles { display: flex; flex-wrap: wrap; gap: .5rem 1.25rem; margin: 1rem 0 0; padding: .9rem 0 0; list-style: none; border-top: 1px solid rgba(255, 255, 255, .14); }
+.ipes-hero__tutelles li { display: inline-flex; align-items: center; gap: .5rem; font-size: .88rem; color: rgba(255, 255, 255, .86); }
 
 /* ---------- 6. Fiche d'un IPES ---------- */
 
@@ -288,16 +291,13 @@ body:not(.espace-admin) .ipes-zone {
 .ipes-reperes li { display: inline-flex; align-items: center; gap: .35rem; min-height: 30px; padding: 0 .7rem; border-radius: 999px; background: var(--adm-puce); font-size: .82rem; font-weight: 600; color: var(--gris); }
 .ipes-reperes .icone { color: var(--foret-700); }
 
-/* Versements d'un étudiant : total, ajout, liste. */
+/* Total d'un panneau, reversement d'un étudiant. */
 .ipes-total { display: flex; align-items: baseline; flex-wrap: wrap; gap: .35rem .6rem; margin: 0; }
 .ipes-total b { font: 700 clamp(1.7rem, 1.4rem + .8vw, 2.1rem)/1 var(--f-texte); letter-spacing: -.02em; color: var(--encre); }
 .ipes-total small { font-size: .9rem; font-weight: 600; color: var(--gris); }
-.ipes-versement-ajout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 11rem) auto; align-items: end; gap: .6rem; margin: 0; padding: 1rem; border-radius: 14px; background: var(--papier); }
-.ipes-versement-ajout .champ { margin: 0; }
-.ipes-versement-ajout .champ input { min-height: 44px; background: var(--blanc); }
-.ipes-versement-ajout .adm-bouton { min-height: 44px; }
-.ipes-versement-ajout.a-erreur { align-items: start; }
-.ipes-versement-ajout.a-erreur .adm-bouton { margin-top: 1.8rem; }
+.ipes-reversement { display: inline-flex; align-items: center; flex-wrap: wrap; gap: .25rem; }
+.ipes-reversement-etat { display: flex; align-items: center; flex-wrap: wrap; gap: .5rem .6rem; margin: 0 0 .9rem; }
+.ipes-reversement-etat > span:last-child { flex-basis: 100%; font-size: .9rem; color: var(--gris); }
 
 /* Bordereau modifiable : cases, puis barre d'envoi collée au bas de l'écran. */
 .ipes-bordereau { padding: 0; overflow: visible; }
@@ -442,7 +442,6 @@ body:not(.espace-admin) .ipes-zone {
 @media (max-width: 640px) {
 	.ipes-outils { width: 100%; }
 	.ipes-recherche, .ipes-recherche input, .ipes-selecteur, .ipes-selecteur select { width: 100%; max-width: none; }
-	.ipes-versement-ajout { grid-template-columns: minmax(0, 1fr); }
 	.ipes-envoi { padding: .8rem 1rem; }
 	.ipes-envoi__actions, .ipes-envoi__actions .adm-bouton { width: 100%; }
 	.ipes-recap__lettres { text-align: left; }

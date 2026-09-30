@@ -6,7 +6,7 @@
  * Accès : rôle « ueb_admin_ipes », compte non suspendu, IPES actif
  * (inc/ipes-espace.php). Vues par ?vue= :
  *   - bord (défaut) : reversements de l'année (héros et jauge), à faire, derniers bordereaux ;
- *   - etudiants     : les étudiants et leurs versements de pension ;
+ *   - etudiants     : les étudiants de l'année, chacun à reverser à la tutelle de sa filière ;
  *   - bordereaux    : les reversements à la tutelle ;
  *   - securite      : son propre mot de passe.
  *
@@ -79,7 +79,7 @@ ueb_page_debut( array(
 					<h1 id="titre-connexion">Espace IPES</h1>
 					<p class="bo-connexion__intro">Pour les établissements privés placés sous la tutelle de l’UEb.</p>
 					<ul class="bo-connexion__points">
-						<li><?php echo ueb_icone( 'utilisateur', 17 ); ?>Déclarer ses étudiants et leurs versements</li>
+						<li><?php echo ueb_icone( 'utilisateur', 17 ); ?>Déclarer ses étudiants inscrits</li>
 						<li><?php echo ueb_icone( 'recu', 17 ); ?>Préparer les bordereaux de reversement</li>
 						<li><?php echo ueb_icone( 'tampon', 17 ); ?>Suivre leur vérification par l’UEb</li>
 					</ul>

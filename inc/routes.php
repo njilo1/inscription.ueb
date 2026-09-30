@@ -186,8 +186,6 @@ function ueb_traiter_action( $action ) {
 		/* Espace de l'administrateur d'un IPES (inc/ipes-espace.php). */
 		'ipes_etudiant_enregistrer'  => 'ueb_action_ipes_etudiant_enregistrer',
 		'ipes_etudiant_supprimer'    => 'ueb_action_ipes_etudiant_supprimer',
-		'ipes_paiement_enregistrer'  => 'ueb_action_ipes_paiement_enregistrer',
-		'ipes_paiement_supprimer'    => 'ueb_action_ipes_paiement_supprimer',
 		'ipes_bordereau_creer'       => 'ueb_action_ipes_bordereau_creer',
 		'ipes_bordereau_enregistrer' => 'ueb_action_ipes_bordereau_enregistrer',
 		'ipes_bordereau_supprimer'   => 'ueb_action_ipes_bordereau_supprimer',

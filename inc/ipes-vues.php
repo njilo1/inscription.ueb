@@ -71,49 +71,63 @@ function ueb_ipes_niveau( $code ) {
 	return trim( preg_replace( '/^.*—\s*/u', '', UEB_NIVEAUX_INSCRIPTION[ $code ] ?? (string) $code ) );
 }
 
-/** « 1 versement », « 3 versements ». */
+/** « 1 étudiant », « 3 étudiants ». */
 function ueb_ipes_pluriel( $n, $mot, $pluriel = null ) {
 	return (int) $n . ' ' . ( (int) $n > 1 ? ( $pluriel ?? $mot . 's' ) : $mot );
+}
+
+/**
+ * Reversement d'un étudiant : son bordereau (numéro et statut), ou « À
+ * reverser » s'il n'est dans aucun. Côté UEb, un brouillon de l'IPES ne se
+ * montre pas : l'étudiant y reste « à reverser ».
+ *
+ * @param object $e    Étudiant avec bordereau_numero et bordereau_statut (ueb_ipes_etudiants).
+ * @param bool   $ipes Vu par l'IPES lui-même.
+ */
+function ueb_ipes_reversement_etudiant( $e, $ipes = false ) {
+	$statut = $e->bordereau_id ? (string) $e->bordereau_statut : '';
+	if ( '' === $statut || ( ! $ipes && 'brouillon' === $statut ) ) {
+		return '<span class="ipes-statut ipes-statut--libre">' . ueb_icone( 'recu', 14 ) . 'À reverser</span>';
+	}
+	$numero = ueb_ipes_numero( (object) array( 'id' => $e->bordereau_id, 'numero' => $e->bordereau_numero ) );
+	return '<span class="ipes-reversement"><span class="ipes-lien-bordereau">' . esc_html( $numero ) . '</span>' . ueb_ipes_statut( $statut ) . '</span>';
 }
 
 /* ---------- Héros des reversements ---------- */
 
 /**
  * Le chiffre fort de l'écran : ce que l'UEb a vérifié des reversements de
- * l'année, avec la jauge Remotion (vérifié / montant annuel dû) quand ce
- * montant est connu. Barre en quatre parts de la même base : vérifié, en
- * vérification, encaissé pas encore reversé, reste.
+ * l'année, avec la jauge Remotion (vérifié / dû). Le dû est connu dès qu'il y
+ * a des étudiants : leur nombre × le montant par étudiant. Barre en trois
+ * parts du dû : vérifié, en vérification, pas encore reversé.
  *
  * @param object $ipes IPES (ueb_ipes).
  * @param array  $o    titre, intro, lien (array( url, libellé )), pour
  *                     ('ipes' : l'IPES parle de « ta tutelle » ; 'ueb' sinon).
  */
 function ueb_ipes_hero( $ipes, array $o = array() ) {
-	$annee  = ueb_annee_academique();
-	$o      = array_merge( array( 'titre' => 'Reversements ' . $annee['libelle'], 'intro' => '', 'lien' => null, 'pour' => 'ueb' ), $o );
-	$totaux = ueb_ipes_totaux( $ipes->id );
-	$jauge  = ueb_ipes_jauge( $ipes->id );
-	$du     = $jauge['du'];
+	$annee = ueb_annee_academique();
+	$o     = array_merge( array( 'titre' => 'Reversements ' . $annee['libelle'], 'intro' => '', 'lien' => null, 'pour' => 'ueb' ), $o );
+	$jauge = ueb_ipes_jauge( $ipes->id );
+	$du    = $jauge['du'];
 
-	/* Parts successives, bornées à la base : jamais plus de 100 % au total. */
-	$base    = null !== $du ? $du : max( 1, (int) $totaux['encaisse'] );
-	$reste_b = $base;
+	/* Parts successives, bornées au dû : jamais plus de 100 % au total. */
+	$base    = max( 1, $du );
+	$reste_b = $du;
 	$parts   = array();
 	foreach ( array(
 		'encaisse'     => array( 'Vérifié par l’UEb', $jauge['verifie'] ),
 		'verification' => array( 'En vérification', max( 0, $jauge['envoye'] - $jauge['verifie'] ) ),
-		'declare'      => array( 'Pas encore reversé', max( 0, (int) $totaux['encaisse'] - $jauge['envoye'] ) ),
 	) as $cle => $p ) {
 		$v              = min( $reste_b, max( 0, (int) $p[1] ) );
 		$reste_b       -= $v;
 		$parts[ $cle ] = array( $p[0], $v );
 	}
-	if ( null !== $du ) {
-		$parts['non_declare'] = array( 'Pas encore encaissé', $reste_b );
-	}
-	$taux = null !== $du && $du > 0 ? min( 100, round( 100 * $jauge['verifie'] / $du, 1 ) ) : null;
+	$parts['declare'] = array( 'Pas encore reversé', $reste_b );
+	$taux       = $du > 0 ? min( 100, round( 100 * $jauge['verifie'] / $du, 1 ) ) : null;
 	$a_verifier = count( array_filter( ueb_ipes_bordereaux( $ipes->id ), static fn( $b ) => 'envoye' === $b->statut ) );
-	$tutelle    = 'ipes' === $o['pour'] ? 'ta tutelle' : ( 1 === count( $ipes->tutelles ) ? 'sa tutelle' : 'ses tutelles' );
+	$tutelle    = 'ipes' === $o['pour'] ? ( 1 === count( $ipes->tutelles ) ? 'ta tutelle' : 'tes tutelles' ) : ( 1 === count( $ipes->tutelles ) ? 'sa tutelle' : 'ses tutelles' );
+	$unitaire   = ueb_fcfa( UEB_IPES_REVERSEMENT_PAR_ETUDIANT );
 	?>
 	<section class="adm-hero ipes-hero<?php echo null === $taux ? ' ipes-hero--sans-jauge' : ''; ?>" aria-labelledby="ipes-hero-titre">
 		<?php if ( null !== $taux ) : ?>
@@ -123,7 +137,7 @@ function ueb_ipes_hero( $ipes, array $o = array() ) {
 					'jauge',
 					array( 'taux' => $taux, 'libelle' => 'vérifiés' ),
 					'animation--jauge',
-					'Reversements vérifiés : ' . ueb_pourcent( $taux ) . ' du montant annuel dû',
+					'Reversements vérifiés : ' . ueb_pourcent( $taux ) . ' du montant dû',
 					ueb_bord_jauge_repli( $taux, 'vérifiés' )
 				);
 				?>
@@ -134,25 +148,19 @@ function ueb_ipes_hero( $ipes, array $o = array() ) {
 			<header class="adm-hero__tete">
 				<div>
 					<h2 id="ipes-hero-titre"><?php echo esc_html( $o['titre'] ); ?></h2>
-					<p><?php echo esc_html( $o['intro'] ?: 'Seuls les bordereaux vérifiés par l’UEb comptent comme reversés à ' . $tutelle . '.' ); ?></p>
+					<p><?php echo esc_html( $o['intro'] ?: 'Chaque étudiant inscrit vaut ' . $unitaire . ' à reverser à ' . $tutelle . '. Seuls les bordereaux vérifiés comptent comme reversés.' ); ?></p>
 				</div>
 				<?php if ( $o['lien'] ) : ?>
 					<a class="adm-hero__lien" href="<?php echo esc_url( $o['lien'][0] ); ?>"><?php echo esc_html( $o['lien'][1] ); ?><?php echo ueb_icone( 'fleche', 16 ); ?></a>
 				<?php endif; ?>
 			</header>
 
-			<?php if ( ! $totaux['encaisse'] && ! $jauge['envoye'] ) : ?>
-				<p class="adm-hero__vide"><?php echo ueb_icone( 'banque', 20 ); ?><?php echo 'ipes' === $o['pour'] ? 'Aucun versement cette année. Ajoute tes étudiants et leurs versements : le suivi des reversements apparaîtra ici.' : 'Aucun versement déclaré par l’IPES cette année pour l’instant.'; ?></p>
+			<?php if ( ! $jauge['etudiants'] && ! $jauge['envoye'] ) : ?>
+				<p class="adm-hero__vide"><?php echo ueb_icone( 'groupe', 20 ); ?><?php echo 'ipes' === $o['pour'] ? 'Aucun étudiant cette année. Ajoute tes étudiants : le montant à reverser et le suivi apparaîtront ici.' : 'Aucun étudiant déclaré par l’IPES cette année pour l’instant.'; ?></p>
 			<?php else : ?>
 				<p class="adm-hero__montant">
 					<b><?php echo esc_html( ueb_formater_montant( $jauge['verifie'] ) ); ?><small>FCFA</small></b>
-					<span>
-						<?php
-						echo esc_html( null !== $du
-							? 'vérifiés sur ' . ueb_fcfa( $du ) . ' dus pour l’année (montant indicatif). Reste à percevoir : ' . ueb_fcfa( $jauge['reste'] ) . '.'
-							: 'vérifiés sur ' . ueb_fcfa( $totaux['encaisse'] ) . ' de pensions encaissées. Le montant annuel dû n’est pas encore renseigné.' );
-						?>
-					</span>
+					<span><?php echo esc_html( 'vérifiés sur ' . ueb_fcfa( $du ) . ' dus pour ' . ueb_ipes_pluriel( $jauge['etudiants'], 'étudiant' ) . ' (' . $unitaire . ' chacun). Reste à percevoir : ' . ueb_fcfa( $jauge['reste'] ) . '.' ); ?></span>
 				</p>
 
 				<div class="suivi-barre suivi-barre--hero adm-hero__barre" role="img" aria-label="<?php echo esc_attr( implode( ', ', array_map( static fn( $p ) => $p[0] . ' ' . ueb_fcfa( $p[1] ), $parts ) ) ); ?>">
@@ -177,11 +185,22 @@ function ueb_ipes_hero( $ipes, array $o = array() ) {
 				</ul>
 
 				<dl class="adm-hero__situations">
-					<div><dt>Étudiants de l’année</dt><dd><?php echo esc_html( ueb_formater_montant( $totaux['etudiants'] ) ); ?></dd></div>
-					<div><dt>Pensions encaissées</dt><dd><?php echo esc_html( ueb_adm_montant_court( $totaux['encaisse'] ) ); ?><small>FCFA</small></dd></div>
+					<div><dt>Étudiants de l’année</dt><dd><?php echo esc_html( ueb_formater_montant( $jauge['etudiants'] ) ); ?></dd></div>
+					<div><dt>Pas encore dans un bordereau</dt><dd><?php echo esc_html( ueb_formater_montant( $jauge['libres'] ) ); ?></dd></div>
 					<div><dt>Reversé à <?php echo esc_html( $tutelle ); ?></dt><dd><?php echo esc_html( ueb_adm_montant_court( $jauge['envoye'] ) ); ?><small>FCFA</small></dd></div>
 					<div><dt><?php echo 'ipes' === $o['pour'] ? 'Bordereaux en vérification' : 'Bordereaux à vérifier'; ?></dt><dd><?php echo (int) $a_verifier; ?></dd></div>
 				</dl>
+
+				<?php if ( count( $jauge['par_tutelle'] ) > 1 ) : ?>
+					<ul class="ipes-hero__tutelles">
+						<?php foreach ( $jauge['par_tutelle'] as $sigle => $t ) : ?>
+							<li>
+								<?php echo ueb_ipes_pastilles_html( array( $sigle ) ); // phpcs:ignore -- échappé ?>
+								<span><?php echo esc_html( ueb_ipes_pluriel( $t['etudiants'], 'étudiant' ) . ' · ' . ueb_fcfa( $t['verifie'] ) . ' vérifiés sur ' . ueb_fcfa( $t['du'] ) ); ?></span>
+							</li>
+						<?php endforeach; ?>
+					</ul>
+				<?php endif; ?>
 			<?php endif; ?>
 		</div>
 	</section>
@@ -204,7 +223,7 @@ function ueb_ipes_bordereaux_envoyes( $tutelles = null ) {
 
 /**
  * Une ligne par IPES : identité, tutelles, étudiants, reversements vérifiés
- * (barre sur le montant dû), ce qui attend une décision. Toute la ligne
+ * (barre sur le montant dû : étudiants × montant par étudiant), ce qui attend une décision. Toute la ligne
  * mène à la fiche (lien étiré), même après un filtrage en direct.
  *
  * @param array $liste IPES (ueb_ipes_liste ou ueb_ipes_sous_tutelle).
@@ -225,7 +244,6 @@ function ueb_ipes_registre( array $liste, array $o ) {
 		</tr></thead>
 		<tbody>
 		<?php foreach ( $liste as $ipes ) :
-			$totaux = ueb_ipes_totaux( $ipes->id );
 			$jauge  = ueb_ipes_jauge( $ipes->id );
 			$n      = (int) ( $o['a_verifier'] )( $ipes );
 			$actif  = (int) $ipes->actif;
@@ -242,7 +260,7 @@ function ueb_ipes_registre( array $liste, array $o ) {
 					</span>
 				</span></td>
 				<td data-titre="Tutelle"><?php echo ueb_ipes_pastilles_html( $ipes->tutelles ); // phpcs:ignore -- échappé ?></td>
-				<td class="num ipes-ligne__nombre" data-titre="Étudiants"><b><?php echo (int) $totaux['etudiants']; ?></b></td>
+				<td class="num ipes-ligne__nombre" data-titre="Étudiants"><b><?php echo (int) $jauge['etudiants']; ?></b></td>
 				<td class="ipes-ligne__mesure" data-titre="Reversements vérifiés">
 					<?php if ( null !== $taux ) : ?>
 						<span class="ipes-mesure">
@@ -250,11 +268,8 @@ function ueb_ipes_registre( array $liste, array $o ) {
 							<b><?php echo esc_html( ueb_pourcent( $taux ) ); ?></b>
 						</span>
 						<small><?php echo esc_html( ueb_fcfa( $jauge['verifie'] ) . ' sur ' . ueb_fcfa( $jauge['du'] ) ); ?></small>
-					<?php elseif ( $jauge['verifie'] ) : ?>
-						<b class="ipes-ligne__montant"><?php echo esc_html( ueb_fcfa( $jauge['verifie'] ) ); ?></b>
-						<small>Montant dû non renseigné</small>
 					<?php else : ?>
-						<span class="ipes-ligne__rien">Aucun reversement vérifié</span>
+						<span class="ipes-ligne__rien">Aucun étudiant cette année</span>
 					<?php endif; ?>
 				</td>
 				<td data-titre="À traiter">
@@ -279,21 +294,23 @@ function ueb_ipes_registre( array $liste, array $o ) {
 /* ---------- Étudiants ---------- */
 
 /**
- * Étudiants d'un IPES : identité (initiales, nom, matricule), filière et
- * niveau, versements, total payé. Toute la ligne mène au détail.
+ * Étudiants d'un IPES : identité (initiales, nom, matricule), filière,
+ * niveau et tutelle, reversement (bordereau et statut, ou « À reverser »).
+ * Toute la ligne mène au détail.
  *
  * @param array    $liste Étudiants (ueb_ipes_etudiants).
  * @param callable $url   $e => adresse du détail.
- * @param string   $aller Libellé accessible du lien (« Ouvrir », « Versements de »).
+ * @param string   $aller Libellé accessible du lien.
+ * @param bool     $pour_ipes Vue de l'IPES lui-même (ses brouillons s'affichent).
  */
-function ueb_ipes_etudiants_liste( array $liste, callable $url, $aller = 'Ouvrir la fiche de' ) {
+function ueb_ipes_etudiants_liste( array $liste, callable $url, $aller = 'Ouvrir la fiche de', $pour_ipes = false ) {
 	?>
 	<table class="adm-registre__table ipes-table ipes-table--etudiants">
 		<thead><tr>
 			<th scope="col">Étudiant</th>
 			<th scope="col">Filière</th>
-			<th scope="col" class="num">Versements</th>
-			<th scope="col" class="num">Total payé</th>
+			<th scope="col">Tutelle</th>
+			<th scope="col">Reversement</th>
 			<th scope="col"><span class="sr">Ouvrir</span></th>
 		</tr></thead>
 		<tbody>
@@ -304,8 +321,8 @@ function ueb_ipes_etudiants_liste( array $liste, callable $url, $aller = 'Ouvrir
 					<span class="ipes-ligne__texte"><b><?php echo esc_html( $nom ); ?></b><small><?php echo esc_html( $e->matricule ); ?></small></span>
 				</span></td>
 				<td data-titre="Filière"><span class="ipes-ligne__texte"><span><?php echo esc_html( $e->filiere ?: '—' ); ?></span><small><?php echo esc_html( ueb_ipes_niveau( $e->niveau ) ); ?></small></span></td>
-				<td class="num ipes-ligne__nombre" data-titre="Versements"><b><?php echo (int) $e->nb_versements; ?></b></td>
-				<td class="num ipes-ligne__montant" data-titre="Total payé"><?php if ( (int) $e->total_paye ) : ?><?php echo esc_html( ueb_formater_montant( (int) $e->total_paye ) ); ?> <small>FCFA</small><?php else : ?><span class="ipes-ligne__rien">Aucun versement</span><?php endif; ?></td>
+				<td data-titre="Tutelle"><?php echo $e->tutelle ? ueb_ipes_pastilles_html( array( $e->tutelle ) ) : '—'; // phpcs:ignore -- échappé ?></td>
+				<td data-titre="Reversement"><?php echo ueb_ipes_reversement_etudiant( $e, $pour_ipes ); // phpcs:ignore -- échappé ?></td>
 				<td class="ipes-ligne__aller"><a class="ipes-ouvrir" href="<?php echo esc_url( $url( $e ) ); ?>" aria-label="<?php echo esc_attr( $aller . ' ' . $nom ); ?>"><?php echo ueb_icone( 'fleche', 18 ); ?></a></td>
 			</tr>
 		<?php endforeach; ?>
@@ -361,9 +378,8 @@ function ueb_ipes_bordereaux_liste( array $bordereaux, array $o = array() ) {
 		</tr></thead>
 		<tbody>
 		<?php foreach ( $bordereaux as $b ) :
-			/* Envoyé : total figé ; brouillon ou rejeté : somme des versements cochés. */
-			$montant = isset( $b->montant_coche ) && in_array( $b->statut, UEB_IPES_BORDEREAU_MODIFIABLE, true ) ? (int) $b->montant_coche : (int) $b->total;
-			$details = array( ueb_ipes_pluriel( $b->nb_versements, 'versement' ) );
+			$montant = ueb_ipes_montant_bordereau( $b );
+			$details = array( ueb_ipes_pluriel( $b->nb_etudiants, 'étudiant' ) );
 			if ( $b->date_envoi ) {
 				$details[] = 'envoyé le ' . mysql2date( 'd/m/Y', $b->date_envoi );
 			}
@@ -432,7 +448,7 @@ function ueb_ipes_decision( $b, array $o ) {
 			<form method="post" action="<?php echo esc_url( $o['url'] ); ?>">
 				<?php $caches(); ?>
 				<input type="hidden" name="decision" value="rejete">
-				<label><span>Motif du rejet</span><textarea name="motif" rows="3" minlength="5" maxlength="255" required placeholder="Par exemple : le versement de Paul Mbarga ne figure pas sur le relevé bancaire."></textarea></label>
+				<label><span>Motif du rejet</span><textarea name="motif" rows="3" minlength="5" maxlength="255" required placeholder="Par exemple : le montant du reçu bancaire ne correspond pas au total du bordereau."></textarea></label>
 				<div class="bo-agent-mdp__actions"><button class="btn btn--lien btn--petit" type="button" data-fermer-agent-mdp>Annuler</button><button class="btn btn--danger btn--petit" type="submit">Rejeter le bordereau</button></div>
 			</form>
 		</dialog>

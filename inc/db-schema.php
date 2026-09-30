@@ -123,7 +123,6 @@ function ueb_insc_schema() {
 			convention_ref VARCHAR(100) NOT NULL DEFAULT '',
 			convention_signee_le DATE NULL,
 			convention_fin_le DATE NULL,
-			montant_annuel_du INT UNSIGNED NULL,
 			actif TINYINT(1) NOT NULL DEFAULT 1,
 			modifie_par BIGINT UNSIGNED NULL,
 			date_creation DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
