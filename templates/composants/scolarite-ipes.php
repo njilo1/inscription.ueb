@@ -7,6 +7,8 @@
  *   - ?ipes={id}          : la fiche (reversements, bordereaux, étudiants,
  *                           coordonnées) ;
  *   - &etudiant={id}      : un étudiant et son reversement.
+ * Tout est limité aux tutelles que le compte regarde (ueb_ipes_tutelles_vues) :
+ * la FSJP ne voit ni les étudiants, ni les montants, ni les bordereaux de la FS.
  * La décision sur un bordereau (« ueb_verifier_ipes ») s'ajoute dans le bloc
  * Bordereaux. Attend $ici et $annee (page-scolarite.php), qui n'affiche pas
  * son en-tête générique sur la fiche : elle a le sien.
@@ -59,6 +61,7 @@ $adresse = static fn( array $args = array() ) => add_query_arg( array_merge( arr
 				ueb_ipes_registre( $liste, array(
 					'url'        => static fn( $ipes ) => $adresse( array( 'ipes' => (int) $ipes->id ) ),
 					'a_verifier' => static fn( $ipes ) => count( array_filter( ueb_ipes_bordereaux_pour_tutelle( $ipes->id ), static fn( $b ) => 'envoye' === $b->statut ) ),
+					'tutelles'   => 'ueb_ipes_tutelles_vues',
 				) );
 				?>
 			<?php endif; ?>
@@ -79,6 +82,10 @@ $adresse = static fn( array $args = array() ) => add_query_arg( array_merge( arr
 
 		<?php
 		$etudiant  = ueb_ipes_etudiant( $ipes->id, (int) $_GET['etudiant'] );
+		/* Un étudiant d'une filière d'une autre tutelle n'existe pas pour cette scolarité. */
+		if ( $etudiant && ! in_array( $etudiant->tutelle, ueb_ipes_tutelles_vues( $ipes ), true ) ) {
+			$etudiant = null;
+		}
 		$bordereau = $etudiant && $etudiant->bordereau_id ? ueb_ipes_bordereau( $ipes->id, $etudiant->bordereau_id ) : null;
 		?>
 		<a class="fil" href="<?php echo esc_url( $adresse( array( 'ipes' => (int) $ipes->id ) ) . '#etudiants' ); ?>"><?php echo ueb_icone( 'fleche-g', 18 ); ?><?php echo esc_html( 'Étudiants de ' . $ipes->sigle ); ?></a>
@@ -125,7 +132,8 @@ $adresse = static fn( array $args = array() ) => add_query_arg( array_merge( arr
 		<?php
 		$bordereaux = ueb_ipes_bordereaux_pour_tutelle( $ipes->id );
 		$recherche  = sanitize_text_field( wp_unslash( $_GET['q'] ?? '' ) );
-		$etudiants  = ueb_ipes_etudiants( $ipes->id, array( 'recherche' => $recherche ) );
+		$vues       = ueb_ipes_tutelles_vues( $ipes );
+		$etudiants  = ueb_ipes_etudiants( $ipes->id, array( 'recherche' => $recherche, 'tutelle' => $vues ) );
 		$en_attente = count( array_filter( $bordereaux, static fn( $b ) => 'envoye' === $b->statut ) );
 		?>
 		<a class="fil" href="<?php echo esc_url( $adresse() ); ?>"><?php echo ueb_icone( 'fleche-g', 18 ); ?>Tous les IPES</a>
@@ -147,7 +155,7 @@ $adresse = static fn( array $args = array() ) => add_query_arg( array_merge( arr
 		</header>
 		<?php ueb_afficher_flash(); ?>
 
-		<?php ueb_ipes_hero( $ipes, array( 'pour' => 'ueb' ) ); ?>
+		<?php ueb_ipes_hero( $ipes, array( 'pour' => 'ueb', 'tutelles' => $vues ) ); ?>
 
 		<section id="bordereaux" class="adm-panneau ipes-registre" aria-labelledby="sco-bordereaux-titre" tabindex="-1">
 			<header class="adm-panneau__tete">
@@ -177,7 +185,7 @@ $adresse = static fn( array $args = array() ) => add_query_arg( array_merge( arr
 		<div class="ipes-grille">
 			<section id="etudiants" class="adm-panneau ipes-registre" aria-labelledby="sco-etudiants-titre">
 				<header class="adm-panneau__tete">
-					<div><h2 id="sco-etudiants-titre">Étudiants <?php echo esc_html( $annee['libelle'] ); ?></h2><p>Déclarés par l’IPES, avec la tutelle de leur filière et leur reversement.</p></div>
+					<div><h2 id="sco-etudiants-titre">Étudiants <?php echo esc_html( $annee['libelle'] ); ?></h2><p><?php echo esc_html( 'Ceux des filières rattachées à la ' . implode( ' et à la ', $vues ) . ', avec leur reversement.' ); ?></p></div>
 					<form class="ipes-outils" method="get" action="<?php echo esc_url( ueb_url_scolarite() ); ?>" role="search" aria-label="Rechercher un étudiant" data-filtres-direct="sco-ipes-etudiants">
 						<input type="hidden" name="vue" value="ipes">
 						<input type="hidden" name="ipes" value="<?php echo (int) $ipes->id; ?>">

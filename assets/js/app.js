@@ -191,6 +191,31 @@
 		maj();
 	});
 
+	/* Étudiant d'un IPES à plusieurs tutelles : la faculté choisie (select
+	   « tutelle ») ne laisse dans la liste des filières que les siennes.
+	   <script data-filieres-tutelle> donne filière => faculté. */
+	$$("script[data-filieres-tutelle]").forEach((donnees) => {
+		const form = donnees.closest("form");
+		const tutelle = form && $("select[name=tutelle]", form);
+		const filiere = form && $("select[name=filiere_id]", form);
+		if (!tutelle || !filiere) return;
+		const carte = JSON.parse(donnees.textContent || "{}");
+		const vide = filiere.options[0];
+		const toutes = [...filiere.options].filter((o) => o.value !== "");
+		const filtrer = () => {
+			const t = tutelle.value;
+			const choisie = filiere.value;
+			toutes.forEach((o) => o.remove());
+			const gardees = toutes.filter((o) => carte[o.value] === t);
+			gardees.forEach((o) => filiere.appendChild(o));
+			filiere.value = gardees.some((o) => o.value === choisie) ? choisie : "";
+			filiere.disabled = !t;
+			vide.textContent = !t ? "Choisis d’abord la faculté" : gardees.length ? "Choisir…" : "Aucune filière pour cette faculté";
+		};
+		tutelle.addEventListener("change", filtrer);
+		filtrer();
+	});
+
 	/* Formulaires [data-garder-selection="#id"] (reçus d'un bordereau) : si la
 	   sélection du formulaire visé a changé sans être enregistrée, ses cases
 	   cochées partent avec l'envoi et le serveur les enregistre d'abord. */

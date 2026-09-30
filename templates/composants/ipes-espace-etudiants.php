@@ -16,17 +16,22 @@ $filieres         = ueb_ipes_filieres( $ipes->id );
 $filieres_actives = array_filter( $filieres, static fn( $f ) => (int) $f->actif );
 /* Plusieurs tutelles : la filière porte la sienne, c'est elle qui reçoit le reversement. */
 $libelle_filiere  = static fn( $f ) => $f->libelle . ( count( $ipes->tutelles ) > 1 ? ' — ' . $f->etablissement : '' );
+/* Faculté, filière et niveau du dernier étudiant ajouté : repris pour saisir le suivant. */
+$dernier_ajout    = (array) ( $_SESSION['ueb_ipes_dernier_ajout'] ?? array() );
 $etudiant_demande = (int) ( $_GET['etudiant'] ?? 0 );
 
 /**
  * Champs d'un étudiant (ajout ou modification), sur une colonne.
  * $valeur : callable champ => valeur affichée ; $garder : filière retirée à garder dans la liste.
  */
-$champs_etudiant = static function ( callable $valeur, array $erreurs, $garder = null, $focus = false ) use ( $filieres, $libelle_filiere ) {
-	$options = array();
+$champs_etudiant = static function ( callable $valeur, array $erreurs, $garder = null, $focus = false ) use ( $filieres, $ipes ) {
+	$plusieurs = count( $ipes->tutelles ) > 1;
+	$options   = array();
+	$carte     = array(); // filière => tutelle, pour ne proposer que les filières de la faculté choisie
 	foreach ( $filieres as $f ) {
 		if ( (int) $f->actif || (int) $f->id === (int) $garder ) {
-			$options[ $f->id ] = $libelle_filiere( $f ) . ( (int) $f->actif ? '' : ' (retirée)' );
+			$options[ $f->id ] = $f->libelle . ( (int) $f->actif ? '' : ' (retirée)' );
+			$carte[ $f->id ]   = $f->etablissement;
 		}
 	}
 	$niveaux = array_combine( array_keys( UEB_NIVEAUX_INSCRIPTION ), array_map( 'ueb_ipes_niveau', array_keys( UEB_NIVEAUX_INSCRIPTION ) ) );
@@ -39,6 +44,16 @@ $champs_etudiant = static function ( callable $valeur, array $erreurs, $garder =
 		?>
 	</div>
 	<?php
+	if ( $plusieurs ) {
+		$facultes = array();
+		foreach ( $ipes->tutelles as $s ) {
+			$facultes[ $s ] = $s . ' — ' . ( ueb_etablissement( $s )['fr'] ?? $s );
+		}
+		/* Faculté de l'étudiant : saisie, sinon celle de sa filière. */
+		$tutelle = $valeur( 'tutelle' ) ?: ( $carte[ (int) $valeur( 'filiere_id' ) ] ?? '' );
+		ueb_champ( array( 'nom' => 'tutelle', 'libelle' => 'Faculté de tutelle', 'type' => 'select', 'icone' => 'bouclier', 'options' => $facultes, 'valeur' => $tutelle, 'erreur' => $erreurs['tutelle'] ?? '', 'aide' => 'Celle qui reçoit le reversement : elle détermine les filières proposées.' ) );
+		printf( '<script type="application/json" data-filieres-tutelle>%s</script>', wp_json_encode( array_map( 'strval', $carte ) ) );
+	}
 	ueb_champ( array( 'nom' => 'filiere_id', 'libelle' => 'Filière', 'type' => 'select', 'icone' => 'fichier', 'options' => $options, 'valeur' => $valeur( 'filiere_id' ), 'erreur' => $erreurs['filiere_id'] ?? '' ) );
 	?>
 	<div class="formulaire__rangee">
@@ -127,7 +142,11 @@ $champs_etudiant = static function ( callable $valeur, array $erreurs, $garder =
 					<form class="formulaire" method="post" action="<?php echo esc_url( ueb_url_espace_ipes() ); ?>" data-formulaire novalidate>
 						<?php ueb_champ_csrf(); ?>
 						<input type="hidden" name="ueb_action" value="ipes_etudiant_enregistrer">
-						<?php $champs_etudiant( static fn( $c ) => (string) ( $saisie[ $c ] ?? '' ), $erreurs_etudiant, null, isset( $_GET['ajout'] ) && ! $erreurs_etudiant ); ?>
+						<?php
+						/* Après une erreur, la saisie ; sinon faculté, filière et niveau du dernier ajout. */
+						$valeur_ajout = $erreurs_etudiant ? static fn( $c ) => (string) ( $saisie[ $c ] ?? '' ) : static fn( $c ) => (string) ( $dernier_ajout[ $c ] ?? '' );
+						$champs_etudiant( $valeur_ajout, $erreurs_etudiant, null, isset( $_GET['ajout'] ) && ! $erreurs_etudiant );
+						?>
 						<button class="adm-bouton adm-bouton--primaire ipes-bouton-large" type="submit"><?php echo ueb_icone( 'plus', 16 ); ?>Ajouter l’étudiant</button>
 					</form>
 				</section>

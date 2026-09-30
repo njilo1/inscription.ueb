@@ -334,8 +334,10 @@ function ueb_ipes_bordereau_decider( $id, $verifie, $motif = '' ) {
  *         total des bordereaux envoyés ou vérifiés ; verifie : total vérifié ;
  *         reste : du − vérifié, jamais négatif. par_tutelle : sigle => les
  *         mêmes clés, pour chaque tutelle de l'IPES.
+ * @param array|null $tutelles Limite la jauge à ces tutelles (ce que voit une
+ *                            scolarité) ; null pour l'IPES entier.
  */
-function ueb_ipes_jauge( $ipes_id, $annee = null ) {
+function ueb_ipes_jauge( $ipes_id, $annee = null, $tutelles = null ) {
 	global $wpdb;
 	$annee = $annee ?? ueb_annee_academique()['code'];
 	$ipes  = ueb_ipes( $ipes_id );
@@ -368,6 +370,10 @@ function ueb_ipes_jauge( $ipes_id, $annee = null ) {
 		$par[ $l->tutelle ]            = $par[ $l->tutelle ] ?? $vide;
 		$par[ $l->tutelle ]['envoye']  = (int) $l->envoye;
 		$par[ $l->tutelle ]['verifie'] = (int) $l->verifie;
+	}
+
+	if ( null !== $tutelles ) {
+		$par = array_intersect_key( $par, array_flip( array_map( 'strtoupper', (array) $tutelles ) ) );
 	}
 
 	$total = $vide;

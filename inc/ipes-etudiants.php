@@ -45,7 +45,8 @@ function ueb_ipes_etudiant( $ipes_id, $id ) {
  * bordereau (numéro et statut), triés par nom.
  *
  * @param array $filtres annee (défaut : l'année en cours), recherche (matricule,
- *                       nom ou prénom), filiere_id, tutelle (sigle).
+ *                       nom ou prénom), filiere_id, tutelle (un sigle, ou une
+ *                       liste de sigles : ce que voit une scolarité de tutelle).
  */
 function ueb_ipes_etudiants( $ipes_id, array $filtres = array() ) {
 	global $wpdb;
@@ -65,7 +66,14 @@ function ueb_ipes_etudiants( $ipes_id, array $filtres = array() ) {
 		$where[]  = 'e.filiere_id = %d';
 		$params[] = (int) $filtres['filiere_id'];
 	}
-	if ( ! empty( $filtres['tutelle'] ) ) {
+	if ( isset( $filtres['tutelle'] ) && is_array( $filtres['tutelle'] ) ) {
+		$sigles = array_values( array_map( 'strtoupper', $filtres['tutelle'] ) );
+		if ( ! $sigles ) {
+			return array();
+		}
+		$where[] = 'f.etablissement IN (' . implode( ',', array_fill( 0, count( $sigles ), '%s' ) ) . ')';
+		$params  = array_merge( $params, $sigles );
+	} elseif ( ! empty( $filtres['tutelle'] ) ) {
 		$where[]  = 'f.etablissement = %s';
 		$params[] = strtoupper( (string) $filtres['tutelle'] );
 	}
@@ -161,6 +169,9 @@ function ueb_ipes_etudiant_valider( $ipes_id, array $d, $existant = null ) {
  * Ajoute ($id = 0, pour l'année en cours) ou modifie un étudiant de l'IPES.
  * En cas d'erreur, le WP_Error porte le tableau champ => message.
  *
+ * Si la saisie porte « tutelle » (formulaire de l'espace : faculté choisie
+ * avant la filière), la filière doit dépendre de cette faculté.
+ *
  * @return int|WP_Error
  */
 function ueb_ipes_etudiant_enregistrer( $ipes_id, array $d, $id = 0 ) {
@@ -175,8 +186,17 @@ function ueb_ipes_etudiant_enregistrer( $ipes_id, array $d, $id = 0 ) {
 			return new WP_Error( 'ueb_ipes_etudiant', 'Cet étudiant figure dans un bordereau envoyé : il n’est plus modifiable.' );
 		}
 	}
+	$tutelle = array_key_exists( 'tutelle', $d ) ? strtoupper( trim( (string) $d['tutelle'] ) ) : null;
 	$d       = ueb_ipes_etudiant_normaliser( $d );
 	$erreurs = ueb_ipes_etudiant_valider( $ipes_id, $d, $existant );
+	if ( null !== $tutelle ) {
+		$ipes = ueb_ipes( $ipes_id );
+		if ( ! $ipes || ! in_array( $tutelle, $ipes->tutelles, true ) ) {
+			$erreurs['tutelle'] = 'Choisis la faculté de tutelle de l’étudiant.';
+		} elseif ( ! isset( $erreurs['filiere_id'] ) && ueb_ipes_filiere( $d['filiere_id'] )->etablissement !== $tutelle ) {
+			$erreurs['filiere_id'] = sprintf( 'Cette filière ne dépend pas de la %s : choisis une filière de cette faculté.', $tutelle );
+		}
+	}
 	if ( $erreurs ) {
 		return new WP_Error( 'ueb_ipes_etudiant', 'Corrige les champs signalés.', $erreurs );
 	}

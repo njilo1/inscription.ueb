@@ -103,12 +103,14 @@ function ueb_ipes_reversement_etudiant( $e, $ipes = false ) {
  *
  * @param object $ipes IPES (ueb_ipes).
  * @param array  $o    titre, intro, lien (array( url, libellé )), pour
- *                     ('ipes' : l'IPES parle de « ta tutelle » ; 'ueb' sinon).
+ *                     ('ipes' : l'IPES parle de « ta tutelle » ; 'ueb' sinon),
+ *                     tutelles (sigles : ne montrer que ce qui les concerne,
+ *                     vue d'une scolarité ; null pour l'IPES entier).
  */
 function ueb_ipes_hero( $ipes, array $o = array() ) {
 	$annee = ueb_annee_academique();
-	$o     = array_merge( array( 'titre' => 'Reversements ' . $annee['libelle'], 'intro' => '', 'lien' => null, 'pour' => 'ueb' ), $o );
-	$jauge = ueb_ipes_jauge( $ipes->id );
+	$o     = array_merge( array( 'titre' => 'Reversements ' . $annee['libelle'], 'intro' => '', 'lien' => null, 'pour' => 'ueb', 'tutelles' => null ), $o );
+	$jauge = ueb_ipes_jauge( $ipes->id, null, $o['tutelles'] );
 	$du    = $jauge['du'];
 
 	/* Parts successives, bornées au dû : jamais plus de 100 % au total. */
@@ -125,8 +127,12 @@ function ueb_ipes_hero( $ipes, array $o = array() ) {
 	}
 	$parts['declare'] = array( 'Pas encore reversé', $reste_b );
 	$taux       = $du > 0 ? min( 100, round( 100 * $jauge['verifie'] / $du, 1 ) ) : null;
-	$a_verifier = count( array_filter( ueb_ipes_bordereaux( $ipes->id ), static fn( $b ) => 'envoye' === $b->statut ) );
-	$tutelle    = 'ipes' === $o['pour'] ? ( 1 === count( $ipes->tutelles ) ? 'ta tutelle' : 'tes tutelles' ) : ( 1 === count( $ipes->tutelles ) ? 'sa tutelle' : 'ses tutelles' );
+	$a_verifier = count( array_filter( ueb_ipes_bordereaux( $ipes->id ), static fn( $b ) => 'envoye' === $b->statut && ( null === $o['tutelles'] || in_array( $b->etablissement, $o['tutelles'], true ) ) ) );
+	if ( null !== $o['tutelles'] ) {
+		$tutelle = 'la ' . implode( ' et la ', $o['tutelles'] );
+	} else {
+		$tutelle = 'ipes' === $o['pour'] ? ( 1 === count( $ipes->tutelles ) ? 'ta tutelle' : 'tes tutelles' ) : ( 1 === count( $ipes->tutelles ) ? 'sa tutelle' : 'ses tutelles' );
+	}
 	$unitaire   = ueb_fcfa( UEB_IPES_REVERSEMENT_PAR_ETUDIANT );
 	?>
 	<section class="adm-hero ipes-hero<?php echo null === $taux ? ' ipes-hero--sans-jauge' : ''; ?>" aria-labelledby="ipes-hero-titre">
@@ -229,6 +235,8 @@ function ueb_ipes_bordereaux_envoyes( $tutelles = null ) {
  * @param array $liste IPES (ueb_ipes_liste ou ueb_ipes_sous_tutelle).
  * @param array $o     url (callable $ipes => adresse de la fiche),
  *                     a_verifier (callable $ipes => nombre de bordereaux à vérifier),
+ *                     tutelles (callable $ipes => sigles vus, pour une scolarité ;
+ *                     absent pour l'IPES entier),
  *                     vide (phrase quand la liste est vide).
  */
 function ueb_ipes_registre( array $liste, array $o ) {
@@ -244,7 +252,7 @@ function ueb_ipes_registre( array $liste, array $o ) {
 		</tr></thead>
 		<tbody>
 		<?php foreach ( $liste as $ipes ) :
-			$jauge  = ueb_ipes_jauge( $ipes->id );
+			$jauge  = ueb_ipes_jauge( $ipes->id, null, isset( $o['tutelles'] ) ? ( $o['tutelles'] )( $ipes ) : null );
 			$n      = (int) ( $o['a_verifier'] )( $ipes );
 			$actif  = (int) $ipes->actif;
 			$taux   = $jauge['du'] ? min( 100, 100 * $jauge['verifie'] / $jauge['du'] ) : null;
