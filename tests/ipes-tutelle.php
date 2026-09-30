@@ -6,7 +6,9 @@
  * Charge WordPress COMPLET (ces fonctions dépendent des comptes, des rôles et
  * des capacités) et travaille sur la base locale : rôles, comptes et IPES
  * temporaires, tous préfixés « test-portee », supprimés à la fin même en cas
- * d'échec. Données exclusivement fictives.
+ * d'échec, et au début s'il en reste d'une exécution interrompue. Les listes
+ * d'IPES ne sont comparées que sur ces IPES de test : les vrais IPES de la base
+ * locale n'influencent pas le résultat. Données exclusivement fictives.
  *
  * Usage : php tests/ipes-tutelle.php (PHP de XAMPP ; sous Linux /opt/lampp/bin/php)
  */
@@ -23,11 +25,28 @@ function verifier( $condition, $message ) {
 	}
 	$GLOBALS['assertions'] = ( $GLOBALS['assertions'] ?? 0 ) + 1;
 }
-/** Sigles d'une liste d'IPES, triés. */
+/** Sigles des IPES de test d'une liste, triés (les autres IPES de la base sont ignorés). */
 function sigles( array $liste ) {
-	$s = array_map( static fn( $i ) => $i->sigle, $liste );
+	$s = array_values( array_filter( array_map( static fn( $i ) => $i->sigle, $liste ), static fn( $sigle ) => str_starts_with( $sigle, 'TEST-PORTEE-' ) ) );
 	sort( $s );
 	return $s;
+}
+
+/** Supprime les comptes, rôles et IPES de test (et leurs données). */
+function nettoyer( array $comptes, array $roles, array $ipes ) {
+	global $wpdb;
+	foreach ( $comptes as $id ) {
+		wp_delete_user( $id );
+	}
+	foreach ( $roles as $slug ) {
+		ueb_retirer_role( $slug );
+	}
+	foreach ( $ipes as $id ) {
+		foreach ( array( 'ueb_insc_ipes_recus', 'ueb_insc_ipes_etudiants', 'ueb_insc_ipes_bordereaux', 'ueb_insc_ipes_sequence', 'ueb_insc_ipes_filieres', 'ueb_insc_ipes_tutelles' ) as $table ) {
+			$wpdb->delete( $table, array( 'ipes_id' => $id ) );
+		}
+		$wpdb->delete( 'ueb_insc_ipes', array( 'id' => $id ) );
+	}
 }
 /** Identifiants d'une liste de bordereaux, triés. */
 function ids( array $liste ) {
@@ -43,6 +62,13 @@ $admin = get_users( array( 'role' => 'administrator', 'number' => 1, 'fields' =>
 try {
 	verifier( ! empty( $admin ), 'un administrateur existe pour préparer les données' );
 	wp_set_current_user( (int) $admin[0] );
+
+	/* Restes d'une exécution interrompue (MySQL arrêté, Ctrl+C…) : on repart propre. */
+	nettoyer(
+		get_users( array( 'search' => 'test-portee.*', 'search_columns' => array( 'user_login' ), 'fields' => 'ID' ) ),
+		array_filter( array_keys( ueb_roles() ), static fn( $slug ) => str_starts_with( $slug, 'test-portee-' ) ),
+		array_map( 'intval', $wpdb->get_col( "SELECT id FROM ueb_insc_ipes WHERE sigle LIKE 'TEST-PORTEE-%'" ) )
+	);
 	$m = current_time( 'mysql' );
 
 	/* ---------- Rôles, comme la Direction les créerait ---------- */
@@ -79,23 +105,33 @@ try {
 		verifier( is_int( $id ), "IPES $sigle créé" );
 		$crees['ipes'][] = $id;
 		$ipes[ $sigle ]  = $id;
-		$f = ueb_ipes_filiere_ajouter( $id, 'Informatique' );
-		$e = ueb_ipes_etudiant_enregistrer( $id, array( 'matricule' => $sigle . '-1', 'nom' => 'Test', 'prenom' => 'Portee', 'filiere_id' => $f, 'niveau' => 'L1' ) );
-		for ( $i = 0; $i < 3; $i++ ) {
-			ueb_ipes_paiement_enregistrer( $id, $e, array( 'montant' => '10000', 'date_paiement' => current_time( 'Y-m-d' ) ) );
+		/* Une filière et trois étudiants par tutelle. */
+		foreach ( $tutelles as $t ) {
+			$f = ueb_ipes_filiere_ajouter( $id, 'Informatique ' . $t, $t );
+			for ( $i = 1; $i <= 3; $i++ ) {
+				ueb_ipes_etudiant_enregistrer( $id, array( 'matricule' => $sigle . '-' . $t . '-' . $i, 'nom' => 'Test', 'prenom' => 'Portee', 'filiere_id' => $f, 'niveau' => 'L1' ) );
+			}
 		}
 	}
 	$a = $ipes['TEST-PORTEE-A'];
 	$b = $ipes['TEST-PORTEE-B'];
 	$c = $ipes['TEST-PORTEE-C'];
-	$bordereau = static function ( $ipes_id, $tutelle, $envoyer ) {
-		$libres = ueb_ipes_paiements_libres( $ipes_id );
+	/* Bordereau d'un étudiant libre de la tutelle, avec un reçu (ligne seule : les fichiers ont leurs propres essais). */
+	$recus     = array();
+	$bordereau = static function ( $ipes_id, $tutelle, $envoyer ) use ( $wpdb, &$recus ) {
+		$libres = ueb_ipes_etudiants_libres( $ipes_id, $tutelle );
 		$id     = ueb_ipes_bordereau_creer( $ipes_id, $tutelle );
-		ueb_ipes_bordereau_definir_paiements( $ipes_id, $id, array( (int) $libres[0]->id ) );
+		verifier( true === ueb_ipes_bordereau_definir_etudiants( $ipes_id, $id, array( (int) $libres[0]->id ) ), "bordereau $tutelle préparé" );
+		$wpdb->insert( 'ueb_insc_ipes_recus', array( 'bordereau_id' => $id, 'ipes_id' => $ipes_id, 'fichier' => '2026-2027/REC-' . $id . '-01-01-2026-00-00-00.jpg', 'nom_original' => 'recu.jpg', 'type_mime' => 'image/jpeg', 'taille' => 1000 ) );
+		$recus[ $id ] = $wpdb->get_row( $wpdb->prepare( 'SELECT * FROM ueb_insc_ipes_recus WHERE id = %d', $wpdb->insert_id ) );
 		if ( $envoyer ) {
-			ueb_ipes_bordereau_envoyer( $ipes_id, $id );
+			verifier( true === ueb_ipes_bordereau_envoyer( $ipes_id, $id ), "bordereau $tutelle envoyé" );
 		}
 		return $id;
+	};
+	/* Le compte connecté peut-il lire le reçu de ce bordereau ? */
+	$voit_recu = static function ( $ipes_id, $b_id ) use ( &$recus ) {
+		return ueb_ipes_peut_voir_recu( $recus[ $b_id ], ueb_ipes_bordereau( $ipes_id, $b_id ) );
 	};
 	$b_fs      = $bordereau( $b, 'FS', true );
 	$b_fseg    = $bordereau( $b, 'FSEG', true );
@@ -113,6 +149,7 @@ try {
 	verifier( array( $b_fs ) === ids( ueb_ipes_bordereaux_pour_tutelle( $b ) ), 'fs.voir : seulement le bordereau adressé à la FS, jamais le brouillon' );
 	verifier( null === ueb_ipes_bordereau_pour_tutelle( ueb_ipes( $b ), $b_fseg ), 'fs.voir : bordereau adressé à la FSEG introuvable' );
 	verifier( ! ueb_peut_verifier_bordereau( ueb_ipes_bordereau( $b, $b_fs ) ), 'fs.voir : ne peut pas décider sans la permission' );
+	verifier( $voit_recu( $b, $b_fs ) && ! $voit_recu( $b, $b_fseg ) && ! $voit_recu( $b, $brouillon ), 'fs.voir : lit le reçu du bordereau adressé à la FS, ni celui de la FSEG ni celui d’un brouillon' );
 
 	/* ---------- Agent FS, « Voir + Vérifier » ---------- */
 	wp_set_current_user( $fs_verif );
@@ -127,6 +164,7 @@ try {
 	verifier( null === ueb_ipes_sous_tutelle_par_id( $a ), 'fseg.verif : IPES de la FS seule refusé' );
 	verifier( array( $b_fseg ) === ids( ueb_ipes_bordereaux_pour_tutelle( $b ) ), 'fseg.verif : seulement le bordereau adressé à la FSEG' );
 	verifier( ueb_peut_verifier_bordereau( ueb_ipes_bordereau( $b, $b_fseg ) ) && ! ueb_peut_verifier_bordereau( ueb_ipes_bordereau( $a, $a_fs ) ), 'fseg.verif : décide pour la FSEG, jamais pour la FS' );
+	verifier( $voit_recu( $b, $b_fseg ) && ! $voit_recu( $b, $b_fs ) && ! $voit_recu( $a, $a_fs ), 'fseg.verif : lit seulement les reçus adressés à la FSEG' );
 
 	/* ---------- Portée « plusieurs » (FS, FSEG) et son sélecteur ---------- */
 	wp_set_current_user( $multi );
@@ -148,28 +186,18 @@ try {
 
 	/* ---------- Comptes sans droit sur les IPES ---------- */
 	wp_set_current_user( $quitus );
-	verifier( ueb_est_scolarite() && array() === ueb_ipes_sous_tutelle() && ! ueb_peut_voir_ipes( ueb_ipes( $a ) ), 'quitus : accès à la scolarité, mais aucun IPES' );
+	verifier( ueb_est_scolarite() && array() === ueb_ipes_sous_tutelle() && ! ueb_peut_voir_ipes( ueb_ipes( $a ) ) && ! $voit_recu( $a, $a_fs ), 'quitus : accès à la scolarité, mais aucun IPES ni reçu' );
 	wp_set_current_user( $suspendu );
-	verifier( array() === ueb_ipes_sous_tutelle() && ! ueb_peut_verifier_bordereau( ueb_ipes_bordereau( $b, $b_fseg ) ), 'suspendu : plus rien, même avec « Vérifier »' );
+	verifier( array() === ueb_ipes_sous_tutelle() && ! ueb_peut_verifier_bordereau( ueb_ipes_bordereau( $b, $b_fseg ) ) && ! $voit_recu( $a, $a_fs ), 'suspendu : plus rien, même avec « Vérifier »' );
 	wp_set_current_user( $admin_ipes[0] );
 	verifier( ! ueb_est_scolarite() && array() === ueb_ipes_sous_tutelle() && null === ueb_ipes_sous_tutelle_par_id( $a ), 'admin d’IPES : aucune vue de tutelle, même sur son propre IPES' );
+	verifier( $voit_recu( $a, $a_fs ) && ! $voit_recu( $b, $b_fs ), 'admin d’IPES : lit les reçus de son IPES, pas ceux d’un autre' );
 	wp_set_current_user( 0 );
-	verifier( array() === ueb_ipes_sous_tutelle() && null === ueb_ipes_sous_tutelle_par_id( $a ), 'visiteur : rien' );
+	verifier( array() === ueb_ipes_sous_tutelle() && null === ueb_ipes_sous_tutelle_par_id( $a ) && ! $voit_recu( $a, $a_fs ), 'visiteur : rien' );
 
 	echo $GLOBALS['assertions'] . " vérifications réussies.\n";
 } finally {
 	/* Nettoyage, même après un échec : comptes, rôles, puis IPES et leurs données. */
 	wp_set_current_user( (int) ( $admin[0] ?? 0 ) );
-	foreach ( $crees['comptes'] as $id ) {
-		wp_delete_user( $id );
-	}
-	foreach ( $crees['roles'] as $slug ) {
-		ueb_retirer_role( $slug );
-	}
-	foreach ( $crees['ipes'] as $id ) {
-		foreach ( array( 'ueb_insc_ipes_paiements', 'ueb_insc_ipes_etudiants', 'ueb_insc_ipes_bordereaux', 'ueb_insc_ipes_sequence', 'ueb_insc_ipes_filieres', 'ueb_insc_ipes_tutelles' ) as $table ) {
-			$wpdb->delete( $table, array( 'ipes_id' => $id ) );
-		}
-		$wpdb->delete( 'ueb_insc_ipes', array( 'id' => $id ) );
-	}
+	nettoyer( $crees['comptes'], $crees['roles'], $crees['ipes'] );
 }

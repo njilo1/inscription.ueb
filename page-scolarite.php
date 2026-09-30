@@ -185,7 +185,7 @@ ueb_page_debut( array( 'titre' => 'Espace scolarité', 'variante' => $autorise ?
 					'quitus'   => array( 'Quitus', 'Retrouve un dossier, examine ses reçus et rends ta décision après la vérification des originaux.' ),
 					'paiements' => array( 'Suivi des paiements', 'Droits universitaires attendus et encaissés, filière par filière. Seuls les reçus vérifiés comptent comme encaissés.' ),
 					'cellule'  => array( 'Comptes du personnel', 'Les comptes que tu crées pour ton établissement, avec un rôle aux droits inférieurs aux tiens.' ),
-					'ipes'     => array( 'IPES sous tutelle', 'Les établissements privés placés sous la tutelle de ton établissement : leurs étudiants, leurs versements et leurs reversements.' ),
+					'ipes'     => array( 'IPES sous tutelle', 'Les établissements privés placés sous la tutelle de ton établissement : leurs étudiants et leurs reversements.' ),
 					'securite' => array( 'Sécurité', 'Le mot de passe de ton accès à l’espace scolarité.' ),
 				);
 				list( $titre_vue, $sous_titre_vue ) = $titres[ $vue ] ?? $titres['bord'];

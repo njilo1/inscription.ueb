@@ -2,10 +2,15 @@
 /**
  * Bordereaux de reversement d'un IPES à l'une de ses tutelles.
  *
- * Cycle : brouillon (l'IPES coche des versements) → envoyé (total figé, plus
- * rien ne bouge) → vérifié ou rejeté par l'administration de l'UEb. Un
- * bordereau rejeté garde son motif et redevient modifiable ; renvoyé, il
- * garde son numéro.
+ * Un bordereau reverse des ÉTUDIANTS, pas des montants : chacun vaut la somme
+ * fixe UEB_IPES_REVERSEMENT_PAR_ETUDIANT, et seuls les étudiants dont la
+ * filière dépend de la tutelle du bordereau peuvent y figurer. Un étudiant
+ * est dans un bordereau au plus.
+ *
+ * Cycle : brouillon (l'IPES coche des étudiants) → envoyé (montant unitaire et
+ * total figés, plus rien ne bouge) → vérifié ou rejeté par l'administration
+ * de l'UEb ou par la tutelle. Un bordereau rejeté garde son motif et
+ * redevient modifiable ; renvoyé, il garde son numéro.
  *
  * Numérotation : le numéro officiel (BRD-SIANTOU-2627-0001) n'est attribué
  * qu'au premier envoi. Un brouillon abandonné ne laisse pas de trou dans la
@@ -34,6 +39,18 @@ function ueb_ipes_badge_bordereau( $statut ) {
 	return sprintf( '<span class="badge badge--%s"><i aria-hidden="true"></i>%s</span>', esc_attr( $classe ), esc_html( UEB_IPES_STATUTS_BORDEREAU[ $statut ] ?? $statut ) );
 }
 
+/**
+ * Montant d'un bordereau : figé à l'envoi ; tant qu'il est modifiable,
+ * nombre d'étudiants cochés × montant par étudiant en vigueur.
+ *
+ * @param object $b Bordereau avec « nb_etudiants » (ueb_ipes_bordereaux*).
+ */
+function ueb_ipes_montant_bordereau( $b ) {
+	return in_array( $b->statut, UEB_IPES_BORDEREAU_MODIFIABLE, true )
+		? (int) ( $b->nb_etudiants ?? 0 ) * UEB_IPES_REVERSEMENT_PAR_ETUDIANT
+		: (int) $b->total;
+}
+
 /* ---------- Lecture ---------- */
 
 /** Un bordereau de CET IPES, ou null. */
@@ -46,7 +63,7 @@ function ueb_ipes_bordereau( $ipes_id, $id ) {
 }
 
 /**
- * Bordereaux d'un IPES, les plus récents d'abord, avec leur nombre de versements.
+ * Bordereaux d'un IPES, les plus récents d'abord, avec leur nombre d'étudiants.
  *
  * @param array $filtres annee (défaut : l'année en cours), statut.
  */
@@ -59,9 +76,9 @@ function ueb_ipes_bordereaux( $ipes_id, array $filtres = array() ) {
 		$params[] = $filtres['statut'];
 	}
 	return $wpdb->get_results( $wpdb->prepare(
-		'SELECT b.*, COUNT( p.id ) AS nb_versements, COALESCE( SUM( p.montant ), 0 ) AS montant_coche
+		'SELECT b.*, COUNT( e.id ) AS nb_etudiants
 		FROM ueb_insc_ipes_bordereaux b
-		LEFT JOIN ueb_insc_ipes_paiements p ON p.bordereau_id = b.id AND p.ipes_id = b.ipes_id
+		LEFT JOIN ueb_insc_ipes_etudiants e ON e.bordereau_id = b.id AND e.ipes_id = b.ipes_id
 		WHERE ' . implode( ' AND ', $where ) . '
 		GROUP BY b.id
 		ORDER BY b.date_creation DESC, b.id DESC',
@@ -69,31 +86,32 @@ function ueb_ipes_bordereaux( $ipes_id, array $filtres = array() ) {
 	) );
 }
 
-/** Versements d'un bordereau, avec l'étudiant et sa filière, triés par nom. */
-function ueb_ipes_bordereau_paiements( $ipes_id, $bordereau_id ) {
+/** Étudiants d'un bordereau, avec leur filière, triés par nom. */
+function ueb_ipes_bordereau_etudiants( $ipes_id, $bordereau_id ) {
 	global $wpdb;
 	return $wpdb->get_results( $wpdb->prepare(
-		'SELECT p.*, e.matricule, e.nom, e.prenom, e.niveau, f.libelle AS filiere
-		FROM ueb_insc_ipes_paiements p
-		JOIN ueb_insc_ipes_etudiants e ON e.id = p.etudiant_id AND e.ipes_id = p.ipes_id
+		'SELECT e.*, f.libelle AS filiere
+		FROM ueb_insc_ipes_etudiants e
 		LEFT JOIN ueb_insc_ipes_filieres f ON f.id = e.filiere_id
-		WHERE p.ipes_id = %d AND p.bordereau_id = %d
-		ORDER BY e.nom, e.prenom, p.date_paiement',
+		WHERE e.ipes_id = %d AND e.bordereau_id = %d
+		ORDER BY e.nom, e.prenom',
 		$ipes_id, $bordereau_id
 	) );
 }
 
-/** Versements encore libres (dans aucun bordereau) d'une année, triés par nom. */
-function ueb_ipes_paiements_libres( $ipes_id, $annee = null ) {
+/**
+ * Étudiants encore à reverser (dans aucun bordereau) d'une année, dont la
+ * filière dépend de cette tutelle, triés par nom.
+ */
+function ueb_ipes_etudiants_libres( $ipes_id, $etablissement, $annee = null ) {
 	global $wpdb;
 	return $wpdb->get_results( $wpdb->prepare(
-		'SELECT p.*, e.matricule, e.nom, e.prenom, e.niveau, f.libelle AS filiere
-		FROM ueb_insc_ipes_paiements p
-		JOIN ueb_insc_ipes_etudiants e ON e.id = p.etudiant_id AND e.ipes_id = p.ipes_id
-		LEFT JOIN ueb_insc_ipes_filieres f ON f.id = e.filiere_id
-		WHERE p.ipes_id = %d AND p.bordereau_id IS NULL AND e.annee_academique = %s
-		ORDER BY e.nom, e.prenom, p.date_paiement',
-		$ipes_id, $annee ?? ueb_annee_academique()['code']
+		'SELECT e.*, f.libelle AS filiere
+		FROM ueb_insc_ipes_etudiants e
+		JOIN ueb_insc_ipes_filieres f ON f.id = e.filiere_id AND f.ipes_id = e.ipes_id
+		WHERE e.ipes_id = %d AND e.bordereau_id IS NULL AND e.annee_academique = %s AND f.etablissement = %s
+		ORDER BY e.nom, e.prenom',
+		$ipes_id, $annee ?? ueb_annee_academique()['code'], strtoupper( (string) $etablissement )
 	) );
 }
 
@@ -134,40 +152,47 @@ function ueb_ipes_bordereau_creer( $ipes_id, $etablissement = '' ) {
 }
 
 /**
- * Remplace les versements d'un bordereau modifiable par ceux cochés. Seuls
- * des versements libres de l'IPES, de l'année du bordereau, sont acceptés :
- * si l'un d'eux ne l'est plus (pris entre-temps), rien n'est changé.
+ * Remplace les étudiants d'un bordereau modifiable par ceux cochés. Seuls des
+ * étudiants libres de l'IPES, de l'année du bordereau et d'une filière de sa
+ * tutelle sont acceptés : si l'un d'eux ne l'est plus (pris entre-temps),
+ * rien n'est changé.
  *
  * @return true|WP_Error
  */
-function ueb_ipes_bordereau_definir_paiements( $ipes_id, $bordereau_id, array $paiement_ids ) {
+function ueb_ipes_bordereau_definir_etudiants( $ipes_id, $bordereau_id, array $etudiant_ids ) {
 	global $wpdb;
-	$bordereau = ueb_ipes_bordereau( $ipes_id, $bordereau_id );
+	$ids = array_values( array_unique( array_filter( array_map( 'intval', $etudiant_ids ) ) ) );
+
+	$wpdb->query( 'START TRANSACTION' );
+	/* Verrou sur le bordereau : un envoi simultané attend la fin de ce changement. */
+	$bordereau = $wpdb->get_row( $wpdb->prepare(
+		'SELECT * FROM ueb_insc_ipes_bordereaux WHERE id = %d AND ipes_id = %d FOR UPDATE',
+		$bordereau_id, $ipes_id
+	) );
 	if ( ! $bordereau ) {
+		$wpdb->query( 'ROLLBACK' );
 		return new WP_Error( 'ueb_ipes_bordereau', 'Ce bordereau n’existe pas.' );
 	}
 	if ( ! in_array( $bordereau->statut, UEB_IPES_BORDEREAU_MODIFIABLE, true ) ) {
+		$wpdb->query( 'ROLLBACK' );
 		return new WP_Error( 'ueb_ipes_bordereau', 'Ce bordereau a été envoyé : il n’est plus modifiable.' );
 	}
-	$ids = array_values( array_unique( array_filter( array_map( 'intval', $paiement_ids ) ) ) );
-
-	$wpdb->query( 'START TRANSACTION' );
 	$wpdb->query( $wpdb->prepare(
-		'UPDATE ueb_insc_ipes_paiements SET bordereau_id = NULL WHERE ipes_id = %d AND bordereau_id = %d',
+		'UPDATE ueb_insc_ipes_etudiants SET bordereau_id = NULL WHERE ipes_id = %d AND bordereau_id = %d',
 		$ipes_id, $bordereau_id
 	) );
 	if ( $ids ) {
 		$marques = implode( ',', array_fill( 0, count( $ids ), '%d' ) );
 		$pris    = $wpdb->query( $wpdb->prepare(
-			"UPDATE ueb_insc_ipes_paiements p
-			JOIN ueb_insc_ipes_etudiants e ON e.id = p.etudiant_id AND e.ipes_id = p.ipes_id
-			SET p.bordereau_id = %d
-			WHERE p.ipes_id = %d AND p.bordereau_id IS NULL AND e.annee_academique = %s AND p.id IN ($marques)",
-			array_merge( array( $bordereau_id, $ipes_id, $bordereau->annee_academique ), $ids )
+			"UPDATE ueb_insc_ipes_etudiants e
+			JOIN ueb_insc_ipes_filieres f ON f.id = e.filiere_id AND f.ipes_id = e.ipes_id
+			SET e.bordereau_id = %d
+			WHERE e.ipes_id = %d AND e.bordereau_id IS NULL AND e.annee_academique = %s AND f.etablissement = %s AND e.id IN ($marques)",
+			array_merge( array( $bordereau_id, $ipes_id, $bordereau->annee_academique, $bordereau->etablissement ), $ids )
 		) );
 		if ( count( $ids ) !== (int) $pris ) {
 			$wpdb->query( 'ROLLBACK' );
-			return new WP_Error( 'ueb_ipes_bordereau', 'Certains versements ne sont plus disponibles : actualise la page et recommence.' );
+			return new WP_Error( 'ueb_ipes_bordereau', 'Certains étudiants ne peuvent plus être reversés dans ce bordereau : actualise la page et recommence.' );
 		}
 	}
 	$wpdb->query( 'COMMIT' );
@@ -190,45 +215,63 @@ function ueb_ipes_prochain_numero_bordereau( $ipes, $annee_code ) {
 }
 
 /**
- * Envoie un bordereau modifiable : total calculé et figé, numéro officiel au
- * premier envoi. Refusé sans versement.
+ * Envoie un bordereau modifiable : montant par étudiant et total figés,
+ * numéro officiel au premier envoi. Refusé sans étudiant ou sans reçu bancaire.
  *
  * @return true|WP_Error
  */
 function ueb_ipes_bordereau_envoyer( $ipes_id, $id ) {
 	global $wpdb;
-	$bordereau = ueb_ipes_bordereau( $ipes_id, $id );
+	$wpdb->query( 'START TRANSACTION' );
+	/* Verrou : les étudiants ne bougent plus pendant qu'on les compte. */
+	$bordereau = $wpdb->get_row( $wpdb->prepare(
+		'SELECT * FROM ueb_insc_ipes_bordereaux WHERE id = %d AND ipes_id = %d FOR UPDATE',
+		$id, $ipes_id
+	) );
 	if ( ! $bordereau ) {
+		$wpdb->query( 'ROLLBACK' );
 		return new WP_Error( 'ueb_ipes_bordereau', 'Ce bordereau n’existe pas.' );
 	}
 	if ( ! in_array( $bordereau->statut, UEB_IPES_BORDEREAU_MODIFIABLE, true ) ) {
+		$wpdb->query( 'ROLLBACK' );
 		return new WP_Error( 'ueb_ipes_bordereau', 'Ce bordereau a déjà été envoyé.' );
 	}
-	$total = (int) $wpdb->get_var( $wpdb->prepare(
-		'SELECT COALESCE( SUM( montant ), 0 ) FROM ueb_insc_ipes_paiements WHERE ipes_id = %d AND bordereau_id = %d',
+	$nombre = (int) $wpdb->get_var( $wpdb->prepare(
+		'SELECT COUNT(*) FROM ueb_insc_ipes_etudiants WHERE ipes_id = %d AND bordereau_id = %d',
 		$ipes_id, $id
 	) );
-	if ( $total <= 0 ) {
-		return new WP_Error( 'ueb_ipes_bordereau', 'Coche au moins un versement avant d’envoyer le bordereau.' );
+	if ( ! $nombre ) {
+		$wpdb->query( 'ROLLBACK' );
+		return new WP_Error( 'ueb_ipes_bordereau', 'Coche au moins un étudiant avant d’envoyer le bordereau.' );
+	}
+	if ( ! ueb_ipes_nb_recus( $ipes_id, $id ) ) {
+		$wpdb->query( 'ROLLBACK' );
+		return new WP_Error( 'ueb_ipes_bordereau', 'Joins au moins un reçu bancaire du virement avant d’envoyer le bordereau.' );
 	}
 	$numero = $bordereau->numero;
 	if ( str_starts_with( $numero, 'BROUILLON-' ) ) {
 		$numero = ueb_ipes_prochain_numero_bordereau( ueb_ipes( $ipes_id ), $bordereau->annee_academique );
 		if ( ! $numero ) {
+			$wpdb->query( 'ROLLBACK' );
 			return new WP_Error( 'ueb_ipes_bordereau', 'Le bordereau n’a pas pu être numéroté. Réessaie dans un instant.' );
 		}
 	}
-	/* Condition sur le statut : deux envois simultanés ne passent qu'une fois. */
-	$ok = $wpdb->query( $wpdb->prepare(
+	$unitaire = UEB_IPES_REVERSEMENT_PAR_ETUDIANT;
+	$ok       = $wpdb->query( $wpdb->prepare(
 		"UPDATE ueb_insc_ipes_bordereaux
-		SET statut = 'envoye', total = %d, numero = %s, motif_rejet = NULL, date_envoi = %s, verifie_par = NULL, date_verification = NULL
+		SET statut = 'envoye', montant_unitaire = %d, total = %d, numero = %s, motif_rejet = NULL, date_envoi = %s, verifie_par = NULL, date_verification = NULL
 		WHERE id = %d AND ipes_id = %d AND statut IN ('brouillon','rejete')",
-		$total, $numero, current_time( 'mysql' ), $id, $ipes_id
+		$unitaire, $nombre * $unitaire, $numero, current_time( 'mysql' ), $id, $ipes_id
 	) );
-	return 1 === (int) $ok ? true : new WP_Error( 'ueb_ipes_bordereau', 'Ce bordereau a déjà été envoyé.' );
+	if ( 1 !== (int) $ok ) {
+		$wpdb->query( 'ROLLBACK' );
+		return new WP_Error( 'ueb_ipes_bordereau', 'Ce bordereau a déjà été envoyé.' );
+	}
+	$wpdb->query( 'COMMIT' );
+	return true;
 }
 
-/** Supprime un brouillon jamais envoyé ; ses versements redeviennent libres. */
+/** Supprime un brouillon jamais envoyé ; ses étudiants redeviennent à reverser, ses reçus sont effacés. */
 function ueb_ipes_bordereau_supprimer( $ipes_id, $id ) {
 	global $wpdb;
 	$bordereau = ueb_ipes_bordereau( $ipes_id, $id );
@@ -239,13 +282,20 @@ function ueb_ipes_bordereau_supprimer( $ipes_id, $id ) {
 		return new WP_Error( 'ueb_ipes_bordereau', 'Seul un brouillon jamais envoyé peut être supprimé.' );
 	}
 	$wpdb->query( 'START TRANSACTION' );
-	$wpdb->query( $wpdb->prepare( 'UPDATE ueb_insc_ipes_paiements SET bordereau_id = NULL WHERE ipes_id = %d AND bordereau_id = %d', $ipes_id, $id ) );
-	$wpdb->query( $wpdb->prepare( "DELETE FROM ueb_insc_ipes_bordereaux WHERE id = %d AND ipes_id = %d AND statut = 'brouillon'", $id, $ipes_id ) );
+	$supprime = $wpdb->query( $wpdb->prepare( "DELETE FROM ueb_insc_ipes_bordereaux WHERE id = %d AND ipes_id = %d AND statut = 'brouillon'", $id, $ipes_id ) );
+	if ( 1 !== (int) $supprime ) {
+		$wpdb->query( 'ROLLBACK' );
+		return new WP_Error( 'ueb_ipes_bordereau', 'Seul un brouillon jamais envoyé peut être supprimé.' );
+	}
+	$wpdb->query( $wpdb->prepare( 'UPDATE ueb_insc_ipes_etudiants SET bordereau_id = NULL WHERE ipes_id = %d AND bordereau_id = %d', $ipes_id, $id ) );
+	$recus = ueb_ipes_recus( $ipes_id, $id );
+	$wpdb->query( $wpdb->prepare( 'DELETE FROM ueb_insc_ipes_recus WHERE ipes_id = %d AND bordereau_id = %d', $ipes_id, $id ) );
 	$wpdb->query( 'COMMIT' );
+	array_map( 'ueb_ipes_recu_effacer_fichier', $recus );
 	return true;
 }
 
-/* ---------- Décision (administration de l'UEb) ---------- */
+/* ---------- Décision (administration de l'UEb ou tutelle) ---------- */
 
 /**
  * Vérifie ($verifie = true) ou rejette, avec un motif, un bordereau envoyé.
@@ -276,31 +326,60 @@ function ueb_ipes_bordereau_decider( $id, $verifie, $motif = '' ) {
 /* ---------- Jauge ---------- */
 
 /**
- * Reversement de l'année (indicatif : la règle du montant dû reste à arrêter).
+ * Reversements de l'année, pour l'IPES entier et tutelle par tutelle.
  *
- * @return array{du:?int, envoye:int, verifie:int, reste:?int}
- *         du : montant annuel prévu par la convention (null s'il n'est pas renseigné) ;
- *         envoye : total des bordereaux envoyés ou vérifiés ; verifie : total vérifié ;
- *         reste : du − vérifié, jamais négatif (null sans montant dû).
+ * @return array{etudiants:int, libres:int, du:int, envoye:int, verifie:int, reste:int, par_tutelle:array}
+ *         etudiants : étudiants de l'année ; libres : ceux qui ne sont dans
+ *         aucun bordereau ; du : étudiants × montant par étudiant ; envoye :
+ *         total des bordereaux envoyés ou vérifiés ; verifie : total vérifié ;
+ *         reste : du − vérifié, jamais négatif. par_tutelle : sigle => les
+ *         mêmes clés, pour chaque tutelle de l'IPES.
  */
 function ueb_ipes_jauge( $ipes_id, $annee = null ) {
 	global $wpdb;
+	$annee = $annee ?? ueb_annee_academique()['code'];
 	$ipes  = ueb_ipes( $ipes_id );
-	$ligne = $wpdb->get_row( $wpdb->prepare(
-		"SELECT
+	$vide  = array( 'etudiants' => 0, 'libres' => 0, 'du' => 0, 'envoye' => 0, 'verifie' => 0, 'reste' => 0 );
+	$par   = array_fill_keys( $ipes ? $ipes->tutelles : array(), $vide );
+
+	$etudiants = $wpdb->get_results( $wpdb->prepare(
+		'SELECT f.etablissement AS tutelle, COUNT(*) AS n, SUM( e.bordereau_id IS NULL ) AS libres
+		FROM ueb_insc_ipes_etudiants e
+		JOIN ueb_insc_ipes_filieres f ON f.id = e.filiere_id AND f.ipes_id = e.ipes_id
+		WHERE e.ipes_id = %d AND e.annee_academique = %s
+		GROUP BY f.etablissement',
+		$ipes_id, $annee
+	) );
+	foreach ( $etudiants as $l ) {
+		$par[ $l->tutelle ]              = $par[ $l->tutelle ] ?? $vide;
+		$par[ $l->tutelle ]['etudiants'] = (int) $l->n;
+		$par[ $l->tutelle ]['libres']    = (int) $l->libres;
+		$par[ $l->tutelle ]['du']        = (int) $l->n * UEB_IPES_REVERSEMENT_PAR_ETUDIANT;
+	}
+	$reverse = $wpdb->get_results( $wpdb->prepare(
+		"SELECT etablissement AS tutelle,
 			COALESCE( SUM( CASE WHEN statut IN ('envoye','verifie') THEN total ELSE 0 END ), 0 ) AS envoye,
 			COALESCE( SUM( CASE WHEN statut = 'verifie' THEN total ELSE 0 END ), 0 ) AS verifie
-		FROM ueb_insc_ipes_bordereaux WHERE ipes_id = %d AND annee_academique = %s",
-		$ipes_id, $annee ?? ueb_annee_academique()['code']
+		FROM ueb_insc_ipes_bordereaux WHERE ipes_id = %d AND annee_academique = %s
+		GROUP BY etablissement",
+		$ipes_id, $annee
 	) );
-	$du      = ( $ipes && null !== $ipes->montant_annuel_du ) ? (int) $ipes->montant_annuel_du : null;
-	$verifie = (int) ( $ligne->verifie ?? 0 );
-	return array(
-		'du'      => $du,
-		'envoye'  => (int) ( $ligne->envoye ?? 0 ),
-		'verifie' => $verifie,
-		'reste'   => null === $du ? null : max( 0, $du - $verifie ),
-	);
+	foreach ( $reverse as $l ) {
+		$par[ $l->tutelle ]            = $par[ $l->tutelle ] ?? $vide;
+		$par[ $l->tutelle ]['envoye']  = (int) $l->envoye;
+		$par[ $l->tutelle ]['verifie'] = (int) $l->verifie;
+	}
+
+	$total = $vide;
+	foreach ( $par as $sigle => $t ) {
+		$par[ $sigle ]['reste'] = max( 0, $t['du'] - $t['verifie'] );
+		foreach ( array( 'etudiants', 'libres', 'du', 'envoye', 'verifie' ) as $cle ) {
+			$total[ $cle ] += $t[ $cle ];
+		}
+	}
+	$total['reste']       = max( 0, $total['du'] - $total['verifie'] );
+	$total['par_tutelle'] = $par;
+	return $total;
 }
 
 /* ---------- Côté administration de l'UEb ---------- */
@@ -312,9 +391,9 @@ function ueb_ipes_jauge( $ipes_id, $annee = null ) {
 function ueb_ipes_bordereaux_pour_ueb( $ipes_id ) {
 	global $wpdb;
 	return $wpdb->get_results( $wpdb->prepare(
-		"SELECT b.*, COUNT( p.id ) AS nb_versements
+		"SELECT b.*, COUNT( e.id ) AS nb_etudiants
 		FROM ueb_insc_ipes_bordereaux b
-		LEFT JOIN ueb_insc_ipes_paiements p ON p.bordereau_id = b.id AND p.ipes_id = b.ipes_id
+		LEFT JOIN ueb_insc_ipes_etudiants e ON e.bordereau_id = b.id AND e.ipes_id = b.ipes_id
 		WHERE b.ipes_id = %d AND b.statut <> 'brouillon'
 		GROUP BY b.id
 		ORDER BY FIELD( b.statut, 'envoye', 'rejete', 'verifie' ), b.date_envoi DESC, b.id DESC",

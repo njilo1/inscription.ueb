@@ -23,7 +23,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-const UEB_INSC_ROUTES_VERSION = '7';
+const UEB_INSC_ROUTES_VERSION = '8';
 
 function ueb_regles_reecriture() {
 	return array(
@@ -37,6 +37,7 @@ function ueb_regles_reecriture() {
 		'^mon-espace/securite/?$'                        => 'index.php?ueb_page=securite',
 		'^cellule-informatique/?$'                       => 'index.php?ueb_page=cellule',
 		'^recu/([0-9]+)/?$'                              => 'index.php?ueb_page=recu&ueb_arg=$matches[1]',
+		'^recu-ipes/([0-9]+)/?$'                         => 'index.php?ueb_page=recu-ipes&ueb_arg=$matches[1]',
 		'^verifier/([A-Za-z0-9]+)/?$'                    => 'index.php?ueb_page=verifier&ueb_arg=$matches[1]',
 	);
 }
@@ -124,6 +125,9 @@ add_action( 'template_redirect', function () {
 		case 'recu':
 			ueb_servir_recu( $compte, (int) get_query_var( 'ueb_arg' ) );
 			exit;
+		case 'recu-ipes':
+			ueb_ipes_servir_recu( (int) get_query_var( 'ueb_arg' ) );
+			exit;
 	}
 } );
 
@@ -186,11 +190,11 @@ function ueb_traiter_action( $action ) {
 		/* Espace de l'administrateur d'un IPES (inc/ipes-espace.php). */
 		'ipes_etudiant_enregistrer'  => 'ueb_action_ipes_etudiant_enregistrer',
 		'ipes_etudiant_supprimer'    => 'ueb_action_ipes_etudiant_supprimer',
-		'ipes_paiement_enregistrer'  => 'ueb_action_ipes_paiement_enregistrer',
-		'ipes_paiement_supprimer'    => 'ueb_action_ipes_paiement_supprimer',
 		'ipes_bordereau_creer'       => 'ueb_action_ipes_bordereau_creer',
 		'ipes_bordereau_enregistrer' => 'ueb_action_ipes_bordereau_enregistrer',
 		'ipes_bordereau_supprimer'   => 'ueb_action_ipes_bordereau_supprimer',
+		'ipes_recus_envoyer'         => 'ueb_action_ipes_recus_envoyer',
+		'ipes_recu_supprimer'        => 'ueb_action_ipes_recu_supprimer',
 	);
 	if ( ! isset( $traitements[ $action ] ) ) {
 		return;

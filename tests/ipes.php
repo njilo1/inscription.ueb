@@ -10,7 +10,7 @@ if ( PHP_SAPI !== 'cli' ) {
 define( 'SHORTINIT', true );
 require dirname( __DIR__, 4 ) . '/wp-load.php';
 define( 'UEB_INSC_DIR', dirname( __DIR__ ) );
-foreach ( array( 'config', 'db-schema', 'ipes', 'ipes-filieres', 'ipes-etudiants', 'ipes-bordereaux' ) as $module ) {
+foreach ( array( 'config', 'db-schema', 'ipes', 'ipes-filieres', 'ipes-etudiants', 'ipes-bordereaux', 'ipes-recus' ) as $module ) {
 	require UEB_INSC_DIR . '/inc/' . $module . '.php';
 }
 /* SHORTINIT ne charge pas les utilisateurs : personne n'est connecté. */
@@ -78,12 +78,7 @@ verifier( isset( erreurs_de( ueb_ipes_enregistrer( array( 'sigle' => 'NEW', 'tel
 verifier( isset( erreurs_de( ueb_ipes_enregistrer( array( 'sigle' => 'NEW', 'convention_signee_le' => '2026-02-30' ) + $siantou ) )['convention_signee_le'] ), 'date inexistante refusée' );
 verifier( isset( erreurs_de( ueb_ipes_enregistrer( array( 'sigle' => 'NEW', 'convention_fin_le' => '2026-09-01' ) + $siantou ) )['convention_fin_le'] ), 'fin le jour de la signature refusée' );
 verifier( isset( erreurs_de( ueb_ipes_enregistrer( array( 'sigle' => 'NEW', 'convention_fin_le' => '2025-01-01' ) + $siantou ) )['convention_fin_le'] ), 'fin avant la signature refusée' );
-verifier( isset( erreurs_de( ueb_ipes_enregistrer( array( 'sigle' => 'NEW', 'montant_annuel_du' => '0' ) + $siantou ) )['montant_annuel_du'] ), 'montant annuel dû nul refusé' );
-verifier( isset( erreurs_de( ueb_ipes_enregistrer( array( 'sigle' => 'NEW', 'montant_annuel_du' => 'beaucoup' ) + $siantou ) )['montant_annuel_du'] ), 'montant annuel dû sans chiffre refusé' );
 verifier( $avant === nombre_ipes(), 'aucun enregistrement refusé n’a laissé de ligne' );
-verifier( null === ueb_ipes( $id )->montant_annuel_du, 'montant annuel dû vide : non renseigné (NULL)' );
-verifier( $id === ueb_ipes_enregistrer( array( 'montant_annuel_du' => ' 50 000 FCFA' ) + $siantou, $id ) && 50000 === (int) ueb_ipes( $id )->montant_annuel_du, 'montant annuel dû « 50 000 FCFA » enregistré' );
-verifier( $id === ueb_ipes_enregistrer( array( 'montant_annuel_du' => '' ) + $siantou, $id ) && null === ueb_ipes( $id )->montant_annuel_du, 'montant annuel dû vidé : de nouveau NULL' );
 verifier( is_wp_error( ueb_ipes_enregistrer( $siantou, 999999 ) ), 'modification d’un IPES inexistant refusée' );
 
 /* ---------- Modification et tutelles ---------- */
@@ -144,6 +139,21 @@ verifier( is_wp_error( ueb_ipes_filiere_ajouter( $id, 'génie logiciel' ) ), 'un
 verifier( ueb_ipes_filiere_changer_etat( $genie, true ) && '1' === (string) ueb_ipes_filiere( $genie )->actif, 'filière rétablie' );
 verifier( ! ueb_ipes_filiere_changer_etat( 999999, false ), 'filière inexistante : changement d’état refusé' );
 
+/* Filières par tutelle : IUTE passe sous FALSH + FS le temps de ces vérifications. */
+verifier( 'FALSH' === ueb_ipes_filieres( $autre )[0]->etablissement, 'une seule tutelle : la filière lui est rattachée d’office' );
+verifier( $autre === ueb_ipes_enregistrer( array( 'sigle' => 'IUTE', 'nom_fr' => 'Institut Universitaire Test', 'tutelles' => array( 'FALSH', 'FS' ) ) + $siantou, $autre ), 'IUTE sous FALSH + FS' );
+verifier( is_wp_error( ueb_ipes_filiere_ajouter( $autre, 'Physique' ) ), 'deux tutelles : filière sans tutelle refusée' );
+verifier( is_wp_error( ueb_ipes_filiere_ajouter( $autre, 'Physique', 'FSEG' ) ), 'filière sous un établissement qui n’est pas tutelle de l’IPES refusée' );
+$physique = ueb_ipes_filiere_ajouter( $autre, 'Physique', ' fs ' );
+verifier( is_int( $physique ) && 'FS' === ueb_ipes_filiere( $physique )->etablissement, 'filière rattachée à la FS (sigle normalisé)' );
+verifier( array( 'Physique' ) === $libelles( ueb_ipes_filieres( $autre, false, 'fs' ) ), 'filtre des filières par tutelle' );
+$groupes = ueb_ipes_filieres_par_tutelle( ueb_ipes( $autre ) );
+verifier( array( 'FALSH', 'FS' ) === array_keys( $groupes ) && array( 'Génie logiciel' ) === $libelles( $groupes['FALSH'] ) && array( 'Physique' ) === $libelles( $groupes['FS'] ), 'filières regroupées par tutelle' );
+$refus = ueb_ipes_enregistrer( array( 'sigle' => 'IUTE', 'nom_fr' => 'Institut Universitaire Test', 'tutelles' => array( 'FALSH' ) ) + $siantou, $autre );
+verifier( isset( erreurs_de( $refus )['tutelles'] ) && array( 'FALSH', 'FS' ) === ueb_ipes_tutelles( $autre ), 'retrait d’une tutelle qui a une filière active refusé' );
+ueb_ipes_filiere_changer_etat( $physique, false );
+verifier( $autre === ueb_ipes_enregistrer( array( 'sigle' => 'IUTE', 'nom_fr' => 'Institut Universitaire Test', 'tutelles' => array( 'FALSH' ) ) + $siantou, $autre ) && array( 'FALSH' ) === ueb_ipes_tutelles( $autre ), 'filière retirée : la tutelle peut être retirée' );
+
 /* ---------- Étudiants ---------- */
 $filiere_autre = ueb_ipes_filiere_ajouter( $autre, 'Droit' );
 $paul_saisie   = array( 'matricule' => ' 24is 001 ', 'nom' => '  Mbarga ', 'prenom' => 'Paul   Arnaud', 'filiere_id' => $genie, 'niveau' => 'l2', 'telephone' => '+237 699 00 11 22' );
@@ -172,42 +182,33 @@ verifier( array( 'Ondoa' ) === array_map( static fn( $x ) => $x->nom, ueb_ipes_e
 verifier( array( 'Mbarga' ) === array_map( static fn( $x ) => $x->nom, ueb_ipes_etudiants( $id, array( 'recherche' => '24is001' ) ) ), 'recherche dans le matricule' );
 verifier( array() === ueb_ipes_etudiants( $id, array( 'annee' => '2000-2001' ) ), 'aucun étudiant sur une autre année' );
 
-/* ---------- Versements ---------- */
-$v1 = ueb_ipes_paiement_enregistrer( $id, $paul, array( 'montant' => '25 000 FCFA', 'date_paiement' => '2026-09-10' ) );
-$v2 = ueb_ipes_paiement_enregistrer( $id, $paul, array( 'montant' => '10000', 'date_paiement' => current_time( 'Y-m-d' ) ) );
-verifier( is_int( $v1 ) && is_int( $v2 ), 'deux versements enregistrés (« 25 000 FCFA » et date du jour)' );
-verifier( 25000 === (int) ueb_ipes_paiement( $id, $v1 )->montant, 'montant saisi avec espaces et FCFA' );
-verifier( isset( erreurs_de( ueb_ipes_paiement_enregistrer( $id, $paul, array( 'montant' => '0', 'date_paiement' => '2026-09-10' ) ) )['montant'] ), 'montant nul refusé' );
-verifier( isset( erreurs_de( ueb_ipes_paiement_enregistrer( $id, $paul, array( 'montant' => '250000000', 'date_paiement' => '2026-09-10' ) ) )['montant'] ), 'montant démesuré refusé' );
-verifier( isset( erreurs_de( ueb_ipes_paiement_enregistrer( $id, $paul, array( 'montant' => '5000', 'date_paiement' => '2099-01-01' ) ) )['date_paiement'] ), 'date future refusée' );
-verifier( is_wp_error( ueb_ipes_paiement_enregistrer( $autre, $paul, array( 'montant' => '5000', 'date_paiement' => '2026-09-10' ) ) ), 'versement pour l’étudiant d’un autre IPES refusé' );
-verifier( null === ueb_ipes_paiement( $autre, $v1 ), 'un autre IPES ne voit pas ce versement' );
+/* ---------- Reversement par étudiant ---------- */
+// À ce stade : IPES « IS » sous la seule tutelle FSEG, Paul (Génie logiciel) et Jean (Comptabilité).
+$U = UEB_IPES_REVERSEMENT_PAR_ETUDIANT;
 $etudiants = ueb_ipes_etudiants( $id );
-verifier( 35000 === (int) $etudiants[0]->total_paye && 2 === (int) $etudiants[0]->nb_versements, 'total et nombre de versements de l’étudiant' );
-verifier( array( 'etudiants' => 2, 'encaisse' => 35000, 'libre' => 35000 ) === ueb_ipes_totaux( $id ), 'totaux de l’IPES ' . json_encode( ueb_ipes_totaux( $id ) ) );
-verifier( $v1 === ueb_ipes_paiement_enregistrer( $id, $paul, array( 'montant' => '30000', 'date_paiement' => '2026-09-11' ), $v1 ) && 30000 === (int) ueb_ipes_paiement( $id, $v1 )->montant, 'versement modifié' );
-
-$wpdb->update( 'ueb_insc_ipes_paiements', array( 'bordereau_id' => 999 ), array( 'id' => $v1 ) ); // placé dans un bordereau
-verifier( is_wp_error( ueb_ipes_paiement_enregistrer( $id, $paul, array( 'montant' => '1', 'date_paiement' => '2026-09-11' ), $v1 ) ), 'versement dans un bordereau : modification refusée' );
-verifier( is_wp_error( ueb_ipes_paiement_supprimer( $id, $v1 ) ) && ueb_ipes_paiement( $id, $v1 ), 'versement dans un bordereau : suppression refusée' );
-verifier( 10000 === ueb_ipes_totaux( $id )['libre'], 'la part libre exclut les versements en bordereau' );
-verifier( is_wp_error( ueb_ipes_etudiant_supprimer( $id, $paul ) ), 'étudiant avec versements : suppression refusée' );
-verifier( is_wp_error( ueb_ipes_paiement_supprimer( $autre, $v2 ) ) && ueb_ipes_paiement( $id, $v2 ), 'suppression par un autre IPES refusée' );
-verifier( true === ueb_ipes_paiement_supprimer( $id, $v2 ) && null === ueb_ipes_paiement( $id, $v2 ), 'versement libre supprimé' );
-verifier( true === ueb_ipes_etudiant_supprimer( $id, $jean ) && null === ueb_ipes_etudiant( $id, $jean ), 'étudiant sans versement supprimé' );
+verifier( 'FSEG' === $etudiants[0]->tutelle && null === $etudiants[0]->bordereau_statut, 'étudiant : tutelle de sa filière, dans aucun bordereau' );
+verifier( array( 'Mbarga' ) === array_map( static fn( $x ) => $x->nom, ueb_ipes_etudiants( $id, array( 'filiere_id' => $genie ) ) ), 'filtre par filière' );
+verifier( 2 === count( ueb_ipes_etudiants( $id, array( 'tutelle' => 'fseg' ) ) ) && array() === ueb_ipes_etudiants( $id, array( 'tutelle' => 'FS' ) ), 'filtre par tutelle' );
+$jauge = ueb_ipes_jauge( $id );
+verifier( 2 === $jauge['etudiants'] && 2 === $jauge['libres'] && 2 * $U === $jauge['du'] && 0 === $jauge['envoye'] && 2 * $U === $jauge['reste'], 'jauge : dû = étudiants × montant par étudiant ' . json_encode( $jauge ) );
+verifier( array( 'FSEG' ) === array_keys( $jauge['par_tutelle'] ) && 2 * $U === $jauge['par_tutelle']['FSEG']['du'], 'jauge par tutelle' );
+verifier( 0 === ueb_ipes_jauge( $id, '2000-2001' )['du'], 'aucun dû sur une autre année' );
+verifier( is_wp_error( ueb_ipes_etudiant_supprimer( $autre, $jean ) ) && ueb_ipes_etudiant( $id, $jean ), 'suppression par un autre IPES refusée' );
+verifier( true === ueb_ipes_etudiant_supprimer( $id, $jean ) && null === ueb_ipes_etudiant( $id, $jean ), 'étudiant hors bordereau supprimé' );
 
 /* ---------- Bordereaux ---------- */
-// À ce stade : IPES « IS » sous la seule tutelle FSEG, Paul et son versement de 30 000 ($v1).
-$wpdb->update( 'ueb_insc_ipes_paiements', array( 'bordereau_id' => null ), array( 'id' => $v1 ) );
-$wpdb->update( 'ueb_insc_ipes', array( 'montant_annuel_du' => 50000 ), array( 'id' => $id ) );
-$v3     = ueb_ipes_paiement_enregistrer( $id, $paul, array( 'montant' => '15000', 'date_paiement' => '2026-09-12' ) );
-$marie  = ueb_ipes_etudiant_enregistrer( $id, array( 'matricule' => '24IS003', 'nom' => 'Ateba', 'prenom' => 'Marie' ) + $paul_saisie );
-$v4     = ueb_ipes_paiement_enregistrer( $id, $marie, array( 'montant' => '10000', 'date_paiement' => '2026-09-12' ) );
-$ailleurs = ueb_ipes_etudiants( $autre )[0]->id;
-$vx     = ueb_ipes_paiement_enregistrer( $autre, $ailleurs, array( 'montant' => '5000', 'date_paiement' => '2026-09-12' ) );
+$marie    = ueb_ipes_etudiant_enregistrer( $id, array( 'matricule' => '24IS003', 'nom' => 'Ateba', 'prenom' => 'Marie' ) + $paul_saisie );
+$ailleurs = (int) ueb_ipes_etudiants( $autre )[0]->id;
+$ancien   = ueb_ipes_etudiant_enregistrer( $id, array( 'matricule' => '99OLD01' ) + $paul_saisie );
+$wpdb->update( 'ueb_insc_ipes_etudiants', array( 'annee_academique' => '2000-2001' ), array( 'id' => $ancien ) );
 $annee  = ueb_annee_academique();
 $courte = substr( $annee['code'], 2, 2 ) . substr( $annee['code'], 7, 2 );
 $statut = static fn( $b ) => ueb_ipes_bordereau( $id, $b )->statut;
+$dans   = static fn( $b ) => array_map( static fn( $e ) => (int) $e->id, ueb_ipes_bordereau_etudiants( $id, $b ) );
+/* Reçu bancaire : une ligne suffit ici (le dépôt de fichiers a ses propres essais). */
+$recu = static function ( $b ) use ( $wpdb, $id ) {
+	$wpdb->insert( 'ueb_insc_ipes_recus', array( 'bordereau_id' => $b, 'ipes_id' => $id, 'fichier' => '2026-2027/REC-' . $b . '-01-01-2026-00-00-00.jpg', 'nom_original' => 'recu.jpg', 'type_mime' => 'image/jpeg', 'taille' => 1000 ) );
+};
 
 verifier( is_wp_error( ueb_ipes_bordereau_creer( $id, 'FS' ) ), 'tutelle qui n’est pas celle de l’IPES refusée' );
 $b1 = ueb_ipes_bordereau_creer( $id );
@@ -215,55 +216,83 @@ verifier( is_int( $b1 ) && 'FSEG' === ueb_ipes_bordereau( $id, $b1 )->etablissem
 verifier( 'BROUILLON-' . $b1 === ueb_ipes_bordereau( $id, $b1 )->numero && 'brouillon' === $statut( $b1 ), 'brouillon au numéro provisoire' );
 verifier( null === ueb_ipes_bordereau( $autre, $b1 ), 'un autre IPES ne voit pas ce bordereau' );
 verifier( is_wp_error( ueb_ipes_bordereau_envoyer( $id, $b1 ) ), 'bordereau vide : envoi refusé' );
-verifier( true === ueb_ipes_bordereau_definir_paiements( $id, $b1, array( $v1, $v3 ) ), 'deux versements cochés' );
-verifier( array( $v4 ) === array_map( static fn( $p ) => (int) $p->id, ueb_ipes_paiements_libres( $id ) ), 'versements libres : seulement celui de Marie' );
+verifier( array( $marie, $paul ) === array_map( static fn( $e ) => (int) $e->id, ueb_ipes_etudiants_libres( $id, 'FSEG' ) ), 'à cocher : les étudiants de l’année, libres, de la tutelle (triés par nom)' );
+verifier( true === ueb_ipes_bordereau_definir_etudiants( $id, $b1, array( $paul, $marie ) ), 'deux étudiants cochés' );
+verifier( array() === ueb_ipes_etudiants_libres( $id, 'FSEG' ), 'plus aucun étudiant libre' );
+$liste = ueb_ipes_bordereaux( $id );
+verifier( 2 === (int) $liste[0]->nb_etudiants && 2 * $U === ueb_ipes_montant_bordereau( $liste[0] ), 'brouillon : 2 étudiants, montant en cours ' . ueb_ipes_montant_bordereau( $liste[0] ) );
 
 $b2 = ueb_ipes_bordereau_creer( $id );
-verifier( is_wp_error( ueb_ipes_bordereau_definir_paiements( $id, $b2, array( $v1 ) ) ), 'versement déjà dans un bordereau refusé' );
-verifier( is_wp_error( ueb_ipes_bordereau_definir_paiements( $id, $b2, array( $v4, $vx ) ) ), 'versement d’un autre IPES refusé' );
-verifier( array() === ueb_ipes_bordereau_paiements( $id, $b2 ) && (int) ueb_ipes_paiement( $id, $v4 )->bordereau_id === 0, 'refus : rien n’a bougé (tout ou rien)' );
-verifier( 2 === count( ueb_ipes_bordereau_paiements( $id, $b1 ) ), 'le premier bordereau est intact' );
-$ancien = ueb_ipes_etudiant_enregistrer( $id, array( 'matricule' => '99OLD01' ) + $paul_saisie );
-$wpdb->update( 'ueb_insc_ipes_etudiants', array( 'annee_academique' => '2000-2001' ), array( 'id' => $ancien ) );
-$v_ancien = ueb_ipes_paiement_enregistrer( $id, $ancien, array( 'montant' => '7000', 'date_paiement' => '2026-09-12' ) );
-verifier( is_wp_error( ueb_ipes_bordereau_definir_paiements( $id, $b2, array( $v_ancien ) ) ), 'versement d’une autre année refusé' );
-verifier( is_wp_error( ueb_ipes_bordereau_envoyer( $autre, $b1 ) ), 'envoi par un autre IPES refusé' );
+verifier( is_wp_error( ueb_ipes_bordereau_definir_etudiants( $id, $b2, array( $paul ) ) ), 'étudiant déjà dans un bordereau refusé' );
+verifier( is_wp_error( ueb_ipes_bordereau_definir_etudiants( $id, $b2, array( $ailleurs ) ) ), 'étudiant d’un autre IPES refusé' );
+verifier( is_wp_error( ueb_ipes_bordereau_definir_etudiants( $id, $b2, array( $ancien ) ) ), 'étudiant d’une autre année refusé' );
+verifier( array() === $dans( $b2 ) && array( $marie, $paul ) === $dans( $b1 ), 'refus : rien n’a bougé (tout ou rien)' );
+verifier( is_wp_error( ueb_ipes_bordereau_definir_etudiants( $autre, $b1, array() ) ) && 2 === count( $dans( $b1 ) ), 'un autre IPES ne peut pas vider ce bordereau' );
 
+verifier( is_wp_error( ueb_ipes_etudiant_supprimer( $id, $paul ) ), 'étudiant dans un bordereau : suppression refusée' );
+verifier( $paul === ueb_ipes_etudiant_enregistrer( $id, array( 'nom' => 'Mbarga-Essomba' ) + $paul_saisie, $paul ), 'brouillon : l’étudiant reste modifiable' );
+
+$r = ueb_ipes_bordereau_envoyer( $id, $b1 );
+verifier( is_wp_error( $r ) && str_contains( $r->get_error_message(), 'reçu' ) && 'brouillon' === $statut( $b1 ), 'envoi sans reçu bancaire refusé' );
+$recu( $b1 );
+verifier( 1 === ueb_ipes_nb_recus( $id, $b1 ) && 0 === ueb_ipes_nb_recus( $autre, $b1 ), 'reçu compté pour cet IPES seulement' );
+verifier( is_wp_error( ueb_ipes_bordereau_envoyer( $autre, $b1 ) ), 'envoi par un autre IPES refusé' );
 verifier( true === ueb_ipes_bordereau_envoyer( $id, $b1 ), 'bordereau envoyé' );
 $envoye = ueb_ipes_bordereau( $id, $b1 );
 verifier( 'BRD-IS-' . $courte . '-0001' === $envoye->numero, 'numéro officiel au premier envoi : ' . $envoye->numero );
-verifier( 45000 === (int) $envoye->total && 'envoye' === $envoye->statut && $envoye->date_envoi, 'total figé à 45 000' );
+verifier( $U === (int) $envoye->montant_unitaire && 2 * $U === (int) $envoye->total && 'envoye' === $envoye->statut && $envoye->date_envoi, 'montant par étudiant et total figés' );
 verifier( is_wp_error( ueb_ipes_bordereau_envoyer( $id, $b1 ) ), 'second envoi refusé' );
-verifier( is_wp_error( ueb_ipes_bordereau_definir_paiements( $id, $b1, array( $v1 ) ) ), 'bordereau envoyé : versements figés' );
+verifier( is_wp_error( ueb_ipes_bordereau_definir_etudiants( $id, $b1, array( $paul ) ) ), 'bordereau envoyé : étudiants figés' );
 verifier( is_wp_error( ueb_ipes_bordereau_supprimer( $id, $b1 ) ), 'bordereau envoyé : suppression refusée' );
-verifier( array( 'du' => 50000, 'envoye' => 45000, 'verifie' => 0, 'reste' => 50000 ) === ueb_ipes_jauge( $id ), 'jauge après envoi ' . json_encode( ueb_ipes_jauge( $id ) ) );
+verifier( ueb_ipes_etudiant_fige( ueb_ipes_etudiant( $id, $paul ) ) && is_wp_error( ueb_ipes_etudiant_enregistrer( $id, array( 'nom' => 'Autre' ) + $paul_saisie, $paul ) ), 'bordereau envoyé : l’étudiant n’est plus modifiable' );
+verifier( 'Mbarga-Essomba' === ueb_ipes_etudiant( $id, $paul )->nom, 'nom inchangé après la modification refusée' );
+$jauge = ueb_ipes_jauge( $id );
+verifier( 2 * $U === $jauge['du'] && 2 * $U === $jauge['envoye'] && 0 === $jauge['verifie'] && 2 * $U === $jauge['reste'] && 0 === $jauge['libres'], 'jauge après envoi ' . json_encode( $jauge ) );
 
 verifier( is_wp_error( ueb_ipes_bordereau_decider( $b1, false, 'non' ) ), 'rejet sans vrai motif refusé' );
-verifier( true === ueb_ipes_bordereau_decider( $b1, false, '  Le reçu de   Paul manque. ' ) && 'rejete' === $statut( $b1 ), 'bordereau rejeté' );
-verifier( 'Le reçu de Paul manque.' === ueb_ipes_bordereau( $id, $b1 )->motif_rejet, 'motif du rejet conservé' );
+verifier( true === ueb_ipes_bordereau_decider( $b1, false, '  Le reçu de   la banque est illisible. ' ) && 'rejete' === $statut( $b1 ), 'bordereau rejeté' );
+verifier( 'Le reçu de la banque est illisible.' === ueb_ipes_bordereau( $id, $b1 )->motif_rejet, 'motif du rejet conservé' );
 verifier( is_wp_error( ueb_ipes_bordereau_decider( $b1, true ) ), 'décision sur un bordereau non envoyé refusée' );
-verifier( true === ueb_ipes_bordereau_definir_paiements( $id, $b1, array( $v1 ) ), 'bordereau rejeté : de nouveau modifiable' );
-verifier( null === ueb_ipes_paiement( $id, $v3 )->bordereau_id, 'versement retiré : de nouveau libre' );
+verifier( true === ueb_ipes_bordereau_definir_etudiants( $id, $b1, array( $paul ) ), 'bordereau rejeté : de nouveau modifiable' );
+verifier( null === ueb_ipes_etudiant( $id, $marie )->bordereau_id, 'étudiante retirée : de nouveau à reverser' );
 verifier( true === ueb_ipes_bordereau_envoyer( $id, $b1 ), 'bordereau renvoyé' );
 $renvoye = ueb_ipes_bordereau( $id, $b1 );
-verifier( 'BRD-IS-' . $courte . '-0001' === $renvoye->numero && 30000 === (int) $renvoye->total && null === $renvoye->motif_rejet, 'renvoi : même numéro, nouveau total, motif effacé' );
+verifier( 'BRD-IS-' . $courte . '-0001' === $renvoye->numero && $U === (int) $renvoye->total && null === $renvoye->motif_rejet, 'renvoi : même numéro, nouveau total, motif effacé' );
 verifier( true === ueb_ipes_bordereau_decider( $b1, true ) && 'verifie' === $statut( $b1 ), 'bordereau vérifié' );
 verifier( is_wp_error( ueb_ipes_bordereau_decider( $b1, false, 'Trop tard pour changer' ) ), 'seconde décision refusée' );
-verifier( array( 'du' => 50000, 'envoye' => 30000, 'verifie' => 30000, 'reste' => 20000 ) === ueb_ipes_jauge( $id ), 'jauge après vérification ' . json_encode( ueb_ipes_jauge( $id ) ) );
+$jauge = ueb_ipes_jauge( $id );
+verifier( 2 * $U === $jauge['du'] && $U === $jauge['envoye'] && $U === $jauge['verifie'] && $U === $jauge['reste'] && 1 === $jauge['libres'], 'jauge après vérification ' . json_encode( $jauge ) );
 
-verifier( true === ueb_ipes_bordereau_definir_paiements( $id, $b2, array( $v3 ) ) && true === ueb_ipes_bordereau_envoyer( $id, $b2 ), 'deuxième bordereau envoyé' );
-verifier( 'BRD-IS-' . $courte . '-0002' === ueb_ipes_bordereau( $id, $b2 )->numero, 'numérotation continue : 0002' );
-$b3 = ueb_ipes_bordereau_creer( $id );
-ueb_ipes_bordereau_definir_paiements( $id, $b3, array( $v4 ) );
+verifier( true === ueb_ipes_bordereau_definir_etudiants( $id, $b2, array( $marie ) ), 'Marie dans le deuxième bordereau' );
+$recu( $b2 );
+verifier( true === ueb_ipes_bordereau_envoyer( $id, $b2 ) && 'BRD-IS-' . $courte . '-0002' === ueb_ipes_bordereau( $id, $b2 )->numero, 'numérotation continue : 0002' );
+$luc = ueb_ipes_etudiant_enregistrer( $id, array( 'matricule' => '24IS004', 'nom' => 'Nkodo', 'prenom' => 'Luc' ) + $paul_saisie );
+$b3  = ueb_ipes_bordereau_creer( $id );
+ueb_ipes_bordereau_definir_etudiants( $id, $b3, array( $luc ) );
 verifier( is_wp_error( ueb_ipes_bordereau_supprimer( $autre, $b3 ) ), 'suppression par un autre IPES refusée' );
 verifier( true === ueb_ipes_bordereau_supprimer( $id, $b3 ) && null === ueb_ipes_bordereau( $id, $b3 ), 'brouillon supprimé' );
-verifier( null === ueb_ipes_paiement( $id, $v4 )->bordereau_id, 'ses versements redeviennent libres' );
+verifier( null === ueb_ipes_etudiant( $id, $luc )->bordereau_id, 'ses étudiants redeviennent à reverser' );
 verifier( array( $b2, $b1 ) === array_map( static fn( $b ) => (int) $b->id, ueb_ipes_bordereaux( $id ) ), 'bordereaux du plus récent au plus ancien' );
 verifier( array( $b1 ) === array_map( static fn( $b ) => (int) $b->id, ueb_ipes_bordereaux( $id, array( 'statut' => 'verifie' ) ) ), 'filtre par statut' );
-$wpdb->update( 'ueb_insc_ipes', array( 'montant_annuel_du' => null ), array( 'id' => $id ) );
-verifier( null === ueb_ipes_jauge( $id )['du'] && null === ueb_ipes_jauge( $id )['reste'], 'jauge sans montant dû : pas de reste calculé' );
+verifier( array( $b2, $b1 ) === array_map( static fn( $b ) => (int) $b->id, ueb_ipes_bordereaux_pour_ueb( $id ) ) && 1 === (int) ueb_ipes_bordereaux_pour_ueb( $id )[0]->nb_etudiants, 'vue de l’UEb : à vérifier d’abord, sans brouillon' );
+
+/* ---------- Plusieurs tutelles ---------- */
+verifier( $id === ueb_ipes_enregistrer( array( 'tutelles' => array( 'FSEG', 'FS' ) ) + $siantou, $id ), 'IS sous FSEG + FS' );
+$phys   = ueb_ipes_filiere_ajouter( $id, 'Physique', 'FS' );
+$pierre = ueb_ipes_etudiant_enregistrer( $id, array( 'matricule' => '24IS005', 'nom' => 'Owona', 'prenom' => 'Pierre', 'filiere_id' => $phys ) + $paul_saisie );
+verifier( is_wp_error( ueb_ipes_bordereau_creer( $id ) ), 'deux tutelles : bordereau sans tutelle choisie refusé' );
+$b4 = ueb_ipes_bordereau_creer( $id, 'FSEG' );
+verifier( is_wp_error( ueb_ipes_bordereau_definir_etudiants( $id, $b4, array( $pierre ) ) ), 'étudiant d’une filière de la FS refusé dans un bordereau FSEG' );
+verifier( array( $pierre ) === array_map( static fn( $e ) => (int) $e->id, ueb_ipes_etudiants_libres( $id, 'FS' ) ), 'à cocher pour la FS : seulement Pierre' );
+$b5 = ueb_ipes_bordereau_creer( $id, 'fs' );
+verifier( true === ueb_ipes_bordereau_definir_etudiants( $id, $b5, array( $pierre ) ), 'Pierre dans le bordereau de la FS' );
+verifier( isset( erreurs_de( ueb_ipes_etudiant_enregistrer( $id, array( 'matricule' => '24IS005', 'nom' => 'Owona', 'prenom' => 'Pierre', 'filiere_id' => $genie ) + $paul_saisie, $pierre ) )['filiere_id'] ), 'dans un brouillon FS : passer dans une filière de la FSEG refusé' );
+$jauge = ueb_ipes_jauge( $id );
+verifier( $U === $jauge['par_tutelle']['FS']['du'] && 3 * $U === $jauge['par_tutelle']['FSEG']['du'] && 4 * $U === $jauge['du'], 'jauge par tutelle : FS ' . $jauge['par_tutelle']['FS']['du'] . ', FSEG ' . $jauge['par_tutelle']['FSEG']['du'] );
+verifier( isset( erreurs_de( ueb_ipes_enregistrer( array( 'tutelles' => array( 'FSEG' ) ) + $siantou, $id ) )['tutelles'] ), 'retrait de la FS refusé tant que Physique est active' );
+
 ueb_ipes_changer_etat( $id, false );
-verifier( is_wp_error( ueb_ipes_bordereau_creer( $id ) ), 'IPES désactivé : pas de nouveau bordereau' );
+verifier( is_wp_error( ueb_ipes_bordereau_creer( $id, 'FSEG' ) ), 'IPES désactivé : pas de nouveau bordereau' );
 ueb_ipes_changer_etat( $id, true );
 
 echo $GLOBALS['assertions'] . " vérifications réussies.\n";

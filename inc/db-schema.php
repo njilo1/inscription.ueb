@@ -13,7 +13,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-const UEB_INSC_DB_VERSION = '7';
+const UEB_INSC_DB_VERSION = '8';
 
 function ueb_insc_schema() {
 	return array(
@@ -123,7 +123,6 @@ function ueb_insc_schema() {
 			convention_ref VARCHAR(100) NOT NULL DEFAULT '',
 			convention_signee_le DATE NULL,
 			convention_fin_le DATE NULL,
-			montant_annuel_du INT UNSIGNED NULL,
 			actif TINYINT(1) NOT NULL DEFAULT 1,
 			modifie_par BIGINT UNSIGNED NULL,
 			date_creation DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -142,21 +141,26 @@ function ueb_insc_schema() {
 			KEY idx_etablissement (etablissement)
 		) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
 
-		/* Filières d'un IPES. Une filière retirée est désactivée, jamais
-		   supprimée. La collation rend l'unicité insensible à la casse. */
+		/* Filières d'un IPES, chacune rattachée à UNE de ses tutelles
+		   (etablissement) : ses étudiants sont reversés à cette faculté. Une
+		   filière retirée est désactivée, jamais supprimée. La collation rend
+		   l'unicité insensible à la casse. */
 		'ueb_insc_ipes_filieres' => "CREATE TABLE IF NOT EXISTS ueb_insc_ipes_filieres (
 			id INT UNSIGNED NOT NULL AUTO_INCREMENT,
 			ipes_id INT UNSIGNED NOT NULL,
+			etablissement VARCHAR(10) NOT NULL DEFAULT '',
 			libelle VARCHAR(150) NOT NULL,
 			actif TINYINT(1) NOT NULL DEFAULT 1,
 			date_creation DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 			PRIMARY KEY (id),
-			UNIQUE KEY uniq_ipes_libelle (ipes_id, libelle)
+			UNIQUE KEY uniq_ipes_libelle (ipes_id, libelle),
+			KEY idx_ipes_etab (ipes_id, etablissement)
 		) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
 
 		/* Étudiants d'un IPES, saisis par son administrateur : une ligne par
 		   année académique (filière et niveau changent d'une année à l'autre),
-		   le matricule restant le même. */
+		   le matricule restant le même. bordereau_id : le seul bordereau qui
+		   reverse l'étudiant pour l'année (NULL tant qu'il n'est dans aucun). */
 		'ueb_insc_ipes_etudiants' => "CREATE TABLE IF NOT EXISTS ueb_insc_ipes_etudiants (
 			id INT UNSIGNED NOT NULL AUTO_INCREMENT,
 			ipes_id INT UNSIGNED NOT NULL,
@@ -167,39 +171,26 @@ function ueb_insc_schema() {
 			filiere_id INT UNSIGNED NOT NULL,
 			niveau VARCHAR(2) NOT NULL,
 			telephone VARCHAR(12) NOT NULL DEFAULT '',
-			saisi_par BIGINT UNSIGNED NULL,
-			date_creation DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-			date_modification DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-			PRIMARY KEY (id),
-			UNIQUE KEY uniq_ipes_annee_matricule (ipes_id, annee_academique, matricule),
-			KEY idx_filiere (filiere_id)
-		) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
-
-		/* Versements de pension d'un étudiant d'IPES. bordereau_id : le seul
-		   bordereau qui le reverse (NULL tant qu'il n'est dans aucun). */
-		'ueb_insc_ipes_paiements' => "CREATE TABLE IF NOT EXISTS ueb_insc_ipes_paiements (
-			id INT UNSIGNED NOT NULL AUTO_INCREMENT,
-			ipes_id INT UNSIGNED NOT NULL,
-			etudiant_id INT UNSIGNED NOT NULL,
-			montant INT UNSIGNED NOT NULL,
-			date_paiement DATE NOT NULL,
 			bordereau_id INT UNSIGNED NULL,
 			saisi_par BIGINT UNSIGNED NULL,
 			date_creation DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 			date_modification DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 			PRIMARY KEY (id),
-			KEY idx_etudiant (etudiant_id),
+			UNIQUE KEY uniq_ipes_annee_matricule (ipes_id, annee_academique, matricule),
+			KEY idx_filiere (filiere_id),
 			KEY idx_ipes_bordereau (ipes_id, bordereau_id)
 		) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
 
-		/* Bordereaux de reversement d'un IPES à UNE de ses tutelles. Le total
-		   est figé à l'envoi ; un bordereau rejeté redevient modifiable. */
+		/* Bordereaux de reversement d'un IPES à UNE de ses tutelles : des
+		   étudiants, à montant_unitaire FCFA chacun. Montant et total sont figés
+		   à l'envoi ; un bordereau rejeté redevient modifiable. */
 		'ueb_insc_ipes_bordereaux' => "CREATE TABLE IF NOT EXISTS ueb_insc_ipes_bordereaux (
 			id INT UNSIGNED NOT NULL AUTO_INCREMENT,
 			numero VARCHAR(40) NOT NULL,
 			ipes_id INT UNSIGNED NOT NULL,
 			etablissement VARCHAR(10) NOT NULL,
 			annee_academique CHAR(9) NOT NULL,
+			montant_unitaire INT UNSIGNED NOT NULL DEFAULT 0,
 			total INT UNSIGNED NOT NULL DEFAULT 0,
 			statut ENUM('brouillon','envoye','verifie','rejete') NOT NULL DEFAULT 'brouillon',
 			motif_rejet VARCHAR(255) NULL,
@@ -221,6 +212,23 @@ function ueb_insc_schema() {
 			annee_academique CHAR(9) NOT NULL,
 			dernier INT UNSIGNED NOT NULL DEFAULT 0,
 			PRIMARY KEY (ipes_id, annee_academique)
+		) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+		/* Photos ou scans des reçus bancaires joints à un bordereau : le paquet
+		   que l'IPES envoie à sa tutelle. Fichiers hors accès direct. */
+		'ueb_insc_ipes_recus' => "CREATE TABLE IF NOT EXISTS ueb_insc_ipes_recus (
+			id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+			bordereau_id INT UNSIGNED NOT NULL,
+			ipes_id INT UNSIGNED NOT NULL,
+			fichier VARCHAR(255) NOT NULL,
+			nom_original VARCHAR(255) NOT NULL,
+			type_mime VARCHAR(50) NOT NULL,
+			taille INT UNSIGNED NOT NULL,
+			envoye_par BIGINT UNSIGNED NULL,
+			date_envoi DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			PRIMARY KEY (id),
+			KEY idx_bordereau (bordereau_id),
+			KEY idx_ipes (ipes_id)
 		) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
 	);
 }
@@ -257,12 +265,39 @@ function ueb_insc_migrer() {
 			return false;
 		}
 	}
-	/* Version 7 : montant annuel dû par un IPES, prévu par sa convention (indicatif). */
-	$colonnes_ipes = $wpdb->get_col( 'SHOW COLUMNS FROM ueb_insc_ipes' );
-	if ( $colonnes_ipes && ! in_array( 'montant_annuel_du', $colonnes_ipes, true ) ) {
-		if ( false === $wpdb->query( 'ALTER TABLE ueb_insc_ipes ADD COLUMN montant_annuel_du INT UNSIGNED NULL AFTER convention_fin_le' ) ) {
+	/* Version 8 : un IPES reverse une somme fixe PAR ÉTUDIANT (plus de
+	   versements de pension ni de montant annuel dû) à la tutelle de la filière
+	   de l'étudiant, avec les reçus bancaires. La version 7 (versements, montant
+	   dû) n'a jamais été en production : ses bordereaux sont vidés. */
+	$ajouts = array(
+		'ueb_insc_ipes_filieres'   => array( 'etablissement' => "VARCHAR(10) NOT NULL DEFAULT '' AFTER ipes_id, ADD KEY idx_ipes_etab (ipes_id, etablissement)" ),
+		'ueb_insc_ipes_etudiants'  => array( 'bordereau_id' => 'INT UNSIGNED NULL AFTER telephone, ADD KEY idx_ipes_bordereau (ipes_id, bordereau_id)' ),
+		'ueb_insc_ipes_bordereaux' => array( 'montant_unitaire' => 'INT UNSIGNED NOT NULL DEFAULT 0 AFTER annee_academique' ),
+	);
+	foreach ( $ajouts as $table => $colonnes_v8 ) {
+		$existantes = $wpdb->get_col( "SHOW COLUMNS FROM $table" );
+		foreach ( $colonnes_v8 as $colonne => $definition ) {
+			if ( $existantes && ! in_array( $colonne, $existantes, true ) && false === $wpdb->query( "ALTER TABLE $table ADD COLUMN $colonne $definition" ) ) {
+				return false;
+			}
+		}
+	}
+	/* Filières d'avant la version 8 : rattachées à la première tutelle de leur IPES. */
+	$wpdb->query( "UPDATE ueb_insc_ipes_filieres f
+		SET f.etablissement = ( SELECT t.etablissement FROM ueb_insc_ipes_tutelles t WHERE t.ipes_id = f.ipes_id ORDER BY t.depuis_le, t.etablissement LIMIT 1 )
+		WHERE f.etablissement = '' AND EXISTS ( SELECT 1 FROM ueb_insc_ipes_tutelles t2 WHERE t2.ipes_id = f.ipes_id )" );
+	/* La table des versements n'existe que sur une base en version 7 : sa présence déclenche la remise à zéro, une seule fois. */
+	if ( $wpdb->get_var( "SHOW TABLES LIKE 'ueb_insc_ipes_paiements'" ) ) {
+		if ( false === $wpdb->query( 'DELETE FROM ueb_insc_ipes_bordereaux' )
+			|| false === $wpdb->query( 'DELETE FROM ueb_insc_ipes_sequence' )
+			|| false === $wpdb->query( 'UPDATE ueb_insc_ipes_etudiants SET bordereau_id = NULL' )
+			|| false === $wpdb->query( 'DROP TABLE ueb_insc_ipes_paiements' ) ) {
 			return false;
 		}
+	}
+	$colonnes_ipes = $wpdb->get_col( 'SHOW COLUMNS FROM ueb_insc_ipes' );
+	if ( $colonnes_ipes && in_array( 'montant_annuel_du', $colonnes_ipes, true ) && false === $wpdb->query( 'ALTER TABLE ueb_insc_ipes DROP COLUMN montant_annuel_du' ) ) {
+		return false;
 	}
 	return true;
 }

@@ -1,15 +1,19 @@
 <?php
 /**
- * Étudiants d'un IPES et leurs versements de pension, saisis par
- * l'administrateur de l'IPES dans son espace.
+ * Étudiants d'un IPES, saisis par l'administrateur de l'IPES dans son espace.
+ *
+ * Chaque étudiant enregistré vaut un reversement fixe à la tutelle de sa
+ * filière (UEB_IPES_REVERSEMENT_PAR_ETUDIANT) : l'IPES ne déclare plus de
+ * versements de pension. L'étudiant est reversé quand il figure dans un
+ * bordereau (colonne « bordereau_id ») ; un étudiant d'un bordereau envoyé ou
+ * vérifié n'est plus modifiable.
  *
  * Isolation : chaque fonction reçoit l'identifiant de l'IPES et filtre
- * dessus. Un étudiant ou un versement d'un autre IPES se comporte comme s'il
- * n'existait pas : l'espace d'un IPES ne peut ni le lire ni le modifier.
+ * dessus. Un étudiant d'un autre IPES se comporte comme s'il n'existait pas :
+ * l'espace d'un IPES ne peut ni le lire ni le modifier.
  *
  * Un étudiant est saisi une fois par année académique (sa filière et son
- * niveau changent), toujours avec le même matricule. Un versement placé dans
- * un bordereau n'est plus modifiable : il a été reversé, ou est en passe de l'être.
+ * niveau changent), toujours avec le même matricule.
  *
  * @package Inscription_UEB
  */
@@ -17,25 +21,31 @@
 defined( 'ABSPATH' ) || exit;
 
 const UEB_IPES_MATRICULE_REGEX = '/^[A-Z0-9][A-Z0-9\/.-]{2,29}$/';
-const UEB_IPES_MONTANT_MAX     = 10000000; /* garde-fou contre une faute de frappe (un zéro de trop) */
 
-/* ---------- Étudiants : lecture ---------- */
+/* ---------- Lecture ---------- */
 
-/** Un étudiant de CET IPES, ou null (inexistant ou d'un autre IPES). */
+/**
+ * Un étudiant de CET IPES, ou null (inexistant ou d'un autre IPES), avec la
+ * tutelle de sa filière et le statut de son bordereau.
+ */
 function ueb_ipes_etudiant( $ipes_id, $id ) {
 	global $wpdb;
 	return $wpdb->get_row( $wpdb->prepare(
-		'SELECT * FROM ueb_insc_ipes_etudiants WHERE id = %d AND ipes_id = %d',
+		'SELECT e.*, f.etablissement AS tutelle, b.statut AS bordereau_statut
+		FROM ueb_insc_ipes_etudiants e
+		LEFT JOIN ueb_insc_ipes_filieres f ON f.id = e.filiere_id
+		LEFT JOIN ueb_insc_ipes_bordereaux b ON b.id = e.bordereau_id AND b.ipes_id = e.ipes_id
+		WHERE e.id = %d AND e.ipes_id = %d',
 		$id, $ipes_id
 	) );
 }
 
 /**
- * Étudiants d'un IPES pour une année, avec le libellé de leur filière et le
- * total de leurs versements, triés par nom.
+ * Étudiants d'un IPES pour une année, avec leur filière, sa tutelle et leur
+ * bordereau (numéro et statut), triés par nom.
  *
  * @param array $filtres annee (défaut : l'année en cours), recherche (matricule,
- *                       nom ou prénom), filiere_id.
+ *                       nom ou prénom), filiere_id, tutelle (sigle).
  */
 function ueb_ipes_etudiants( $ipes_id, array $filtres = array() ) {
 	global $wpdb;
@@ -55,22 +65,29 @@ function ueb_ipes_etudiants( $ipes_id, array $filtres = array() ) {
 		$where[]  = 'e.filiere_id = %d';
 		$params[] = (int) $filtres['filiere_id'];
 	}
+	if ( ! empty( $filtres['tutelle'] ) ) {
+		$where[]  = 'f.etablissement = %s';
+		$params[] = strtoupper( (string) $filtres['tutelle'] );
+	}
 
 	return $wpdb->get_results( $wpdb->prepare(
-		'SELECT e.*, f.libelle AS filiere,
-			COALESCE( SUM( p.montant ), 0 ) AS total_paye,
-			COUNT( p.id ) AS nb_versements
+		'SELECT e.*, f.libelle AS filiere, f.etablissement AS tutelle,
+			b.numero AS bordereau_numero, b.statut AS bordereau_statut
 		FROM ueb_insc_ipes_etudiants e
 		LEFT JOIN ueb_insc_ipes_filieres f ON f.id = e.filiere_id
-		LEFT JOIN ueb_insc_ipes_paiements p ON p.etudiant_id = e.id AND p.ipes_id = e.ipes_id
+		LEFT JOIN ueb_insc_ipes_bordereaux b ON b.id = e.bordereau_id AND b.ipes_id = e.ipes_id
 		WHERE ' . implode( ' AND ', $where ) . '
-		GROUP BY e.id
 		ORDER BY e.nom, e.prenom',
 		$params
 	) );
 }
 
-/* ---------- Étudiants : validation ---------- */
+/** Vrai si l'étudiant figure dans un bordereau envoyé ou vérifié : il n'est plus modifiable. */
+function ueb_ipes_etudiant_fige( $etudiant ) {
+	return $etudiant && $etudiant->bordereau_id && ! in_array( $etudiant->bordereau_statut, UEB_IPES_BORDEREAU_MODIFIABLE, true );
+}
+
+/* ---------- Validation ---------- */
 
 /**
  * Saisie mise en forme : matricule en majuscules sans espaces, noms rognés,
@@ -95,7 +112,8 @@ function ueb_ipes_etudiant_normaliser( array $d ) {
  *
  * @param object|null $existant Étudiant modifié : sa filière reste acceptée même
  *                              si elle a été retirée depuis ; son année sert au
- *                              contrôle du matricule.
+ *                              contrôle du matricule. S'il est dans un brouillon,
+ *                              sa filière ne peut pas changer de tutelle.
  */
 function ueb_ipes_etudiant_valider( $ipes_id, array $d, $existant = null ) {
 	global $wpdb;
@@ -123,6 +141,9 @@ function ueb_ipes_etudiant_valider( $ipes_id, array $d, $existant = null ) {
 	$garde   = $existant && (int) $existant->filiere_id === $d['filiere_id'];
 	if ( ! $filiere || (int) $filiere->ipes_id !== (int) $ipes_id || ( ! (int) $filiere->actif && ! $garde ) ) {
 		$erreurs['filiere_id'] = 'Choisis une filière de l’IPES.';
+	} elseif ( $existant && $existant->bordereau_id && $filiere->etablissement !== $existant->tutelle ) {
+		/* Le bordereau est adressé à une seule tutelle : l'étudiant ne peut pas en sortir par sa filière. */
+		$erreurs['filiere_id'] = sprintf( 'L’étudiant figure dans un bordereau pour la %s : choisis une filière de la %s, ou retire-le d’abord du bordereau.', $existant->tutelle, $existant->tutelle );
 	}
 
 	if ( ! isset( UEB_NIVEAUX_INSCRIPTION[ $d['niveau'] ] ) ) {
@@ -134,7 +155,7 @@ function ueb_ipes_etudiant_valider( $ipes_id, array $d, $existant = null ) {
 	return $erreurs;
 }
 
-/* ---------- Étudiants : écriture ---------- */
+/* ---------- Écriture ---------- */
 
 /**
  * Ajoute ($id = 0, pour l'année en cours) ou modifie un étudiant de l'IPES.
@@ -150,6 +171,9 @@ function ueb_ipes_etudiant_enregistrer( $ipes_id, array $d, $id = 0 ) {
 		if ( ! $existant ) {
 			return new WP_Error( 'ueb_ipes_etudiant', 'Cet étudiant n’existe pas.' );
 		}
+		if ( ueb_ipes_etudiant_fige( $existant ) ) {
+			return new WP_Error( 'ueb_ipes_etudiant', 'Cet étudiant figure dans un bordereau envoyé : il n’est plus modifiable.' );
+		}
 	}
 	$d       = ueb_ipes_etudiant_normaliser( $d );
 	$erreurs = ueb_ipes_etudiant_valider( $ipes_id, $d, $existant );
@@ -157,7 +181,14 @@ function ueb_ipes_etudiant_enregistrer( $ipes_id, array $d, $id = 0 ) {
 		return new WP_Error( 'ueb_ipes_etudiant', 'Corrige les champs signalés.', $erreurs );
 	}
 	if ( $existant ) {
-		$ok = $wpdb->update( 'ueb_insc_ipes_etudiants', $d, array( 'id' => (int) $id, 'ipes_id' => (int) $ipes_id ) );
+		/* Condition sur le bordereau : un envoi arrivé entre-temps l'emporte. */
+		$ok = $wpdb->query( $wpdb->prepare(
+			"UPDATE ueb_insc_ipes_etudiants e
+			LEFT JOIN ueb_insc_ipes_bordereaux b ON b.id = e.bordereau_id
+			SET e.matricule = %s, e.nom = %s, e.prenom = %s, e.filiere_id = %d, e.niveau = %s, e.telephone = %s
+			WHERE e.id = %d AND e.ipes_id = %d AND ( e.bordereau_id IS NULL OR b.statut IN ('brouillon','rejete') )",
+			$d['matricule'], $d['nom'], $d['prenom'], $d['filiere_id'], $d['niveau'], $d['telephone'], $id, $ipes_id
+		) );
 	} else {
 		$ok = $wpdb->insert( 'ueb_insc_ipes_etudiants', $d + array(
 			'ipes_id'          => (int) $ipes_id,
@@ -172,144 +203,19 @@ function ueb_ipes_etudiant_enregistrer( $ipes_id, array $d, $id = 0 ) {
 	return $existant ? (int) $id : (int) $wpdb->insert_id;
 }
 
-/** Supprime un étudiant saisi par erreur, seulement s'il n'a aucun versement. */
+/** Supprime un étudiant saisi par erreur, seulement s'il n'est dans aucun bordereau. */
 function ueb_ipes_etudiant_supprimer( $ipes_id, $id ) {
 	global $wpdb;
-	if ( ! ueb_ipes_etudiant( $ipes_id, $id ) ) {
+	$etudiant = ueb_ipes_etudiant( $ipes_id, $id );
+	if ( ! $etudiant ) {
 		return new WP_Error( 'ueb_ipes_etudiant', 'Cet étudiant n’existe pas.' );
 	}
-	if ( $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ueb_insc_ipes_paiements WHERE etudiant_id = %d', $id ) ) ) {
-		return new WP_Error( 'ueb_ipes_etudiant', 'Cet étudiant a des versements : supprime-les d’abord.' );
-	}
-	$wpdb->delete( 'ueb_insc_ipes_etudiants', array( 'id' => (int) $id, 'ipes_id' => (int) $ipes_id ) );
-	return true;
-}
-
-/* ---------- Versements ---------- */
-
-/** Un versement de CET IPES, ou null. */
-function ueb_ipes_paiement( $ipes_id, $id ) {
-	global $wpdb;
-	return $wpdb->get_row( $wpdb->prepare(
-		'SELECT * FROM ueb_insc_ipes_paiements WHERE id = %d AND ipes_id = %d',
-		$id, $ipes_id
-	) );
-}
-
-/** Versements d'un étudiant de l'IPES, du plus récent au plus ancien. */
-function ueb_ipes_paiements_etudiant( $ipes_id, $etudiant_id ) {
-	global $wpdb;
-	return $wpdb->get_results( $wpdb->prepare(
-		'SELECT * FROM ueb_insc_ipes_paiements WHERE ipes_id = %d AND etudiant_id = %d ORDER BY date_paiement DESC, id DESC',
-		$ipes_id, $etudiant_id
-	) );
-}
-
-/** « 25 000 », « 25000 FCFA » → 25000 ; 0 si la saisie ne contient aucun chiffre. */
-function ueb_ipes_montant( $saisie ) {
-	return (int) preg_replace( '/\D+/', '', (string) $saisie );
-}
-
-/** Erreurs champ => message d'un versement (montant entier, date passée ou du jour). */
-function ueb_ipes_paiement_valider( $montant, $date ) {
-	$erreurs = array();
-	if ( $montant <= 0 ) {
-		$erreurs['montant'] = 'Saisis le montant versé, en FCFA.';
-	} elseif ( $montant > UEB_IPES_MONTANT_MAX ) {
-		$erreurs['montant'] = 'Montant trop élevé : vérifie le nombre de zéros.';
-	}
-	if ( ! ueb_ipes_date_valide( (string) $date ) ) {
-		$erreurs['date_paiement'] = 'Date invalide.';
-	} elseif ( $date > current_time( 'Y-m-d' ) ) {
-		$erreurs['date_paiement'] = 'La date du versement ne peut pas être dans le futur.';
-	}
-	return $erreurs;
-}
-
-/**
- * Ajoute ($id = 0) ou modifie un versement d'un étudiant de l'IPES. Un
- * versement déjà placé dans un bordereau n'est plus modifiable.
- *
- * @return int|WP_Error
- */
-function ueb_ipes_paiement_enregistrer( $ipes_id, $etudiant_id, array $d, $id = 0 ) {
-	global $wpdb;
-	if ( ! ueb_ipes_etudiant( $ipes_id, $etudiant_id ) ) {
-		return new WP_Error( 'ueb_ipes_paiement', 'Cet étudiant n’existe pas.' );
-	}
-	if ( $id ) {
-		$existant = ueb_ipes_paiement( $ipes_id, $id );
-		if ( ! $existant || (int) $existant->etudiant_id !== (int) $etudiant_id ) {
-			return new WP_Error( 'ueb_ipes_paiement', 'Ce versement n’existe pas.' );
-		}
-		if ( $existant->bordereau_id ) {
-			return new WP_Error( 'ueb_ipes_paiement', 'Ce versement figure dans un bordereau : il n’est plus modifiable.' );
-		}
-	}
-	$montant = ueb_ipes_montant( $d['montant'] ?? '' );
-	$date    = trim( (string) ( $d['date_paiement'] ?? '' ) );
-	$erreurs = ueb_ipes_paiement_valider( $montant, $date );
-	if ( $erreurs ) {
-		return new WP_Error( 'ueb_ipes_paiement', 'Corrige les champs signalés.', $erreurs );
-	}
-	$ligne = array( 'montant' => $montant, 'date_paiement' => $date );
-	if ( $id ) {
-		/* bordereau_id IS NULL dans la condition : un bordereau formé entre-temps l'emporte. */
-		$ok = $wpdb->query( $wpdb->prepare(
-			'UPDATE ueb_insc_ipes_paiements SET montant = %d, date_paiement = %s WHERE id = %d AND ipes_id = %d AND bordereau_id IS NULL',
-			$montant, $date, $id, $ipes_id
-		) );
-		return false === $ok ? new WP_Error( 'ueb_ipes_paiement', 'Le versement n’a pas pu être modifié. Réessaie dans un instant.' ) : (int) $id;
-	}
-	$ok = $wpdb->insert( 'ueb_insc_ipes_paiements', $ligne + array(
-		'ipes_id'     => (int) $ipes_id,
-		'etudiant_id' => (int) $etudiant_id,
-		'saisi_par'   => get_current_user_id() ?: null,
-	) );
-	return $ok ? (int) $wpdb->insert_id : new WP_Error( 'ueb_ipes_paiement', 'Le versement n’a pas pu être enregistré. Réessaie dans un instant.' );
-}
-
-/** Supprime un versement saisi par erreur, s'il n'est dans aucun bordereau. */
-function ueb_ipes_paiement_supprimer( $ipes_id, $id ) {
-	global $wpdb;
-	$paiement = ueb_ipes_paiement( $ipes_id, $id );
-	if ( ! $paiement ) {
-		return new WP_Error( 'ueb_ipes_paiement', 'Ce versement n’existe pas.' );
-	}
-	if ( $paiement->bordereau_id ) {
-		return new WP_Error( 'ueb_ipes_paiement', 'Ce versement figure dans un bordereau : il ne peut pas être supprimé.' );
+	if ( $etudiant->bordereau_id ) {
+		return new WP_Error( 'ueb_ipes_etudiant', 'Cet étudiant figure dans un bordereau : il ne peut pas être supprimé.' );
 	}
 	$wpdb->query( $wpdb->prepare(
-		'DELETE FROM ueb_insc_ipes_paiements WHERE id = %d AND ipes_id = %d AND bordereau_id IS NULL',
+		'DELETE FROM ueb_insc_ipes_etudiants WHERE id = %d AND ipes_id = %d AND bordereau_id IS NULL',
 		$id, $ipes_id
 	) );
 	return true;
-}
-
-/* ---------- Totaux ---------- */
-
-/**
- * Chiffres d'un IPES pour une année : nombre d'étudiants, total encaissé,
- * et part encore libre (dans aucun bordereau).
- *
- * @return array{etudiants:int, encaisse:int, libre:int}
- */
-function ueb_ipes_totaux( $ipes_id, $annee = null ) {
-	global $wpdb;
-	$annee = $annee ?? ueb_annee_academique()['code'];
-	$ligne = $wpdb->get_row( $wpdb->prepare(
-		'SELECT
-			( SELECT COUNT(*) FROM ueb_insc_ipes_etudiants WHERE ipes_id = %d AND annee_academique = %s ) AS etudiants,
-			COALESCE( SUM( p.montant ), 0 ) AS encaisse,
-			COALESCE( SUM( CASE WHEN p.bordereau_id IS NULL THEN p.montant ELSE 0 END ), 0 ) AS libre
-		FROM ueb_insc_ipes_paiements p
-		JOIN ueb_insc_ipes_etudiants e ON e.id = p.etudiant_id AND e.ipes_id = p.ipes_id
-		WHERE p.ipes_id = %d AND e.annee_academique = %s',
-		$ipes_id, $annee, $ipes_id, $annee
-	) );
-	return array(
-		'etudiants' => (int) ( $ligne->etudiants ?? 0 ),
-		'encaisse'  => (int) ( $ligne->encaisse ?? 0 ),
-		'libre'     => (int) ( $ligne->libre ?? 0 ),
-	);
 }

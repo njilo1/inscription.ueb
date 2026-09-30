@@ -1,7 +1,10 @@
 <?php
 /**
  * Filières d'un IPES, saisies par l'administration d'après la liste que
- * l'IPES communique.
+ * l'IPES communique, TUTELLE PAR TUTELLE : chaque filière dépend d'un des
+ * établissements de tutelle de l'IPES (colonne « etablissement »), et ses
+ * étudiants sont reversés à cet établissement. Par exemple, pour Siantou :
+ * Droit → FSJP, Physique → FS.
  *
  * Une filière retirée est désactivée, jamais supprimée : les étudiants de
  * l'IPES y seront rattachés, et l'historique doit rester lisible.
@@ -16,13 +19,36 @@ const UEB_IPES_FILIERE_MAX = 150;
 
 /* ---------- Lecture ---------- */
 
-/** Filières d'un IPES par ordre alphabétique, éventuellement les seules actives. */
-function ueb_ipes_filieres( $ipes_id, $actives_seulement = false ) {
+/**
+ * Filières d'un IPES, triées par tutelle puis par libellé.
+ *
+ * @param bool   $actives_seulement Seulement les filières non retirées.
+ * @param string $etablissement     Seulement celles de cette tutelle (sigle).
+ */
+function ueb_ipes_filieres( $ipes_id, $actives_seulement = false, $etablissement = '' ) {
 	global $wpdb;
-	return $wpdb->get_results( $wpdb->prepare(
-		'SELECT * FROM ueb_insc_ipes_filieres WHERE ipes_id = %d' . ( $actives_seulement ? ' AND actif = 1' : '' ) . ' ORDER BY libelle',
-		$ipes_id
-	) );
+	$sql    = 'SELECT * FROM ueb_insc_ipes_filieres WHERE ipes_id = %d';
+	$params = array( $ipes_id );
+	if ( $actives_seulement ) {
+		$sql .= ' AND actif = 1';
+	}
+	if ( '' !== (string) $etablissement ) {
+		$sql     .= ' AND etablissement = %s';
+		$params[] = strtoupper( (string) $etablissement );
+	}
+	return $wpdb->get_results( $wpdb->prepare( $sql . ' ORDER BY etablissement, libelle', $params ) );
+}
+
+/**
+ * Filières d'un IPES regroupées par tutelle : sigle => filières, pour chaque
+ * tutelle de l'IPES (tableau vide si elle n'a pas encore de filière).
+ */
+function ueb_ipes_filieres_par_tutelle( $ipes, $actives_seulement = false ) {
+	$groupes = array_fill_keys( (array) $ipes->tutelles, array() );
+	foreach ( ueb_ipes_filieres( $ipes->id, $actives_seulement ) as $f ) {
+		$groupes[ $f->etablissement ][] = $f;
+	}
+	return $groupes;
 }
 
 /** Une filière, ou null. */
@@ -62,18 +88,31 @@ function ueb_ipes_filiere_valider( $ipes_id, $libelle, $id = 0 ) {
 
 /* ---------- Écriture ---------- */
 
-/** @return int|WP_Error Identifiant de la filière ajoutée. */
-function ueb_ipes_filiere_ajouter( $ipes_id, $libelle ) {
+/**
+ * Ajoute une filière sous l'une des tutelles de l'IPES. Sans tutelle
+ * précisée, celle de l'IPES est prise s'il n'en a qu'une.
+ *
+ * @return int|WP_Error Identifiant de la filière ajoutée.
+ */
+function ueb_ipes_filiere_ajouter( $ipes_id, $libelle, $etablissement = '' ) {
 	global $wpdb;
-	if ( ! ueb_ipes( $ipes_id ) ) {
+	$ipes = ueb_ipes( $ipes_id );
+	if ( ! $ipes ) {
 		return new WP_Error( 'ueb_ipes_filiere', 'Cet IPES n’existe pas.' );
+	}
+	$etablissement = strtoupper( trim( (string) $etablissement ) );
+	if ( '' === $etablissement && 1 === count( $ipes->tutelles ) ) {
+		$etablissement = $ipes->tutelles[0];
+	}
+	if ( ! in_array( $etablissement, $ipes->tutelles, true ) ) {
+		return new WP_Error( 'ueb_ipes_filiere', 'Choisis l’établissement de tutelle de cette filière, parmi ceux de l’IPES.' );
 	}
 	$libelle = ueb_ipes_filiere_normaliser( $libelle );
 	$erreur  = ueb_ipes_filiere_valider( $ipes_id, $libelle );
 	if ( $erreur ) {
 		return new WP_Error( 'ueb_ipes_filiere', $erreur );
 	}
-	if ( ! $wpdb->insert( 'ueb_insc_ipes_filieres', array( 'ipes_id' => (int) $ipes_id, 'libelle' => $libelle ) ) ) {
+	if ( ! $wpdb->insert( 'ueb_insc_ipes_filieres', array( 'ipes_id' => (int) $ipes_id, 'etablissement' => $etablissement, 'libelle' => $libelle ) ) ) {
 		/* Deux ajouts simultanés du même libellé : la clé unique tranche. */
 		return new WP_Error( 'ueb_ipes_filiere', 'Cette filière existe déjà pour cet IPES.' );
 	}
@@ -130,10 +169,11 @@ function ueb_action_ipes_filiere_ajouter() {
 	ueb_ipes_retour_bloc( 'filieres' );
 	$ipes     = ueb_ipes_du_formulaire();
 	$libelle  = sanitize_text_field( wp_unslash( $_POST['libelle'] ?? '' ) );
-	$resultat = ueb_ipes_filiere_ajouter( $ipes->id, $libelle );
+	$tutelle  = sanitize_text_field( wp_unslash( $_POST['etablissement'] ?? '' ) );
+	$resultat = ueb_ipes_filiere_ajouter( $ipes->id, $libelle, $tutelle );
 	if ( is_wp_error( $resultat ) ) {
-		/* L'erreur s'affiche sous le champ, dans le bloc Filières. */
-		ueb_memoriser_saisie( array( 'libelle' => $libelle ), array( 'libelle' => $resultat->get_error_message() ) );
+		/* L'erreur s'affiche sous le champ de sa tutelle, dans le bloc Filières. */
+		ueb_memoriser_saisie( array( 'libelle' => $libelle, 'etablissement' => strtoupper( $tutelle ) ), array( 'libelle' => $resultat->get_error_message() ) );
 	} else {
 		ueb_flash( 'succes', 'Filière ajoutée.' );
 	}

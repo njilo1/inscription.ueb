@@ -6,7 +6,7 @@
  *                           registre, filtrable en direct ;
  *   - ?ipes={id}          : la fiche (reversements, bordereaux, étudiants,
  *                           coordonnées) ;
- *   - &etudiant={id}      : les versements d'un étudiant.
+ *   - &etudiant={id}      : un étudiant et son reversement.
  * La décision sur un bordereau (« ueb_verifier_ipes ») s'ajoute dans le bloc
  * Bordereaux. Attend $ici et $annee (page-scolarite.php), qui n'affiche pas
  * son en-tête générique sur la fiche : elle a le sien.
@@ -78,14 +78,13 @@ $adresse = static fn( array $args = array() ) => add_query_arg( array_merge( arr
 	<?php elseif ( isset( $_GET['etudiant'] ) ) : ?>
 
 		<?php
-		$etudiant   = ueb_ipes_etudiant( $ipes->id, (int) $_GET['etudiant'] );
-		$versements = $etudiant ? ueb_ipes_paiements_etudiant( $ipes->id, $etudiant->id ) : array();
+		$etudiant  = ueb_ipes_etudiant( $ipes->id, (int) $_GET['etudiant'] );
+		$bordereau = $etudiant && $etudiant->bordereau_id ? ueb_ipes_bordereau( $ipes->id, $etudiant->bordereau_id ) : null;
 		?>
 		<a class="fil" href="<?php echo esc_url( $adresse( array( 'ipes' => (int) $ipes->id ) ) . '#etudiants' ); ?>"><?php echo ueb_icone( 'fleche-g', 18 ); ?><?php echo esc_html( 'Étudiants de ' . $ipes->sigle ); ?></a>
 		<?php if ( ! $etudiant ) : ?>
 			<div class="bo-vide bo-vide--large"><span><?php echo ueb_icone( 'utilisateur', 24 ); ?></span><p><b>Cet étudiant n’existe pas dans cet IPES.</b></p></div>
 		<?php else : ?>
-			<?php $total = array_sum( array_map( static fn( $v ) => (int) $v->montant, $versements ) ); ?>
 			<header class="bo-entete ipes-sco-entete">
 				<div class="bo-entete__texte">
 					<div class="adm-tete__identite">
@@ -96,39 +95,28 @@ $adresse = static fn( array $args = array() ) => add_query_arg( array_merge( arr
 								<li><?php echo ueb_icone( 'ecole', 14 ); ?><?php echo esc_html( $ipes->sigle ); ?></li>
 								<li><?php echo ueb_icone( 'qr', 14 ); ?><?php echo esc_html( $etudiant->matricule ); ?></li>
 								<li><?php echo ueb_icone( 'fichier', 14 ); ?><?php echo esc_html( ueb_ipes_filiere( $etudiant->filiere_id )->libelle ?? 'Filière inconnue' ); ?></li>
+								<?php if ( $etudiant->tutelle ) : ?><li><?php echo ueb_icone( 'bouclier', 14 ); ?><?php echo esc_html( 'Tutelle : ' . $etudiant->tutelle ); ?></li><?php endif; ?>
 								<li><?php echo ueb_icone( 'calendrier', 14 ); ?><?php echo esc_html( ueb_ipes_niveau( $etudiant->niveau ) . ', ' . str_replace( '-', ' – ', $etudiant->annee_academique ) ); ?></li>
 							</ul>
 						</div>
 					</div>
 				</div>
 			</header>
-			<section class="adm-panneau ipes-registre" aria-labelledby="sco-versements-titre">
+			<section class="adm-panneau ipes-registre" aria-labelledby="sco-reversement-titre">
 				<header class="adm-panneau__tete">
-					<div><h2 id="sco-versements-titre">Versements déclarés par l’IPES</h2><p>Un versement compte comme reversé dès que son bordereau est envoyé ; seul le bordereau vérifié l’est définitivement.</p></div>
-					<p class="ipes-total"><b><?php echo esc_html( ueb_formater_montant( $total ) ); ?></b><small>FCFA payés</small></p>
+					<div><h2 id="sco-reversement-titre">Reversement</h2><p><?php echo esc_html( 'L’IPES reverse ' . ueb_fcfa( UEB_IPES_REVERSEMENT_PAR_ETUDIANT ) . ' par étudiant à la tutelle de sa filière. Seul un bordereau vérifié compte comme reversé.' ); ?></p></div>
 				</header>
-				<?php if ( ! $versements ) : ?>
-					<div class="bo-vide ipes-vide"><span><?php echo ueb_icone( 'banque', 22 ); ?></span><p><b>Aucun versement enregistré par l’IPES.</b></p></div>
-				<?php else : ?>
-					<table class="adm-registre__table ipes-table ipes-table--versements">
-						<thead><tr><th scope="col">Date</th><th scope="col" class="num">Montant</th><th scope="col">Reversement</th></tr></thead>
-						<tbody>
-						<?php foreach ( $versements as $v ) : $b = $v->bordereau_id ? ueb_ipes_bordereau( $ipes->id, $v->bordereau_id ) : null; ?>
-							<tr class="ipes-ligne">
-								<td class="ipes-c-qui ipes-ligne__date"><b><?php echo esc_html( mysql2date( 'd/m/Y', $v->date_paiement ) ); ?></b></td>
-								<td class="num ipes-ligne__montant" data-titre="Montant"><?php echo esc_html( ueb_formater_montant( (int) $v->montant ) ); ?> <small>FCFA</small></td>
-								<td data-titre="Reversement">
-									<?php if ( $b && ueb_ipes_bordereau_a_pdf( $b ) ) : ?>
-										<span class="ipes-lien-bordereau"><?php echo esc_html( $b->numero ); ?></span><?php echo ueb_ipes_statut( $b->statut ); // phpcs:ignore -- échappé ?>
-									<?php else : ?>
-										<span class="ipes-statut ipes-statut--libre"><?php echo ueb_icone( 'recu', 14 ); ?>Pas encore reversé</span>
-									<?php endif; ?>
-								</td>
-							</tr>
-						<?php endforeach; ?>
-						</tbody>
-					</table>
-				<?php endif; ?>
+				<div class="ipes-corps">
+					<p class="ipes-reversement-etat">
+						<?php if ( $bordereau && ueb_ipes_bordereau_a_pdf( $bordereau ) && 'brouillon' !== $bordereau->statut ) : ?>
+							<span class="ipes-lien-bordereau"><?php echo esc_html( $bordereau->numero ); ?></span><?php echo ueb_ipes_statut( $bordereau->statut ); // phpcs:ignore -- échappé ?>
+							<span><?php echo esc_html( 'Bordereau adressé à la ' . $bordereau->etablissement . '.' ); ?></span>
+						<?php else : ?>
+							<span class="ipes-statut ipes-statut--libre"><?php echo ueb_icone( 'recu', 14 ); ?>Pas encore reversé</span>
+							<span>L’IPES ne l’a encore placé dans aucun bordereau envoyé.</span>
+						<?php endif; ?>
+					</p>
+				</div>
 			</section>
 		<?php endif; ?>
 
@@ -189,7 +177,7 @@ $adresse = static fn( array $args = array() ) => add_query_arg( array_merge( arr
 		<div class="ipes-grille">
 			<section id="etudiants" class="adm-panneau ipes-registre" aria-labelledby="sco-etudiants-titre">
 				<header class="adm-panneau__tete">
-					<div><h2 id="sco-etudiants-titre">Étudiants <?php echo esc_html( $annee['libelle'] ); ?></h2><p>Déclarés par l’IPES, avec le total de leurs versements.</p></div>
+					<div><h2 id="sco-etudiants-titre">Étudiants <?php echo esc_html( $annee['libelle'] ); ?></h2><p>Déclarés par l’IPES, avec la tutelle de leur filière et leur reversement.</p></div>
 					<form class="ipes-outils" method="get" action="<?php echo esc_url( ueb_url_scolarite() ); ?>" role="search" aria-label="Rechercher un étudiant" data-filtres-direct="sco-ipes-etudiants">
 						<input type="hidden" name="vue" value="ipes">
 						<input type="hidden" name="ipes" value="<?php echo (int) $ipes->id; ?>">
@@ -204,7 +192,7 @@ $adresse = static fn( array $args = array() ) => add_query_arg( array_merge( arr
 					<?php if ( ! $etudiants ) : ?>
 						<div class="bo-vide ipes-vide"><span><?php echo ueb_icone( '' !== $recherche ? 'loupe' : 'groupe', 22 ); ?></span><p><?php echo '' !== $recherche ? '<b>Aucun étudiant ne correspond.</b> Cherche par matricule ou par nom.' : '<b>L’IPES n’a déclaré aucun étudiant cette année.</b>'; ?></p></div>
 					<?php else : ?>
-						<?php ueb_ipes_etudiants_liste( $etudiants, static fn( $e ) => $adresse( array( 'ipes' => (int) $ipes->id, 'etudiant' => (int) $e->id ) ), 'Versements de' ); ?>
+						<?php ueb_ipes_etudiants_liste( $etudiants, static fn( $e ) => $adresse( array( 'ipes' => (int) $ipes->id, 'etudiant' => (int) $e->id ) ), 'Ouvrir la fiche de' ); ?>
 					<?php endif; ?>
 				</div>
 			</section>
@@ -219,7 +207,6 @@ $adresse = static fn( array $args = array() ) => add_query_arg( array_merge( arr
 					<?php if ( $ipes->convention_signee_le || $ipes->convention_fin_le ) : ?>
 						<div><dt>Validité</dt><dd><?php echo esc_html( trim( ( $ipes->convention_signee_le ? 'Signée le ' . mysql2date( 'd/m/Y', $ipes->convention_signee_le ) : '' ) . ( $ipes->convention_fin_le ? ( $ipes->convention_signee_le ? ', jusqu’au ' : 'Jusqu’au ' ) . mysql2date( 'd/m/Y', $ipes->convention_fin_le ) : '' ) ) ); ?></dd></div>
 					<?php endif; ?>
-					<div><dt>Montant annuel dû</dt><dd><?php echo null === $ipes->montant_annuel_du ? 'Non renseigné' : esc_html( ueb_fcfa( (int) $ipes->montant_annuel_du ) . ' (indicatif)' ); ?></dd></div>
 				</dl>
 			</aside>
 		</div>

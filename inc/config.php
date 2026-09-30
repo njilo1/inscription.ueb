@@ -62,6 +62,11 @@ const UEB_FRAIS_MEDICAUX = array(
 const UEB_DROITS_CLASSIQUES = 50000;
 const UEB_DROITS_MINIMUM    = 25000;
 const UEB_DROITS_PAS        = 5000;
+/* Reversement d'un IPES à sa tutelle : somme fixe PAR ÉTUDIANT enregistré, la
+   même pour tous les IPES (décision du chef de projet, 2026-09-29). Figée sur
+   chaque bordereau à l'envoi : la changer ne réécrit pas les bordereaux envoyés. */
+const UEB_IPES_REVERSEMENT_PAR_ETUDIANT = 50000;
+
 const UEB_NIVEAUX_INSCRIPTION = array( 'L1' => 'L1 — Licence 1', 'L2' => 'L2 — Licence 2', 'L3' => 'L3 — Licence 3', 'M1' => 'M1 — Master 1', 'M2' => 'M2 — Master 2' );
 
 /**
