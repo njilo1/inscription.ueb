@@ -237,11 +237,28 @@ function ueb_ipes_servir_recu( $id ) {
 
 /* ---------- Actions de l'espace IPES ---------- */
 
+/**
+ * Sélection d'étudiants cochée mais pas encore enregistrée, emportée par un
+ * formulaire de reçus (data-garder-selection) : enregistrée d'abord, pour que
+ * joindre un reçu ne fasse pas perdre les cases cochées.
+ */
+function ueb_ipes_enregistrer_selection_emportee( $ipes, $bordereau_id ) {
+	if ( empty( $_POST['selection_etudiants'] ) ) {
+		return;
+	}
+	$resultat = ueb_ipes_bordereau_definir_etudiants( $ipes->id, $bordereau_id, array_map( 'intval', (array) wp_unslash( $_POST['etudiants'] ?? array() ) ) );
+	if ( is_wp_error( $resultat ) ) {
+		ueb_flash( 'erreur', 'Sélection d’étudiants non enregistrée — ' . $resultat->get_error_message() );
+	}
+}
+
+
 /** Ajoute les reçus choisis (champ « recus[] ») à un bordereau modifiable. */
 function ueb_action_ipes_recus_envoyer() {
 	$ipes     = ueb_exiger_admin_ipes();
 	$id       = (int) ( $_POST['bordereau_id'] ?? 0 );
 	$retour   = ueb_url_espace_ipes_vue( 'bordereaux', array( 'bordereau' => $id ) ) . '#recus';
+	ueb_ipes_enregistrer_selection_emportee( $ipes, $id );
 	$fichiers = ueb_fichiers_envoyes( 'recus' );
 	if ( ! $fichiers ) {
 		ueb_flash( 'erreur', 'Choisis au moins une photo ou un scan du reçu bancaire.' );
@@ -273,6 +290,7 @@ function ueb_action_ipes_recus_envoyer() {
 
 function ueb_action_ipes_recu_supprimer() {
 	$ipes     = ueb_exiger_admin_ipes();
+	ueb_ipes_enregistrer_selection_emportee( $ipes, (int) ( $_POST['bordereau_id'] ?? 0 ) );
 	$resultat = ueb_ipes_recu_supprimer( $ipes->id, (int) ( $_POST['recu_id'] ?? 0 ) );
 	ueb_flash( is_wp_error( $resultat ) ? 'erreur' : 'succes', is_wp_error( $resultat ) ? $resultat->get_error_message() : 'Reçu retiré du bordereau.' );
 	ueb_rediriger( ueb_url_espace_ipes_vue( 'bordereaux', array( 'bordereau' => (int) ( $_POST['bordereau_id'] ?? 0 ) ) ) . '#recus' );

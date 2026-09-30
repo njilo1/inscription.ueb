@@ -185,9 +185,57 @@
 				tout.indeterminate = cochees.length > 0 && cochees.length < cases.length;
 			}
 		};
-		cases.forEach((c) => c.addEventListener("change", maj));
-		tout?.addEventListener("change", () => { cases.forEach((c) => { c.checked = tout.checked; }); maj(); });
+		const modifie = () => { form.dataset.modifie = "1"; };
+		cases.forEach((c) => c.addEventListener("change", () => { modifie(); maj(); }));
+		tout?.addEventListener("change", () => { cases.forEach((c) => { c.checked = tout.checked; }); modifie(); maj(); });
 		maj();
+	});
+
+	/* Étudiant d'un IPES à plusieurs tutelles : la faculté choisie (select
+	   « tutelle ») ne laisse dans la liste des filières que les siennes.
+	   <script data-filieres-tutelle> donne filière => faculté. */
+	$$("script[data-filieres-tutelle]").forEach((donnees) => {
+		const form = donnees.closest("form");
+		const tutelle = form && $("select[name=tutelle]", form);
+		const filiere = form && $("select[name=filiere_id]", form);
+		if (!tutelle || !filiere) return;
+		const carte = JSON.parse(donnees.textContent || "{}");
+		const vide = filiere.options[0];
+		const toutes = [...filiere.options].filter((o) => o.value !== "");
+		const filtrer = () => {
+			const t = tutelle.value;
+			const choisie = filiere.value;
+			toutes.forEach((o) => o.remove());
+			const gardees = toutes.filter((o) => carte[o.value] === t);
+			gardees.forEach((o) => filiere.appendChild(o));
+			filiere.value = gardees.some((o) => o.value === choisie) ? choisie : "";
+			filiere.disabled = !t;
+			vide.textContent = !t ? "Choisis d’abord la faculté" : gardees.length ? "Choisir…" : "Aucune filière pour cette faculté";
+		};
+		tutelle.addEventListener("change", filtrer);
+		filtrer();
+	});
+
+	/* Formulaires [data-garder-selection="#id"] (reçus d'un bordereau) : si la
+	   sélection du formulaire visé a changé sans être enregistrée, ses cases
+	   cochées partent avec l'envoi et le serveur les enregistre d'abord. */
+	$$("form[data-garder-selection]").forEach((form) => {
+		form.addEventListener("submit", (ev) => {
+			if (ev.defaultPrevented) return;
+			const cible = $(form.dataset.garderSelection);
+			$$("[data-selection-emportee]", form).forEach((champ) => champ.remove());
+			if (!cible || cible.dataset.modifie !== "1") return;
+			const cachee = (nom, valeur) => {
+				const champ = document.createElement("input");
+				champ.type = "hidden";
+				champ.name = nom;
+				champ.value = valeur;
+				champ.dataset.selectionEmportee = "";
+				form.appendChild(champ);
+			};
+			cachee("selection_etudiants", "1");
+			$$("input[type=checkbox][name='etudiants[]']:checked", cible).forEach((c) => cachee("etudiants[]", c.value));
+		});
 	});
 
 	/* ---------- Logo d'un IPES : aperçu de l'image choisie avant l'envoi ---------- */

@@ -95,13 +95,24 @@ function ueb_action_ipes_etudiant_enregistrer() {
 	foreach ( array( 'matricule', 'nom', 'prenom', 'filiere_id', 'niveau', 'telephone' ) as $champ ) {
 		$saisie[ $champ ] = sanitize_text_field( wp_unslash( $_POST[ $champ ] ?? '' ) );
 	}
+	/* Faculté choisie avant la filière (IPES à plusieurs tutelles) : contrôlée avec elle. */
+	if ( isset( $_POST['tutelle'] ) ) {
+		$saisie['tutelle'] = sanitize_text_field( wp_unslash( $_POST['tutelle'] ) );
+	}
 	$resultat = ueb_ipes_etudiant_enregistrer( $ipes->id, $saisie, $id );
 	if ( is_wp_error( $resultat ) ) {
 		ueb_memoriser_saisie( $saisie, ueb_ipes_erreurs_de( $resultat ) );
 		ueb_rediriger( $id ? ueb_url_espace_ipes_vue( 'etudiants', array( 'etudiant' => $id ) ) : ueb_url_espace_ipes_vue( 'etudiants', array( 'ajout' => 1 ) ) . '#ajout' );
 	}
-	ueb_flash( 'succes', $id ? 'Étudiant mis à jour.' : 'Étudiant ajouté : il sera à reverser à la tutelle de sa filière.' );
-	ueb_rediriger( ueb_url_espace_ipes_vue( 'etudiants', array( 'etudiant' => $resultat ) ) );
+	if ( $id ) {
+		ueb_flash( 'succes', 'Étudiant mis à jour.' );
+		ueb_rediriger( ueb_url_espace_ipes_vue( 'etudiants', array( 'etudiant' => $resultat ) ) );
+	}
+	/* Saisie en série : on revient sur le formulaire, faculté, filière et niveau déjà choisis. */
+	$ajoute = ueb_ipes_etudiant( $ipes->id, $resultat );
+	$_SESSION['ueb_ipes_dernier_ajout'] = array( 'tutelle' => $ajoute->tutelle, 'filiere_id' => (string) $ajoute->filiere_id, 'niveau' => $ajoute->niveau );
+	ueb_flash( 'succes', trim( $ajoute->nom . ' ' . $ajoute->prenom ) . ' ajouté. Saisis l’étudiant suivant.' );
+	ueb_rediriger( ueb_url_espace_ipes_vue( 'etudiants', array( 'ajout' => 1 ) ) . '#ajout' );
 }
 
 function ueb_action_ipes_etudiant_supprimer() {

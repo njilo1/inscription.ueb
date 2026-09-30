@@ -291,6 +291,17 @@ $jauge = ueb_ipes_jauge( $id );
 verifier( $U === $jauge['par_tutelle']['FS']['du'] && 3 * $U === $jauge['par_tutelle']['FSEG']['du'] && 4 * $U === $jauge['du'], 'jauge par tutelle : FS ' . $jauge['par_tutelle']['FS']['du'] . ', FSEG ' . $jauge['par_tutelle']['FSEG']['du'] );
 verifier( isset( erreurs_de( ueb_ipes_enregistrer( array( 'tutelles' => array( 'FSEG' ) ) + $siantou, $id ) )['tutelles'] ), 'retrait de la FS refusé tant que Physique est active' );
 
+/* Ce que voit une scolarité : seulement ses tutelles. */
+$fs_seule = ueb_ipes_jauge( $id, null, array( 'FS' ) );
+verifier( $U === $fs_seule['du'] && 1 === $fs_seule['etudiants'] && array( 'FS' ) === array_keys( $fs_seule['par_tutelle'] ), 'jauge limitée à la FS : seulement ses étudiants' );
+verifier( 3 * $U === ueb_ipes_jauge( $id, null, array( 'fseg' ) )['du'], 'jauge limitée à la FSEG' );
+verifier( array( $pierre ) === array_map( static fn( $e ) => (int) $e->id, ueb_ipes_etudiants( $id, array( 'tutelle' => array( 'FS' ) ) ) ), 'étudiants limités à une liste de tutelles' );
+verifier( array() === ueb_ipes_etudiants( $id, array( 'tutelle' => array() ) ), 'liste de tutelles vide : aucun étudiant' );
+/* Formulaire de l'espace : faculté choisie avant la filière. */
+verifier( isset( erreurs_de( ueb_ipes_etudiant_enregistrer( $id, array( 'matricule' => '24IS006', 'filiere_id' => $phys, 'tutelle' => 'FSEG' ) + $paul_saisie ) )['filiere_id'] ), 'filière d’une autre faculté que celle choisie refusée' );
+verifier( isset( erreurs_de( ueb_ipes_etudiant_enregistrer( $id, array( 'matricule' => '24IS006', 'filiere_id' => $phys, 'tutelle' => '' ) + $paul_saisie ) )['tutelle'] ), 'faculté non choisie refusée' );
+verifier( is_int( ueb_ipes_etudiant_enregistrer( $id, array( 'matricule' => '24IS006', 'filiere_id' => $phys, 'tutelle' => 'fs' ) + $paul_saisie ) ), 'filière de la faculté choisie acceptée' );
+
 ueb_ipes_changer_etat( $id, false );
 verifier( is_wp_error( ueb_ipes_bordereau_creer( $id, 'FSEG' ) ), 'IPES désactivé : pas de nouveau bordereau' );
 ueb_ipes_changer_etat( $id, true );

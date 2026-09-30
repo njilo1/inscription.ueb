@@ -138,9 +138,15 @@ $unitaire          = UEB_IPES_REVERSEMENT_PAR_ETUDIANT;
 
 		<?php if ( $modifiable ) : ?>
 
-			<?php ueb_ipes_recus_panneau( $bordereau, array( 'modifiable' => true, 'action' => ueb_url_espace_ipes() ) ); ?>
+			<ol class="ipes-etapes" aria-label="Préparer le bordereau">
+				<li class="<?php echo $nb_recus ? 'est-fait' : ''; ?>"><span aria-hidden="true"><?php echo $nb_recus ? ueb_icone( 'check', 14 ) : '1'; ?></span><a href="#recus">Reçu bancaire</a><small><?php echo esc_html( $nb_recus ? ueb_ipes_pluriel( $nb_recus, 'reçu joint', 'reçus joints' ) : 'à joindre' ); ?></small></li>
+				<li class="<?php echo $dedans ? 'est-fait' : ''; ?>"><span aria-hidden="true"><?php echo $dedans ? ueb_icone( 'check', 14 ) : '2'; ?></span><a href="#etudiants-a-reverser">Étudiants</a><small><?php echo esc_html( $dedans ? ueb_ipes_pluriel( count( $dedans ), 'étudiant' ) . ' · ' . ueb_fcfa( count( $dedans ) * $unitaire ) : 'à cocher' ); ?></small></li>
+				<li><span aria-hidden="true">3</span><span>Envoi</span><small><?php echo esc_html( $nb_recus && $dedans ? 'prêt' : 'après les deux premières étapes' ); ?></small></li>
+			</ol>
 
-			<form class="adm-panneau ipes-bordereau" method="post" action="<?php echo esc_url( ueb_url_espace_ipes() ); ?>" data-total-coches data-total-unite="étudiant">
+			<?php ueb_ipes_recus_panneau( $bordereau, array( 'modifiable' => true, 'action' => ueb_url_espace_ipes(), 'selection' => '#etudiants-a-reverser' ) ); ?>
+
+			<form id="etudiants-a-reverser" class="adm-panneau ipes-bordereau" method="post" action="<?php echo esc_url( ueb_url_espace_ipes() ); ?>" data-total-coches data-total-unite="étudiant">
 				<?php ueb_champ_csrf(); ?>
 				<input type="hidden" name="ueb_action" value="ipes_bordereau_enregistrer">
 				<input type="hidden" name="bordereau_id" value="<?php echo (int) $bordereau->id; ?>">

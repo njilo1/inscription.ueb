@@ -53,6 +53,20 @@ function ueb_ipes_sous_tutelle( array $filtres = array() ) {
 	) );
 }
 
+/**
+ * Tutelles d'un IPES que le compte regarde : celles des établissements
+ * consultés (sélecteur de l'espace), sinon celles de toute sa portée. Une
+ * scolarité ne voit que ce qui concerne ses établissements : étudiants,
+ * montants et bordereaux des autres tutelles restent cachés.
+ */
+function ueb_ipes_tutelles_vues( $ipes ) {
+	if ( ! $ipes ) {
+		return array();
+	}
+	$vues = array_values( array_intersect( $ipes->tutelles, ueb_ipes_tutelles_consultees() ) );
+	return $vues ?: array_values( array_intersect( $ipes->tutelles, ueb_etabs_autorises() ) );
+}
+
 /** IPES demandé par son identifiant, seulement s'il est visible par le compte. */
 function ueb_ipes_sous_tutelle_par_id( $id ) {
 	$ipes = ueb_ipes( (int) $id );
@@ -60,11 +74,11 @@ function ueb_ipes_sous_tutelle_par_id( $id ) {
 }
 
 /**
- * Bordereaux d'un IPES que la tutelle voit : ceux adressés à un établissement
- * de la portée du compte (jamais les brouillons, ni ceux d'une autre tutelle).
+ * Bordereaux d'un IPES que la tutelle voit : ceux adressés aux tutelles qu'elle
+ * regarde (jamais les brouillons, ni ceux d'une autre tutelle).
  */
 function ueb_ipes_bordereaux_pour_tutelle( $ipes_id ) {
-	$sigles = ueb_etabs_autorises();
+	$sigles = ueb_ipes_tutelles_vues( ueb_ipes( $ipes_id ) );
 	return array_values( array_filter(
 		ueb_ipes_bordereaux_pour_ueb( $ipes_id ),
 		static fn( $b ) => in_array( $b->etablissement, $sigles, true )

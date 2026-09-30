@@ -103,12 +103,14 @@ function ueb_ipes_reversement_etudiant( $e, $ipes = false ) {
  *
  * @param object $ipes IPES (ueb_ipes).
  * @param array  $o    titre, intro, lien (array( url, libellé )), pour
- *                     ('ipes' : l'IPES parle de « ta tutelle » ; 'ueb' sinon).
+ *                     ('ipes' : l'IPES parle de « ta tutelle » ; 'ueb' sinon),
+ *                     tutelles (sigles : ne montrer que ce qui les concerne,
+ *                     vue d'une scolarité ; null pour l'IPES entier).
  */
 function ueb_ipes_hero( $ipes, array $o = array() ) {
 	$annee = ueb_annee_academique();
-	$o     = array_merge( array( 'titre' => 'Reversements ' . $annee['libelle'], 'intro' => '', 'lien' => null, 'pour' => 'ueb' ), $o );
-	$jauge = ueb_ipes_jauge( $ipes->id );
+	$o     = array_merge( array( 'titre' => 'Reversements ' . $annee['libelle'], 'intro' => '', 'lien' => null, 'pour' => 'ueb', 'tutelles' => null ), $o );
+	$jauge = ueb_ipes_jauge( $ipes->id, null, $o['tutelles'] );
 	$du    = $jauge['du'];
 
 	/* Parts successives, bornées au dû : jamais plus de 100 % au total. */
@@ -125,8 +127,12 @@ function ueb_ipes_hero( $ipes, array $o = array() ) {
 	}
 	$parts['declare'] = array( 'Pas encore reversé', $reste_b );
 	$taux       = $du > 0 ? min( 100, round( 100 * $jauge['verifie'] / $du, 1 ) ) : null;
-	$a_verifier = count( array_filter( ueb_ipes_bordereaux( $ipes->id ), static fn( $b ) => 'envoye' === $b->statut ) );
-	$tutelle    = 'ipes' === $o['pour'] ? ( 1 === count( $ipes->tutelles ) ? 'ta tutelle' : 'tes tutelles' ) : ( 1 === count( $ipes->tutelles ) ? 'sa tutelle' : 'ses tutelles' );
+	$a_verifier = count( array_filter( ueb_ipes_bordereaux( $ipes->id ), static fn( $b ) => 'envoye' === $b->statut && ( null === $o['tutelles'] || in_array( $b->etablissement, $o['tutelles'], true ) ) ) );
+	if ( null !== $o['tutelles'] ) {
+		$tutelle = 'la ' . implode( ' et la ', $o['tutelles'] );
+	} else {
+		$tutelle = 'ipes' === $o['pour'] ? ( 1 === count( $ipes->tutelles ) ? 'ta tutelle' : 'tes tutelles' ) : ( 1 === count( $ipes->tutelles ) ? 'sa tutelle' : 'ses tutelles' );
+	}
 	$unitaire   = ueb_fcfa( UEB_IPES_REVERSEMENT_PAR_ETUDIANT );
 	?>
 	<section class="adm-hero ipes-hero<?php echo null === $taux ? ' ipes-hero--sans-jauge' : ''; ?>" aria-labelledby="ipes-hero-titre">
@@ -229,6 +235,8 @@ function ueb_ipes_bordereaux_envoyes( $tutelles = null ) {
  * @param array $liste IPES (ueb_ipes_liste ou ueb_ipes_sous_tutelle).
  * @param array $o     url (callable $ipes => adresse de la fiche),
  *                     a_verifier (callable $ipes => nombre de bordereaux à vérifier),
+ *                     tutelles (callable $ipes => sigles vus, pour une scolarité ;
+ *                     absent pour l'IPES entier),
  *                     vide (phrase quand la liste est vide).
  */
 function ueb_ipes_registre( array $liste, array $o ) {
@@ -244,7 +252,7 @@ function ueb_ipes_registre( array $liste, array $o ) {
 		</tr></thead>
 		<tbody>
 		<?php foreach ( $liste as $ipes ) :
-			$jauge  = ueb_ipes_jauge( $ipes->id );
+			$jauge  = ueb_ipes_jauge( $ipes->id, null, isset( $o['tutelles'] ) ? ( $o['tutelles'] )( $ipes ) : null );
 			$n      = (int) ( $o['a_verifier'] )( $ipes );
 			$actif  = (int) $ipes->actif;
 			$taux   = $jauge['du'] ? min( 100, 100 * $jauge['verifie'] / $jauge['du'] ) : null;
@@ -414,9 +422,10 @@ function ueb_ipes_bordereaux_liste( array $bordereaux, array $o = array() ) {
 }
 
 /**
- * PDF et décision de l'UEb sur un bordereau : « Vérifié » (confirmé), ou
- * « Rejeter » avec un motif dans une fenêtre. La décision n'est proposée que
- * pour un bordereau envoyé et si $peut_decider.
+ * PDF, reçus bancaires et décision de l'UEb sur un bordereau : « Vérifié »
+ * (confirmé), ou « Rejeter » avec un motif dans une fenêtre. Les reçus
+ * s'ouvrent dans une fenêtre, pour être comparés au bordereau. La décision
+ * n'est proposée que pour un bordereau envoyé et si $peut_decider.
  *
  * @param array $o action (ueb_action), url (cible du formulaire), pdf (adresse),
  *                 peut_decider (bool), champs (champs cachés en plus : nom => valeur).
@@ -435,9 +444,21 @@ function ueb_ipes_decision( $b, array $o ) {
 	if ( $o['pdf'] ) : ?>
 		<a class="adm-bouton adm-bouton--petit" href="<?php echo esc_url( $o['pdf'] ); ?>"><?php echo ueb_icone( 'telecharger', 15 ); ?>PDF</a>
 	<?php endif;
+	$recus = 'brouillon' === $b->statut ? array() : ueb_ipes_recus( (int) $b->ipes_id, $id );
+	if ( $recus ) : ?>
+		<button class="adm-bouton adm-bouton--petit" type="button" data-ouvrir-agent-mdp="recus-<?php echo $id; ?>"><?php echo ueb_icone( 'recu', 15 ); ?><?php echo esc_html( 'Reçus (' . count( $recus ) . ')' ); ?></button>
+		<dialog class="bo-agent-mdp ipes-dialogue ipes-dialogue--recus" id="recus-<?php echo $id; ?>" aria-labelledby="recus-titre-<?php echo $id; ?>">
+			<h2 id="recus-titre-<?php echo $id; ?>"><?php echo esc_html( 'Reçus bancaires · ' . $b->numero ); ?></h2>
+			<p><?php echo esc_html( 'À comparer au bordereau : ' . ueb_fcfa( $b->total ) . ' pour ' . ueb_ipes_pluriel( (int) ( $b->nb_etudiants ?? 0 ), 'étudiant' ) . '. Chaque reçu s’ouvre en grand dans un nouvel onglet.' ); ?></p>
+			<?php ueb_ipes_recus_liste( $b, $recus ); ?>
+			<div class="bo-agent-mdp__actions"><button class="btn btn--lien btn--petit" type="button" data-fermer-agent-mdp>Fermer</button></div>
+		</dialog>
+	<?php elseif ( 'brouillon' !== $b->statut ) : ?>
+		<span class="ipes-sans-recu" title="Bordereau envoyé avant l’obligation des reçus"><?php echo ueb_icone( 'alerte', 14 ); ?>Sans reçu</span>
+	<?php endif;
 	if ( 'envoye' === $b->statut && $o['peut_decider'] ) : ?>
 		<button class="adm-bouton adm-bouton--petit" type="button" data-ouvrir-agent-mdp="rejet-<?php echo $id; ?>">Rejeter</button>
-		<form method="post" action="<?php echo esc_url( $o['url'] ); ?>" data-confirmer="<?php echo esc_attr( 'Marquer le bordereau ' . $b->numero . ' (' . ueb_fcfa( $b->total ) . ') comme vérifié ? La décision est définitive.' ); ?>">
+		<form method="post" action="<?php echo esc_url( $o['url'] ); ?>" data-confirmer="<?php echo esc_attr( 'Marquer le bordereau ' . $b->numero . ' (' . ueb_fcfa( $b->total ) . ') comme vérifié ? As-tu contrôlé le reçu bancaire ? La décision est définitive.' ); ?>">
 			<?php $caches(); ?>
 			<input type="hidden" name="decision" value="verifie">
 			<button class="adm-bouton adm-bouton--petit adm-bouton--primaire" type="submit"><?php echo ueb_icone( 'check', 15 ); ?>Vérifié</button>
@@ -486,6 +507,49 @@ function ueb_ipes_bandeau_a_verifier( array $envoyes, callable $url ) {
 /* ---------- Reçus bancaires d'un bordereau ---------- */
 
 /**
+ * Liste des reçus d'un bordereau : vignette (ouvre le reçu), nom, date et
+ * poids, téléchargement ; retrait si $o['modifiable'] (espace de l'IPES).
+ *
+ * @param object $b     Bordereau.
+ * @param array  $recus Reçus (ueb_ipes_recus).
+ * @param array  $o     modifiable, action (adresse du formulaire de retrait),
+ *                      garder (attribut data-garder-selection déjà échappé).
+ */
+function ueb_ipes_recus_liste( $b, array $recus, array $o = array() ) {
+	$o      = array_merge( array( 'modifiable' => false, 'action' => '', 'garder' => '' ), $o );
+	$garder = $o['garder'];
+	?>
+		<ul class="recus-liste">
+			<?php foreach ( $recus as $rang => $r ) : $adresse = ueb_url_recu_ipes( $r->id ); ?>
+				<li class="recus-liste__item" style="--i: <?php echo (int) $rang; ?>">
+					<a class="recus-liste__vignette" href="<?php echo esc_url( $adresse ); ?>" target="_blank" rel="noopener" aria-label="<?php echo esc_attr( 'Ouvrir ' . $r->nom_original ); ?>">
+						<?php if ( 'application/pdf' === $r->type_mime ) : ?>
+							<span class="recus-liste__pdf"><?php echo ueb_icone( 'fichier', 26 ); ?>PDF</span>
+						<?php else : ?>
+							<img src="<?php echo esc_url( $adresse ); ?>" alt="" loading="lazy">
+						<?php endif; ?>
+					</a>
+					<div class="recus-liste__infos">
+						<b title="<?php echo esc_attr( $r->nom_original ); ?>"><?php echo esc_html( $r->nom_original ); ?></b>
+						<span>Joint le <?php echo esc_html( mysql2date( 'j F Y à H:i', $r->date_envoi ) ); ?> · <?php echo esc_html( size_format( $r->taille, 1 ) ); ?></span>
+					</div>
+					<a class="recus-liste__telecharger" href="<?php echo esc_url( ueb_url_recu_ipes( $r->id, true ) ); ?>" aria-label="<?php echo esc_attr( 'Télécharger ' . $r->nom_original ); ?>" title="Télécharger"><?php echo ueb_icone( 'telecharger', 18 ); ?></a>
+					<?php if ( $o['modifiable'] ) : ?>
+						<form method="post" action="<?php echo esc_url( $o['action'] ); ?>" data-confirmer="Retirer ce reçu du bordereau ?"<?php echo $garder; // phpcs:ignore -- échappé ?>>
+							<?php ueb_champ_csrf(); ?>
+							<input type="hidden" name="ueb_action" value="ipes_recu_supprimer">
+							<input type="hidden" name="bordereau_id" value="<?php echo (int) $b->id; ?>">
+							<input type="hidden" name="recu_id" value="<?php echo (int) $r->id; ?>">
+							<button class="recus-liste__supprimer" type="submit" aria-label="<?php echo esc_attr( 'Retirer ' . $r->nom_original ); ?>" title="Retirer"><?php echo ueb_icone( 'corbeille', 18 ); ?></button>
+						</form>
+					<?php endif; ?>
+				</li>
+			<?php endforeach; ?>
+		</ul>
+	<?php
+}
+
+/**
  * Panneau des reçus d'un bordereau : la liste (vignette, ouverture,
  * téléchargement) et, si $o['modifiable'], le retrait de chaque reçu et le
  * dépôt de nouveaux (même composant que les reçus des étudiants : glisser,
@@ -493,10 +557,13 @@ function ueb_ipes_bandeau_a_verifier( array $envoyes, callable $url ) {
  *
  * @param object $b Bordereau.
  * @param array  $o modifiable (bool : l'IPES peut ajouter et retirer),
- *                  action (adresse des formulaires).
+ *                  action (adresse des formulaires),
+ *                  selection (sélecteur du formulaire d'étudiants dont les cases
+ *                  cochées non enregistrées partent avec chaque envoi).
  */
 function ueb_ipes_recus_panneau( $b, array $o = array() ) {
-	$o        = array_merge( array( 'modifiable' => false, 'action' => '' ), $o );
+	$o        = array_merge( array( 'modifiable' => false, 'action' => '', 'selection' => '' ), $o );
+	$garder   = $o['selection'] ? ' data-garder-selection="' . esc_attr( $o['selection'] ) . '"' : '';
 	$recus    = ueb_ipes_recus( (int) $b->ipes_id, (int) $b->id );
 	$restants = max( 0, UEB_IPES_RECUS_MAX - count( $recus ) );
 	?>
@@ -512,37 +579,11 @@ function ueb_ipes_recus_panneau( $b, array $o = array() ) {
 			<?php if ( ! $recus ) : ?>
 				<div class="bo-vide ipes-vide"><span><?php echo ueb_icone( 'recu', 22 ); ?></span><p><?php echo $o['modifiable'] ? '<b>Aucun reçu pour l’instant.</b> Joins la photo ou le scan du reçu bancaire du virement.' : '<b>Aucun reçu joint.</b>'; ?></p></div>
 			<?php else : ?>
-				<ul class="recus-liste">
-					<?php foreach ( $recus as $rang => $r ) : $adresse = ueb_url_recu_ipes( $r->id ); ?>
-						<li class="recus-liste__item" style="--i: <?php echo (int) $rang; ?>">
-							<a class="recus-liste__vignette" href="<?php echo esc_url( $adresse ); ?>" target="_blank" rel="noopener" aria-label="<?php echo esc_attr( 'Ouvrir ' . $r->nom_original ); ?>">
-								<?php if ( 'application/pdf' === $r->type_mime ) : ?>
-									<span class="recus-liste__pdf"><?php echo ueb_icone( 'fichier', 26 ); ?>PDF</span>
-								<?php else : ?>
-									<img src="<?php echo esc_url( $adresse ); ?>" alt="" loading="lazy">
-								<?php endif; ?>
-							</a>
-							<div class="recus-liste__infos">
-								<b title="<?php echo esc_attr( $r->nom_original ); ?>"><?php echo esc_html( $r->nom_original ); ?></b>
-								<span>Joint le <?php echo esc_html( mysql2date( 'j F Y à H:i', $r->date_envoi ) ); ?> · <?php echo esc_html( size_format( $r->taille, 1 ) ); ?></span>
-							</div>
-							<a class="recus-liste__telecharger" href="<?php echo esc_url( ueb_url_recu_ipes( $r->id, true ) ); ?>" aria-label="<?php echo esc_attr( 'Télécharger ' . $r->nom_original ); ?>" title="Télécharger"><?php echo ueb_icone( 'telecharger', 18 ); ?></a>
-							<?php if ( $o['modifiable'] ) : ?>
-								<form method="post" action="<?php echo esc_url( $o['action'] ); ?>" data-confirmer="Retirer ce reçu du bordereau ?">
-									<?php ueb_champ_csrf(); ?>
-									<input type="hidden" name="ueb_action" value="ipes_recu_supprimer">
-									<input type="hidden" name="bordereau_id" value="<?php echo (int) $b->id; ?>">
-									<input type="hidden" name="recu_id" value="<?php echo (int) $r->id; ?>">
-									<button class="recus-liste__supprimer" type="submit" aria-label="<?php echo esc_attr( 'Retirer ' . $r->nom_original ); ?>" title="Retirer"><?php echo ueb_icone( 'corbeille', 18 ); ?></button>
-								</form>
-							<?php endif; ?>
-						</li>
-					<?php endforeach; ?>
-				</ul>
+				<?php ueb_ipes_recus_liste( $b, $recus, array( 'modifiable' => $o['modifiable'], 'action' => $o['action'], 'garder' => $garder ) ); ?>
 			<?php endif; ?>
 
 			<?php if ( $o['modifiable'] && $restants > 0 ) : ?>
-				<form class="ipes-recus__depot" method="post" action="<?php echo esc_url( $o['action'] ); ?>" enctype="multipart/form-data" data-formulaire data-envoi-recus data-libelle-un="Joindre ce reçu" data-libelle-plusieurs="Joindre ces {n} reçus">
+				<form class="ipes-recus__depot" method="post" action="<?php echo esc_url( $o['action'] ); ?>" enctype="multipart/form-data" data-formulaire data-envoi-recus data-libelle-un="Joindre ce reçu" data-libelle-plusieurs="Joindre ces {n} reçus"<?php echo $garder; // phpcs:ignore -- échappé ?>>
 					<?php ueb_champ_csrf(); ?>
 					<input type="hidden" name="ueb_action" value="ipes_recus_envoyer">
 					<input type="hidden" name="bordereau_id" value="<?php echo (int) $b->id; ?>">
