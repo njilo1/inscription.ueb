@@ -299,6 +299,15 @@ body:not(.espace-admin) .ipes-zone {
 .ipes-reversement-etat { display: flex; align-items: center; flex-wrap: wrap; gap: .5rem .6rem; margin: 0 0 .9rem; }
 .ipes-reversement-etat > span:last-child { flex-basis: 100%; font-size: .9rem; color: var(--gris); }
 
+/* Filières d'un IPES, groupées par tutelle (fiche de l'administration). */
+.ipes-filieres { display: grid; gap: 1rem; }
+.ipes-filieres__groupe { display: grid; gap: .75rem; padding: .9rem 1rem 1rem; border: 1px solid var(--filet); border-left: 4px solid var(--etab, var(--vert)); border-radius: 14px; }
+.ipes-filieres__tete { display: flex; align-items: center; flex-wrap: wrap; gap: .35rem .6rem; }
+.ipes-filieres__tete h3 { flex: 1 1 12rem; margin: 0; font-size: .98rem; line-height: 1.3; color: var(--encre); }
+.ipes-filieres__tete small { font-size: .82rem; color: var(--gris); }
+.ipes-filieres__vide { margin: 0; font-size: .88rem; color: var(--gris); }
+.ipes-filieres .ipes-liste { margin: 0; }
+
 /* Reçus bancaires d'un bordereau : liste, puis dépôt (composant des reçus étudiants). */
 .ipes-recus__corps { display: grid; gap: 1rem; }
 .ipes-recus__depot { display: grid; gap: .25rem; }

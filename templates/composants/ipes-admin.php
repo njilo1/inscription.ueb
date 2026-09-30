@@ -310,57 +310,87 @@ unset( $_SESSION['ueb_ipes_bloc'] );
 					<?php
 					$filieres = ueb_ipes_filieres( $ipes->id );
 					$retirees = count( array_filter( $filieres, static fn( $f ) => ! (int) $f->actif ) );
+					/* Une filière par tutelle : les étudiants d'une filière sont reversés à sa tutelle. */
+					$groupes  = ueb_ipes_filieres_par_tutelle( $ipes );
+					/* Tutelle de la dernière saisie refusée : c'est sous elle que l'erreur s'affiche. */
+					$tutelle_erreur = $erreur_filiere ? strtoupper( (string) ( $saisie['etablissement'] ?? '' ) ) : '';
+					if ( $erreur_filiere && ! isset( $groupes[ $tutelle_erreur ] ) ) {
+						$tutelle_erreur = (string) array_key_first( $groupes );
+					}
+					/* Une ligne de filière : renommer, retirer ou rétablir. */
+					$ligne_filiere = static function ( $filiere ) use ( $ipes ) {
+						$active = (int) $filiere->actif;
+						$fid    = (int) $filiere->id;
+						?>
+						<li class="<?php echo $active ? '' : 'est-retiree'; ?>">
+							<span class="ipes-liste__nom"><?php echo ueb_icone( 'fichier', 16 ); ?><span><?php echo esc_html( $filiere->libelle ); ?><?php echo $active ? '' : '<span class="sr"> (retirée)</span>'; ?></span></span>
+							<span class="ipes-liste__actions">
+								<button class="adm-bouton adm-bouton--petit adm-bouton--icone" type="button" data-ouvrir-agent-mdp="filiere-<?php echo $fid; ?>" aria-label="<?php echo esc_attr( 'Renommer ' . $filiere->libelle ); ?>" title="Renommer"><?php echo ueb_icone( 'crayon', 15 ); ?></button>
+								<dialog class="bo-agent-mdp ipes-dialogue" id="filiere-<?php echo $fid; ?>" aria-labelledby="filiere-titre-<?php echo $fid; ?>">
+									<h2 id="filiere-titre-<?php echo $fid; ?>">Renommer la filière</h2>
+									<p>Le nouveau nom remplace « <?php echo esc_html( $filiere->libelle ); ?> » partout.</p>
+									<form method="post" action="<?php echo esc_url( ueb_url_administration() ); ?>">
+										<?php ueb_champ_csrf(); ?>
+										<input type="hidden" name="ueb_action" value="ipes_filiere_renommer">
+										<input type="hidden" name="ipes_id" value="<?php echo (int) $ipes->id; ?>">
+										<input type="hidden" name="filiere_id" value="<?php echo $fid; ?>">
+										<label><span>Nouveau nom</span><input type="text" name="libelle" value="<?php echo esc_attr( $filiere->libelle ); ?>" minlength="<?php echo (int) UEB_IPES_FILIERE_MIN; ?>" maxlength="<?php echo (int) UEB_IPES_FILIERE_MAX; ?>" autocomplete="off" required></label>
+										<div class="bo-agent-mdp__actions"><button class="btn btn--lien btn--petit" type="button" data-fermer-agent-mdp>Annuler</button><button class="btn btn--primaire btn--petit" type="submit">Enregistrer</button></div>
+									</form>
+								</dialog>
+								<form method="post" action="<?php echo esc_url( ueb_url_administration() ); ?>"<?php echo $active ? ' data-confirmer="' . esc_attr( 'Retirer la filière « ' . $filiere->libelle . ' » ? Elle reste dans l’historique et peut être rétablie.' ) . '"' : ''; ?>>
+									<?php ueb_champ_csrf(); ?>
+									<input type="hidden" name="ueb_action" value="ipes_filiere_etat">
+									<input type="hidden" name="ipes_id" value="<?php echo (int) $ipes->id; ?>">
+									<input type="hidden" name="filiere_id" value="<?php echo $fid; ?>">
+									<button class="adm-bouton adm-bouton--petit" type="submit"><?php echo $active ? 'Retirer' : 'Rétablir'; ?></button>
+								</form>
+							</span>
+						</li>
+						<?php
+					};
 					?>
 					<section id="filieres" class="adm-panneau" aria-labelledby="ipes-filieres-titre" tabindex="-1">
 						<header class="adm-panneau__tete">
 							<div>
 								<h2 id="ipes-filieres-titre">Filières</h2>
-								<p><?php echo esc_html( $filieres ? ueb_ipes_pluriel( count( $filieres ), 'filière' ) . ( $retirees ? ', dont ' . ueb_ipes_pluriel( $retirees, 'retirée' ) : '' ) . '. Une filière retirée garde ses étudiants dans l’historique.' : 'Les formations que l’IPES a communiquées.' ); ?></p>
+								<p><?php echo esc_html( ( $filieres ? ueb_ipes_pluriel( count( $filieres ), 'filière' ) . ( $retirees ? ', dont ' . ueb_ipes_pluriel( $retirees, 'retirée' ) : '' ) . '. ' : '' ) . 'Saisies tutelle par tutelle : les étudiants d’une filière sont reversés à sa tutelle.' ); ?></p>
 							</div>
 						</header>
-						<div class="ipes-panneau-corps">
+						<div class="ipes-panneau-corps ipes-filieres">
 							<?php if ( 'filieres' === $bloc_messages ) { ueb_afficher_flash(); } ?>
-							<form class="formulaire ipes-ajout<?php echo $erreur_filiere ? ' a-erreur' : ''; ?>" method="post" action="<?php echo esc_url( ueb_url_administration() ); ?>" data-formulaire novalidate>
-								<?php ueb_champ_csrf(); ?>
-								<input type="hidden" name="ueb_action" value="ipes_filiere_ajouter">
-								<input type="hidden" name="ipes_id" value="<?php echo (int) $ipes->id; ?>">
-								<?php ueb_champ( array( 'nom' => 'libelle', 'libelle' => 'Nouvelle filière', 'valeur' => $erreur_filiere ? (string) ( $saisie['libelle'] ?? '' ) : '', 'erreur' => $erreur_filiere, 'attrs' => array( 'maxlength' => UEB_IPES_FILIERE_MAX, 'autocomplete' => 'off', 'placeholder' => 'Génie logiciel' ) ) ); ?>
-								<button class="adm-bouton adm-bouton--primaire" type="submit"><?php echo ueb_icone( 'plus', 16 ); ?>Ajouter</button>
-							</form>
-
-							<?php if ( $filieres ) : ?>
-								<ul class="ipes-liste">
-									<?php foreach ( $filieres as $filiere ) : $active = (int) $filiere->actif; $fid = (int) $filiere->id; ?>
-										<li class="<?php echo $active ? '' : 'est-retiree'; ?>">
-											<span class="ipes-liste__nom"><?php echo ueb_icone( 'fichier', 16 ); ?><span><?php echo esc_html( $filiere->libelle ); ?><?php echo $active ? '' : '<span class="sr"> (retirée)</span>'; ?></span></span>
-											<span class="ipes-liste__actions">
-												<button class="adm-bouton adm-bouton--petit adm-bouton--icone" type="button" data-ouvrir-agent-mdp="filiere-<?php echo $fid; ?>" aria-label="<?php echo esc_attr( 'Renommer ' . $filiere->libelle ); ?>" title="Renommer"><?php echo ueb_icone( 'crayon', 15 ); ?></button>
-												<dialog class="bo-agent-mdp ipes-dialogue" id="filiere-<?php echo $fid; ?>" aria-labelledby="filiere-titre-<?php echo $fid; ?>">
-													<h2 id="filiere-titre-<?php echo $fid; ?>">Renommer la filière</h2>
-													<p>Le nouveau nom remplace « <?php echo esc_html( $filiere->libelle ); ?> » partout.</p>
-													<form method="post" action="<?php echo esc_url( ueb_url_administration() ); ?>">
-														<?php ueb_champ_csrf(); ?>
-														<input type="hidden" name="ueb_action" value="ipes_filiere_renommer">
-														<input type="hidden" name="ipes_id" value="<?php echo (int) $ipes->id; ?>">
-														<input type="hidden" name="filiere_id" value="<?php echo $fid; ?>">
-														<label><span>Nouveau nom</span><input type="text" name="libelle" value="<?php echo esc_attr( $filiere->libelle ); ?>" minlength="<?php echo (int) UEB_IPES_FILIERE_MIN; ?>" maxlength="<?php echo (int) UEB_IPES_FILIERE_MAX; ?>" autocomplete="off" required></label>
-														<div class="bo-agent-mdp__actions"><button class="btn btn--lien btn--petit" type="button" data-fermer-agent-mdp>Annuler</button><button class="btn btn--primaire btn--petit" type="submit">Enregistrer</button></div>
-													</form>
-												</dialog>
-												<form method="post" action="<?php echo esc_url( ueb_url_administration() ); ?>"<?php echo $active ? ' data-confirmer="' . esc_attr( 'Retirer la filière « ' . $filiere->libelle . ' » ? Elle reste dans l’historique et peut être rétablie.' ) . '"' : ''; ?>>
-													<?php ueb_champ_csrf(); ?>
-													<input type="hidden" name="ueb_action" value="ipes_filiere_etat">
-													<input type="hidden" name="ipes_id" value="<?php echo (int) $ipes->id; ?>">
-													<input type="hidden" name="filiere_id" value="<?php echo $fid; ?>">
-													<button class="adm-bouton adm-bouton--petit" type="submit"><?php echo $active ? 'Retirer' : 'Rétablir'; ?></button>
-												</form>
-											</span>
-										</li>
-									<?php endforeach; ?>
-								</ul>
-							<?php else : ?>
-								<div class="bo-vide"><span><?php echo ueb_icone( 'fichier', 22 ); ?></span><p><b>Aucune filière.</b> Ajoute celles que l’IPES t’a communiquées : il en a besoin pour déclarer ses étudiants.</p></div>
-							<?php endif; ?>
+							<?php foreach ( $groupes as $sigle => $liste ) :
+								$etab     = ueb_etablissement( $sigle );
+								$tutelle  = in_array( $sigle, $ipes->tutelles, true );
+								$actives  = count( array_filter( $liste, static fn( $f ) => (int) $f->actif ) );
+								$ici      = $tutelle_erreur === $sigle;
+								$id_groupe = 'filieres-' . strtolower( $sigle );
+								?>
+								<section class="ipes-filieres__groupe" style="--etab: <?php echo esc_attr( $etab['couleur'] ?? 'var(--vert)' ); ?>" aria-labelledby="<?php echo esc_attr( $id_groupe ); ?>">
+									<header class="ipes-filieres__tete">
+										<?php echo ueb_ipes_pastilles_html( array( $sigle ) ); // phpcs:ignore -- échappé ?>
+										<h3 id="<?php echo esc_attr( $id_groupe ); ?>"><?php echo esc_html( $etab['fr'] ?? $sigle ); ?></h3>
+										<small><?php echo esc_html( $tutelle ? ueb_ipes_pluriel( $actives, 'filière active', 'filières actives' ) : 'N’est plus tutelle : historique seulement' ); ?></small>
+									</header>
+									<?php if ( $tutelle ) : ?>
+										<form class="formulaire ipes-ajout<?php echo $ici ? ' a-erreur' : ''; ?>" method="post" action="<?php echo esc_url( ueb_url_administration() ); ?>" data-formulaire novalidate>
+											<?php ueb_champ_csrf(); ?>
+											<input type="hidden" name="ueb_action" value="ipes_filiere_ajouter">
+											<input type="hidden" name="ipes_id" value="<?php echo (int) $ipes->id; ?>">
+											<input type="hidden" name="etablissement" value="<?php echo esc_attr( $sigle ); ?>">
+											<?php ueb_champ( array( 'nom' => 'libelle', 'id' => 'libelle-' . strtolower( $sigle ), 'libelle' => 'Nouvelle filière sous la ' . $sigle, 'valeur' => $ici ? (string) ( $saisie['libelle'] ?? '' ) : '', 'erreur' => $ici ? $erreur_filiere : '', 'attrs' => array( 'maxlength' => UEB_IPES_FILIERE_MAX, 'autocomplete' => 'off', 'placeholder' => 'FSJP' === $sigle ? 'Droit des affaires' : ( 'FS' === $sigle ? 'Physique' : 'Génie logiciel' ) ) ) ); ?>
+											<button class="adm-bouton adm-bouton--primaire" type="submit"><?php echo ueb_icone( 'plus', 16 ); ?>Ajouter</button>
+										</form>
+									<?php endif; ?>
+									<?php if ( $liste ) : ?>
+										<ul class="ipes-liste">
+											<?php array_map( $ligne_filiere, $liste ); ?>
+										</ul>
+									<?php else : ?>
+										<p class="ipes-filieres__vide"><?php echo esc_html( 'Aucune filière sous la ' . $sigle . ' : ajoute celles que l’IPES y rattache.' ); ?></p>
+									<?php endif; ?>
+								</section>
+							<?php endforeach; ?>
 						</div>
 					</section>
 				</div>
