@@ -308,6 +308,16 @@ body:not(.espace-admin) .ipes-zone {
 .ipes-filieres__vide { margin: 0; font-size: .88rem; color: var(--gris); }
 .ipes-filieres .ipes-liste { margin: 0; }
 
+/* Catalogue des filières (onglet Filières de l'administration) : une ligne
+   d'en-tête par établissement, à sa couleur. */
+.catalogue-groupe__tete th { padding: .85rem 1rem .5rem; border-top: 1px solid var(--filet); text-align: left; background: color-mix(in srgb, var(--etab, var(--vert)) 6%, transparent); }
+.catalogue-groupe:first-of-type .catalogue-groupe__tete th { border-top: 0; }
+.catalogue-groupe__tete th > span:last-child { margin-left: .5rem; font-size: .9rem; font-weight: 700; color: var(--encre); }
+.catalogue-table .ipes-ligne.est-selectionnee > * { background: var(--adm-survol); }
+.catalogue-table .ipes-ligne.est-inactif .ipes-ligne__texte b { color: var(--gris); }
+.ipes-boutons { display: flex; justify-content: flex-end; gap: .5rem; flex-wrap: wrap; }
+@media (max-width: 900px) { .catalogue-groupe__tete th { display: block; } }
+
 /* Repère des trois étapes d'un bordereau modifiable : reçu, étudiants, envoi. */
 .ipes-etapes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .6rem; margin: 0 0 1rem; padding: 0; list-style: none; counter-reset: none; }
 .ipes-etapes li { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; column-gap: .6rem; padding: .7rem .85rem; border: 1px solid var(--filet); border-radius: 14px; background: var(--blanc); }
