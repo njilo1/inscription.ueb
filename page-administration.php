@@ -55,7 +55,7 @@ $annee    = ueb_annee_academique();
 
 if ( $autorise ) {
 	$vue   = sanitize_key( $_GET['vue'] ?? 'bord' );
-	$vue   = in_array( $vue, array( 'bord', 'paiements', 'scolarites', 'ipes' ), true ) ? $vue : 'bord';
+	$vue   = in_array( $vue, array( 'bord', 'paiements', 'scolarites', 'ipes', 'filieres' ), true ) ? $vue : 'bord';
 	$focus = strtoupper( sanitize_text_field( wp_unslash( $_GET['etab'] ?? '' ) ) );
 	$focus = ueb_etablissement( $focus ) ? $focus : '';
 	$ici   = static fn( array $args = array() ) => esc_url( add_query_arg( $args, ueb_url_administration() ) );
@@ -136,6 +136,7 @@ ueb_page_debut( array(
 					array( 'url' => $ici(), 'libelle' => 'Tableau de bord', 'icone' => 'tableau', 'actif' => 'bord' === $vue ),
 					array( 'url' => $ici( array( 'vue' => 'paiements' ) ), 'libelle' => 'Paiements', 'icone' => 'banque', 'actif' => 'paiements' === $vue ),
 					array( 'url' => $ici( array( 'vue' => 'scolarites' ) ), 'libelle' => 'Personnel', 'icone' => 'groupe', 'actif' => 'scolarites' === $vue ),
+					array( 'url' => $ici( array( 'vue' => 'filieres' ) ), 'libelle' => 'Filières', 'icone' => 'fichier', 'actif' => 'filieres' === $vue ),
 					array( 'url' => $ici( array( 'vue' => 'ipes' ) ), 'libelle' => 'IPES', 'icone' => 'ecole', 'actif' => 'ipes' === $vue ),
 					array( 'url' => ueb_url_direction(), 'libelle' => 'Rôles (Direction)', 'icone' => 'bouclier', 'actif' => false ),
 				),
@@ -280,6 +281,10 @@ ueb_page_debut( array(
 				<?php elseif ( 'ipes' === $vue ) : ?>
 
 					<?php include UEB_INSC_DIR . '/templates/composants/ipes-admin.php'; ?>
+
+				<?php elseif ( 'filieres' === $vue ) : ?>
+
+					<?php include UEB_INSC_DIR . '/templates/composants/filieres-admin.php'; ?>
 
 				<?php elseif ( 'paiements' === $vue ) : ?>
 

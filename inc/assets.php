@@ -98,7 +98,8 @@ add_action( 'wp_enqueue_scripts', function () {
 	   sert qu'aux écrans qui portent le héros des reversements. */
 	$ipes_espace    = is_page_template( 'page-ipes.php' ) && function_exists( 'ueb_ipes_du_compte' ) && ueb_ipes_du_compte();
 	$ipes_scolarite = is_page_template( 'page-scolarite.php' ) && 'ipes' === $vue_bo && is_user_logged_in() && function_exists( 'ueb_est_scolarite' ) && ueb_est_scolarite();
-	$ipes_admin     = $admin && 'ipes' === $vue_bo;
+	/* L'onglet Filières de l'administration reprend les composants de l'onglet IPES. */
+	$ipes_admin     = $admin && in_array( $vue_bo, array( 'ipes', 'filieres' ), true );
 	if ( $ipes_espace || $ipes_scolarite || $ipes_admin ) {
 		if ( ! $admin ) {
 			ueb_style( 'ueb-administration', 'assets/css/administration.css', array( 'ueb-pages' ) );
