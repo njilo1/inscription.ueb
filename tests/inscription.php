@@ -14,7 +14,7 @@ require_once ABSPATH . WPINC . '/general-template.php';
 add_filter( 'kses_allowed_protocols', static fn( $protocoles ) => array_merge( $protocoles, array( 'file' ) ) );
 define( 'UEB_INSC_DIR', dirname( __DIR__ ) );
 define( 'UEB_INSC_URI', 'file://' . UEB_INSC_DIR );
-foreach ( array( 'config', 'db-schema', 'comptes', 'nombres', 'inscription', 'quitus', 'quitus-pdf', 'recus', 'vues' ) as $module ) {
+foreach ( array( 'config', 'db-schema', 'comptes', 'nombres', 'inscription', 'quitus', 'profil', 'quitus-pdf', 'recus', 'vues' ) as $module ) {
 	require UEB_INSC_DIR . '/inc/' . $module . '.php';
 }
 class TestRedirect extends RuntimeException {}
@@ -39,6 +39,7 @@ function vider_quitus() {
 	// Ces noms sont masqués par les tables temporaires de cette connexion.
 	$wpdb->query( 'DELETE FROM ueb_insc_quitus' );
 	$wpdb->query( 'DELETE FROM ueb_insc_sequence' );
+	$wpdb->query( 'DELETE FROM ueb_insc_profils' );
 }
 
 // Masquer toutes les tables métier auxquelles les tests écrivent, avant toute action.
@@ -69,6 +70,7 @@ $post = array(
  'email' => 'marie.test@example.com', 'adresse' => 'Quartier Nko’ovos, Ebolowa', 'nom_urgence' => 'Jean Test',
  'numero_urgence' => '699111111', 'adresse_urgence' => 'Quartier Angalé, Ebolowa',
  'filiere_id' => $fs[0]->id, 'parcours' => 'M1', 'montant' => '25 000', 'tranche' => 1, 'situation' => 'ancien',
+ 'moyen_paiement' => 'CCA Bank',
 );
 $sortie = $argv[1] ?? sys_get_temp_dir() . '/ueb-inscription-review';
 if ( ! is_dir( $sortie ) ) { mkdir( $sortie, 0700, true ); }
@@ -97,29 +99,29 @@ verifier( $objets_de( 'droits', 3 ) === array( 'tranche1', 'tranche2', 'totalite
 verifier( $objets_de( 'medicaux', 0 ) === array( 'medicaux' ), 'reçu médical : frais médicaux' );
 verifier( 'Totalité' === ueb_libelle_objet_recu( (object) array( 'objet' => 'totalite' ) ) && 'Frais médicaux' === ueb_libelle_objet_recu( (object) array( 'objet' => '' ), 'medicaux' ), 'libellé de l’objet, repli sur le type pour les anciens reçus' );
 
-// Formation classique : montant saisi, multiples de 5 000, tranche déduite du montant.
+// Formation classique : premier versement de 25 000 au moins, par multiples de 5 000, sans plafond ; tranche déduite du montant.
 vider_quitus();
 $c = ueb_contexte_inscription( $compte );
-foreach ( array( '20 000', '27 500', '55 000', '' ) as $montant ) {
+foreach ( array( '20 000', '24 999', '27 500', '52 500', '' ) as $montant ) {
 	list( $v, $e ) = ueb_valider_quitus( array_replace( $post, array( 'montant' => $montant ) ), $c );
-	verifier( isset( $e['montant'] ) && ! isset( $e['tranche'] ), 'montant classique refusé : ' . $montant );
+	verifier( isset( $e['montant'] ) && ! isset( $e['tranche'] ), 'premier versement refusé : ' . $montant );
 }
-foreach ( array( '25 000' => 1, '35 000' => 1, '45 000' => 1, '50 000' => 3 ) as $montant => $attendue ) {
+foreach ( array( '25 000' => 1, '35 000' => 1, '45 000' => 1, '50 000' => 3, '55 000' => 3, '120 000' => 3 ) as $montant => $attendue ) {
 	list( $v, $e ) = ueb_valider_quitus( array_replace( $post, array( 'montant' => $montant, 'tranche' => 2 ) ), $c );
 	verifier( ! $e && $v['tranche'] === $attendue, 'tranche déduite de ' . $montant . ' malgré la tranche postée' );
 }
+list( $v, $e ) = ueb_valider_quitus( array_replace( $post, array( 'montant' => '20 000 000' ) ), $c );
+verifier( isset( $e['montant'] ), 'montant aberrant refusé (faute de frappe)' );
 verifier( ! soumettre( array_replace( $post, array( 'montant' => '30 000' ) ) ), 'premier versement de 30 000' );
 $c = ueb_contexte_inscription( $compte );
 $regle = ueb_regle_droits_classiques( $c );
-verifier( $regle['second'] && 20000 === $regle['max'] && 20000 === $c['reste_droits'], 'second versement : il reste 20 000' );
-list( $v, $e ) = ueb_valider_quitus( array_replace( $post, array( 'montant' => '25 000', 'situation' => 'nouveau' ) ), $c );
-verifier( isset( $e['montant'] ), 'second versement au-delà du reste refusé' );
-foreach ( array( '15 000', '20 000' ) as $montant ) {
+verifier( $regle['second'] && 20000 === $regle['reste'] && 20000 === $c['reste_droits'], 'second versement : il reste 20 000, proposé par défaut' );
+foreach ( array( '1 500', '12 000', '20 000', '25 000', '80 000' ) as $montant ) {
 	list( $v, $e ) = ueb_valider_quitus( array_replace( $post, array( 'montant' => $montant, 'situation' => 'nouveau' ) ), $c );
-	verifier( ! $e && 2 === $v['tranche'], 'second versement accepté : ' . $montant );
+	verifier( ! $e && 2 === $v['tranche'], 'second versement libre accepté : ' . $montant );
 }
-list( $v, $e ) = ueb_valider_quitus( array_replace( $post, array( 'montant' => '12 000', 'situation' => 'nouveau' ) ), $c );
-verifier( isset( $e['montant'] ), 'second versement hors multiple de 5 000 refusé' );
+list( $v, $e ) = ueb_valider_quitus( array_replace( $post, array( 'montant' => '', 'situation' => 'nouveau' ) ), $c );
+verifier( isset( $e['montant'] ), 'second versement vide refusé' );
 
 foreach ( array( 'ancien' => array( 28000, 53000 ), 'reprise' => array( 30000, 55000 ) ) as $situation => $totaux ) {
 	foreach ( array( 1, 3 ) as $i => $tranche ) {
@@ -176,9 +178,19 @@ foreach ( array( 'ancien' => array( 28000, 53000 ), 'reprise' => array( 30000, 5
 $wpdb->query( "UPDATE ueb_insc_quitus SET annee_academique = '2020-2021'" );
 verifier( ueb_contexte_inscription( $compte )['medical_inclus'], 'renouvellement annuel des frais' );
 vider_quitus();
+verifier( ! ueb_profil( 1 ), 'aucune fiche avant le premier quitus' );
 verifier( ! soumettre( $post ), 'dossier initial pour modification' );
 $q = $wpdb->get_row( "SELECT * FROM ueb_insc_quitus WHERE type = 'droits'" );
-verifier( ! soumettre( array_replace( $post, array( 'quitus_id' => $q->id, 'tranche' => 3, 'situation' => 'reprise', 'nom' => 'NOM MODIFIÉ' ) ) ), 'modification du dossier complet' );
+$fiche = ueb_profil( 1 );
+verifier( 'ÉTUDIANT TEST' === ( $fiche['nom'] ?? '' ) && (int) $fiche['filiere_id'] === $fs[0]->id && 'M1' === $fiche['parcours'] && '699111111' === $fiche['numero_urgence'], 'premier quitus : fiche de l’étudiant créée' );
+verifier( 'CCA Bank' === $q->moyen_paiement, 'lieu de paiement enregistré sur le quitus' );
+verifier( ! soumettre( array_replace( $post, array( 'quitus_id' => $q->id, 'tranche' => 3, 'situation' => 'reprise', 'nom' => 'NOM MODIFIÉ', 'parcours' => 'L1', 'montant' => '50 000', 'moyen_paiement' => 'MTN Mobile Money' ) ) ), 'modification du dossier complet' );
+$q = ueb_quitus_par_id( $q->id );
+verifier( 'ÉTUDIANT TEST' === $q->nom && 'M1' === $q->parcours, 'champs de la fiche figés : la valeur postée est ignorée' );
+verifier( 'MTN Mobile Money' === $q->moyen_paiement && 50000 === (int) $q->montant && 3 === (int) $q->tranche, 'lieu de paiement et montant restent modifiables' );
+verifier( ueb_profil_enregistrer( 1, array( 'nom' => 'NOM MODIFIÉ' ) + ueb_profil( 1 ) ), 'correction de la fiche (Mon compte)' );
+verifier( 'ÉTUDIANT TEST' === ueb_quitus_par_id( $q->id )->nom, 'un quitus généré garde ses valeurs' );
+verifier( ! soumettre( array_replace( $post, array( 'quitus_id' => $q->id, 'tranche' => 3, 'situation' => 'reprise' ) ) ), 'quitus réenregistré après correction' );
 $m = ueb_medical_du_dossier( $q );
 verifier( (int) $m->montant === 5000 && 'NOM MODIFIÉ' === $m->nom, 'synchronisation des deux quitus' );
 $wpdb->update( 'ueb_insc_quitus', array( 'statut' => 'recu_envoye' ), array( 'id' => $m->id ) );
@@ -216,6 +228,35 @@ verifier( ! soumettre( array_replace( $post, array( 'tranche' => 2 ) ) ), 'nouve
 // Formations professionnelles et appartenance à l'établissement.
 vider_quitus();
 $compte->numero_dossier = null;
+$c = ueb_contexte_inscription( $compte );
+foreach ( array( '', 'Banque inconnue' ) as $moyen ) {
+	list( $v, $e ) = ueb_valider_quitus( array_replace( $post, array( 'moyen_paiement' => $moyen ) ), $c );
+	verifier( isset( $e['moyen_paiement'] ), 'lieu de paiement refusé : « ' . $moyen . ' »' );
+}
+foreach ( UEB_MOYENS_PAIEMENT as $moyen ) {
+	list( $v, $e ) = ueb_valider_quitus( array_replace( $post, array( 'moyen_paiement' => $moyen ) ), $c );
+	verifier( ! $e && $moyen === $v['moyen_paiement'], 'lieu de paiement accepté : ' . $moyen );
+}
+list( $v, $e ) = ueb_valider_profil( array_replace( $post, $cms_vide ), $c['formations'], false );
+verifier( ! $e, 'Mon compte : coordonnées CMS facultatives' );
+list( $v, $e ) = ueb_valider_profil( array_replace( $post, array( 'nom' => '', 'filiere_id' => 0 ) ), $c['formations'], false );
+verifier( isset( $e['nom'], $e['filiere_id'] ), 'Mon compte : nom et filière obligatoires' );
+verifier( ! soumettre( array_replace( $post, $cms_vide, array( 'situation' => 'nouveau' ) ) ), 'premier quitus sans coordonnées CMS' );
+verifier( ! isset( ueb_profil( 1 )['email'] ) && isset( ueb_profil( 1 )['nom'] ), 'champ vide de la fiche : laissé libre' );
+verifier( ! soumettre( array_replace( $post, array( 'tranche' => 2, 'situation' => 'nouveau', 'nom' => 'AUTRE NOM' ) ) ), 'deuxième quitus : coordonnées complétées' );
+verifier( 'marie.test@example.com' === ( ueb_profil( 1 )['email'] ?? '' ) && 'ÉTUDIANT TEST' === ueb_profil( 1 )['nom'], 'champ vide complété, champ renseigné inchangé' );
+// Mon compte : l'action enregistre la fiche, ou la refuse sans la toucher.
+$_POST = array_replace( $post, array( 'nom' => 'Nouveau Nom', 'parcours' => 'M2', 'etablissement' => 'FSEG', 'filiere_id' => 0 ) );
+try { ueb_action_enregistrer_profil(); } catch ( TestRedirect $redirect ) {}
+verifier( 'NOUVEAU NOM' === ueb_profil( 1 )['nom'] && 'M2' === ueb_profil( 1 )['parcours'] && str_contains( $GLOBALS['flash_test'], 'prochains quitus' ), 'Mon compte : fiche enregistrée' );
+verifier( 'FS' === ueb_profil( 1 )['etablissement'] && (int) ueb_profil( 1 )['filiere_id'] === $fs[0]->id, 'Mon compte : établissement et filière inchangés' );
+verifier( str_contains( $GLOBALS['flash_test'], 'Modifier' ), 'Mon compte : rappel pour mettre à jour un quitus non payé' );
+$GLOBALS['erreurs_test'] = array();
+$_POST = array_replace( $post, array( 'nom' => 'Autre', 'parcours' => 'niveau libre' ) );
+try { ueb_action_enregistrer_profil(); } catch ( TestRedirect $redirect ) {}
+verifier( isset( $GLOBALS['erreurs_test']['parcours'] ) && 'NOUVEAU NOM' === ueb_profil( 1 )['nom'], 'Mon compte : saisie invalide refusée, fiche inchangée' );
+$_POST = array();
+vider_quitus();
 $c = ueb_contexte_inscription( $compte );
 list( $v, $e ) = ueb_valider_quitus( array_replace( $post, array( 'filiere_id' => $pro->id, 'etablissement' => $pro->etablissement, 'montant' => '85 000' ) ), $c );
 verifier( ! $e && $v['montant'] === 85000, 'tarif professionnel conservé' );
@@ -344,7 +385,9 @@ foreach ( array( 'vide', 'ancien', 'nouveau', 'deuxieme', 'mixte', 'rejete', 've
 			verifier( array_keys( ueb_contexte_inscription( $compte )['tranches'] ) === array( 1, 3 ), 'nouvelle année : les tranches sont de nouveau disponibles' );
 			verifier( ueb_contexte_inscription( $compte )['medical_inclus'], 'nouvelle année : frais médicaux renouvelés' );
 			if ( 'archives' === $cas_espace ) {
-				verifier( ! soumettre( array_replace( $post, array( 'parcours' => 'M2' ) ) ), 'nouvelle inscription sans effacer les archives' );
+				// Nouvelle année : le niveau se met à jour dans Mon compte, le quitus le reprend.
+				verifier( ueb_profil_enregistrer( 1, array( 'parcours' => 'M2' ) + ueb_profil( 1 ) ), 'nouveau niveau enregistré dans Mon compte' );
+				verifier( ! soumettre( $post ), 'nouvelle inscription sans effacer les archives' );
 			}
 		}
 		if ( 'medical-seul' === $cas_espace ) {

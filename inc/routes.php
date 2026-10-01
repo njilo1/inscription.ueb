@@ -8,7 +8,8 @@
  *   /mon-espace/quitus                nouveau quitus (?id= pour modifier)
  *   /mon-espace/quitus/{numero}/pdf   téléchargement du PDF
  *   /mon-espace/recus/{numero}        reçus bancaires d'un quitus
- *   /mon-espace/securite              identifiants et mot de passe
+ *   /mon-espace/compte                informations de l'étudiant, identifiants et mot de passe
+ *   /mon-espace/securite              ancienne adresse, renvoie vers /mon-espace/compte
  *   /recu/{id}                        affichage protégé d'un reçu
  *   /verifier/{code}                  vérification publique (QR code)
  *
@@ -23,7 +24,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-const UEB_INSC_ROUTES_VERSION = '8';
+const UEB_INSC_ROUTES_VERSION = '10';
 
 function ueb_regles_reecriture() {
 	return array(
@@ -34,6 +35,7 @@ function ueb_regles_reecriture() {
 		'^mon-espace/quitus/?$'                          => 'index.php?ueb_page=quitus',
 		'^mon-espace/quitus/([A-Za-z0-9-]+)/pdf/?$'      => 'index.php?ueb_page=quitus-pdf&ueb_arg=$matches[1]',
 		'^mon-espace/recus/([A-Za-z0-9-]+)/?$'           => 'index.php?ueb_page=recus&ueb_arg=$matches[1]',
+		'^mon-espace/compte/?$'                          => 'index.php?ueb_page=compte',
 		'^mon-espace/securite/?$'                        => 'index.php?ueb_page=securite',
 		'^cellule-informatique/?$'                       => 'index.php?ueb_page=cellule',
 		'^support/?$'                                    => 'index.php?ueb_page=support',
@@ -68,13 +70,13 @@ add_filter( 'query_vars', function ( $vars ) {
 	return $vars;
 } );
 
-/** URL d'une page du site : ueb_url( 'mon-espace/securite' ). */
+/** URL d'une page du site : ueb_url( 'mon-espace/compte' ). */
 function ueb_url( $chemin = '' ) {
 	return home_url( '/' . ltrim( $chemin, '/' ) . ( '' === $chemin ? '' : '/' ) );
 }
 
 /* Pages réservées aux étudiants connectés / aux visiteurs non connectés. */
-const UEB_PAGES_ETUDIANT = array( 'espace', 'quitus', 'quitus-pdf', 'recus', 'securite' );
+const UEB_PAGES_ETUDIANT = array( 'espace', 'quitus', 'quitus-pdf', 'recus', 'compte', 'securite' );
 const UEB_PAGES_INVITE   = array( 'connexion', 'creer-compte' );
 /* Les deux espaces du back-office sont des Pages WordPress (gabarits
    page-scolarite.php et page-administration.php) : elles vérifient
@@ -105,9 +107,9 @@ add_action( 'template_redirect', function () {
 			ueb_flash( 'info', 'Connecte-toi pour accéder à ton espace.' );
 			ueb_rediriger( ueb_url( 'connexion' ) );
 		}
-		if ( $compte->doit_changer_mdp && 'securite' !== $page ) {
+		if ( $compte->doit_changer_mdp && 'compte' !== $page ) {
 			ueb_flash( 'alerte', "Ton mot de passe a été réinitialisé par l'administration : choisis-en un nouveau pour continuer." );
-			ueb_rediriger( ueb_url( 'mon-espace/securite' ) );
+			ueb_rediriger( ueb_url( 'mon-espace/compte' ) . '#mot-de-passe' );
 		}
 	}
 	if ( in_array( $page, UEB_PAGES_INVITE, true ) && $compte ) {
@@ -116,6 +118,8 @@ add_action( 'template_redirect', function () {
 
 	/* 3. Pages sans gabarit HTML */
 	switch ( $page ) {
+		case 'securite':
+			ueb_rediriger( ueb_url( 'mon-espace/compte' ) . '#securite' );
 		case 'deconnexion':
 			ueb_deconnecter();
 			ueb_flash( 'succes', 'Tu es déconnecté.' );
@@ -157,6 +161,7 @@ function ueb_traiter_action( $action ) {
 		'creer_compte'        => 'ueb_action_creer_compte',
 		'changer_mdp'         => 'ueb_action_changer_mdp',
 		'changer_identifiant' => 'ueb_action_changer_identifiant',
+		'enregistrer_profil'  => 'ueb_action_enregistrer_profil',
 		'enregistrer_quitus'  => 'ueb_action_enregistrer_quitus',
 		'envoyer_recus'       => 'ueb_action_envoyer_recus',
 		'supprimer_recu'      => 'ueb_action_supprimer_recu',

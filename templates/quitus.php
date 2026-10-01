@@ -31,6 +31,10 @@ if ( $id ) {
 
 list( $saisie, $erreurs ) = ueb_reprendre_saisie();
 $v = $saisie ?: ( $edite ? (array) $edite : ueb_valeurs_initiales_quitus( $compte ) );
+/* Fiche de l'étudiant : chaque information déjà renseignée est reprise et figée ;
+   elle se corrige dans Mon compte. Le lieu de paiement et le montant restent libres. */
+$profil = ueb_profil( $compte->id );
+$v = array_replace( $v, $profil );
 $contexte = ueb_contexte_inscription( $compte, $edite );
 $preinscrit_cette_annee = $contexte['nouveau'];
 $formations = $contexte['formations'];
@@ -62,8 +66,8 @@ $v['montant'] = (int) preg_replace( '/\D+/', '', (string) ( $v['montant'] ?? '' 
 $regle_droits = ueb_regle_droits_classiques( $contexte );
 $classique = $formation && 'classique' === $formation->type_formation;
 if ( $classique && 'droits' === $type_courant ) {
-	if ( empty( $v['montant'] ) && $regle_droits['second'] ) {
-		$v['montant'] = $regle_droits['max'];
+	if ( empty( $v['montant'] ) && $regle_droits['second'] && $regle_droits['reste'] ) {
+		$v['montant'] = $regle_droits['reste'];
 	}
 	if ( ! empty( $v['montant'] ) && ! ueb_erreur_montant_classique( $v['montant'], $regle_droits ) ) {
 		$v['tranche'] = ueb_tranche_du_montant( $v['montant'], $regle_droits );
@@ -93,8 +97,8 @@ $donnees_paiement = array(
 	'regleDroits' => $regle_droits,
 );
 $aide_classique = $regle_droits['second']
-	? sprintf( 'Reste à payer cette année : %s FCFA. Tu peux verser moins, par multiples de 5 000 FCFA.', ueb_formater_montant( $regle_droits['max'] ) )
-	: 'De 25 000 à 50 000 FCFA, par multiples de 5 000. Moins de 50 000 : première tranche ; 50 000 : les deux tranches.';
+	? ( $regle_droits['reste'] ? sprintf( 'Montant libre. Il te reste %s FCFA pour compléter les 50 000 FCFA de l’année.', ueb_formater_montant( $regle_droits['reste'] ) ) : 'Montant libre.' )
+	: '25 000 FCFA au moins, par multiples de 5 000, sans plafond. Moins de 50 000 FCFA : première tranche ; 50 000 FCFA ou plus : les deux tranches.';
 
 ueb_page_debut( array( 'titre' => $edite ? 'Modifier le quitus' : 'Nouveau quitus', 'variante' => 'espace' ) );
 ?>
@@ -113,7 +117,7 @@ ueb_page_debut( array( 'titre' => $edite ? 'Modifier le quitus' : 'Nouveau quitu
 			<li><?php echo ueb_icone( 'utilisateur', 16 ); ?><?php echo $compte->matricule ? 'Matricule' : 'N° de dossier'; ?> <b><?php echo esc_html( ueb_identifiant_compte( $compte ) ); ?></b></li>
 		</ul>
 		<?php if ( ! $compte->matricule ) : ?>
-			<p class="quitus-contexte__note">Tu as reçu ton matricule ? Enregistre-le dans <a href="<?php echo esc_url( ueb_url( 'mon-espace/securite' ) ); ?>">Sécurité</a> avant de générer ton quitus.</p>
+			<p class="quitus-contexte__note">Tu as reçu ton matricule ? Enregistre-le dans <a href="<?php echo esc_url( ueb_url( 'mon-espace/compte' ) ); ?>">Mon compte</a> avant de générer ton quitus.</p>
 		<?php endif; ?>
 
 		<?php $parcours = ueb_parcours_inscription( $compte ); require UEB_INSC_DIR . '/templates/composants/parcours-inscription.php'; ?>
@@ -135,6 +139,13 @@ ueb_page_debut( array( 'titre' => $edite ? 'Modifier le quitus' : 'Nouveau quitu
 			</div>
 		<?php endif; ?>
 
+		<?php if ( $profil ) : ?>
+			<div class="quitus-fiche" role="note">
+				<span class="quitus-fiche__icone" aria-hidden="true"><?php echo ueb_icone( 'cadenas', 20 ); ?></span>
+				<p><b>Tes informations sont reprises de ton compte.</b> Pour corriger une erreur, va dans <a href="<?php echo esc_url( ueb_url( 'mon-espace/compte' ) . '#informations' ); ?>">Mon compte</a>. Ici, choisis où tu vas payer et le montant de ce quitus.</p>
+			</div>
+		<?php endif; ?>
+
 		<form class="quitus-form" method="post" action="<?php echo esc_url( ueb_url( 'mon-espace/quitus' ) . ( $edite ? '?id=' . $edite->id : '' ) ); ?>" data-type="<?php echo esc_attr( $type_courant ); ?>" data-formulaire data-quitus novalidate>
 			<?php ueb_champ_csrf(); ?>
 			<input type="hidden" name="type" value="<?php echo esc_attr( $type_courant ); ?>">
@@ -151,27 +162,7 @@ ueb_page_debut( array( 'titre' => $edite ? 'Modifier le quitus' : 'Nouveau quitu
 					</div>
 				</header>
 				<div class="section-form__corps">
-					<fieldset id="champ-etablissement" tabindex="-1" class="champ<?php echo ! empty( $erreurs['etablissement'] ) ? ' champ--invalide' : ''; ?>">
-						<legend class="sr">Établissement</legend>
-						<div class="etab-choix">
-							<?php foreach ( $etablissements as $sigle => $e ) : ?>
-								<label class="etab-choix__option" style="--etab: <?php echo esc_attr( $e['couleur'] ); ?>">
-									<input type="radio" name="etablissement" value="<?php echo esc_attr( $sigle ); ?>" <?php checked( $val( 'etablissement' ), $sigle ); ?> <?php disabled( $preinscrit_cette_annee && ! in_array( $sigle, array_column( $formations, 'etablissement' ), true ) ); ?> required>
-									<span class="etab-choix__carte">
-										<span class="etab-choix__logo"><img src="<?php echo esc_url( ueb_logo_url( $sigle ) ); ?>" alt="" width="40" height="40" loading="lazy"></span>
-										<span class="etab-choix__texte">
-											<b><?php echo esc_html( $sigle ); ?></b>
-											<small><?php echo esc_html( $e['fr'] ); ?></small>
-										</span>
-										<span class="etab-choix__coche"><?php echo ueb_icone( 'check', 16 ); ?></span>
-									</span>
-								</label>
-							<?php endforeach; ?>
-						</div>
-						<?php if ( ! empty( $erreurs['etablissement'] ) ) : ?>
-							<p class="champ__erreur"><?php echo ueb_icone( 'alerte', 16 ); ?><?php echo esc_html( $erreurs['etablissement'] ); ?></p>
-						<?php endif; ?>
-					</fieldset>
+					<?php ueb_champs_profil( array( 'partie' => 'etablissement', 'v' => $v, 'erreurs' => $erreurs, 'verrou' => $profil, 'etabs_permis' => $preinscrit_cette_annee ? array_column( $formations, 'etablissement' ) : null ) ); ?>
 
 					<div class="quitus-choix-type">
 						<?php
@@ -201,45 +192,14 @@ ueb_page_debut( array( 'titre' => $edite ? 'Modifier le quitus' : 'Nouveau quitu
 					</div>
 				</header>
 				<div class="section-form__corps formulaire">
-					<div class="formulaire__rangee">
-						<?php
-						ueb_champ( array( 'nom' => 'nom', 'libelle' => 'Nom(s)', 'icone' => 'utilisateur', 'valeur' => $val( 'nom' ), 'erreur' => $erreurs['nom'] ?? '', 'attrs' => array( 'placeholder' => 'Ex. : TCHOUMBA', 'autocomplete' => 'family-name', 'autocapitalize' => 'characters', 'maxlength' => 100 ) ) );
-						ueb_champ( array( 'nom' => 'prenom', 'libelle' => 'Prénom(s)', 'icone' => 'utilisateur', 'valeur' => $val( 'prenom' ), 'erreur' => $erreurs['prenom'] ?? '', 'attrs' => array( 'placeholder' => 'Ex. : Vevo ily', 'autocomplete' => 'given-name', 'maxlength' => 150 ) ) );
-						?>
-					</div>
-					<div class="formulaire__rangee">
-						<?php
-						ueb_champ( array( 'nom' => 'date_naissance', 'libelle' => 'Date de naissance', 'type' => 'date','valeur' => $val( 'date_naissance' ), 'erreur' => $erreurs['date_naissance'] ?? '', 'aide' => 'Ex. : 15/03/2005, pour le 15 mars 2005.', 'attrs' => array( 'autocomplete' => 'bday', 'max' => wp_date( 'Y-m-d', strtotime( '-14 years' ) ) ) ) );
-						ueb_champ( array( 'nom' => 'lieu_naissance', 'libelle' => 'Lieu de naissance', 'icone' => 'lieu', 'valeur' => $val( 'lieu_naissance' ), 'erreur' => $erreurs['lieu_naissance'] ?? '', 'attrs' => array( 'placeholder' => 'Ex. : Ebolowa', 'maxlength' => 150 ) ) );
-						?>
-					</div>
-					<div class="formulaire__rangee">
-						<?php
-						ueb_choix_segments( 'sexe', 'Sexe', array( 'M' => 'Masculin', 'F' => 'Féminin' ), $val( 'sexe' ), $erreurs['sexe'] ?? '' );
-						ueb_champ( array( 'nom' => 'nationalite', 'libelle' => 'Nationalité', 'type' => 'select', 'icone' => 'lieu', 'valeur' => $val( 'nationalite' ) ?: 'Camerounaise', 'erreur' => $erreurs['nationalite'] ?? '', 'options' => array_combine( ueb_nationalites(), ueb_nationalites() ) ) );
-						?>
-					</div>
-					<div class="formulaire__rangee">
-						<?php
-						ueb_champ( array( 'nom' => 'email', 'libelle' => 'Adresse email', 'type' => 'email', 'icone' => 'courriel', 'valeur' => $val( 'email' ), 'erreur' => $erreurs['email'] ?? '', 'requis' => $cms_requis, 'aide' => 'Utilisée sur les fiches CMS.', 'attrs' => array( 'placeholder' => 'Ex. : vevo@example.com', 'data-cms-champ' => true, 'autocomplete' => 'email', 'maxlength' => 150 ) ) );
-						ueb_champ( array( 'nom' => 'adresse', 'libelle' => 'Adresse complète', 'icone' => 'lieu', 'valeur' => $val( 'adresse' ), 'erreur' => $erreurs['adresse'] ?? '', 'requis' => $cms_requis, 'aide' => 'Indique ton quartier et ta ville.', 'attrs' => array( 'placeholder' => 'Ex. : Nko’ovos, Ebolowa', 'data-cms-champ' => true, 'autocomplete' => 'street-address', 'minlength' => 3, 'maxlength' => 255 ) ) );
-						?>
-					</div>
-					<section class="quitus-cms" aria-labelledby="quitus-contact-titre">
-						<h3 id="quitus-contact-titre">Contact en cas d’urgence</h3>
-						<p class="champ__aide" data-cms-aide><?php echo $cms_requis ? 'Pour tes fiches CMS, complète ton email, ton adresse et les trois coordonnées de ton contact d’urgence ci-dessous.' : 'Ces coordonnées sont facultatives pour ce paiement : aucune fiche CMS n’est à générer.'; ?></p>
-						<div class="quitus-cms__corps formulaire">
-							<div class="formulaire__rangee">
-								<?php
-								ueb_champ( array( 'nom' => 'nom_urgence', 'libelle' => 'Personne à contacter en cas d’urgence', 'icone' => 'utilisateur', 'valeur' => $val( 'nom_urgence' ), 'erreur' => $erreurs['nom_urgence'] ?? '', 'requis' => $cms_requis, 'attrs' => array( 'placeholder' => 'Ex. : TCHOUMBA Jean', 'data-cms-champ' => true, 'autocomplete' => 'section-urgence name', 'minlength' => 2, 'maxlength' => 150 ) ) );
-								ueb_champ( array( 'nom' => 'numero_urgence', 'libelle' => 'Téléphone d’urgence', 'type' => 'tel', 'icone' => 'telephone', 'valeur' => $val( 'numero_urgence' ), 'erreur' => $erreurs['numero_urgence'] ?? '', 'requis' => $cms_requis, 'aide' => 'Numéro camerounais à 9 chiffres, avec ou sans +237.', 'attrs' => array( 'placeholder' => 'Ex. : 699 11 11 11', 'data-cms-champ' => true, 'data-telephone' => true, 'inputmode' => 'tel', 'autocomplete' => 'section-urgence tel', 'maxlength' => 20 ) ) );
-								?>
-							</div>
-							<div class="formulaire__rangee">
-								<?php ueb_champ( array( 'nom' => 'adresse_urgence', 'libelle' => 'Adresse du contact', 'icone' => 'lieu', 'valeur' => $val( 'adresse_urgence' ), 'erreur' => $erreurs['adresse_urgence'] ?? '', 'requis' => $cms_requis, 'aide' => 'Quartier et ville de la personne à contacter.', 'attrs' => array( 'placeholder' => 'Ex. : Angalé, Ebolowa', 'data-cms-champ' => true, 'autocomplete' => 'section-urgence street-address', 'minlength' => 3, 'maxlength' => 255 ) ) ); ?>
-							</div>
-						</div>
-					</section>
+					<?php ueb_champs_profil( array(
+						'partie'     => 'identite',
+						'v'          => $v,
+						'erreurs'    => $erreurs,
+						'verrou'     => $profil,
+						'cms_requis' => $cms_requis,
+						'aide_cms'   => $cms_requis ? 'Pour tes fiches CMS, complète ton email, ton adresse et les trois coordonnées de ton contact d’urgence ci-dessous.' : 'Ces coordonnées sont facultatives pour ce paiement : aucune fiche CMS n’est à générer.',
+					) ); ?>
 				</div>
 			</section>
 
@@ -253,12 +213,15 @@ ueb_page_debut( array( 'titre' => $edite ? 'Modifier le quitus' : 'Nouveau quitu
 					</div>
 				</header>
 				<div class="section-form__corps formulaire">
-					<div class="formulaire__rangee">
-						<?php
-						ueb_champ( array( 'nom' => 'filiere_id', 'libelle' => $preinscrit_cette_annee ? 'Un de tes choix de préinscription' : 'Filière', 'type' => 'select', 'icone' => 'ecole', 'valeur' => $val( 'filiere_id' ), 'erreur' => $erreurs['filiere_id'] ?? '', 'options' => $options_formations, 'aide' => $preinscrit_cette_annee ? 'Choisis parmi les filières enregistrées dans ton dossier de préinscription.' : 'Les filières proposées dépendent de l’établissement sélectionné.' ) );
-						ueb_champ( array( 'nom' => 'parcours', 'libelle' => 'Niveau', 'type' => 'select', 'valeur' => $val( 'parcours' ), 'erreur' => $erreurs['parcours'] ?? '', 'options' => UEB_NIVEAUX_INSCRIPTION, 'aide' => 'Ex. : L1 pour Licence 1, M1 pour Master 1.' ) );
-						?>
-					</div>
+					<?php ueb_champs_profil( array(
+						'partie'             => 'formation',
+						'v'                  => $v,
+						'erreurs'            => $erreurs,
+						'verrou'             => $profil,
+						'options_formations' => $options_formations,
+						'libelle_filiere'    => $preinscrit_cette_annee ? 'Un de tes choix de préinscription' : 'Filière',
+						'aide_filiere'       => $preinscrit_cette_annee ? 'Choisis parmi les filières enregistrées dans ton dossier de préinscription.' : 'Les filières proposées dépendent de l’établissement sélectionné.',
+					) ); ?>
 				</div>
 			</section>
 
@@ -268,30 +231,84 @@ ueb_page_debut( array( 'titre' => $edite ? 'Modifier le quitus' : 'Nouveau quitu
 					<span class="section-form__num">4</span>
 					<div>
 						<h2 id="section-paiement">Ton paiement</h2>
-						<p>Ce que tu vas verser à la <?php echo esc_html( UEB_BANQUE['nom'] ); ?>, sur le compte imprimé sur ton quitus.</p>
+						<p>Où tu paies et combien tu verses, sur le compte imprimé sur ton quitus.</p>
 					</div>
 				</header>
 				<div class="section-form__corps formulaire">
+					<div class="formulaire__rangee">
+						<?php ueb_champ( array(
+							'nom'     => 'moyen_paiement',
+							'libelle' => 'Où vas-tu payer ?',
+							'type'    => 'select',
+							'icone'   => 'banque',
+							'valeur'  => $val( 'moyen_paiement' ),
+							'erreur'  => $erreurs['moyen_paiement'] ?? '',
+							'options' => array_combine( UEB_MOYENS_PAIEMENT, UEB_MOYENS_PAIEMENT ),
+							'aide'    => 'Tu peux en changer à chaque quitus.',
+							/* Logos : la liste native devient une liste illustrée (app.js). */
+							'attrs'   => array( 'data-liste-logos' => wp_json_encode( array_map( static fn( $l ) => array( 'src' => UEB_INSC_URI . '/assets/images/paiement/' . $l[0], 'fond' => $l[1] ), UEB_LOGOS_PAIEMENT ) ) ),
+						) ); ?>
+					</div>
 					<p class="quitus-montant-fixe champ--medical"><?php echo ueb_icone( 'banque', 18 ); ?><span>Frais de visite médicale : <b data-montant-fixe><?php echo esc_html( ueb_formater_montant( $paiement['medicaux'] ) ); ?> FCFA</b>, à verser sur le compte des services centraux.</span></p>
 					<div class="formulaire__rangee champ--droits">
-						<div class="champ-montant">
-							<?php
-							ueb_champ( array(
-								'nom'     => 'montant',
-								'libelle' => 'Droits universitaires (FCFA)',
-								'icone'   => 'banque',
-								'valeur'  => $val( 'montant' ) ? ueb_formater_montant( $val( 'montant' ) ) : '',
-								'erreur'  => $erreurs['montant'] ?? '',
-								'aide' => $classique ? $aide_classique : ( $formation ? 'Pour une formation professionnelle, indique le montant communiqué par ton établissement.' : 'Choisis une filière pour connaître les modalités de paiement.' ),
-								'attrs' => array( 'inputmode' => 'numeric', 'placeholder' => $regle_droits['second'] ? ueb_formater_montant( $regle_droits['max'] ) : '25 000', 'data-montant' => true, 'autocomplete' => 'off' ) + ( ! $formation ? array( 'readonly' => true ) : array() ),
-							) );
-							?>
-							<p class="apercu" data-montant-lettres></p>
+						<?php
+						/* Montant des droits : grands chiffres, devise, montant en lettres et
+						   raccourcis (formations classiques). */
+						$erreur_montant = $erreurs['montant'] ?? '';
+						$aide_montant   = $classique ? $aide_classique : ( $formation ? 'Pour une formation professionnelle, indique le montant communiqué par ton établissement.' : 'Choisis une filière pour connaître les modalités de paiement.' );
+						$raccourcis     = $regle_droits['second']
+							? ( $regle_droits['reste'] ? array( $regle_droits['reste'] => 'Le reste de l’année' ) : array() )
+							: array( UEB_DROITS_MINIMUM => 'Première tranche', UEB_DROITS_CLASSIQUES => 'Les deux tranches' );
+						?>
+						<div class="champ champ-somme<?php echo $erreur_montant ? ' champ--invalide' : ''; ?>">
+							<label for="champ-montant">Droits universitaires<span class="sr"> en francs CFA</span></label>
+							<div class="champ-somme__boite">
+								<input id="champ-montant" name="montant" type="text" inputmode="numeric" autocomplete="off" required data-montant
+									value="<?php echo esc_attr( $val( 'montant' ) ? ueb_formater_montant( $val( 'montant' ) ) : '' ); ?>"
+									placeholder="<?php echo esc_attr( $regle_droits['second'] ? ( $regle_droits['reste'] ? ueb_formater_montant( $regle_droits['reste'] ) : '' ) : '25 000' ); ?>"
+									aria-describedby="champ-montant-lettres champ-montant-aide<?php echo $erreur_montant ? ' champ-montant-erreur' : ''; ?>"<?php echo $erreur_montant ? ' aria-invalid="true"' : ''; ?><?php echo $formation ? '' : ' readonly'; ?>>
+								<span class="champ-somme__devise" aria-hidden="true">FCFA</span>
+							</div>
+							<p class="champ-somme__lettres" id="champ-montant-lettres" data-montant-lettres></p>
+							<?php if ( $raccourcis ) : ?>
+								<div class="montant-rapide" data-montant-rapide role="group" aria-label="Montants proposés"<?php echo $classique ? '' : ' hidden'; ?>>
+									<?php foreach ( $raccourcis as $somme => $libelle ) : ?>
+										<button type="button" class="montant-rapide__choix" data-valeur="<?php echo (int) $somme; ?>" aria-pressed="<?php echo (int) $val( 'montant' ) === (int) $somme ? 'true' : 'false'; ?>">
+											<b><?php echo esc_html( ueb_formater_montant( $somme ) ); ?></b><span><?php echo esc_html( $libelle ); ?></span>
+										</button>
+									<?php endforeach; ?>
+								</div>
+							<?php endif; ?>
+							<p class="champ__aide" id="champ-montant-aide"><?php echo esc_html( $aide_montant ); ?></p>
+							<?php if ( $erreur_montant ) : ?>
+								<p class="champ__erreur" id="champ-montant-erreur"><?php echo ueb_icone( 'alerte', 16 ); ?><?php echo esc_html( $erreur_montant ); ?></p>
+							<?php endif; ?>
 						</div>
 						<div class="tranche-auto<?php echo $classique ? ' est-auto' : ''; ?>" data-tranche-auto>
 							<?php ueb_choix_segments( 'tranche', 'Tranche payée', $contexte['tranches'], $val( 'tranche' ), $erreurs['tranche'] ?? '' ); ?>
 							<p class="tranche-auto__note"><?php echo ueb_icone( 'info', 15 ); ?>Déduite du montant saisi.</p>
 						</div>
+					</div>
+					<?php
+					/* Jauge de l'année (formations classiques) : déjà préparé, puis ce versement, sur les 50 000 FCFA. */
+					$deja_prepare = $regle_droits['second'] ? max( 0, UEB_DROITS_CLASSIQUES - $regle_droits['reste'] ) : 0;
+					$ce_versement = 'droits' === $type_courant ? (int) $v['montant'] : 0;
+					$part         = static fn( $n ) => round( min( 1, max( 0, $n / UEB_DROITS_CLASSIQUES ) ), 4 );
+					?>
+					<div class="jauge-annee champ--droits" data-jauge-annee<?php echo $classique ? '' : ' hidden'; ?>>
+						<div class="jauge-annee__piste" aria-hidden="true">
+							<span class="jauge-annee__ce" data-jauge-ce style="--part: <?php echo esc_attr( $part( $deja_prepare + $ce_versement ) ); ?>"></span>
+							<span class="jauge-annee__deja" style="--part: <?php echo esc_attr( $part( $deja_prepare ) ); ?>"></span>
+						</div>
+						<p class="jauge-annee__texte" data-jauge-texte>
+							<?php
+							$total_annee = $deja_prepare + $ce_versement;
+							echo esc_html( ( $deja_prepare ? sprintf( 'Déjà préparé : %s FCFA. ', ueb_formater_montant( $deja_prepare ) ) : '' )
+								. ( $total_annee >= UEB_DROITS_CLASSIQUES
+									? 'Avec ce versement, les 50 000 FCFA de droits de l’année sont couverts.'
+									: sprintf( 'Avec ce versement : %s sur 50 000 FCFA de droits pour l’année.', ueb_formater_montant( $total_annee ) ) ) );
+							?>
+						</p>
 					</div>
 					<div class="paiement-total" role="status" aria-live="polite" aria-atomic="true">
 						<p>Montant total à payer <strong data-total-paiement><?php echo $paiement['total'] ? esc_html( ueb_formater_montant( $paiement['total'] ) . ' FCFA' ) : '—'; ?></strong></p>
@@ -307,15 +324,15 @@ ueb_page_debut( array( 'titre' => $edite ? 'Modifier le quitus' : 'Nouveau quitu
 			<?php
 			$etab_recap = ueb_etablissement( $val( 'etablissement' ) );
 			$recap_pret = 'medicaux' === $type_courant || ( $formation && $v['tranche'] && $paiement['droits'] );
-			$documents = array();
-			if ( 'droits' === $type_courant ) {
-				$documents[] = array( 'titre' => 'Quitus universitaire', 'detail' => 'Droits d’inscription', 'pages' => 1 );
-			}
-			if ( $medical_document ) {
-				$documents[] = array( 'titre' => 'Quitus médical', 'detail' => 'Frais de visite médicale', 'pages' => 1 );
-				$documents[] = array( 'titre' => 'Fiches CMS', 'detail' => 'Identification et examen médical', 'pages' => 2 );
-			}
-			$pages_document = array_sum( array_column( $documents, 'pages' ) );
+			/* Tous les documents possibles ; ceux que ce paiement ne produit pas sont masqués
+			   (et réévalués en direct quand la situation change). */
+			$documents = array(
+				array( 'titre' => 'Quitus universitaire', 'detail' => 'Droits d’inscription', 'pages' => 1, 'cle' => 'droits', 'produit' => 'droits' === $type_courant ),
+				array( 'titre' => 'Quitus médical', 'detail' => 'Frais de visite médicale', 'pages' => 1, 'cle' => 'medical', 'produit' => $medical_document ),
+				array( 'titre' => 'Fiches CMS', 'detail' => 'Identification et examen médical', 'pages' => 2, 'cle' => 'medical', 'produit' => $medical_document ),
+			);
+			$documents = array_filter( $documents, static fn( $d ) => 'droits' === $type_courant || 'medical' === $d['cle'] );
+			$pages_document = array_sum( array_column( array_filter( $documents, static fn( $d ) => $d['produit'] ), 'pages' ) );
 			?>
 			<section class="carte quitus-final" aria-labelledby="section-final">
 				<header class="quitus-final__entete">
@@ -333,6 +350,7 @@ ueb_page_debut( array( 'titre' => $edite ? 'Modifier le quitus' : 'Nouveau quitu
 						<dl class="quitus-recap">
 							<div><dt>Filière</dt><dd data-recap-formation><?php echo esc_html( $formation->libelle ?? 'À choisir' ); ?></dd></div>
 							<div><dt>Niveau</dt><dd data-recap-niveau><?php echo esc_html( UEB_NIVEAUX_INSCRIPTION[ $val( 'parcours' ) ] ?? 'À choisir' ); ?></dd></div>
+							<div><dt>Lieu de paiement</dt><dd data-recap-moyen><?php echo esc_html( $val( 'moyen_paiement' ) ?: 'À choisir' ); ?></dd></div>
 							<div><dt>Paiement</dt><dd data-recap-tranche><?php echo esc_html( 'medicaux' === $type_courant ? 'Paiement unique' : ( $contexte['tranches'][ $v['tranche'] ] ?? 'À choisir' ) ); ?></dd></div>
 						</dl>
 						<dl class="quitus-recap quitus-recap--montants">
@@ -354,7 +372,7 @@ ueb_page_debut( array( 'titre' => $edite ? 'Modifier le quitus' : 'Nouveau quitu
 						</div>
 						<ul class="quitus-document__liste">
 							<?php foreach ( $documents as $document ) : ?>
-								<li <?php echo ( 'Quitus universitaire' !== $document['titre'] && $medical_document ) ? 'data-document-medical' : ''; ?>>
+								<li data-document="<?php echo esc_attr( $document['cle'] ); ?>" data-pages="<?php echo (int) $document['pages']; ?>" <?php echo $document['produit'] ? '' : 'hidden'; ?>>
 									<div><strong><?php echo esc_html( $document['titre'] ); ?></strong><span><?php echo esc_html( $document['detail'] ); ?></span></div>
 									<span class="quitus-document__pages"><?php echo (int) $document['pages']; ?> p.</span>
 								</li>
@@ -365,9 +383,9 @@ ueb_page_debut( array( 'titre' => $edite ? 'Modifier le quitus' : 'Nouveau quitu
 				</div>
 
 				<footer class="quitus-final__pied">
-					<p>Après génération, imprime tes quitus et fais-les tamponner avant de payer à la banque.</p>
+					<p>Après génération, imprime tes quitus et fais-les tamponner avant de payer.</p>
 					<div class="quitus-final__actions">
-						<button class="btn btn--primaire quitus-final__generer" type="submit" <?php disabled( ! $contexte['tranches'] && 'droits' === $type_courant ); ?>><?php echo $edite ? 'Enregistrer les modifications' : 'Générer mes documents'; ?><?php echo ueb_icone( 'fleche', 18 ); ?></button>
+						<button class="btn btn--primaire quitus-final__generer" type="submit" <?php disabled( ! $contexte['tranches'] && 'droits' === $type_courant ); ?><?php if ( $edite ) : ?> data-confirmer-ton="enregistrer" data-confirmer-titre="Enregistrer les modifications ?" data-confirmer-bouton="Oui, enregistrer" data-confirmer="<?php echo esc_attr( sprintf( 'Le quitus %s sera refait avec ces informations. S’il est déjà imprimé ou tamponné, imprime la nouvelle version.', $edite->numero ) ); ?>"<?php endif; ?>><?php echo $edite ? 'Enregistrer les modifications' : 'Générer mes documents'; ?><?php echo ueb_icone( 'fleche', 18 ); ?></button>
 						<a class="quitus-final__annuler" href="<?php echo esc_url( ueb_url( 'mon-espace' ) ); ?>">Annuler</a>
 					</div>
 				</footer>

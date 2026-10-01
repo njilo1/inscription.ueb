@@ -755,12 +755,11 @@ function ueb_action_gestion_creer_etudiant() {
 	ueb_exiger_comptes();
 	$retour      = add_query_arg( 'vue', 'comptes', ueb_url_comptes() );
 	$identifiant = ueb_normaliser_identifiant( wp_unslash( $_POST['identifiant'] ?? '' ) );
-	$type        = ueb_type_identifiant( $identifiant );
 	$tel_saisi   = sanitize_text_field( wp_unslash( $_POST['telephone'] ?? '' ) );
 	$telephone   = $tel_saisi ? ueb_normaliser_telephone( $tel_saisi ) : '';
 
-	if ( ! $type ) {
-		ueb_flash( 'erreur', 'Matricule ou numéro de dossier non reconnu. Exemples : 24I0017FS, UEB-2026-000123.' );
+	if ( 'matricule' !== ueb_type_identifiant( $identifiant ) ) {
+		ueb_flash( 'erreur', 'Saisis le matricule de l’étudiant, par exemple 24I0017FS. Le numéro de dossier de préinscription n’est pas accepté.' );
 		ueb_rediriger( $retour );
 	}
 	if ( $tel_saisi && ! $telephone ) {
@@ -768,14 +767,13 @@ function ueb_action_gestion_creer_etudiant() {
 		ueb_rediriger( $retour );
 	}
 	if ( ueb_compte_par_identifiant( $identifiant ) ) {
-		ueb_flash( 'erreur', "Un compte existe déjà avec cet identifiant." );
+		ueb_flash( 'erreur', 'Un compte existe déjà avec ce matricule.' );
 		ueb_rediriger( $retour );
 	}
 
 	$provisoire = ueb_mot_de_passe_provisoire();
 	$ok         = $wpdb->insert( 'ueb_insc_comptes', array(
-		'matricule'        => 'matricule' === $type ? $identifiant : null,
-		'numero_dossier'   => 'dossier' === $type ? $identifiant : null,
+		'matricule'        => $identifiant,
 		'telephone'        => $telephone ?: '',
 		'mot_de_passe'     => password_hash( $provisoire, PASSWORD_DEFAULT ),
 		'doit_changer_mdp' => 1,

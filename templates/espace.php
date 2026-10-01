@@ -81,7 +81,7 @@ ueb_page_debut( array( 'titre' => $vue ? ( 'quitus' === $vue ? 'Mes quitus' : 'M
 				<div>
 					<a class="fil fil--clair" href="<?php echo esc_url( $url_espace ); ?>"><?php echo ueb_icone( 'fleche-g', 16 ); ?>Mon espace</a>
 					<h1>Mes reçus<?php if ( $recus_compte ) : ?> <span class="espace__compte-titre"><?php echo count( $recus_compte ); ?></span><?php endif; ?></h1>
-					<p class="espace__etab espace__etab--texte"><?php echo $recus_compte ? 'Retrouve chaque reçu envoyé, son statut et une copie à télécharger.' : 'Tes reçus bancaires apparaîtront ici dès le premier envoi.'; ?></p>
+					<p class="espace__etab espace__etab--texte"><?php echo $recus_compte ? 'Retrouve chaque reçu envoyé, son statut et une copie à télécharger.' : 'Tes reçus de paiement apparaîtront ici dès le premier envoi.'; ?></p>
 				</div>
 				<?php if ( $parcours['action'] && $parcours['action']['principal'] ) : ?>
 					<a class="btn btn--clair" href="<?php echo esc_url( $parcours['action']['url'] ); ?>"><?php echo ueb_icone( $parcours['action']['icone'], 18 ); ?><?php echo esc_html( $parcours['action']['libelle'] ); ?></a>
@@ -172,7 +172,7 @@ ueb_page_debut( array( 'titre' => $vue ? ( 'quitus' === $vue ? 'Mes quitus' : 'M
 						<div><dt>Compte créé le</dt><dd><?php echo esc_html( mysql2date( 'j F Y', $compte->date_creation ) ); ?></dd></div>
 					</dl>
 					<p class="encart__note">Mot de passe découvert ? Change-le : tes autres sessions seront fermées.</p>
-					<a class="btn btn--fantome btn--petit" href="<?php echo esc_url( ueb_url( 'mon-espace/securite' ) ); ?>"><?php echo ueb_icone( 'cle', 16 ); ?>Sécurité du compte</a>
+					<a class="btn btn--fantome btn--petit" href="<?php echo esc_url( ueb_url( 'mon-espace/compte' ) ); ?>"><?php echo ueb_icone( 'utilisateur', 16 ); ?>Ouvrir Mon compte</a>
 				</section>
 
 				<section class="encart" aria-labelledby="aide-titre">
@@ -225,7 +225,7 @@ ueb_page_debut( array( 'titre' => $vue ? ( 'quitus' === $vue ? 'Mes quitus' : 'M
 					<div class="liste-quitus__vide">
 						<span class="liste-quitus__vide-icone"><?php echo ueb_icone( 'recu', 26 ); ?></span>
 						<h2>Aucun reçu envoyé</h2>
-						<p>Après ton paiement à la <?php echo esc_html( UEB_BANQUE['nom'] ); ?>, envoie une photo ou un scan de ton reçu depuis le quitus concerné.</p>
+						<p>Après ton paiement <?php echo esc_html( ueb_moyens_paiement() ); ?>, envoie une photo ou un scan de ton reçu depuis le quitus concerné.</p>
 						<a class="btn btn--primaire" href="<?php echo esc_url( add_query_arg( 'vue', 'quitus', $url_espace ) ); ?>"><?php echo ueb_icone( 'fichier', 18 ); ?>Voir mes quitus</a>
 					</div>
 				<?php else : foreach ( $recus_par_annee as $recus_code => $liste_recus ) :

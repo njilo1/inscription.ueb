@@ -465,9 +465,9 @@ ueb_page_debut( array( 'titre' => 'Espace scolarité', 'variante' => $autorise ?
 									<?php
 									ueb_champ( array(
 										'nom'     => 'identifiant',
-										'libelle' => 'Matricule ou numéro de dossier',
+										'libelle' => 'Matricule',
 										'icone'   => 'utilisateur',
-										'attrs'   => array( 'placeholder' => '24I0017FS ou UEB-2026-000123', 'autocapitalize' => 'characters', 'spellcheck' => 'false', 'autocomplete' => 'off', 'data-identifiant' => true ),
+										'attrs'   => array( 'placeholder' => 'Exemple : 24I0017FS', 'autocapitalize' => 'characters', 'spellcheck' => 'false', 'autocomplete' => 'off', 'data-identifiant' => true ),
 									) );
 									ueb_champ( array(
 										'nom'     => 'telephone',
@@ -585,6 +585,7 @@ ueb_page_debut( array( 'titre' => 'Espace scolarité', 'variante' => $autorise ?
 						<dl class="dossier-entete__faits">
 							<div><dt>Montant</dt><dd class="dossier-entete__montant"><?php echo esc_html( ueb_formater_montant( $fiche->montant ) ); ?> <small>FCFA</small></dd></div>
 							<div><dt>Paiement</dt><dd><?php echo esc_html( ueb_libelle_type_quitus( $type_fiche ) ); ?><small class="dossier-entete__suite"><?php echo esc_html( 'medicaux' === $type_fiche ? 'Paiement unique' : ueb_libelle_tranche( $fiche->tranche ) ); ?></small></dd></div>
+							<?php if ( ! empty( $fiche->moyen_paiement ) ) : ?><div><dt>Lieu de paiement</dt><dd><?php echo esc_html( $fiche->moyen_paiement ); ?></dd></div><?php endif; ?>
 							<div><dt>Reçus envoyés</dt><dd><?php echo count( $recus ); ?></dd></div>
 							<div><dt>Généré le</dt><dd><?php echo esc_html( mysql2date( 'j F Y', $fiche->date_creation ) ); ?></dd></div>
 						</dl>

@@ -13,11 +13,12 @@
 
 defined( 'ABSPATH' ) || exit;
 
-const UEB_INSC_DB_VERSION = '8';
+const UEB_INSC_DB_VERSION = '9';
 
 function ueb_insc_schema() {
 	return array(
-		/* Comptes étudiants. Identifiant de connexion : matricule ou n° de dossier.
+		/* Comptes étudiants. Identifiant de connexion : le matricule (numero_dossier :
+		   anciens comptes créés avec le n° de préinscription).
 		   version_session : incrémentée à chaque changement de mot de passe pour
 		   déconnecter toutes les autres sessions ouvertes. */
 		'ueb_insc_comptes' => "CREATE TABLE IF NOT EXISTS ueb_insc_comptes (
@@ -68,6 +69,7 @@ function ueb_insc_schema() {
 			parcours VARCHAR(150) NOT NULL,
 			montant INT UNSIGNED NOT NULL,
 			tranche TINYINT UNSIGNED NOT NULL,
+			moyen_paiement VARCHAR(30) NOT NULL DEFAULT '',
 			statut ENUM('genere','recu_envoye','verifie','rejete') NOT NULL DEFAULT 'genere',
 			motif_rejet VARCHAR(255) NULL,
 			verifie_par BIGINT UNSIGNED NULL,
@@ -81,6 +83,29 @@ function ueb_insc_schema() {
 			KEY idx_compte (compte_id),
 			KEY idx_etab_annee (etablissement, annee_academique),
 			KEY idx_statut (statut)
+		) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+		/* Fiche de l'étudiant (version 9) : saisie au premier quitus, reprise
+		   verrouillée sur les suivants, corrigée dans Mon compte. Un champ vide
+		   reste à remplir dans le formulaire du quitus. */
+		'ueb_insc_profils' => "CREATE TABLE IF NOT EXISTS ueb_insc_profils (
+			compte_id INT UNSIGNED NOT NULL,
+			etablissement VARCHAR(10) NOT NULL DEFAULT '',
+			filiere_id INT UNSIGNED NULL,
+			parcours VARCHAR(150) NOT NULL DEFAULT '',
+			nom VARCHAR(100) NOT NULL DEFAULT '',
+			prenom VARCHAR(150) NOT NULL DEFAULT '',
+			date_naissance DATE NULL,
+			lieu_naissance VARCHAR(150) NOT NULL DEFAULT '',
+			sexe VARCHAR(1) NOT NULL DEFAULT '',
+			nationalite VARCHAR(100) NOT NULL DEFAULT '',
+			email VARCHAR(150) NOT NULL DEFAULT '',
+			adresse VARCHAR(255) NOT NULL DEFAULT '',
+			nom_urgence VARCHAR(150) NOT NULL DEFAULT '',
+			numero_urgence VARCHAR(20) NOT NULL DEFAULT '',
+			adresse_urgence VARCHAR(255) NOT NULL DEFAULT '',
+			date_modification DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+			PRIMARY KEY (compte_id)
 		) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
 
 		/* Photos ou scans des reçus de paiement bancaire, rattachés à un quitus. */
@@ -246,7 +271,7 @@ function ueb_insc_migrer() {
 			return false;
 		}
 	}
-	foreach ( array( 'situation' => "VARCHAR(12) NOT NULL DEFAULT ''", 'filiere_id' => 'INT UNSIGNED NULL', 'quitus_droits_id' => 'INT UNSIGNED NULL, ADD UNIQUE KEY uniq_medical_droits (quitus_droits_id)', 'email' => "VARCHAR(150) NOT NULL DEFAULT ''", 'adresse' => "VARCHAR(255) NOT NULL DEFAULT ''", 'nom_urgence' => "VARCHAR(150) NOT NULL DEFAULT ''", 'numero_urgence' => "VARCHAR(20) NOT NULL DEFAULT ''", 'adresse_urgence' => "VARCHAR(255) NOT NULL DEFAULT ''" ) as $colonne => $definition ) {
+	foreach ( array( 'situation' => "VARCHAR(12) NOT NULL DEFAULT ''", 'filiere_id' => 'INT UNSIGNED NULL', 'quitus_droits_id' => 'INT UNSIGNED NULL, ADD UNIQUE KEY uniq_medical_droits (quitus_droits_id)', 'email' => "VARCHAR(150) NOT NULL DEFAULT ''", 'adresse' => "VARCHAR(255) NOT NULL DEFAULT ''", 'nom_urgence' => "VARCHAR(150) NOT NULL DEFAULT ''", 'numero_urgence' => "VARCHAR(20) NOT NULL DEFAULT ''", 'adresse_urgence' => "VARCHAR(255) NOT NULL DEFAULT ''", 'moyen_paiement' => "VARCHAR(30) NOT NULL DEFAULT '' AFTER tranche" ) as $colonne => $definition ) {
 		if ( ! in_array( $colonne, $colonnes, true ) && false === $wpdb->query( "ALTER TABLE ueb_insc_quitus ADD COLUMN $colonne $definition" ) ) {
 			return false;
 		}

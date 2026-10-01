@@ -1,6 +1,6 @@
 <?php
 /**
- * Création de compte : identifiant (matricule ou n° de dossier), téléphone,
+ * Création de compte : matricule, téléphone,
  * mot de passe et confirmation.
  *
  * @package Inscription_UEB
@@ -13,7 +13,7 @@ ueb_page_debut( array( 'titre' => 'Créer mon compte', 'variante' => 'auth' ) );
 get_template_part( 'templates/partie', 'auth-debut', array( 'page' => 'creer-compte' ) );
 ?>
 			<h1 class="acces__titre" id="acces-titre">Créer ton compte</h1>
-			<p class="acces__intro">Ancien étudiant : ton matricule. Nouvel étudiant : ton numéro de dossier.</p>
+			<p class="acces__intro">Ton matricule te sert d’identifiant. Le numéro de dossier de préinscription n’est pas accepté.</p>
 
 			<?php ueb_afficher_flash(); ?>
 			<?php if ( ! empty( $erreurs['general'] ) ) : ?>
@@ -26,11 +26,11 @@ get_template_part( 'templates/partie', 'auth-debut', array( 'page' => 'creer-com
 				<?php
 				ueb_champ( array(
 					'nom'     => 'identifiant',
-					'libelle' => 'Matricule ou numéro de dossier',
+					'libelle' => 'Matricule',
 					'icone'   => 'utilisateur',
 					'valeur'  => $saisie['identifiant'] ?? '',
 					'erreur'  => $erreurs['identifiant'] ?? '',
-					'attrs'   => array( 'autocomplete' => 'username', 'autocapitalize' => 'characters', 'spellcheck' => 'false', 'placeholder' => '24I0017FS ou UEB-2026-000123', 'data-identifiant' => true ),
+					'attrs'   => array( 'autocomplete' => 'username', 'autocapitalize' => 'characters', 'spellcheck' => 'false', 'placeholder' => 'Exemple : 24I0017FS', 'data-identifiant' => true ),
 				) );
 				ueb_champ( array(
 					'nom'     => 'telephone',
