@@ -31,6 +31,11 @@ add_action( 'wp_enqueue_scripts', function () {
 	ueb_style( 'ueb-pages', 'assets/css/pages.css', array( 'ueb-app' ) );
 	ueb_script( 'ueb-app', 'assets/js/app.js' );
 
+	if ( 'support' === $page ) {
+		ueb_style( 'ueb-support', 'assets/css/support.css', array( 'ueb-pages' ) );
+		ueb_script( 'ueb-support', 'assets/js/support.js' );
+	}
+
 	if ( is_front_page() && ! $page ) {
 		ueb_style( 'ueb-landing', 'assets/css/landing.css', array( 'ueb-app' ) );
 		ueb_script( 'gsap', 'assets/js/vendor/gsap.min.js' );
