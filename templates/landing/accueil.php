@@ -23,7 +23,7 @@ $d = $args;
 					<span class="ligne-masque"><span data-intro-ligne>Plateforme officielle</span></span>
 					<span class="ligne-masque"><span data-intro-ligne>d’inscription <?php echo esc_html( $d['annee']['libelle'] ); ?></span></span>
 				</h1>
-				<p class="acc-intro" data-intro>Les étudiants des neuf établissements génèrent ici leur quitus de paiement, puis envoient la photo de leur reçu bancaire avant la vérification à la scolarité.</p>
+				<p class="acc-intro" data-intro>Les étudiants des neuf établissements génèrent ici leur quitus de paiement, puis envoient la photo de leur reçu de paiement avant la vérification à la scolarité.</p>
 				<div class="acc-actions" data-intro><?php ueb_landing_actions( $d['compte'], 'btn--fantome' ); ?></div>
 			</div>
 			<figure class="acc-ecran" data-intro-visuel>
@@ -38,7 +38,7 @@ $d = $args;
 			<a class="acc-acces__carte" href="<?php echo esc_url( ueb_url( $d['compte'] ? 'mon-espace' : 'creer-mon-compte' ) ); ?>">
 				<span class="acc-acces__icone"><?php echo ueb_icone( 'utilisateur', 24 ); ?></span>
 				<b><?php echo $d['compte'] ? 'Mon espace' : 'Créer mon compte'; ?></b>
-				<span>Matricule ou numéro de dossier de préinscription.</span>
+				<span>Avec ton matricule.</span>
 			</a>
 			<a class="acc-acces__carte" href="<?php echo esc_url( ueb_url( $d['compte'] ? 'mon-espace/quitus' : 'connexion' ) ); ?>">
 				<span class="acc-acces__icone"><?php echo ueb_icone( 'fichier', 24 ); ?></span>
@@ -48,7 +48,7 @@ $d = $args;
 			<a class="acc-acces__carte" href="<?php echo esc_url( ueb_url( $d['compte'] ? 'mon-espace' : 'connexion' ) ); ?>">
 				<span class="acc-acces__icone"><?php echo ueb_icone( 'recu', 24 ); ?></span>
 				<b>Envoyer mon reçu</b>
-				<span>La photo du reçu de la CCA Bank.</span>
+				<span>La photo de ton reçu de paiement.</span>
 			</a>
 			<a class="acc-acces__carte" href="#etablissements">
 				<span class="acc-acces__icone"><?php echo ueb_icone( 'banque', 24 ); ?></span>
@@ -121,7 +121,7 @@ $d = $args;
 		<div class="conteneur acc-appel__bande" data-apparition>
 			<div>
 				<h2>Inscriptions <?php echo esc_html( $d['annee']['libelle'] ); ?></h2>
-				<p>Crée ton compte avec ton matricule ou ton numéro de dossier.</p>
+				<p>Crée ton compte avec ton matricule.</p>
 			</div>
 			<div class="acc-actions"><?php ueb_landing_actions( $d['compte'] ); ?></div>
 		</div>

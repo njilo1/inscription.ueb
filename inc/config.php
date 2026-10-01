@@ -29,6 +29,17 @@ const UEB_BANQUE = array(
 	'guichet' => '10012',
 );
 
+/* On paie sur ces comptes à la banque, ou par un de ses partenaires. */
+const UEB_MOYENS_PAIEMENT = array( 'CCA Bank', 'Express Union', 'MTN Mobile Money', 'Campost Money' );
+/* Logo de chacun (assets/images/paiement/) et fond de sa pastille ronde, dans la
+   liste « Où vas-tu payer ? » du quitus. CCA et Express Union : leur symbole seul. */
+const UEB_LOGOS_PAIEMENT = array(
+	'CCA Bank'         => array( 'cca-bank.png', '#ffffff' ),
+	'Express Union'    => array( 'express-union.png', '#ffffff' ),
+	'MTN Mobile Money' => array( 'mtn.svg', '#ffcc00' ),
+	'Campost Money'    => array( 'campost.svg', '#fbd304' ),
+);
+
 /* Compte des services centraux : il reçoit les frais de visite médicale,
    pour toute l'université (relevé des comptes bancaires de l'UEb). */
 const UEB_COMPTE_MEDICAL = array( 'compte' => '00272772201', 'cle' => '07' );
@@ -55,10 +66,10 @@ const UEB_FRAIS_MEDICAUX = array(
 	'reprise' => array( 'montant' => 5000, 'libelle' => 'Réinscription avec interruption' ),
 );
 
-/* Droits des formations classiques : 50 000 FCFA par an, saisis par
-   l'étudiant par multiples de 5 000. Premier versement de 25 000 au moins :
-   en dessous de 50 000 c'est la première tranche, à 50 000 les deux. Le
-   second versement va jusqu'au reste de l'année. */
+/* Droits des formations classiques : 50 000 FCFA par an, montant saisi par
+   l'étudiant. Premier versement de 25 000 au moins, par multiples de 5 000,
+   sans plafond : en dessous de 50 000 c'est la première tranche, à partir de
+   50 000 les deux. Le second versement est libre. */
 const UEB_DROITS_CLASSIQUES = 50000;
 const UEB_DROITS_MINIMUM    = 25000;
 const UEB_DROITS_PAS        = 5000;
@@ -146,6 +157,13 @@ function ueb_logo_url( $sigle ) {
 /** RIB complet d'un établissement, groupé comme sur le relevé de la banque. */
 function ueb_rib( array $etab ) {
 	return sprintf( '%s %s %s %s %s', UEB_BANQUE['pays'], UEB_BANQUE['banque'], UEB_BANQUE['guichet'], $etab['compte'], $etab['cle'] );
+}
+
+/** « à la CCA Bank, par Express Union, MTN Mobile Money ou Campost Money », à placer après « paie ». */
+function ueb_moyens_paiement() {
+	$moyens  = str_replace( ' ', "\u{00A0}", UEB_MOYENS_PAIEMENT ); /* un nom ne se coupe pas en fin de ligne */
+	$dernier = array_pop( $moyens );
+	return 'à la ' . array_shift( $moyens ) . ', par ' . implode( ', ', $moyens ) . ' ou ' . $dernier;
 }
 
 /**

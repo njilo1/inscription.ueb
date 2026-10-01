@@ -483,10 +483,26 @@
 .paiement-total p { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .3rem 1rem; margin: 0; font-size: 1rem; }
 .paiement-total strong { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .paiement-total .paiement-total__detail { display: block; margin-top: .3rem; color: var(--gris); font-size: .9rem; }
-.quitus-form input[readonly] { background: var(--papier); color: var(--encre); }
-.quitus-form select:disabled { opacity: 1; color: var(--gris); background: var(--papier); }
-.quitus-form .etab-choix__option:has(input:disabled) { opacity: .45; }
-.quitus-form .etab-choix__option:has(input:disabled) .etab-choix__carte { cursor: default; }
+.quitus-form input[readonly] { background: var(--papier); color: var(--encre); cursor: not-allowed; }
+.quitus-form select:disabled { opacity: 1; color: var(--encre); background: var(--papier); cursor: not-allowed; }
+.champ__select:has(select:disabled) > .icone:last-child { display: none; }
+/* Choix figés (fiche de l'étudiant, vœux de préinscription) : le choix retenu reste net, les autres s'effacent. */
+.etab-choix__option:has(input:disabled:not(:checked)) { opacity: .45; }
+.etab-choix__option:has(input:disabled) .etab-choix__carte { cursor: default; }
+.etab-choix__option:has(input:disabled):hover .etab-choix__carte { transform: none; box-shadow: none; }
+.etab-choix__option:has(input:disabled:not(:checked)):hover .etab-choix__carte { border-color: var(--filet); }
+.est-verrouille .etab-choix__option input:checked + .etab-choix__carte { background: var(--papier); }
+/* Établissement figé par la fiche : seul le choix retenu reste à l'écran. */
+.est-verrouille .etab-choix__option:has(input:not(:checked)) { display: none; }
+.segments.est-verrouille .segments__option input { cursor: not-allowed; }
+.segments.est-verrouille .segments__option input:not(:checked) + span { border-style: dashed; color: var(--gris-clair); background: transparent; }
+
+/* Informations reprises de la fiche, en tête du formulaire du quitus */
+.quitus-fiche { display: flex; align-items: flex-start; gap: .85rem; margin: 0 0 1.25rem; padding: 1rem 1.15rem; border: 1px solid var(--filet-fort); border-radius: 14px; background: var(--blanc); }
+.quitus-fiche__icone { flex: none; display: grid; place-items: center; width: 38px; height: 38px; border-radius: 10px; background: rgba(19, 53, 26, .07); color: var(--vert-bandeau); }
+.quitus-fiche p { margin: 0; align-self: center; font-size: .95rem; line-height: 1.5; color: var(--gris); }
+.quitus-fiche b { color: var(--encre); }
+.quitus-fiche a { color: var(--vert-bandeau); font-weight: 700; text-decoration: underline; text-underline-offset: .15em; }
 .quitus-form .champ__select { min-width: 0; }
 .quitus-form select { text-overflow: ellipsis; }
 .quitus-cms { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--filet); }
@@ -498,7 +514,32 @@
 .quitus-erreurs a, .ipes-erreurs a { color: inherit; text-decoration: underline; text-underline-offset: .15em; }
 
 /* Montant, récapitulatif et génération */
-.champ-montant { display: grid; gap: .4rem; align-content: start; }
+/* Montant des droits : la somme se lit d'abord, en grands chiffres, devise à droite. */
+.champ-somme__boite { position: relative; }
+.champ-somme input { min-height: 66px; padding: .55rem 5.4rem .55rem 1.1rem; font: 700 clamp(1.5rem, 1.25rem + 1vw, 1.85rem) var(--f-texte); letter-spacing: -.01em; font-variant-numeric: tabular-nums; }
+.champ-somme input::placeholder { font-weight: 600; color: var(--filet-fort); }
+.champ-somme__devise { position: absolute; right: .65rem; top: 50%; translate: 0 -50%; padding: .32rem .65rem; border-radius: 999px; background: rgba(19, 53, 26, .07); color: var(--vert-bandeau); font-size: .85rem; font-weight: 700; pointer-events: none; transition: background-color .2s, color .2s; }
+.champ-somme:focus-within .champ-somme__devise { background: var(--vert-bandeau); color: var(--blanc); }
+.champ-somme.champ--invalide .champ-somme__devise { background: var(--danger-fond); color: var(--danger); }
+.champ-somme__lettres { min-height: 1.35em; margin: 0; font: italic 500 1rem/1.35 var(--f-titre); color: var(--foret-700); }
+/* Raccourcis : la somme en gros, ce qu'elle couvre en dessous. */
+.montant-rapide { display: flex; flex-wrap: wrap; gap: .5rem; }
+.montant-rapide[hidden] { display: none; }
+.montant-rapide__choix { display: grid; gap: .05rem; min-height: 48px; padding: .45rem .9rem; border: 1.5px solid var(--filet-fort); border-radius: 12px; background: var(--blanc); font: inherit; color: var(--encre); text-align: left; cursor: pointer; transition: border-color .15s, background-color .15s; }
+.montant-rapide__choix b { font-size: 1rem; font-variant-numeric: tabular-nums; }
+.montant-rapide__choix span { font-size: .8rem; color: var(--gris); }
+.montant-rapide__choix:hover { border-color: var(--gris-clair); }
+.montant-rapide__choix[aria-pressed="true"] { border-color: var(--vert-bandeau); background: rgba(19, 53, 26, .05); box-shadow: inset 0 0 0 1px var(--vert-bandeau); }
+.montant-rapide__choix:focus-visible { outline: 3px solid var(--or); outline-offset: 2px; }
+/* Jauge de l'année : déjà préparé (vert), puis ce versement (or), sur 50 000 FCFA. */
+.jauge-annee { display: grid; gap: .55rem; padding: .9rem 1rem; border: 1px solid var(--filet); border-radius: 14px; background: var(--papier); }
+.jauge-annee[hidden] { display: none; }
+.jauge-annee__piste { position: relative; height: 10px; border-radius: 999px; background: var(--blanc); box-shadow: inset 0 0 0 1px var(--filet); }
+.jauge-annee__piste span { position: absolute; inset: 0; border-radius: inherit; clip-path: inset(0 calc(100% - var(--part, 0) * 100%) 0 0 round 999px); transition: clip-path .45s var(--ease-sortie); }
+.jauge-annee__ce { background: var(--or); }
+.jauge-annee__deja { background: var(--vert-bandeau); }
+.jauge-annee__texte { margin: 0; font-size: .92rem; color: var(--gris); font-variant-numeric: tabular-nums; }
+@media (prefers-reduced-motion: reduce) { .jauge-annee__piste span, .champ-somme__devise { transition: none; } }
 /* Tranche déduite du montant (formations classiques) : visible mais pas cliquable */
 .tranche-auto { display: grid; gap: .35rem; align-content: start; }
 .tranche-auto__note { display: none; align-items: center; gap: .35rem; margin: 0; font-size: .85rem; color: var(--gris); }
@@ -540,6 +581,8 @@
 .quitus-document__entete p { margin: .3rem 0 0; font-size: .85rem; color: var(--blanc); }
 .quitus-document__liste { display: grid; gap: 0; list-style: none; margin: 0; padding: 0; }
 .quitus-document__liste li { display: flex; align-items: baseline; justify-content: space-between; gap: .8rem; padding: .8rem 0; border-top: 1px solid rgba(255, 255, 255, .2); }
+/* Document que ce paiement ne produit pas : retiré de la liste (le display ci-dessus l'emporterait sur hidden). */
+.quitus-document__liste li[hidden] { display: none; }
 .quitus-document__liste li > div { display: grid; gap: .2rem; min-width: 0; }
 .quitus-document__liste strong { font-size: .95rem; font-weight: 600; }
 .quitus-document__liste li > div > span { color: rgba(255, 255, 255, .8); font-size: .83rem; line-height: 1.45; }
@@ -788,6 +831,15 @@
 .securite-grille > aside { animation-delay: .14s; }
 
 .securite-carte { padding: clamp(1.2rem, 2.5vw, 1.75rem); border-radius: 20px; }
+
+/* Mon compte : la fiche de l'étudiant, au-dessus de la sécurité */
+.compte-infos { padding: clamp(1.2rem, 2.5vw, 1.75rem); border-radius: 20px; }
+.compte-infos__form { gap: 1.5rem; }
+.compte-infos__groupe { display: grid; gap: 1rem; }
+.compte-infos__groupe + .compte-infos__groupe { padding-top: 1.4rem; border-top: 1px solid var(--filet); }
+.compte-infos__groupe h3 { margin: 0; font-size: 1.15rem; color: var(--foret-800); }
+.compte-infos .securite-form__actions .btn { min-height: 46px; border-radius: 12px; }
+.compte-rubrique { margin: 1.25rem 0 0; font-size: clamp(1.35rem, 1.2rem + .6vw, 1.6rem); }
 .securite-carte__entete { display: flex; align-items: flex-start; gap: .9rem; margin-bottom: 1.25rem; }
 .securite-carte__icone { flex: none; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 12px; background: rgba(19, 53, 26, .07); color: var(--vert-bandeau); }
 .securite-carte__entete h2 { margin: 0 0 .2rem; font-size: 1.3rem; }
@@ -817,14 +869,9 @@
 .identifiants span { font-size: .8rem; color: var(--gris); }
 .identifiants b { font-size: 1.02rem; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .identifiants .est-vide b { font-weight: 600; color: var(--gris); }
-.securite-depli { border-top: 1px solid var(--filet); }
-.securite-depli > summary { display: flex; align-items: center; justify-content: space-between; gap: .5rem; min-height: 48px; font-weight: 700; color: var(--foret-800); cursor: pointer; list-style: none; }
-.securite-depli > summary::-webkit-details-marker { display: none; }
-.securite-depli > summary:hover { color: var(--vert-bandeau); }
-.securite-depli > summary .icone { transition: rotate .22s var(--ease-sortie); }
-.securite-depli[open] > summary .icone { rotate: 180deg; }
-.securite-depli[open] > form { animation: deplier .3s var(--ease-sortie); }
-.securite-depli .securite-form > .champ__aide { margin: 0 0 .25rem; }
+.matricule-correction { padding-top: 1.1rem; border-top: 1px solid var(--filet); }
+.matricule-correction h3 { margin: 0 0 .35rem; font-size: 1.05rem; color: var(--foret-800); }
+.matricule-correction .securite-form > .champ__aide { margin: 0 0 .25rem; }
 
 /* Bons réflexes */
 .reflexes { position: sticky; top: calc(var(--hauteur-entete, 120px) + 1rem); display: grid; gap: .9rem; padding: clamp(1.2rem, 2.5vw, 1.5rem); border-radius: 20px; }
@@ -844,8 +891,8 @@
 	.carte-compte { width: 100%; }
 }
 @media (prefers-reduced-motion: reduce) {
-	.securite-grille > *, .securite-pile > *, .securite-depli[open] > form { animation: none; }
-	.force-mdp__jauge i, .securite-depli > summary .icone { transition: none; }
+	.securite-grille > *, .securite-pile > * { animation: none; }
+	.force-mdp__jauge i { transition: none; }
 }
 
 /* ---------- Envoi des reçus ----------

@@ -283,8 +283,8 @@
 		});
 	});
 
-	/* ---------- Type d'identifiant reconnu ---------- */
-	const DOSSIER = /^(DEMO-)?UEB-\d{4}-\d{6}$/;
+	/* ---------- Matricule reconnu ; un n° de dossier (UEB-…) est refusé, comme ueb_erreur_matricule() ---------- */
+	const DOSSIER = /^(DEMO-)?UEB/;
 	const MATRICULE = /^\d{2}[A-Z0-9]{4,13}$/;
 	$$("[data-identifiant]").forEach((champ) => {
 		const apercu = document.createElement("p");
@@ -293,7 +293,9 @@
 		(champ.closest(".champ__boite") ?? champ).insertAdjacentElement("afterend", apercu);
 		const maj = () => {
 			const v = champ.value.replace(/\s+/g, "").toUpperCase();
-			apercu.textContent = DOSSIER.test(v) ? "✓ Dossier" : MATRICULE.test(v) ? "✓ Matricule" : "";
+			const dossier = DOSSIER.test(v);
+			apercu.textContent = dossier ? "Matricule attendu" : MATRICULE.test(v) ? "✓ Matricule" : "";
+			apercu.classList.toggle("apercu--erreur", dossier);
 		};
 		champ.addEventListener("input", maj);
 		maj();
@@ -461,12 +463,10 @@
 		}
 		/* Mêmes règles que ueb_erreur_montant_classique() côté serveur. */
 		const messageMontantClassique = (n, regle) => {
-			if (!n) return regle.second ? `Saisis le montant de ton second versement (${formater(regle.max)} FCFA au plus).` : "Saisis le montant que tu verses : 25 000 FCFA au moins.";
+			if (!n) return regle.second ? "Saisis le montant de ton second versement." : "Saisis le montant que tu verses : 25 000 FCFA au moins.";
 			if (n % regle.pas) return "Saisis un multiple de 5 000 FCFA : 25 000, 30 000, 35 000…";
 			if (n < regle.min) return `Le premier versement est de ${formater(regle.min)} FCFA au moins.`;
-			if (n > regle.max) return regle.second
-				? `Il te reste ${formater(regle.max)} FCFA à payer cette année : ne dépasse pas ce montant.`
-				: "Les droits de l’année sont de 50 000 FCFA au plus (les deux tranches).";
+			if (n > regle.max) return `Vérifie le montant : ${formater(regle.max)} FCFA au plus.`;
 			return "";
 		};
 		/* Erreur visible dès qu'un montant est saisi ; un champ vide n'est signalé qu'à l'envoi. */
@@ -510,7 +510,7 @@
 			const regle = config.regleDroits;
 			if (derniereFormation !== filiere.value) {
 				/* Entre deux formations classiques, le montant saisi est conservé. */
-				champMontant.value = classique ? (montantClassique || (regle.second ? formater(regle.max) : "")) : (montantProfessionnel.get(filiere.value) || "");
+				champMontant.value = classique ? (montantClassique || (regle.second && regle.reste ? formater(regle.reste) : "")) : (montantProfessionnel.get(filiere.value) || "");
 				derniereFormation = filiere.value;
 			}
 			champMontant.readOnly = !formation || medicalSeul;
@@ -528,8 +528,8 @@
 			const tranche = $("input[name=tranche]:checked", formQuitus);
 			texte("#champ-montant-aide", classique
 				? (regle.second
-					? `Reste à payer cette année : ${formater(regle.max)} FCFA. Tu peux verser moins, par multiples de 5 000 FCFA.`
-					: "De 25 000 à 50 000 FCFA, par multiples de 5 000. Moins de 50 000 : première tranche ; 50 000 : les deux tranches.")
+					? (regle.reste ? `Montant libre. Il te reste ${formater(regle.reste)} FCFA pour compléter les 50 000 FCFA de l’année.` : "Montant libre.")
+					: "25 000 FCFA au moins, par multiples de 5 000, sans plafond. Moins de 50 000 FCFA : première tranche ; 50 000 FCFA ou plus : les deux tranches.")
 				: formation ? "Pour une formation professionnelle, indique le montant communiqué par ton établissement." : "Choisis une filière pour connaître les modalités de paiement.");
 			const frais = situation.value === "nouveau" ? 0 : (config.medicalInclus ? (config.montantsMedicaux[situation.value] || 0) : 0);
 			const cmsRequis = medicalSeul || (config.medicalInclus && situation.value !== "nouveau");
@@ -564,14 +564,38 @@
 			const niveau = $("[name=parcours]", formQuitus);
 			texte("[data-recap-niveau]", niveau?.value ? niveau.options[niveau.selectedIndex].text : "À choisir");
 			texte("[data-recap-tranche]", medicalSeul ? "Paiement unique" : tranche ? tranche.closest("label").textContent.trim() : "—");
-			const medicalDocuments = $$("[data-document-medical]");
-			medicalDocuments.forEach((element) => { element.hidden = frais === 0; });
-			const pages = frais === 0 ? 1 : 4;
+			texte("[data-recap-moyen]", $("select[name=moyen_paiement]", formQuitus)?.value || "À choisir");
+			/* Raccourcis de montant et jauge de l'année : formations classiques seulement. */
+			const rapide = $("[data-montant-rapide]", formQuitus);
+			if (rapide) {
+				rapide.hidden = !classique || medicalSeul;
+				$$("[data-valeur]", rapide).forEach((b) => b.setAttribute("aria-pressed", String(Number(b.dataset.valeur) === lireMontant())));
+			}
+			const jauge = $("[data-jauge-annee]", formQuitus);
+			if (jauge) {
+				jauge.hidden = !classique || medicalSeul;
+				const deja = regle.second ? Math.max(0, config.droitsClassiques - regle.reste) : 0;
+				const total = deja + lireMontant();
+				$("[data-jauge-ce]", jauge).style.setProperty("--part", String(Math.min(1, total / config.droitsClassiques)));
+				texte("[data-jauge-texte]", (deja ? `Déjà préparé : ${formater(deja)} FCFA. ` : "")
+					+ (total >= config.droitsClassiques
+						? "Avec ce versement, les 50 000 FCFA de droits de l’année sont couverts."
+						: `Avec ce versement : ${formater(total)} sur 50 000 FCFA de droits pour l’année.`));
+			}
+			/* Documents réellement produits : le quitus médical et les fiches CMS
+			   n'existent que s'il y a des frais médicaux à payer avec ce quitus. */
+			$$("[data-document=medical]").forEach((element) => { element.hidden = frais === 0; });
+			const pages = $$("[data-document]").filter((d) => !d.hidden).reduce((n, d) => n + Number(d.dataset.pages), 0);
 			texte("[data-document-pages]", String(pages));
 			texte("[data-document-pages-suffix]", pages > 1 ? "s" : "");
 		};
 		formQuitus.addEventListener("input", maj);
 		formQuitus.addEventListener("change", maj);
+		/* Un raccourci remplit le montant comme une saisie (format, lettres, tranche, jauge). */
+		$$("[data-montant-rapide] [data-valeur]", formQuitus).forEach((bouton) => bouton.addEventListener("click", () => {
+			champMontant.value = formater(Number(bouton.dataset.valeur));
+			champMontant.dispatchEvent(new Event("input", { bubbles: true }));
+		}));
 		const telephoneUrgence = $("[name=numero_urgence]", formQuitus);
 		telephoneUrgence.addEventListener("input", () => telephoneUrgence.setCustomValidity(""));
 		formQuitus.addEventListener("submit", (ev) => {
@@ -583,6 +607,147 @@
 		});
 		maj();
 	}
+
+	/* ---------- Liste déroulante illustrée (lieu de paiement) ----------
+	   Un <select data-liste-logos='{"valeur": {"src": logo, "fond": couleur}}'> reste dans le
+	   formulaire (envoi, validation, page sans JavaScript) ; il est doublé d'une
+	   liste à logos au modèle « select-only combobox » : flèches, Entrée, Échap,
+	   Début/Fin et première lettre au clavier. */
+	$$("select[data-liste-logos]").forEach((select, n) => {
+		const logos = JSON.parse(select.dataset.listeLogos || "{}");
+		const champ = select.closest(".champ");
+		const natif = select.closest(".champ__select") || select;
+		const libelle = $("label", champ);
+		const options = [...select.options].filter((o) => o.value);
+		const id = `liste-logos-${n}`;
+		libelle.id ||= `${id}-libelle`;
+
+		const tuile = (valeur) => {
+			const t = document.createElement("span");
+			t.className = "liste-logos__tuile";
+			t.style.background = logos[valeur]?.fond || "";
+			const img = document.createElement("img");
+			img.src = logos[valeur]?.src || "";
+			img.alt = "";
+			t.appendChild(img);
+			return t;
+		};
+		const combo = document.createElement("div");
+		combo.className = "liste-logos__bouton";
+		combo.id = `${id}-bouton`;
+		combo.tabIndex = 0;
+		combo.setAttribute("role", "combobox");
+		combo.setAttribute("aria-haspopup", "listbox");
+		combo.setAttribute("aria-expanded", "false");
+		combo.setAttribute("aria-controls", `${id}-options`);
+		combo.setAttribute("aria-labelledby", `${libelle.id} ${id}-bouton`);
+		if (select.hasAttribute("aria-describedby")) combo.setAttribute("aria-describedby", select.getAttribute("aria-describedby"));
+		const liste = document.createElement("ul");
+		liste.className = "liste-logos__options";
+		liste.id = `${id}-options`;
+		liste.setAttribute("role", "listbox");
+		liste.setAttribute("aria-labelledby", libelle.id);
+		liste.tabIndex = -1;
+		liste.hidden = true;
+		const items = options.map((o, i) => {
+			const li = document.createElement("li");
+			li.id = `${id}-option-${i}`;
+			li.setAttribute("role", "option");
+			li.append(tuile(o.value), Object.assign(document.createElement("span"), { textContent: o.text }));
+			li.insertAdjacentHTML("beforeend", '<svg class="icone liste-logos__coche" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>');
+			li.addEventListener("mousedown", (ev) => ev.preventDefault()); // le focus reste sur le bouton
+			li.addEventListener("click", () => { choisir(i); fermer(); });
+			return li;
+		});
+		liste.append(...items);
+		const enveloppe = document.createElement("div");
+		enveloppe.className = "liste-logos";
+		enveloppe.append(combo, liste);
+		natif.after(enveloppe);
+		natif.classList.add("liste-logos__natif");
+		select.tabIndex = -1;
+		select.setAttribute("aria-hidden", "true");
+		libelle.htmlFor = combo.id;
+
+		let actif = -1;
+		const courant = () => options.findIndex((o) => o.value === select.value);
+		const afficher = () => {
+			const i = courant();
+			combo.replaceChildren();
+			if (i < 0) {
+				combo.insertAdjacentHTML("beforeend", '<span class="liste-logos__vide">Choisir…</span>');
+			} else {
+				combo.append(tuile(options[i].value), Object.assign(document.createElement("span"), { textContent: options[i].text }));
+			}
+			combo.insertAdjacentHTML("beforeend", '<svg class="icone liste-logos__chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>');
+			items.forEach((li, j) => li.setAttribute("aria-selected", String(j === i)));
+		};
+		const activer = (i) => {
+			actif = Math.max(0, Math.min(items.length - 1, i));
+			items.forEach((li, j) => li.classList.toggle("est-actif", j === actif));
+			combo.setAttribute("aria-activedescendant", items[actif].id);
+			items[actif].scrollIntoView({ block: "nearest" });
+		};
+		const ouvrir = () => {
+			if (!liste.hidden) return;
+			liste.hidden = false;
+			enveloppe.classList.add("est-ouverte");
+			combo.setAttribute("aria-expanded", "true");
+			activer(Math.max(0, courant()));
+		};
+		const fermer = () => {
+			liste.hidden = true;
+			enveloppe.classList.remove("est-ouverte");
+			combo.setAttribute("aria-expanded", "false");
+			combo.removeAttribute("aria-activedescendant");
+		};
+		const choisir = (i) => {
+			select.value = options[i].value;
+			select.dispatchEvent(new Event("change", { bubbles: true }));
+			champ.classList.remove("champ--invalide");
+			$$(".champ__erreur", champ).forEach((e) => { e.hidden = true; });
+			afficher();
+		};
+		combo.addEventListener("click", () => (liste.hidden ? ouvrir() : fermer()));
+		combo.addEventListener("keydown", (ev) => {
+			const ouverte = !liste.hidden;
+			switch (ev.key) {
+				case "ArrowDown": ev.preventDefault(); ouverte ? activer(actif + 1) : ouvrir(); break;
+				case "ArrowUp": ev.preventDefault(); ouverte ? activer(actif - 1) : ouvrir(); break;
+				case "Home": if (ouverte) { ev.preventDefault(); activer(0); } break;
+				case "End": if (ouverte) { ev.preventDefault(); activer(items.length - 1); } break;
+				case "Enter": case " ":
+					ev.preventDefault();
+					if (ouverte) { choisir(actif); fermer(); } else ouvrir();
+					break;
+				case "Escape": if (ouverte) { ev.preventDefault(); fermer(); } break;
+				case "Tab": if (ouverte) { choisir(actif); fermer(); } break;
+				default:
+					if (ev.key.length === 1 && /\S/.test(ev.key)) {
+						const i = options.findIndex((o) => o.text.toLowerCase().startsWith(ev.key.toLowerCase()));
+						if (i >= 0) { ouvrir(); activer(i); }
+					}
+			}
+		});
+		combo.addEventListener("blur", fermer);
+		/* Lien du résumé d'erreurs ou mise au point automatique : vers le bouton. */
+		select.addEventListener("focus", () => combo.focus());
+		/* Champ requis vide à l'envoi : erreur affichée près du champ, sans bulle sur un select caché. */
+		select.addEventListener("invalid", (ev) => {
+			ev.preventDefault();
+			champ.classList.add("champ--invalide");
+			let erreur = $(".champ__erreur", champ);
+			if (!erreur) {
+				erreur = document.createElement("p");
+				erreur.className = "champ__erreur";
+				erreur.textContent = "Choisis où tu vas payer.";
+				champ.appendChild(erreur);
+			}
+			erreur.hidden = false;
+			combo.focus();
+		});
+		afficher();
+	});
 
 	/* ---------- Reçus : sélection, compression des photos, caméra ----------
 	   Les fichiers choisis, glissés ou photographiés s'ajoutent à une même
@@ -799,38 +964,48 @@
 		});
 	});
 
-	/* ---------- Confirmation avant une action sensible ---------- */
+	/* ---------- Confirmation avant une action sensible ----------
+	   data-confirmer : le texte ; data-confirmer-titre, -bouton, -annuler ;
+	   data-confirmer-ton="enregistrer" (vert) ou destructive par défaut (rouge). */
 	const fenetre = $("#fenetre-confirmation");
+	const demander = (source, valider) => {
+		const d = source.dataset;
+		const enregistrer = d.confirmerTon === "enregistrer";
+		const bouton = $("[data-fenetre-valider]", fenetre);
+		fenetre.dataset.ton = enregistrer ? "enregistrer" : "danger";
+		$("[data-fenetre-titre]", fenetre).textContent = d.confirmerTitre || "Confirmer";
+		$("[data-fenetre-texte]", fenetre).textContent = d.confirmer;
+		$("[data-fenetre-annuler]", fenetre).textContent = d.confirmerAnnuler || (enregistrer ? "Revenir" : "Annuler");
+		bouton.textContent = d.confirmerBouton || "Confirmer";
+		bouton.classList.toggle("btn--danger", !enregistrer);
+		bouton.classList.toggle("btn--primaire", enregistrer);
+		fenetre.returnValue = "";
+		fenetre.showModal();
+		fenetre.addEventListener("close", () => { if (fenetre.returnValue === "oui") valider(); }, { once: true });
+	};
+	/* Un clic sur le voile referme sans rien faire. */
+	fenetre?.addEventListener("click", (ev) => { if (ev.target === fenetre) fenetre.close("non"); });
 	$$("form[data-confirmer]").forEach((form) => {
 		form.addEventListener("submit", (ev) => {
-			if (form.dataset.confirme === "1" || !fenetre?.showModal) return;
+			/* Formulaire refusé par sa propre validation : rien à confirmer. */
+			if (ev.defaultPrevented || form.dataset.confirme === "1" || !fenetre?.showModal) return;
 			ev.preventDefault();
-			$("[data-fenetre-texte]", fenetre).textContent = form.dataset.confirmer;
-			fenetre.returnValue = "";
-			fenetre.showModal();
-			fenetre.addEventListener("close", () => {
-				if (fenetre.returnValue === "oui") {
-					form.dataset.confirme = "1";
-					form.requestSubmit();
-				}
-			}, { once: true });
+			demander(form, () => {
+				form.dataset.confirme = "1";
+				form.requestSubmit();
+			});
 		});
 	});
 	/* Sur un bouton : seul ce bouton demande confirmation, et c'est bien lui qui
 	   est envoyé ensuite (son nom compte pour le serveur, ex. « envoyer »). */
 	$$("button[data-confirmer]").forEach((bouton) => {
 		bouton.form?.addEventListener("submit", (ev) => {
-			if (ev.submitter !== bouton || bouton.dataset.confirme === "1" || !fenetre?.showModal) return;
+			if (ev.defaultPrevented || ev.submitter !== bouton || bouton.dataset.confirme === "1" || !fenetre?.showModal) return;
 			ev.preventDefault();
-			$("[data-fenetre-texte]", fenetre).textContent = bouton.dataset.confirmer;
-			fenetre.returnValue = "";
-			fenetre.showModal();
-			fenetre.addEventListener("close", () => {
-				if (fenetre.returnValue === "oui") {
-					bouton.dataset.confirme = "1";
-					bouton.form.requestSubmit(bouton);
-				}
-			}, { once: true });
+			demander(bouton, () => {
+				bouton.dataset.confirme = "1";
+				bouton.form.requestSubmit(bouton);
+			});
 		});
 	});
 

@@ -13,7 +13,7 @@
 defined( 'ABSPATH' ) || exit;
 
 const UEB_STATUTS_QUITUS = array(
-	'genere'      => array( 'libelle' => 'À payer', 'aide' => 'Fais tamponner le quitus à ton établissement, puis paie à la banque.' ),
+	'genere'      => array( 'libelle' => 'À payer', 'aide' => 'Fais tamponner le quitus à ton établissement, puis paie-le.' ),
 	'recu_envoye' => array( 'libelle' => 'Reçu envoyé', 'aide' => 'Présente-toi à la scolarité avec les originaux pour la vérification physique.' ),
 	'verifie'     => array( 'libelle' => 'Vérifié', 'aide' => 'Paiement vérifié par la scolarité.' ),
 	'rejete'      => array( 'libelle' => 'À corriger', 'aide' => 'La scolarité a signalé un problème : lis le motif et renvoie tes reçus.' ),
@@ -143,85 +143,19 @@ function ueb_valeurs_initiales_quitus( $compte ) {
  * @return array{0: array, 1: array} valeurs nettoyées, erreurs par champ
  */
 function ueb_valider_quitus( array $post, array $contexte ) {
-	$texte = static function ( $cle ) use ( $post ) {
-		return trim( preg_replace( '/\s+/u', ' ', sanitize_text_field( wp_unslash( is_scalar( $post[ $cle ] ?? '' ) ? (string) ( $post[ $cle ] ?? '' ) : '' ) ) ) );
-	};
+	$texte = static fn( $cle ) => ueb_texte_poste( $post, $cle );
 	$v = array(
-		'etablissement'  => strtoupper( $texte( 'etablissement' ) ),
 		'type'           => $texte( 'type' ) ?: 'droits',
-		'nom'            => mb_strtoupper( $texte( 'nom' ) ),
-		'prenom'         => $texte( 'prenom' ),
-		'date_naissance' => $texte( 'date_naissance' ),
-		'lieu_naissance' => $texte( 'lieu_naissance' ),
-		'sexe'           => strtoupper( $texte( 'sexe' ) ),
-		'nationalite'    => $texte( 'nationalite' ),
-		'departement'    => $texte( 'departement' ),
-		'parcours'       => $texte( 'parcours' ),
-		'email'          => $texte( 'email' ),
-		'adresse'        => $texte( 'adresse' ),
-		'nom_urgence'    => $texte( 'nom_urgence' ),
-		'numero_urgence' => ueb_normaliser_telephone( $texte( 'numero_urgence' ) ) ?? $texte( 'numero_urgence' ),
-		'adresse_urgence'=> $texte( 'adresse_urgence' ),
-		'filiere_id'     => (int) $texte( 'filiere_id' ),
 		'situation'      => $contexte['situation_verrouillee'] ? $contexte['situation'] : $texte( 'situation' ),
 		'montant'        => (int) preg_replace( '/\D+/', '', $texte( 'montant' ) ),
 		'tranche'        => (int) $texte( 'tranche' ),
+		'moyen_paiement' => $texte( 'moyen_paiement' ),
 	);
-	$e = array();
-
-	if ( ! ueb_etablissement( $v['etablissement'] ) ) {
-		$e['etablissement'] = 'Choisis ton établissement.';
-	}
-	$nom_valide = '/^[\p{L}][\p{L}\' .-]*$/u';
-	if ( mb_strlen( $v['nom'] ) < 2 || ! preg_match( $nom_valide, $v['nom'] ) ) {
-		$e['nom'] = 'Saisis ton nom tel qu’il figure sur ton acte de naissance.';
-	}
-	if ( mb_strlen( $v['prenom'] ) < 2 || ! preg_match( $nom_valide, $v['prenom'] ) ) {
-		$e['prenom'] = 'Saisis ton ou tes prénoms.';
-	}
-	$date = DateTimeImmutable::createFromFormat( '!Y-m-d', $v['date_naissance'] );
-	if ( ! $date || $date->format( 'Y-m-d' ) !== $v['date_naissance'] ) {
-		$e['date_naissance'] = 'Date de naissance invalide.';
-	} else {
-		$age = $date->diff( new DateTimeImmutable( 'today' ) )->y;
-		if ( $age < 14 || $age > 80 ) {
-			$e['date_naissance'] = 'Vérifie ta date de naissance.';
-		}
-	}
-	if ( mb_strlen( $v['lieu_naissance'] ) < 2 ) {
-		$e['lieu_naissance'] = 'Saisis ton lieu de naissance.';
-	}
-	if ( ! in_array( $v['sexe'], array( 'M', 'F' ), true ) ) {
-		$e['sexe'] = 'Indique ton sexe.';
-	}
-	if ( ! in_array( $v['nationalite'], ueb_nationalites(), true ) ) {
-		$e['nationalite'] = 'Choisis ta nationalité dans la liste.';
-	}
 	$cms_requis = ueb_fiches_cms_requises( $contexte, $v['situation'], $v['type'] );
-	if ( ( $cms_requis || '' !== $v['email'] ) && ! is_email( $v['email'] ) ) {
-		$e['email'] = 'Saisis une adresse email valide pour les documents CMS.';
-	}
-	if ( ( $cms_requis || '' !== $v['adresse'] ) && mb_strlen( $v['adresse'] ) < 3 ) {
-		$e['adresse'] = 'Saisis ton adresse complète.';
-	}
-	if ( ( $cms_requis || '' !== $v['nom_urgence'] ) && mb_strlen( $v['nom_urgence'] ) < 2 ) {
-		$e['nom_urgence'] = 'Saisis la personne à contacter en cas d’urgence.';
-	}
-	if ( ( $cms_requis || '' !== $v['numero_urgence'] ) && ! ueb_normaliser_telephone( $v['numero_urgence'] ) ) {
-		$e['numero_urgence'] = 'Saisis un numéro camerounais à 9 chiffres, avec ou sans +237.';
-	}
-	if ( ( $cms_requis || '' !== $v['adresse_urgence'] ) && mb_strlen( $v['adresse_urgence'] ) < 3 ) {
-		$e['adresse_urgence'] = 'Saisis l’adresse de la personne à contacter.';
-	}
+	list( $profil, $e ) = ueb_valider_profil( $post, $contexte['formations'], $cms_requis, $contexte['nouveau'] );
+	$v = $profil + $v;
 	$formation = $contexte['formations'][ $v['filiere_id'] ] ?? null;
-	if ( ! $formation || $formation->etablissement !== $v['etablissement'] ) {
-		$e['filiere_id'] = $contexte['nouveau'] ? 'Choisis une des filières de ta préinscription dans cet établissement.' : 'Choisis une filière rattachée à cet établissement.';
-	} else {
-		$v['departement'] = $formation->libelle;
-	}
-	if ( ! isset( UEB_NIVEAUX_INSCRIPTION[ $v['parcours'] ] ) ) {
-		$e['parcours'] = 'Choisis ton niveau dans la liste.';
-	}
+
 	if ( 'nouveau' !== $v['situation'] && ! isset( UEB_FRAIS_MEDICAUX[ $v['situation'] ] ) ) {
 		$e['situation'] = 'Indique ta situation : nouveau, réinscription sans interruption ou réinscription avec interruption.';
 	}
@@ -251,10 +185,8 @@ function ueb_valider_quitus( array $post, array $contexte ) {
 			$e['tranche'] = 'Choisis une tranche disponible. Pour une tranche déjà préparée, utilise le quitus existant dans ton espace.';
 		}
 	}
-	foreach ( array( 'nom' => 100, 'prenom' => 150, 'lieu_naissance' => 150, 'departement' => 150, 'parcours' => 150 ) as $cle => $max ) {
-		if ( mb_strlen( $v[ $cle ] ) > $max && empty( $e[ $cle ] ) ) {
-			$e[ $cle ] = "$max caractères au maximum.";
-		}
+	if ( ! in_array( $v['moyen_paiement'], UEB_MOYENS_PAIEMENT, true ) ) {
+		$e['moyen_paiement'] = 'Choisis où tu vas payer : CCA Bank, Express Union, MTN Mobile Money ou Campost Money.';
 	}
 	return array( $v, $e );
 }
@@ -337,10 +269,17 @@ function ueb_action_enregistrer_quitus() {
 			$erreurs['general'] = 'Modifie le quitus des droits universitaires associé pour mettre à jour ce dossier médical.';
 		} else {
 			$contexte = ueb_contexte_inscription( $compte, $existant );
-			$post = $_POST;
+			/* Les informations déjà sur la fiche ne changent que dans Mon compte :
+			   elles remplacent celles postées (champs verrouillés du formulaire). */
+			$profil = ueb_profil( $compte->id );
+			$post = array_replace( $_POST, wp_slash( array_map( 'strval', $profil ) ) );
 			// Le type est choisi par le parcours, jamais par une valeur modifiée dans le navigateur.
 			$post['type'] = $existant->type ?? 'droits';
 			list( $v, $erreurs ) = ueb_valider_quitus( $post, $contexte );
+			foreach ( array_intersect_key( $erreurs, $profil ) as $cle => $message ) {
+				/* L'établissement et la filière ne se changent pas dans Mon compte. */
+				$erreurs[ $cle ] = $message . ( in_array( $cle, array( 'etablissement', 'filiere_id' ), true ) ? ' Adresse-toi à la scolarité de ton établissement.' : ' Modifie cette information dans Mon compte.' );
+			}
 			if ( 'medicaux' === $v['type'] && $contexte['nouveau'] ) {
 				$erreurs['general'] = 'La visite médicale est déjà comprise dans ta préinscription de cette année.';
 			}
@@ -391,6 +330,9 @@ function ueb_action_enregistrer_quitus() {
 					throw new RuntimeException( $wpdb->last_error );
 				}
 			}
+			if ( ! ueb_profil_enregistrer( $compte->id, $v ) ) {
+				throw new RuntimeException( $wpdb->last_error );
+			}
 			if ( false === $wpdb->query( 'COMMIT' ) ) {
 				throw new RuntimeException( $wpdb->last_error );
 			}
@@ -409,7 +351,7 @@ function ueb_action_enregistrer_quitus() {
 		ueb_rediriger( $retour );
 	}
 	$_SESSION['ueb_telechargement'] = array( 'compte_id' => (int) $compte->id, 'numero' => $numero );
-	ueb_flash( 'succes', 'Tes documents sont enregistrés dans Mes quitus. Fais tamponner chaque quitus avant le paiement à la banque.' );
+	ueb_flash( 'succes', 'Tes documents sont enregistrés dans Mes quitus. Fais tamponner chaque quitus avant de payer.' );
 	ueb_rediriger( add_query_arg( 'vue', 'quitus', ueb_url( 'mon-espace' ) ) . '#quitus-' . $numero );
 }
 

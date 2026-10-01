@@ -31,8 +31,8 @@ $d = ueb_landing_donnees();
 $villes = array_values( array_unique( array_column( $d['fiches'], 'ville' ) ) );
 $debut_url = ueb_url( $d['compte'] ? 'mon-espace' : 'creer-mon-compte' );
 $debut_texte = $d['compte'] ? 'Aller à mon espace' : 'Créer mon compte';
-$etapes_courtes = array( 'Prépare ton quitus.', 'Imprime tes coupons.', 'Fais viser, puis paie.', 'Envoie ton reçu.' );
-$etapes_lieux = array( 'Sur la plateforme', 'En PDF · Format A4', 'Scolarité → CCA Bank', 'Dans ton espace' );
+$etapes_courtes = array( 'Prépare ton quitus.', 'Imprime tes coupons.', 'Fais tamponner, puis paie.', 'Envoie ton reçu.' );
+$etapes_lieux = array( 'Sur la plateforme', 'En PDF · Format A4', 'Scolarité, puis paiement', 'Dans ton espace' );
 
 ueb_page_debut( array( 'titre' => 'Ton inscription à Ebolowa · ' . $d['annee']['libelle'], 'variante' => 'auth', 'classe' => 'ueb-v2' ) );
 ?>
@@ -65,7 +65,7 @@ ueb_page_debut( array( 'titre' => 'Ton inscription à Ebolowa · ' . $d['annee']
 					<a class="v2-button v2-button--gold" href="<?php echo esc_url( $debut_url ); ?>"><?php echo esc_html( $debut_texte ); ?><?php echo ueb_icone( 'fleche', 20 ); ?></a>
 					<a class="v2-hero__guide" href="#parcours">Découvrir les étapes<?php echo ueb_icone( 'chevron', 18 ); ?></a>
 				</div>
-				<p class="v2-hero__hint" data-enter><?php echo ueb_icone( 'bouclier', 16 ); ?>Ton matricule ou ton numéro de dossier suffit pour commencer.</p>
+				<p class="v2-hero__hint" data-enter><?php echo ueb_icone( 'bouclier', 16 ); ?>Ton matricule suffit pour commencer.</p>
 			</div>
 			<div class="v2-demo" data-enter>
 				<div class="v2-demo__note"><span class="v2-demo__dash" aria-hidden="true"></span>Du premier clic au reçu vérifié.</div>
@@ -77,7 +77,7 @@ ueb_page_debut( array( 'titre' => 'Ton inscription à Ebolowa · ' . $d['annee']
 					</div>
 					<div class="v2-ticket__footer"><span><?php echo ueb_icone( 'fichier', 20 ); ?><b>Un quitus. Quatre coupons.</b></span><span>Étudiant · DAF · Scolarité · Banque</span></div>
 				</figure>
-				<p id="v2-video-description" class="sr">Crée ton compte et ton quitus, télécharge les quatre coupons, fais viser le quitus à la scolarité, paie à la CCA Bank, puis envoie ton reçu pour vérification.</p>
+				<p id="v2-video-description" class="sr">Crée ton compte et ton quitus, télécharge les quatre coupons, fais tamponner le quitus à la scolarité, paie <?php echo esc_html( ueb_moyens_paiement() ); ?>, puis envoie ton reçu pour vérification.</p>
 				<noscript><p class="v2-demo__fallback">Le parcours animé nécessite JavaScript. Les quatre étapes sont détaillées juste en dessous.</p></noscript>
 				<div class="v2-demo__caption"><?php echo ueb_icone( 'check', 16 ); ?>Les mêmes démarches, quel que soit ton établissement.</div>
 			</div>
@@ -162,7 +162,7 @@ ueb_page_debut( array( 'titre' => 'Ton inscription à Ebolowa · ' . $d['annee']
 		</div>
 	</section>
 
-	<section class="v2-last" aria-labelledby="v2-last-title"><div class="v2-wrap v2-last__inner" data-reveal><div><p class="v2-eyebrow v2-eyebrow--light">Inscriptions <?php echo esc_html( $d['annee']['libelle'] ); ?></p><h2 id="v2-last-title">La suite commence<br>avec <em>toi.</em></h2></div><div><p>Ton matricule ou ton numéro de dossier.<br>Et un premier pas vers ton année universitaire.</p><a class="v2-button v2-button--gold" href="<?php echo esc_url( $debut_url ); ?>"><?php echo esc_html( $debut_texte ); ?><?php echo ueb_icone( 'fleche', 20 ); ?></a><?php if ( ! $d['compte'] ) : ?><a class="v2-last__login" href="<?php echo esc_url( ueb_url( 'connexion' ) ); ?>">J’ai déjà un compte →</a><?php endif; ?></div></div></section>
+	<section class="v2-last" aria-labelledby="v2-last-title"><div class="v2-wrap v2-last__inner" data-reveal><div><p class="v2-eyebrow v2-eyebrow--light">Inscriptions <?php echo esc_html( $d['annee']['libelle'] ); ?></p><h2 id="v2-last-title">La suite commence<br>avec <em>toi.</em></h2></div><div><p>Ton matricule.<br>Et un premier pas vers ton année universitaire.</p><a class="v2-button v2-button--gold" href="<?php echo esc_url( $debut_url ); ?>"><?php echo esc_html( $debut_texte ); ?><?php echo ueb_icone( 'fleche', 20 ); ?></a><?php if ( ! $d['compte'] ) : ?><a class="v2-last__login" href="<?php echo esc_url( ueb_url( 'connexion' ) ); ?>">J’ai déjà un compte →</a><?php endif; ?></div></div></section>
 </main>
 
 <footer class="v2-footer"><div class="v2-wrap"><div class="v2-footer__main"><div><a class="v2-brand" href="#contenu"><img src="<?php echo esc_url( ueb_logo_url( 'UEB' ) ); ?>" alt="" width="48" height="48" loading="lazy"><span><b>Université d’Ebolowa</b><small>The University of Ebolowa</small></span></a><p>Plateforme officielle d’inscription.<br><?php echo esc_html( UEB_UNIVERSITE['bp'] ); ?>, Cameroun.</p></div><nav aria-label="Liens de pied de page"><b>Ton inscription</b><a href="#parcours">Les étapes</a><a href="#etablissements">Les établissements</a><a href="#questions">Questions fréquentes</a></nav><div><b>Restons en contact</b><a href="mailto:<?php echo esc_attr( UEB_UNIVERSITE['email'] ); ?>"><?php echo esc_html( UEB_UNIVERSITE['email'] ); ?></a><a href="tel:<?php echo esc_attr( preg_replace( '/\s+/', '', UEB_UNIVERSITE['tel'] ) ); ?>"><?php echo esc_html( UEB_UNIVERSITE['tel'] ); ?></a><a href="https://unv-ebolowa.cm" target="_blank" rel="noopener noreferrer">Site de l’université ↗<span class="sr"> (nouvel onglet)</span></a></div></div><div class="v2-footer__bottom"><span>© <?php echo esc_html( $d['annee']['debut'] ); ?> Université d’Ebolowa</span><span>Inscriptions <?php echo esc_html( $d['annee']['libelle'] ); ?></span><a href="<?php echo esc_url( home_url( '/' ) ); ?>">Voir l’accueil actuel<?php echo ueb_icone( 'fleche', 15 ); ?></a></div></div></footer>

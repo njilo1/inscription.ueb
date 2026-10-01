@@ -375,9 +375,11 @@ function ueb_pdf_registre( TCPDF $pdf, $q, array $c, $x, $y, $w, $h ) {
 
 	$identifiant = 'matricule' === $q->type_identifiant ? 'Matricule' : 'N° de dossier';
 	$naissance   = ( new DateTimeImmutable( $q->date_naissance ) )->format( 'd/m/Y' );
+	$lieu        = (string) ( $q->moyen_paiement ?? '' );
 	$lignes = array(
 		array( $identifiant, $q->identifiant, 'Sexe', $q->sexe ),
-		array( 'Nom(s) et prénom(s)', $q->nom . ' ' . $q->prenom, null, null ),
+		/* Lieu de paiement choisi par l'étudiant ; les anciens quitus gardent le nom sur toute la ligne. */
+		array( 'Nom(s) et prénom(s)', $q->nom . ' ' . $q->prenom, $lieu ? 'Lieu de paiement' : null, $lieu ?: null ),
 		array( 'Né(e) le', array( $naissance, $q->lieu_naissance ), 'Nationalité', $q->nationalite ),
 		array( 'Département', $q->departement, 'Cycle / niveau / parcours', $q->parcours ),
 		array( 'Montant', 'montant', null, 'tranches' ),
@@ -465,7 +467,7 @@ function ueb_pdf_registre( TCPDF $pdf, $q, array $c, $x, $y, $w, $h ) {
 	for ( $i = 1; $i < 5; $i++ ) {
 		$pdf->Line( $x, $y + $i * $hL, $x + $w, $y + $i * $hL );
 	}
-	foreach ( array( 0, 2, 3 ) as $i ) { // séparateur avant la 2e paire
+	foreach ( $lieu ? array( 0, 1, 2, 3 ) : array( 0, 2, 3 ) as $i ) { // séparateur avant la 2e paire
 		$pdf->Line( $xLib2, $y + $i * $hL, $xLib2, $y + ( $i + 1 ) * $hL );
 	}
 	$pdf->Line( $xVal2, $y + 4 * $hL, $xVal2, $y + 5 * $hL ); // avant les tranches

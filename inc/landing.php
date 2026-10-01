@@ -26,17 +26,16 @@ function ueb_landing_donnees() {
 		'fiches' => $fiches,
 		'villes' => implode( ', ', array_slice( $villes, 0, -1 ) ) . ' et ' . end( $villes ),
 		'etapes' => array(
-			array( 'titre' => 'Crée ton compte et remplis ton quitus', 'texte' => 'Connecte-toi avec ton matricule, ou avec le numéro de dossier reçu à la préinscription. Choisis ton établissement, vérifie tes informations et indique le montant.' ),
+			array( 'titre' => 'Crée ton compte et remplis ton quitus', 'texte' => 'Connecte-toi avec ton matricule. Choisis ton établissement, vérifie tes informations et indique le montant.' ),
 			array( 'titre' => 'Télécharge tes quatre coupons', 'texte' => 'Ton quitus sort en PDF, aux couleurs de ton établissement : une page A4 avec les coupons étudiant, DAF, scolarité et banque.' ),
-			array( 'titre' => 'Fais-le tamponner, puis paie', 'texte' => 'La scolarité de ton établissement appose son visa. Tu règles ensuite le montant à la CCA Bank, sur le compte imprimé en bas de chaque coupon.' ),
-			array( 'titre' => 'Envoie la photo de ton reçu', 'texte' => 'Depuis ton espace, photographie le reçu de la banque. Présente ensuite les originaux à la scolarité : ton paiement passe à « Vérifié ».' ),
+			array( 'titre' => 'Fais-le tamponner, puis paie', 'texte' => 'Présente ton quitus imprimé à la scolarité de ton établissement pour le faire tamponner. Paie ensuite le montant sur le compte imprimé en bas de chaque coupon, ' . ueb_moyens_paiement() . '.' ),
+			array( 'titre' => 'Envoie la photo de ton reçu', 'texte' => 'Depuis ton espace, photographie ton reçu de paiement. Présente ensuite les originaux à la scolarité : ton paiement passe à « Vérifié ».' ),
 		),
 		'faq'    => array(
 			array( 'J’ai oublié mon mot de passe. Que faire ?', 'Présente-toi à la scolarité de ton établissement avec ta carte d’identité et le téléphone enregistré sur ton compte. Un agent réinitialise ton mot de passe ; tu en choisis un nouveau à ta connexion suivante.' ),
-			array( 'Je me suis inscrit avec mon numéro de dossier. Et quand j’aurai mon matricule ?', 'Dans ton espace, rubrique « Sécurité », enregistre ton matricule. Tu te connecteras ensuite avec lui ; tes quitus restent dans ton compte.' ),
 			array( 'Pourquoi quatre coupons sur la même page ?', 'Chaque service garde le sien : l’étudiant, la Direction des affaires financières (DAF), la scolarité et la banque. Imprime la page entière et découpe-la seulement quand on te le demande.' ),
-			array( 'Quels fichiers puis-je envoyer pour mon reçu ?', 'Une photo JPG ou PNG, ou un scan PDF, de 5 Mo au plus, jusqu’à trois fichiers par quitus. Le cachet de la banque et le montant doivent être lisibles.' ),
-			array( 'Je pense que quelqu’un connaît mon mot de passe.', 'Connecte-toi et change-le tout de suite dans « Sécurité ». Toutes les autres sessions ouvertes sur ton compte sont fermées immédiatement.' ),
+			array( 'Quels fichiers puis-je envoyer pour mon reçu ?', 'Une photo JPG ou PNG, ou un scan PDF, de 5 Mo au plus, jusqu’à trois fichiers par quitus. Le montant et le cachet ou la référence du paiement doivent être lisibles.' ),
+			array( 'Je pense que quelqu’un connaît mon mot de passe.', 'Connecte-toi et change-le tout de suite dans « Mon compte ». Toutes les autres sessions ouvertes sur ton compte sont fermées immédiatement.' ),
 		),
 	);
 }

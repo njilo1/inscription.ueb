@@ -82,8 +82,11 @@
 	$$("[data-apparition]").forEach((bloc) => {
 		gsap.from(bloc, { opacity: 0, y: 36, duration: 0.9, ease: "power3.out", scrollTrigger: { trigger: bloc, start: "top 85%" } });
 	});
+	/* La transition CSS du survol (transform) est coupée pendant l'entrée : elle
+	   freinait GSAP et laissait des cartes décalées. Rendue à la fin. */
 	$$("[data-apparition-groupe]").forEach((groupe) => {
-		gsap.from(groupe.children, { opacity: 0, y: 30, scale: 0.96, duration: 0.6, ease: "back.out(1.4)", stagger: { each: 0.07 }, scrollTrigger: { trigger: groupe, start: "top 82%" } });
+		gsap.set(groupe.children, { transition: "none" });
+		gsap.from(groupe.children, { opacity: 0, y: 30, scale: 0.96, duration: 0.6, ease: "back.out(1.4)", stagger: { each: 0.07 }, clearProps: "transform,opacity,transition", scrollTrigger: { trigger: groupe, start: "top 82%" } });
 	});
 
 	/* ---------- Frise des étapes ---------- */

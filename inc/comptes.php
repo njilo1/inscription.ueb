@@ -3,9 +3,9 @@
  * Comptes étudiants : création, connexion, déconnexion, changement de mot
  * de passe et d'identifiant.
  *
- * Identifiant de connexion : le matricule (anciens) ou le n° de dossier de
- * préinscription (nouveaux). Une fois le matricule attribué, l'étudiant
- * l'enregistre dans son espace ; les deux identifiants restent valides.
+ * Identifiant de connexion : le matricule seul. Le n° de dossier de
+ * préinscription (UEB-…) n'est plus accepté ; les anciens comptes créés avec
+ * lui enregistrent leur matricule dans leur espace.
  *
  * @package Inscription_UEB
  */
@@ -48,6 +48,23 @@ function ueb_compte_courant() {
 	}
 	$compte = $trouve;
 	return $compte;
+}
+
+/**
+ * Message d'erreur si l'identifiant saisi n'est pas un matricule, sinon ''.
+ * Un numéro de dossier de préinscription (UEB-…) est refusé.
+ */
+function ueb_erreur_matricule( $identifiant ) {
+	if ( '' === $identifiant ) {
+		return 'Saisis ton matricule.';
+	}
+	if ( str_starts_with( $identifiant, 'UEB' ) || 'dossier' === ueb_type_identifiant( $identifiant ) ) {
+		return 'Le numéro de dossier de préinscription n’est pas accepté : saisis ton matricule, par exemple 24I0017FS.';
+	}
+	if ( 'matricule' !== ueb_type_identifiant( $identifiant ) ) {
+		return 'Matricule non reconnu. Exemple : 24I0017FS.';
+	}
+	return '';
 }
 
 /** Identifiant affiché : le matricule s'il existe, sinon le n° de dossier. */
@@ -179,7 +196,13 @@ function ueb_action_connexion() {
 		ueb_rediriger( $retour );
 	}
 
-	$compte = '' !== $identifiant ? ueb_compte_par_identifiant( $identifiant ) : null;
+	$erreur = ueb_erreur_matricule( $identifiant );
+	if ( $erreur ) {
+		ueb_memoriser_saisie( array( 'identifiant' => $identifiant ), array( 'general' => $erreur ) );
+		ueb_rediriger( $retour );
+	}
+
+	$compte = ueb_compte_par_identifiant( $identifiant );
 	if ( ! $compte || ! password_verify( $mdp, $compte->mot_de_passe ) ) {
 		ueb_noter_echec();
 		ueb_memoriser_saisie( array( 'identifiant' => $identifiant ), array( 'general' => 'Identifiant ou mot de passe incorrect.' ) );
@@ -208,15 +231,11 @@ function ueb_action_creer_compte() {
 	$confirmation = (string) wp_unslash( $_POST['confirmation'] ?? '' );
 	$erreurs      = array();
 
-	$type = ueb_type_identifiant( $identifiant );
-	if ( '' === $identifiant ) {
-		$erreurs['identifiant'] = 'Saisis ton matricule ou ton numéro de dossier.';
-	} elseif ( ! $type ) {
-		$erreurs['identifiant'] = 'Format non reconnu. Exemples : 24I0017FS (matricule) ou UEB-2026-000123 (dossier).';
+	$erreur_id = ueb_erreur_matricule( $identifiant );
+	if ( $erreur_id ) {
+		$erreurs['identifiant'] = $erreur_id;
 	} elseif ( ueb_compte_par_identifiant( $identifiant ) ) {
-		$erreurs['identifiant'] = 'Un compte existe déjà avec cet identifiant. Connecte-toi.';
-	} elseif ( 'dossier' === $type && ! ueb_preinscription_par_dossier( $identifiant ) ) {
-		$erreurs['identifiant'] = "Ce numéro de dossier n'existe pas ou la préinscription n'a pas été soumise.";
+		$erreurs['identifiant'] = 'Un compte existe déjà avec ce matricule. Connecte-toi.';
 	}
 
 	if ( ! $telephone ) {
@@ -236,10 +255,9 @@ function ueb_action_creer_compte() {
 	}
 
 	$ok = $wpdb->insert( 'ueb_insc_comptes', array(
-		'matricule'      => 'matricule' === $type ? $identifiant : null,
-		'numero_dossier' => 'dossier' === $type ? $identifiant : null,
-		'telephone'      => $telephone,
-		'mot_de_passe'   => password_hash( $mdp, PASSWORD_DEFAULT ),
+		'matricule'    => $identifiant,
+		'telephone'    => $telephone,
+		'mot_de_passe' => password_hash( $mdp, PASSWORD_DEFAULT ),
 	) );
 	if ( ! $ok ) {
 		error_log( '[inscriptions-ueb] Création de compte impossible : ' . $wpdb->last_error );
@@ -277,7 +295,7 @@ function ueb_action_changer_mdp() {
 	}
 	if ( $erreurs ) {
 		ueb_memoriser_saisie( array( 'formulaire' => 'mdp' ), $erreurs );
-		ueb_rediriger( ueb_url( 'mon-espace/securite' ) . '#mot-de-passe' );
+		ueb_rediriger( ueb_url( 'mon-espace/compte' ) . '#mot-de-passe' );
 	}
 
 	/* Nouvelle version de session : toutes les autres sessions sont déconnectées. */
@@ -291,7 +309,7 @@ function ueb_action_changer_mdp() {
 	ueb_connecter( $compte );
 
 	ueb_flash( 'succes', 'Mot de passe modifié. Toutes tes autres sessions ouvertes ont été déconnectées.' );
-	ueb_rediriger( ueb_url( 'mon-espace/securite' ) );
+	ueb_rediriger( ueb_url( 'mon-espace/compte' ) . '#securite' );
 }
 
 function ueb_action_changer_identifiant() {
@@ -319,10 +337,10 @@ function ueb_action_changer_identifiant() {
 	}
 	if ( $erreurs ) {
 		ueb_memoriser_saisie( array( 'formulaire' => 'identifiant', 'matricule' => $matricule ), $erreurs );
-		ueb_rediriger( ueb_url( 'mon-espace/securite' ) . '#identifiant' );
+		ueb_rediriger( ueb_url( 'mon-espace/compte' ) . '#identifiant' );
 	}
 
 	$wpdb->update( 'ueb_insc_comptes', array( 'matricule' => $matricule ), array( 'id' => $compte->id ) );
 	ueb_flash( 'succes', "Matricule enregistré. Tu peux désormais te connecter avec $matricule." );
-	ueb_rediriger( ueb_url( 'mon-espace/securite' ) );
+	ueb_rediriger( ueb_url( 'mon-espace/compte' ) . '#securite' );
 }

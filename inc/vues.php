@@ -547,7 +547,7 @@ function ueb_entete_site( $variante ) {
 				<nav class="site-nav" id="site-nav" aria-label="Mon espace">
 					<a href="<?php echo esc_url( ueb_url( 'mon-espace' ) ); ?>" <?php echo in_array( $page, array( 'espace', 'recus' ), true ) ? 'aria-current="page"' : ''; ?>>Mon espace</a>
 					<a href="<?php echo esc_url( ueb_url( 'mon-espace/quitus' ) ); ?>" <?php echo 'quitus' === $page ? 'aria-current="page"' : ''; ?>>Nouveau quitus</a>
-					<a href="<?php echo esc_url( ueb_url( 'mon-espace/securite' ) ); ?>" <?php echo 'securite' === $page ? 'aria-current="page"' : ''; ?>>Sécurité</a>
+					<a href="<?php echo esc_url( ueb_url( 'mon-espace/compte' ) ); ?>" <?php echo 'compte' === $page ? 'aria-current="page"' : ''; ?>>Mon compte</a>
 					<a class="seul-mobile" href="<?php echo esc_url( ueb_url( 'deconnexion' ) ); ?>">Déconnexion</a>
 				</nav>
 				<div class="site-actions">
@@ -963,10 +963,10 @@ function ueb_champ( array $a ) {
 	<?php
 }
 
-/** Groupe de boutons radio présenté en segments (sexe, tranche). */
-function ueb_choix_segments( $nom, $legende, array $options, $valeur, $erreur = '' ) {
+/** Groupe de boutons radio présenté en segments (sexe, tranche). $verrouille : choix figé, visible. */
+function ueb_choix_segments( $nom, $legende, array $options, $valeur, $erreur = '', $verrouille = false ) {
 	?>
-	<fieldset id="champ-<?php echo esc_attr( $nom ); ?>" tabindex="-1" class="champ segments<?php echo $erreur ? ' champ--invalide' : ''; ?>">
+	<fieldset id="champ-<?php echo esc_attr( $nom ); ?>" tabindex="-1" class="champ segments<?php echo $erreur ? ' champ--invalide' : ''; ?><?php echo $verrouille ? ' est-verrouille' : ''; ?>"<?php disabled( $verrouille ); ?>>
 		<legend><?php echo esc_html( $legende ); ?></legend>
 		<div class="segments__liste">
 			<?php foreach ( $options as $val => $lib ) : ?>
@@ -983,15 +983,46 @@ function ueb_choix_segments( $nom, $legende, array $options, $valeur, $erreur = 
 	<?php
 }
 
-/* Fenêtre de confirmation accessible (remplace window.confirm). */
+/** Boutons radio à cercle (sexe) : un cercle à cocher par option. $verrouille : choix figé, visible. */
+function ueb_choix_ronds( $nom, $legende, array $options, $valeur, $erreur = '', $verrouille = false ) {
+	?>
+	<fieldset id="champ-<?php echo esc_attr( $nom ); ?>" tabindex="-1" class="champ choix-ronds<?php echo $erreur ? ' champ--invalide' : ''; ?><?php echo $verrouille ? ' est-verrouille' : ''; ?>"<?php disabled( $verrouille ); ?>>
+		<legend><?php echo esc_html( $legende ); ?></legend>
+		<div class="choix-ronds__liste">
+			<?php foreach ( $options as $val => $lib ) : ?>
+				<label class="choix-ronds__option">
+					<input type="radio" name="<?php echo esc_attr( $nom ); ?>" value="<?php echo esc_attr( $val ); ?>" <?php checked( (string) $valeur, (string) $val ); ?> required>
+					<span class="choix-ronds__rond" aria-hidden="true"></span>
+					<span><?php echo esc_html( $lib ); ?></span>
+				</label>
+			<?php endforeach; ?>
+		</div>
+		<?php if ( $erreur ) : ?>
+			<p class="champ__erreur"><?php echo ueb_icone( 'alerte', 16 ); ?><?php echo esc_html( $erreur ); ?></p>
+		<?php endif; ?>
+	</fieldset>
+	<?php
+}
+
+/**
+ * Fenêtre de confirmation accessible (remplace window.confirm). Un sceau se
+ * trace à l'ouverture, comme le tampon d'un quitus : vert pour enregistrer,
+ * rouge pour une action destructive. Titre, texte, bouton et ton viennent des
+ * attributs data-confirmer* de l'élément qui la déclenche (app.js).
+ */
 function ueb_fenetre_confirmation() {
 	?>
-	<dialog class="fenetre" id="fenetre-confirmation" aria-labelledby="fenetre-titre">
+	<dialog class="fenetre fenetre--confirmation" id="fenetre-confirmation" aria-labelledby="fenetre-titre" aria-describedby="fenetre-texte" data-ton="danger">
 		<form method="dialog" class="fenetre__contenu">
-			<h2 id="fenetre-titre" class="fenetre__titre">Confirmer</h2>
-			<p class="fenetre__texte" data-fenetre-texte></p>
+			<span class="fenetre__sceau" aria-hidden="true">
+				<svg class="fenetre__anneau" viewBox="0 0 72 72" focusable="false"><circle class="fenetre__anneau-trace" cx="36" cy="36" r="33"/><circle class="fenetre__anneau-pointille" cx="36" cy="36" r="27"/></svg>
+				<?php echo ueb_icone( 'check', 26, 'fenetre__icone fenetre__icone--enregistrer' ); ?>
+				<?php echo ueb_icone( 'alerte', 26, 'fenetre__icone fenetre__icone--danger' ); ?>
+			</span>
+			<h2 id="fenetre-titre" class="fenetre__titre" data-fenetre-titre>Confirmer</h2>
+			<p id="fenetre-texte" class="fenetre__texte" data-fenetre-texte></p>
 			<div class="fenetre__actions">
-				<button class="btn btn--fantome" value="non">Annuler</button>
+				<button class="btn btn--fantome" value="non" data-fenetre-annuler>Annuler</button>
 				<button class="btn btn--danger" value="oui" data-fenetre-valider>Confirmer</button>
 			</div>
 		</form>

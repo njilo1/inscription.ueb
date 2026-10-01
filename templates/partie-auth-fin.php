@@ -34,7 +34,7 @@ $panneau  = 'creer-compte' === $courante
 				<p><?php echo esc_html( $panneau['texte'] ); ?></p>
 				<ul>
 					<li><?php echo ueb_icone( 'fichier', 16 ); ?>Génère ton quitus de paiement</li>
-					<li><?php echo ueb_icone( 'envoyer', 16 ); ?>Envoie tes reçus bancaires</li>
+					<li><?php echo ueb_icone( 'envoyer', 16 ); ?>Envoie tes reçus de paiement</li>
 					<li><?php echo ueb_icone( 'bouclier', 16 ); ?>Suis la vérification de ton dossier</li>
 				</ul>
 			</div>

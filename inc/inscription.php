@@ -88,21 +88,23 @@ function ueb_contexte_inscription( $compte, $edite = null ) {
 }
 
 /**
- * Bornes du montant des droits d'une formation classique. Premier versement :
- * de 25 000 à 50 000 ; second versement (la première tranche existe déjà) :
- * de 5 000 au reste de l'année. Toujours par multiples de 5 000.
+ * Règles du montant des droits d'une formation classique. Premier versement :
+ * 25 000 au moins, par multiples de 5 000, sans plafond. Second versement (la première tranche existe
+ * déjà) : libre, proposé au reste de l'année. Seul un montant aberrant
+ * (UEB_MONTANT_MAX, faute de frappe) est refusé.
  */
 function ueb_regle_droits_classiques( array $contexte ) {
 	$second = isset( $contexte['tranches'][2] ) && ! isset( $contexte['tranches'][1] );
 	return array(
 		'second' => $second,
-		'min'    => $second ? UEB_DROITS_PAS : UEB_DROITS_MINIMUM,
-		'max'    => $second ? (int) $contexte['reste_droits'] : UEB_DROITS_CLASSIQUES,
-		'pas'    => UEB_DROITS_PAS,
+		'min'    => $second ? 1 : UEB_DROITS_MINIMUM,
+		'pas'    => $second ? 1 : UEB_DROITS_PAS,
+		'max'    => UEB_MONTANT_MAX,
+		'reste'  => (int) $contexte['reste_droits'],
 	);
 }
 
-/** Tranche couverte par un montant classique : 2 au second versement, sinon 1, ou 3 à 50 000. */
+/** Tranche couverte par un montant classique : 2 au second versement, sinon 1, ou 3 à partir de 50 000. */
 function ueb_tranche_du_montant( $montant, array $regle ) {
 	if ( $regle['second'] ) {
 		return 2;
@@ -114,7 +116,7 @@ function ueb_tranche_du_montant( $montant, array $regle ) {
 function ueb_erreur_montant_classique( $montant, array $regle ) {
 	$montant = (int) $montant;
 	if ( ! $montant ) {
-		return $regle['second'] ? sprintf( 'Saisis le montant de ton second versement (%s FCFA au plus).', ueb_formater_montant( $regle['max'] ) ) : 'Saisis le montant que tu verses : 25 000 FCFA au moins.';
+		return $regle['second'] ? 'Saisis le montant de ton second versement.' : 'Saisis le montant que tu verses : 25 000 FCFA au moins.';
 	}
 	if ( $montant % $regle['pas'] ) {
 		return 'Saisis un multiple de 5 000 FCFA : 25 000, 30 000, 35 000…';
@@ -123,9 +125,7 @@ function ueb_erreur_montant_classique( $montant, array $regle ) {
 		return sprintf( 'Le premier versement est de %s FCFA au moins.', ueb_formater_montant( $regle['min'] ) );
 	}
 	if ( $montant > $regle['max'] ) {
-		return $regle['second']
-			? sprintf( 'Il te reste %s FCFA à payer cette année : ne dépasse pas ce montant.', ueb_formater_montant( $regle['max'] ) )
-			: 'Les droits de l’année sont de 50 000 FCFA au plus (les deux tranches).';
+		return sprintf( 'Vérifie le montant : %s FCFA au plus.', ueb_formater_montant( $regle['max'] ) );
 	}
 	return '';
 }
@@ -235,8 +235,8 @@ function ueb_parcours_inscription( $compte, ?array $quitus = null ) {
 
 	$etapes = array(
 		array( 'titre' => 'Quitus généré', 'texte' => 'Remplis le formulaire : ton quitus et ses coupons sont réunis dans un PDF.' ),
-		array( 'titre' => 'Tamponné et payé', 'texte' => 'Fais-le tamponner à la scolarité, puis paie à la ' . UEB_BANQUE['nom'] . '.' ),
-		array( 'titre' => 'Reçu envoyé', 'texte' => 'Envoie ici la photo de ton reçu bancaire.' ),
+		array( 'titre' => 'Tamponné et payé', 'texte' => 'Fais-le tamponner à la scolarité, puis paie ' . ueb_moyens_paiement() . '.' ),
+		array( 'titre' => 'Reçu envoyé', 'texte' => 'Envoie ici la photo de ton reçu de paiement.' ),
 		array( 'titre' => 'Vérifié', 'texte' => 'La scolarité contrôle les originaux et valide ton paiement.' ),
 	);
 	$en_cours = $focus ? array( 'genere' => 2, 'rejete' => 3, 'recu_envoye' => 4, 'verifie' => 5 )[ $focus->statut ] : 1;
@@ -246,7 +246,7 @@ function ueb_parcours_inscription( $compte, ?array $quitus = null ) {
 	if ( ! $focus ) {
 		$prochaine = array( 'titre' => 'Prépare ton quitus ' . $annee['libelle'], 'texte' => 'Remplis les quatre sections ci-dessous : ton PDF est généré à la fin.' );
 	} elseif ( 'genere' === $focus->statut ) {
-		$prochaine = array( 'titre' => 'Quitus à faire tamponner, puis à payer', 'texte' => 'Imprime-le, fais-le tamponner à la scolarité, puis paie à la ' . UEB_BANQUE['nom'] . '.' );
+		$prochaine = array( 'titre' => 'Quitus à faire tamponner, puis à payer', 'texte' => 'Imprime-le, fais-le tamponner à la scolarité, puis paie ' . ueb_moyens_paiement() . '.' );
 		$action = array( 'libelle' => 'Envoyer mon reçu', 'url' => $url_recus, 'icone' => 'envoyer', 'principal' => true );
 	} elseif ( 'rejete' === $focus->statut ) {
 		$prochaine = array( 'titre' => 'Reçu à corriger', 'texte' => 'La scolarité a signalé un problème : renvoie une photo lisible depuis Mes quitus.' );
