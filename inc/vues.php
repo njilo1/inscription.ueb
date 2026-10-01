@@ -36,6 +36,7 @@ function ueb_icone( $nom, $taille = 20, $classe = '' ) {
 		'balance'     => '<path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1ZM2 16l3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1ZM7 21h10M12 3v18M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/>',
 		'croix'       => '<path d="M18 6 6 18M6 6l12 12"/>',
 		'plus'        => '<path d="M12 5v14M5 12h14"/>',
+		'moins'       => '<path d="M5 12h14"/>',
 		'loupe'       => '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
 		'horloge'     => '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
 		'chevron'     => '<path d="m6 9 6 6 6-6"/>',

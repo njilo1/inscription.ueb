@@ -2,8 +2,11 @@
 /** Catalogue partagé et règles annuelles du paiement de l'inscription. */
 defined( 'ABSPATH' ) || exit;
 
-/** Les trois vœux du préinscrit ; toutes les filières actives pour les anciens. */
-function ueb_formations_inscription( $compte, $preinscrit ) {
+/**
+ * Les trois vœux du préinscrit ; toutes les filières actives pour les anciens.
+ * Filières classiques seulement tant que UEB_FORMATIONS_PRO_OUVERTES est faux.
+ */
+function ueb_formations_inscription( $compte, $preinscrit, $avec_pro = UEB_FORMATIONS_PRO_OUVERTES ) {
 	global $wpdb;
 	$sql = 'SELECT fi.id, fi.libelle, fi.type_formation, f.code AS etablissement
 		FROM ueb_filieres fi JOIN ueb_facultes f ON f.id = fi.faculte_id';
@@ -27,6 +30,9 @@ function ueb_formations_inscription( $compte, $preinscrit ) {
 		$f->id = (int) $f->id;
 		$f->choix = $preinscrit ? $i + 1 : null;
 		$formations[ $f->id ] = $f;
+	}
+	if ( ! $avec_pro ) {
+		$formations = array_filter( $formations, static fn( $f ) => 'classique' === $f->type_formation );
 	}
 	return $formations;
 }
@@ -74,6 +80,10 @@ function ueb_contexte_inscription( $compte, $edite = null ) {
 	if ( ! $premiere_preparee && ( ! $edite || 2 !== (int) $edite->tranche ) ) {
 		unset( $tranches[2] );
 	}
+	/* Plus rien à payer après la première tranche : pas de deuxième. */
+	if ( $deja_prepare >= UEB_DROITS_CLASSIQUES ) {
+		unset( $tranches[2] );
+	}
 	$medical_dans_dossier = $medical && $edite && ( (int) ( $medical->quitus_droits_id ?? 0 ) === (int) $edite->id || (int) $medical->id === (int) $edite->id );
 	return array(
 		'nouveau' => $nouveau,
@@ -83,51 +93,70 @@ function ueb_contexte_inscription( $compte, $edite = null ) {
 		'situation' => $situation,
 		'situation_verrouillee' => (bool) ( $medical && ( ! $medical_dans_dossier || 'genere' !== $medical->statut ) ),
 		'tranches' => $tranches,
+		'premiere_preparee' => $premiere_preparee,
 		'reste_droits' => max( 0, UEB_DROITS_CLASSIQUES - $deja_prepare ),
 	);
 }
 
 /**
- * Règles du montant des droits d'une formation classique. Premier versement :
- * 25 000 au moins, par multiples de 5 000, sans plafond. Second versement (la première tranche existe
- * déjà) : libre, proposé au reste de l'année. Seul un montant aberrant
- * (UEB_MONTANT_MAX, faute de frappe) est refusé.
+ * Règles du montant des droits d'une formation classique : l'étudiant choisit
+ * sa tranche. Première tranche saisie : de 25 000 à 45 000 (pour 50 000, il
+ * choisit « les deux tranches »), par multiples de 5 000. Deuxième tranche :
+ * le reste de l'année (50 000 moins la première), calculé et non modifiable.
  */
 function ueb_regle_droits_classiques( array $contexte ) {
-	$second = isset( $contexte['tranches'][2] ) && ! isset( $contexte['tranches'][1] );
 	return array(
-		'second' => $second,
-		'min'    => $second ? 1 : UEB_DROITS_MINIMUM,
-		'pas'    => $second ? 1 : UEB_DROITS_PAS,
-		'max'    => UEB_MONTANT_MAX,
-		'reste'  => (int) $contexte['reste_droits'],
+		'total' => UEB_DROITS_CLASSIQUES,
+		'min'   => UEB_DROITS_MINIMUM,
+		'max'   => UEB_DROITS_CLASSIQUES - UEB_DROITS_PAS,
+		'pas'   => UEB_DROITS_PAS,
+		'reste' => (int) $contexte['reste_droits'],
 	);
 }
 
-/** Tranche couverte par un montant classique : 2 au second versement, sinon 1, ou 3 à partir de 50 000. */
-function ueb_tranche_du_montant( $montant, array $regle ) {
-	if ( $regle['second'] ) {
-		return 2;
-	}
-	return (int) $montant >= UEB_DROITS_CLASSIQUES ? 3 : 1;
+/** Montant imposé par la tranche (2 : le reste, 3 : 50 000), ou null pour la première, saisie. */
+function ueb_montant_tranche_classique( $tranche, array $regle ) {
+	$tranche = (int) $tranche;
+	return 2 === $tranche ? $regle['reste'] : ( 3 === $tranche ? $regle['total'] : null );
 }
 
-/** Message d'erreur du montant classique, ou chaîne vide s'il est valable. */
+/** Message d'erreur du montant de la première tranche, ou chaîne vide s'il est valable. */
 function ueb_erreur_montant_classique( $montant, array $regle ) {
 	$montant = (int) $montant;
 	if ( ! $montant ) {
-		return $regle['second'] ? 'Saisis le montant de ton second versement.' : 'Saisis le montant que tu verses : 25 000 FCFA au moins.';
+		return 'Saisis le montant de ta première tranche : 25 000 FCFA au moins.';
 	}
 	if ( $montant % $regle['pas'] ) {
 		return 'Saisis un multiple de 5 000 FCFA : 25 000, 30 000, 35 000…';
 	}
 	if ( $montant < $regle['min'] ) {
-		return sprintf( 'Le premier versement est de %s FCFA au moins.', ueb_formater_montant( $regle['min'] ) );
+		return 'La première tranche est de 25 000 FCFA au moins.';
 	}
 	if ( $montant > $regle['max'] ) {
-		return sprintf( 'Vérifie le montant : %s FCFA au plus.', ueb_formater_montant( $regle['max'] ) );
+		return 'La première tranche va jusqu’à 45 000 FCFA. Pour payer 50 000 FCFA, choisis « Les deux tranches ».';
 	}
 	return '';
+}
+
+/**
+ * Deuxième tranche encore à préparer cette année (formation classique) :
+ * 50 000 moins la première tranche ; 0 sans première tranche, ou si la
+ * deuxième (ou la totalité) est déjà préparée.
+ */
+function ueb_deuxieme_tranche_a_payer( array $quitus ) {
+	global $wpdb;
+	$annee  = ueb_annee_academique()['code'];
+	$droits = array_filter( $quitus, static fn( $q ) => $annee === $q->annee_academique && 'droits' === ( $q->type ?? 'droits' ) );
+	$faites = array_map( static fn( $q ) => (int) $q->tranche, $droits );
+	if ( ! in_array( 1, $faites, true ) || array_intersect( array( 2, 3 ), $faites ) ) {
+		return 0;
+	}
+	$premiere = array_values( array_filter( $droits, static fn( $q ) => 1 === (int) $q->tranche ) )[0];
+	$type     = $premiere->filiere_id ? $wpdb->get_var( $wpdb->prepare( 'SELECT type_formation FROM ueb_filieres WHERE id = %d', $premiere->filiere_id ) ) : null;
+	if ( $type && 'classique' !== $type ) {
+		return 0;
+	}
+	return max( 0, UEB_DROITS_CLASSIQUES - (int) $premiere->montant );
 }
 
 /** Les coordonnées CMS ne sont obligatoires que si les fiches sont générées. */
@@ -205,7 +234,8 @@ function ueb_dossiers_quitus( array $quitus ) {
  *
  * @return array focus (quitus cloné, statut et montant du dossier, ou null),
  *               en_cours (1 à 4, 5 quand tout est fait), etapes, prochaine
- *               (titre, texte), action (libelle, url, icone, principal) ou null.
+ *               (titre, texte), action (libelle, url, icone, principal) ou null,
+ *               deuxieme (montant de la deuxième tranche encore à préparer, ou 0).
  */
 function ueb_parcours_inscription( $compte, ?array $quitus = null ) {
 	$quitus = $quitus ?? ueb_quitus_du_compte( $compte->id );
@@ -258,7 +288,8 @@ function ueb_parcours_inscription( $compte, ?array $quitus = null ) {
 		$prochaine = array( 'titre' => 'Paiement vérifié', 'texte' => sprintf( 'Validé par la scolarité (%s). Garde ton quitus tamponné et ton reçu.', mb_strtolower( ueb_detail_quitus( $focus ) ) ) );
 	}
 
-	return compact( 'focus', 'en_cours', 'etapes', 'prochaine', 'action' );
+	$deuxieme = ueb_deuxieme_tranche_a_payer( $quitus );
+	return compact( 'focus', 'en_cours', 'etapes', 'prochaine', 'action', 'deuxieme' );
 }
 
 /** Retrouver les deux paiements depuis l'un ou l'autre quitus du compte. */

@@ -408,6 +408,10 @@
 .parcours__etat { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 12px; background: rgba(19, 53, 26, .07); color: var(--vert-bandeau); }
 .parcours__suite--rejete .parcours__etat { background: var(--danger-fond); color: var(--danger); }
 .parcours__suite--verifie .parcours__etat { background: var(--succes-fond); }
+/* Deuxième tranche encore à préparer : 50 000 moins la première. */
+.parcours__reste { display: flex; align-items: center; gap: .6rem; margin: 1rem 0 0; padding: .75rem .9rem; border-radius: 12px; background: var(--alerte-fond); color: #5c4200; font-size: .95rem; }
+.parcours__reste .icone { flex: none; }
+.parcours__reste b { font-variant-numeric: tabular-nums; }
 .parcours__texte { display: grid; gap: .15rem; min-width: 0; }
 .parcours__prochaine { margin: 0; font-size: 1rem; font-weight: 700; line-height: 1.35; color: var(--encre); }
 .parcours__suite--rejete .parcours__prochaine { color: var(--danger); }
@@ -514,25 +518,55 @@
 .quitus-erreurs a, .ipes-erreurs a { color: inherit; text-decoration: underline; text-underline-offset: .15em; }
 
 /* Montant, récapitulatif et génération */
-/* Montant des droits : la somme se lit d'abord, en grands chiffres, devise à droite. */
-.champ-somme__boite { position: relative; }
-.champ-somme input { min-height: 66px; padding: .55rem 5.4rem .55rem 1.1rem; font: 700 clamp(1.5rem, 1.25rem + 1vw, 1.85rem) var(--f-texte); letter-spacing: -.01em; font-variant-numeric: tabular-nums; }
+/* Choix de la tranche : trois cartes à cercle ; une tranche déjà préparée reste visible, fermée. */
+.choix-tranche__liste { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .65rem; }
+.choix-tranche .choix-tranche__option { position: relative; display: flex; align-items: flex-start; gap: .75rem; min-height: 76px; padding: .9rem 1rem; border: 1.5px solid var(--filet-fort); border-radius: 14px; background: var(--blanc); cursor: pointer; transition: border-color .15s, background-color .15s, box-shadow .15s; }
+.choix-tranche__option input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+.choix-tranche__rond { flex: none; display: grid; place-items: center; width: 22px; height: 22px; margin-top: .1rem; border: 2px solid var(--filet-fort); border-radius: 50%; background: var(--blanc); transition: border-color .15s; }
+.choix-tranche__rond::after { content: ""; width: 10px; height: 10px; border-radius: 50%; background: var(--vert-bandeau); scale: 0; transition: scale .18s var(--ease-sortie); }
+.choix-tranche__texte { display: grid; gap: .2rem; min-width: 0; }
+.choix-tranche__texte b { font-size: 1rem; }
+.choix-tranche__texte small { font-size: .86rem; line-height: 1.35; color: var(--gris); font-variant-numeric: tabular-nums; }
+.choix-tranche.est-libre .choix-tranche__texte small { display: none; }
+.choix-tranche__option:hover { border-color: var(--gris-clair); }
+.choix-tranche__option:has(input:checked) { border-color: var(--vert-bandeau); background: rgba(19, 53, 26, .04); box-shadow: inset 0 0 0 1px var(--vert-bandeau); }
+.choix-tranche__option:has(input:checked) .choix-tranche__rond { border-color: var(--vert-bandeau); }
+.choix-tranche__option:has(input:checked) .choix-tranche__rond::after { scale: 1; }
+.choix-tranche__option:has(input:checked) small { color: var(--foret-800); }
+.choix-tranche__option:has(input:focus-visible) { outline: 3px solid var(--or); outline-offset: 2px; }
+.choix-tranche__option:has(input:disabled) { border-style: dashed; background: transparent; cursor: not-allowed; }
+.choix-tranche__option:has(input:disabled) input { cursor: not-allowed; }
+.choix-tranche__option:has(input:disabled) b, .choix-tranche__option:has(input:disabled) small { color: var(--gris-clair); }
+.choix-tranche__option:has(input:disabled) .choix-tranche__rond { border-style: dashed; }
+.champ--invalide .choix-tranche__option:not(:has(input:disabled)) { border-color: var(--danger); }
+@media (max-width: 720px) { .choix-tranche__liste { grid-template-columns: 1fr; } .choix-tranche .choix-tranche__option { min-height: 0; } }
+@media (prefers-reduced-motion: reduce) { .choix-tranche__rond::after { transition: none; } }
+
+/* Montant des droits : la somme se lit d'abord, en grands chiffres. La boîte porte le cadre :
+   − et + de part et d'autre pour la première tranche, cadenas quand le montant est calculé. */
+.champ-somme__boite { display: flex; align-items: center; gap: .35rem; min-height: 66px; padding: 0 .45rem; border: 1.5px solid var(--filet-fort); border-radius: var(--r-champ); background: var(--blanc); transition: border-color .15s, box-shadow .15s; }
+.champ-somme__boite:hover { border-color: var(--gris-clair); }
+.champ-somme__boite:focus-within { border-color: var(--foret-700); box-shadow: 0 0 0 4px rgba(46, 125, 50, .16); }
+.champ-somme.champ--invalide .champ-somme__boite { border-color: var(--danger); }
+.champ-somme .champ-somme__boite input { flex: 1; min-width: 0; min-height: 0; padding: .4rem .3rem; border: 0; background: transparent; box-shadow: none; font: 700 clamp(1.5rem, 1.25rem + 1vw, 1.85rem) var(--f-texte); letter-spacing: -.01em; font-variant-numeric: tabular-nums; text-align: center; }
+.champ-somme .champ-somme__boite input:focus { box-shadow: none; }
 .champ-somme input::placeholder { font-weight: 600; color: var(--filet-fort); }
-.champ-somme__devise { position: absolute; right: .65rem; top: 50%; translate: 0 -50%; padding: .32rem .65rem; border-radius: 999px; background: rgba(19, 53, 26, .07); color: var(--vert-bandeau); font-size: .85rem; font-weight: 700; pointer-events: none; transition: background-color .2s, color .2s; }
-.champ-somme:focus-within .champ-somme__devise { background: var(--vert-bandeau); color: var(--blanc); }
+.champ-somme__pas { flex: none; display: grid; place-items: center; width: 44px; height: 44px; border: 0; border-radius: 10px; background: rgba(19, 53, 26, .07); color: var(--vert-bandeau); cursor: pointer; transition: background-color .15s, color .15s; }
+.champ-somme__pas:hover:not(:disabled) { background: var(--vert-bandeau); color: var(--blanc); }
+.champ-somme__pas:focus-visible { outline: 3px solid var(--or); outline-offset: 2px; }
+.champ-somme__pas:disabled { opacity: .35; cursor: not-allowed; }
+.champ-somme__verrou { display: none; flex: none; place-items: center; width: 44px; height: 44px; color: var(--gris); }
+.champ-somme.est-fixe .champ-somme__boite { background: var(--papier); }
+.champ-somme.est-fixe .champ-somme__pas, .champ-somme.est-libre .champ-somme__pas { display: none; }
+.champ-somme.est-fixe .champ-somme__verrou { display: grid; }
+.champ-somme.est-fixe .champ-somme__boite input { cursor: not-allowed; color: var(--encre); }
+.champ-somme__devise { flex: none; padding: .32rem .65rem; border-radius: 999px; background: rgba(19, 53, 26, .07); color: var(--vert-bandeau); font-size: .85rem; font-weight: 700; transition: background-color .2s, color .2s; }
+.champ-somme:not(.est-fixe) .champ-somme__boite:focus-within .champ-somme__devise { background: var(--vert-bandeau); color: var(--blanc); }
 .champ-somme.champ--invalide .champ-somme__devise { background: var(--danger-fond); color: var(--danger); }
 .champ-somme__lettres { min-height: 1.35em; margin: 0; font: italic 500 1rem/1.35 var(--f-titre); color: var(--foret-700); }
-/* Raccourcis : la somme en gros, ce qu'elle couvre en dessous. */
-.montant-rapide { display: flex; flex-wrap: wrap; gap: .5rem; }
-.montant-rapide[hidden] { display: none; }
-.montant-rapide__choix { display: grid; gap: .05rem; min-height: 48px; padding: .45rem .9rem; border: 1.5px solid var(--filet-fort); border-radius: 12px; background: var(--blanc); font: inherit; color: var(--encre); text-align: left; cursor: pointer; transition: border-color .15s, background-color .15s; }
-.montant-rapide__choix b { font-size: 1rem; font-variant-numeric: tabular-nums; }
-.montant-rapide__choix span { font-size: .8rem; color: var(--gris); }
-.montant-rapide__choix:hover { border-color: var(--gris-clair); }
-.montant-rapide__choix[aria-pressed="true"] { border-color: var(--vert-bandeau); background: rgba(19, 53, 26, .05); box-shadow: inset 0 0 0 1px var(--vert-bandeau); }
-.montant-rapide__choix:focus-visible { outline: 3px solid var(--or); outline-offset: 2px; }
 /* Jauge de l'année : déjà préparé (vert), puis ce versement (or), sur 50 000 FCFA. */
-.jauge-annee { display: grid; gap: .55rem; padding: .9rem 1rem; border: 1px solid var(--filet); border-radius: 14px; background: var(--papier); }
+.jauge-annee { display: grid; align-content: start; gap: .55rem; padding: 1rem 1.1rem; border: 1px solid var(--filet); border-radius: 14px; background: var(--papier); }
+.jauge-annee__titre { margin: 0; font-weight: 700; color: var(--encre); }
 .jauge-annee[hidden] { display: none; }
 .jauge-annee__piste { position: relative; height: 10px; border-radius: 999px; background: var(--blanc); box-shadow: inset 0 0 0 1px var(--filet); }
 .jauge-annee__piste span { position: absolute; inset: 0; border-radius: inherit; clip-path: inset(0 calc(100% - var(--part, 0) * 100%) 0 0 round 999px); transition: clip-path .45s var(--ease-sortie); }
@@ -540,15 +574,6 @@
 .jauge-annee__deja { background: var(--vert-bandeau); }
 .jauge-annee__texte { margin: 0; font-size: .92rem; color: var(--gris); font-variant-numeric: tabular-nums; }
 @media (prefers-reduced-motion: reduce) { .jauge-annee__piste span, .champ-somme__devise { transition: none; } }
-/* Tranche déduite du montant (formations classiques) : visible mais pas cliquable */
-.tranche-auto { display: grid; gap: .35rem; align-content: start; }
-.tranche-auto__note { display: none; align-items: center; gap: .35rem; margin: 0; font-size: .85rem; color: var(--gris); }
-.tranche-auto.est-auto .tranche-auto__note { display: flex; }
-.tranche-auto.est-auto .segments__option { pointer-events: none; }
-.tranche-auto.est-auto .segments__option input:not(:checked) + span { border-style: dashed; color: var(--gris-clair); background: transparent; }
-.tranche-auto.est-auto .segments__option input:checked + span { animation: tranche-choisie .35s var(--ease-sortie); }
-@keyframes tranche-choisie { from { transform: scale(.96); } }
-@media (prefers-reduced-motion: reduce) { .tranche-auto.est-auto .segments__option input:checked + span { animation: none; } }
 /* La dernière carte reprend la composition d'un dossier : récapitulatif et pièces jointes. */
 .quitus-final { padding: 0; }
 .quitus-final__entete { padding: clamp(1.25rem, 3vw, 2rem) clamp(1.25rem, 3vw, 2rem) 1.35rem; }

@@ -139,6 +139,12 @@ ueb_page_debut( array( 'titre' => $vue ? ( 'quitus' === $vue ? 'Mes quitus' : 'M
 						<dt>En attente de vérification</dt>
 						<dd><?php echo esc_html( ueb_formater_montant( $attente ) ); ?> <span>FCFA</span></dd>
 					</div>
+					<?php if ( $parcours['deuxieme'] ) : ?>
+						<div>
+							<dt>Deuxième tranche à payer</dt>
+							<dd><?php echo esc_html( ueb_formater_montant( $parcours['deuxieme'] ) ); ?> <span>FCFA</span></dd>
+						</div>
+					<?php endif; ?>
 				</dl>
 			</div>
 		<?php endif; ?>
