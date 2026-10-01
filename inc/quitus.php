@@ -168,21 +168,25 @@ function ueb_valider_quitus( array $post, array $contexte ) {
 		$v['tranche'] = 0;
 		$v['montant'] = UEB_FRAIS_MEDICAUX[ $v['situation'] ]['montant'] ?? 0;
 	} else {
-		$regle = null;
-		if ( $formation && 'classique' === $formation->type_formation ) {
-			/* Formation classique : la tranche découle du montant saisi. */
-			$regle = ueb_regle_droits_classiques( $contexte );
-			$erreur_montant = ueb_erreur_montant_classique( $v['montant'], $regle );
-			if ( $erreur_montant ) {
-				$e['montant'] = $erreur_montant;
-			} else {
-				$v['tranche'] = ueb_tranche_du_montant( $v['montant'], $regle );
-			}
-		} elseif ( $v['montant'] < UEB_MONTANT_MIN || $v['montant'] > UEB_MONTANT_MAX || ( $formation && 'pro' === $formation->type_formation && ! preg_match( '/^\d[\d\s]*$/u', $texte( 'montant' ) ) ) ) {
-			$e['montant'] = sprintf( 'Montant entre %s et %s FCFA.', ueb_formater_montant( UEB_MONTANT_MIN ), ueb_formater_montant( UEB_MONTANT_MAX ) );
-		}
-		if ( ! ( $regle && isset( $e['montant'] ) ) && ! isset( $contexte['tranches'][ $v['tranche'] ] ) ) {
+		$classique = $formation && 'classique' === $formation->type_formation;
+		if ( ! isset( $contexte['tranches'][ $v['tranche'] ] ) ) {
 			$e['tranche'] = 'Choisis une tranche disponible. Pour une tranche déjà préparée, utilise le quitus existant dans ton espace.';
+		} elseif ( $classique ) {
+			/* Formation classique : la deuxième tranche vaut le reste, les deux tranches
+			   50 000 ; seule la première se saisit. Le montant posté est ignoré sinon. */
+			$regle = ueb_regle_droits_classiques( $contexte );
+			$fixe  = ueb_montant_tranche_classique( $v['tranche'], $regle );
+			if ( null !== $fixe ) {
+				$v['montant'] = $fixe;
+			} else {
+				$erreur_montant = ueb_erreur_montant_classique( $v['montant'], $regle );
+				if ( $erreur_montant ) {
+					$e['montant'] = $erreur_montant;
+				}
+			}
+		}
+		if ( ! $classique && ( $v['montant'] < UEB_MONTANT_MIN || $v['montant'] > UEB_MONTANT_MAX || ( $formation && 'pro' === $formation->type_formation && ! preg_match( '/^\d[\d\s]*$/u', $texte( 'montant' ) ) ) ) ) {
+			$e['montant'] = sprintf( 'Montant entre %s et %s FCFA.', ueb_formater_montant( UEB_MONTANT_MIN ), ueb_formater_montant( UEB_MONTANT_MAX ) );
 		}
 	}
 	if ( ! in_array( $v['moyen_paiement'], UEB_MOYENS_PAIEMENT, true ) ) {

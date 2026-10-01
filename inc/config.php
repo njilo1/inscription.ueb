@@ -66,13 +66,16 @@ const UEB_FRAIS_MEDICAUX = array(
 	'reprise' => array( 'montant' => 5000, 'libelle' => 'Réinscription avec interruption' ),
 );
 
-/* Droits des formations classiques : 50 000 FCFA par an, montant saisi par
-   l'étudiant. Premier versement de 25 000 au moins, par multiples de 5 000,
-   sans plafond : en dessous de 50 000 c'est la première tranche, à partir de
-   50 000 les deux. Le second versement est libre. */
+/* Droits des formations classiques : 50 000 FCFA par an. L'étudiant choisit
+   sa tranche : la première se saisit (25 000 à 45 000, par multiples de
+   5 000), la deuxième vaut le reste (50 000 moins la première), « les deux
+   tranches » valent 50 000. */
 const UEB_DROITS_CLASSIQUES = 50000;
 const UEB_DROITS_MINIMUM    = 25000;
 const UEB_DROITS_PAS        = 5000;
+/* Formations professionnelles : pas proposées aux étudiants pour le moment
+   (seules les filières classiques s'affichent). Passer à true pour les rouvrir. */
+const UEB_FORMATIONS_PRO_OUVERTES = false;
 /* Reversement d'un IPES à sa tutelle : somme fixe PAR ÉTUDIANT enregistré, la
    même pour tous les IPES (décision du chef de projet, 2026-09-29). Figée sur
    chaque bordereau à l'envoi : la changer ne réécrit pas les bordereaux envoyés. */

@@ -47,4 +47,7 @@ $rempli   = min( 1, max( 0, ( $en_cours - 1 ) / 3 ) );
 			</p>
 		<?php endif; ?>
 	</div>
+	<?php if ( ! empty( $parcours['deuxieme'] ) ) : ?>
+		<p class="parcours__reste"><?php echo ueb_icone( 'banque', 18 ); ?><span>Deuxième tranche à payer : <b><?php echo esc_html( ueb_formater_montant( $parcours['deuxieme'] ) ); ?> FCFA</b>, soit 50 000 FCFA moins ta première tranche.</span></p>
+	<?php endif; ?>
 </section>

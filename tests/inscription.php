@@ -60,7 +60,7 @@ $annee = ueb_annee_academique();
 $wpdb->insert( 'ueb_insc_comptes', array( 'id' => 1, 'matricule' => '24TEST01FS', 'telephone' => '699000000', 'mot_de_passe' => 'fixture-non-utilisable' ) );
 $_SESSION = array( 'ueb_compte_id' => 1, 'ueb_version_session' => 1 );
 $compte = ueb_compte_courant();
-$catalogue = ueb_formations_inscription( $compte, false );
+$catalogue = ueb_formations_inscription( $compte, false, true ); // avec les formations professionnelles
 $fs = array_values( array_filter( $catalogue, static fn( $f ) => 'FS' === $f->etablissement && 'classique' === $f->type_formation ) );
 $pro = array_values( array_filter( $catalogue, static fn( $f ) => 'pro' === $f->type_formation ) )[0];
 verifier( count( $fs ) >= 3, 'catalogue classique disponible' );
@@ -99,29 +99,41 @@ verifier( $objets_de( 'droits', 3 ) === array( 'tranche1', 'tranche2', 'totalite
 verifier( $objets_de( 'medicaux', 0 ) === array( 'medicaux' ), 'reçu médical : frais médicaux' );
 verifier( 'Totalité' === ueb_libelle_objet_recu( (object) array( 'objet' => 'totalite' ) ) && 'Frais médicaux' === ueb_libelle_objet_recu( (object) array( 'objet' => '' ), 'medicaux' ), 'libellé de l’objet, repli sur le type pour les anciens reçus' );
 
-// Formation classique : premier versement de 25 000 au moins, par multiples de 5 000, sans plafond ; tranche déduite du montant.
+// Formation classique : l'étudiant choisit sa tranche. Première : 25 000 à 45 000 par
+// multiples de 5 000 ; deuxième : 50 000 moins la première, imposée ; les deux : 50 000.
 vider_quitus();
 $c = ueb_contexte_inscription( $compte );
-foreach ( array( '20 000', '24 999', '27 500', '52 500', '' ) as $montant ) {
-	list( $v, $e ) = ueb_valider_quitus( array_replace( $post, array( 'montant' => $montant ) ), $c );
-	verifier( isset( $e['montant'] ) && ! isset( $e['tranche'] ), 'premier versement refusé : ' . $montant );
+verifier( array_keys( $c['tranches'] ) === array( 1, 3 ), 'sans quitus : première tranche ou les deux' );
+verifier( ! array_filter( $c['formations'], static fn( $f ) => 'classique' !== $f->type_formation ), 'filières classiques seulement pour le moment' );
+foreach ( array( '20 000', '24 999', '27 500', '50 000', '55 000', '' ) as $montant ) {
+	list( $v, $e ) = ueb_valider_quitus( array_replace( $post, array( 'montant' => $montant, 'tranche' => 1 ) ), $c );
+	verifier( isset( $e['montant'] ) && ! isset( $e['tranche'] ), 'première tranche refusée : ' . $montant );
 }
-foreach ( array( '25 000' => 1, '35 000' => 1, '45 000' => 1, '50 000' => 3, '55 000' => 3, '120 000' => 3 ) as $montant => $attendue ) {
-	list( $v, $e ) = ueb_valider_quitus( array_replace( $post, array( 'montant' => $montant, 'tranche' => 2 ) ), $c );
-	verifier( ! $e && $v['tranche'] === $attendue, 'tranche déduite de ' . $montant . ' malgré la tranche postée' );
+foreach ( array( '25 000', '35 000', '45 000' ) as $montant ) {
+	list( $v, $e ) = ueb_valider_quitus( array_replace( $post, array( 'montant' => $montant, 'tranche' => 1 ) ), $c );
+	verifier( ! $e && 1 === $v['tranche'] && (int) preg_replace( '/\D+/', '', $montant ) === $v['montant'], 'première tranche acceptée : ' . $montant );
 }
-list( $v, $e ) = ueb_valider_quitus( array_replace( $post, array( 'montant' => '20 000 000' ) ), $c );
-verifier( isset( $e['montant'] ), 'montant aberrant refusé (faute de frappe)' );
-verifier( ! soumettre( array_replace( $post, array( 'montant' => '30 000' ) ) ), 'premier versement de 30 000' );
+foreach ( array( '25 000', '', '999 999' ) as $montant ) {
+	list( $v, $e ) = ueb_valider_quitus( array_replace( $post, array( 'montant' => $montant, 'tranche' => 3 ) ), $c );
+	verifier( ! $e && 3 === $v['tranche'] && 50000 === $v['montant'], 'les deux tranches : 50 000 imposés (posté « ' . $montant . ' »)' );
+}
+list( $v, $e ) = ueb_valider_quitus( array_replace( $post, array( 'tranche' => 2 ) ), $c );
+verifier( isset( $e['tranche'] ), 'deuxième tranche impossible avant la première' );
+verifier( ! soumettre( array_replace( $post, array( 'montant' => '30 000', 'tranche' => 1 ) ) ), 'première tranche de 30 000' );
 $c = ueb_contexte_inscription( $compte );
 $regle = ueb_regle_droits_classiques( $c );
-verifier( $regle['second'] && 20000 === $regle['reste'] && 20000 === $c['reste_droits'], 'second versement : il reste 20 000, proposé par défaut' );
-foreach ( array( '1 500', '12 000', '20 000', '25 000', '80 000' ) as $montant ) {
-	list( $v, $e ) = ueb_valider_quitus( array_replace( $post, array( 'montant' => $montant, 'situation' => 'nouveau' ) ), $c );
-	verifier( ! $e && 2 === $v['tranche'], 'second versement libre accepté : ' . $montant );
+verifier( array_keys( $c['tranches'] ) === array( 2 ) && 20000 === $regle['reste'], 'après la première : seule la deuxième, de 20 000' );
+verifier( 20000 === ueb_deuxieme_tranche_a_payer( ueb_quitus_du_compte( 1 ) ), 'deuxième tranche à payer affichée : 20 000' );
+foreach ( array( '1 500', '20 000', '80 000', '' ) as $montant ) {
+	list( $v, $e ) = ueb_valider_quitus( array_replace( $post, array( 'montant' => $montant, 'tranche' => 2, 'situation' => 'nouveau' ) ), $c );
+	verifier( ! $e && 2 === $v['tranche'] && 20000 === $v['montant'], 'deuxième tranche : le reste (20 000) imposé, posté « ' . $montant . ' »' );
 }
-list( $v, $e ) = ueb_valider_quitus( array_replace( $post, array( 'montant' => '', 'situation' => 'nouveau' ) ), $c );
-verifier( isset( $e['montant'] ), 'second versement vide refusé' );
+foreach ( array( 1, 3 ) as $tranche ) {
+	list( $v, $e ) = ueb_valider_quitus( array_replace( $post, array( 'tranche' => $tranche, 'situation' => 'nouveau' ) ), $c );
+	verifier( isset( $e['tranche'] ), 'tranche ' . $tranche . ' refermée après la première' );
+}
+verifier( ! soumettre( array_replace( $post, array( 'tranche' => 2, 'situation' => 'nouveau' ) ) ), 'deuxième tranche enregistrée' );
+verifier( 0 === ueb_deuxieme_tranche_a_payer( ueb_quitus_du_compte( 1 ) ) && ! ueb_contexte_inscription( $compte )['tranches'], 'deuxième tranche préparée : plus rien à proposer' );
 
 foreach ( array( 'ancien' => array( 28000, 53000 ), 'reprise' => array( 30000, 55000 ) ) as $situation => $totaux ) {
 	foreach ( array( 1, 3 ) as $i => $tranche ) {
@@ -259,7 +271,10 @@ $_POST = array();
 vider_quitus();
 $c = ueb_contexte_inscription( $compte );
 list( $v, $e ) = ueb_valider_quitus( array_replace( $post, array( 'filiere_id' => $pro->id, 'etablissement' => $pro->etablissement, 'montant' => '85 000' ) ), $c );
-verifier( ! $e && $v['montant'] === 85000, 'tarif professionnel conservé' );
+verifier( isset( $e['filiere_id'] ), 'formation professionnelle refusée tant qu’elle est fermée' );
+$c_pro = array( 'formations' => ueb_formations_inscription( $compte, false, true ) ) + $c;
+list( $v, $e ) = ueb_valider_quitus( array_replace( $post, array( 'filiere_id' => $pro->id, 'etablissement' => $pro->etablissement, 'montant' => '85 000' ) ), $c_pro );
+verifier( ! $e && $v['montant'] === 85000, 'formations professionnelles rouvertes : tarif conservé' );
 list( $v, $e ) = ueb_valider_quitus( array_replace( $post, array( 'etablissement' => 'FSEG' ) ), $c );
 verifier( isset( $e['filiere_id'] ), 'filière étrangère à l’établissement refusée' );
 list( $v, $e ) = ueb_valider_quitus( array_replace( $post, array( 'parcours' => 'niveau libre' ) ), $c );
@@ -285,7 +300,7 @@ verifier( empty( $_SESSION['ueb_telechargement'] ), 'actualisation : aucun tél�
 
 // L'étudiant ne peut pas ouvrir directement une deuxième tranche sans première.
 list( $v, $e ) = ueb_valider_quitus( array_replace( $post, array( 'tranche' => 2 ) ), ueb_contexte_inscription( $compte ) );
-verifier( ! $e && 1 === $v['tranche'], 'première tranche nécessaire : la tranche 2 postée devient la tranche 1' );
+verifier( isset( $e['tranche'] ), 'première tranche nécessaire : la tranche 2 seule est refusée' );
 
 // Compatibilité d'un ancien quitus médical généré séparément.
 verifier( ! soumettre( $post ), 'dossier pour compatibilité médicale' );

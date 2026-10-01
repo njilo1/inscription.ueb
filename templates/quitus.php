@@ -48,7 +48,11 @@ $v['situation'] = $contexte['situation_verrouillee'] ? $contexte['situation'] : 
 if ( ! isset( $options_situation[ $v['situation'] ] ) ) {
 	$v['situation'] = $contexte['situation'];
 }
-$v['tranche'] = $v['tranche'] ?? array_key_first( $contexte['tranches'] );
+/* Tranche choisie, ou la première disponible (une tranche déjà préparée ne se reprend pas). */
+$v['tranche'] = (int) ( $v['tranche'] ?? 0 );
+if ( ! isset( $contexte['tranches'][ $v['tranche'] ] ) ) {
+	$v['tranche'] = (int) array_key_first( $contexte['tranches'] );
+}
 $type_courant = $edite->type ?? 'droits';
 $cms_requis = ueb_fiches_cms_requises( $contexte, $v['situation'], $type_courant );
 // Compatibilité des quitus créés avant l'ajout de l'identifiant de filière.
@@ -61,17 +65,16 @@ if ( empty( $v['filiere_id'] ) ) {
 	}
 }
 $formation = $formations[ $v['filiere_id'] ?? 0 ] ?? null;
-/* Formation classique : montant saisi (second versement pré-rempli avec le reste), tranche déduite. */
+/* Formation classique : la tranche choisie fixe le montant (deuxième : le reste,
+   les deux : 50 000) ; la première se saisit, proposée à 25 000. */
 $v['montant'] = (int) preg_replace( '/\D+/', '', (string) ( $v['montant'] ?? '' ) );
 $regle_droits = ueb_regle_droits_classiques( $contexte );
 $classique = $formation && 'classique' === $formation->type_formation;
-if ( $classique && 'droits' === $type_courant ) {
-	if ( empty( $v['montant'] ) && $regle_droits['second'] && $regle_droits['reste'] ) {
-		$v['montant'] = $regle_droits['reste'];
-	}
-	if ( ! empty( $v['montant'] ) && ! ueb_erreur_montant_classique( $v['montant'], $regle_droits ) ) {
-		$v['tranche'] = ueb_tranche_du_montant( $v['montant'], $regle_droits );
-	}
+$montant_fixe = $classique && 'droits' === $type_courant ? ueb_montant_tranche_classique( $v['tranche'], $regle_droits ) : null;
+if ( null !== $montant_fixe ) {
+	$v['montant'] = $montant_fixe;
+} elseif ( $classique && 'droits' === $type_courant && empty( $v['montant'] ) ) {
+	$v['montant'] = UEB_DROITS_MINIMUM;
 }
 $medical_document = $contexte['medical_inclus'] && 'nouveau' !== ( $v['situation'] ?? '' );
 $paiement = ueb_calculer_paiement( $formation, $v['tranche'], $v['montant'] ?? 0, $v['situation'], $contexte, $type_courant );
@@ -96,9 +99,12 @@ $donnees_paiement = array(
 	'droitsClassiques' => UEB_DROITS_CLASSIQUES,
 	'regleDroits' => $regle_droits,
 );
-$aide_classique = $regle_droits['second']
-	? ( $regle_droits['reste'] ? sprintf( 'Montant libre. Il te reste %s FCFA pour compléter les 50 000 FCFA de l’année.', ueb_formater_montant( $regle_droits['reste'] ) ) : 'Montant libre.' )
-	: '25 000 FCFA au moins, par multiples de 5 000, sans plafond. Moins de 50 000 FCFA : première tranche ; 50 000 FCFA ou plus : les deux tranches.';
+$deja_prepare   = $regle_droits['total'] - $regle_droits['reste'];
+$aide_classique = array(
+	1 => '25 000 FCFA au moins, par multiples de 5 000, jusqu’à 45 000. Pour 50 000 FCFA, choisis « Les deux tranches ».',
+	2 => sprintf( 'Calculé pour toi : 50 000 − %s FCFA de première tranche.', ueb_formater_montant( $deja_prepare ) ),
+	3 => 'Les droits de l’année, en une seule fois.',
+)[ $v['tranche'] ] ?? '';
 
 ueb_page_debut( array( 'titre' => $edite ? 'Modifier le quitus' : 'Nouveau quitus', 'variante' => 'espace' ) );
 ?>
@@ -250,66 +256,82 @@ ueb_page_debut( array( 'titre' => $edite ? 'Modifier le quitus' : 'Nouveau quitu
 						) ); ?>
 					</div>
 					<p class="quitus-montant-fixe champ--medical"><?php echo ueb_icone( 'banque', 18 ); ?><span>Frais de visite médicale : <b data-montant-fixe><?php echo esc_html( ueb_formater_montant( $paiement['medicaux'] ) ); ?> FCFA</b>, à verser sur le compte des services centraux.</span></p>
+					<?php
+					/* Tranche : trois choix, ceux déjà préparés restent visibles mais fermés. */
+					$tranches_choix = array(
+						1 => array( 'Première tranche', isset( $contexte['tranches'][1] ) ? '25 000 FCFA ou plus' : 'Déjà préparée' ),
+						2 => array( 'Deuxième tranche', isset( $contexte['tranches'][2] ) ? sprintf( '%s FCFA, le reste de l’année', ueb_formater_montant( $regle_droits['reste'] ) ) : ( $contexte['premiere_preparee'] ? 'Déjà préparée' : 'Après la première tranche' ) ),
+						3 => array( 'Les deux tranches', isset( $contexte['tranches'][3] ) ? '50 000 FCFA en une fois' : 'Une tranche est déjà préparée' ),
+					);
+					$erreur_tranche = $erreurs['tranche'] ?? '';
+					?>
+					<fieldset id="champ-tranche" tabindex="-1" class="champ choix-tranche champ--droits<?php echo $erreur_tranche ? ' champ--invalide' : ''; ?><?php echo $classique || ! $formation ? '' : ' est-libre'; ?>">
+						<legend>Quelle tranche paies-tu ?</legend>
+						<div class="choix-tranche__liste">
+							<?php foreach ( $tranches_choix as $t => $choix ) : ?>
+								<label class="choix-tranche__option">
+									<input type="radio" name="tranche" value="<?php echo (int) $t; ?>" data-libelle="<?php echo esc_attr( $choix[0] ); ?>" <?php checked( (int) $v['tranche'], $t ); ?> <?php disabled( ! isset( $contexte['tranches'][ $t ] ) ); ?> required>
+									<span class="choix-tranche__rond" aria-hidden="true"></span>
+									<span class="choix-tranche__texte"><b><?php echo esc_html( $choix[0] ); ?></b><small><?php echo esc_html( $choix[1] ); ?></small></span>
+								</label>
+							<?php endforeach; ?>
+						</div>
+						<?php if ( $erreur_tranche ) : ?>
+							<p class="champ__erreur"><?php echo ueb_icone( 'alerte', 16 ); ?><?php echo esc_html( $erreur_tranche ); ?></p>
+						<?php endif; ?>
+					</fieldset>
+
 					<div class="formulaire__rangee champ--droits">
 						<?php
-						/* Montant des droits : grands chiffres, devise, montant en lettres et
-						   raccourcis (formations classiques). */
+						/* Montant : grands chiffres, devise et montant en lettres. La première
+						   tranche se règle par pas de 5 000 ; la deuxième et la totalité sont
+						   calculées et verrouillées. */
 						$erreur_montant = $erreurs['montant'] ?? '';
 						$aide_montant   = $classique ? $aide_classique : ( $formation ? 'Pour une formation professionnelle, indique le montant communiqué par ton établissement.' : 'Choisis une filière pour connaître les modalités de paiement.' );
-						$raccourcis     = $regle_droits['second']
-							? ( $regle_droits['reste'] ? array( $regle_droits['reste'] => 'Le reste de l’année' ) : array() )
-							: array( UEB_DROITS_MINIMUM => 'Première tranche', UEB_DROITS_CLASSIQUES => 'Les deux tranches' );
+						$etat_somme     = null !== $montant_fixe ? ' est-fixe' : ( $classique ? '' : ' est-libre' );
 						?>
-						<div class="champ champ-somme<?php echo $erreur_montant ? ' champ--invalide' : ''; ?>">
+						<div class="champ champ-somme<?php echo $erreur_montant ? ' champ--invalide' : ''; ?><?php echo esc_attr( $etat_somme ); ?>" data-somme>
 							<label for="champ-montant">Droits universitaires<span class="sr"> en francs CFA</span></label>
 							<div class="champ-somme__boite">
+								<span class="champ-somme__verrou" aria-hidden="true"><?php echo ueb_icone( 'cadenas', 18 ); ?></span>
+								<button type="button" class="champ-somme__pas" data-pas="-1" aria-controls="champ-montant" aria-label="Retirer 5 000 FCFA"><?php echo ueb_icone( 'moins', 18 ); ?></button>
 								<input id="champ-montant" name="montant" type="text" inputmode="numeric" autocomplete="off" required data-montant
-									value="<?php echo esc_attr( $val( 'montant' ) ? ueb_formater_montant( $val( 'montant' ) ) : '' ); ?>"
-									placeholder="<?php echo esc_attr( $regle_droits['second'] ? ( $regle_droits['reste'] ? ueb_formater_montant( $regle_droits['reste'] ) : '' ) : '25 000' ); ?>"
-									aria-describedby="champ-montant-lettres champ-montant-aide<?php echo $erreur_montant ? ' champ-montant-erreur' : ''; ?>"<?php echo $erreur_montant ? ' aria-invalid="true"' : ''; ?><?php echo $formation ? '' : ' readonly'; ?>>
+									value="<?php echo esc_attr( $val( 'montant' ) ? ueb_formater_montant( $val( 'montant' ) ) : '' ); ?>" placeholder="25 000"
+									aria-describedby="champ-montant-lettres champ-montant-aide<?php echo $erreur_montant ? ' champ-montant-erreur' : ''; ?>"<?php echo $erreur_montant ? ' aria-invalid="true"' : ''; ?><?php echo ( ! $formation || null !== $montant_fixe ) ? ' readonly' : ''; ?>>
 								<span class="champ-somme__devise" aria-hidden="true">FCFA</span>
+								<button type="button" class="champ-somme__pas" data-pas="1" aria-controls="champ-montant" aria-label="Ajouter 5 000 FCFA"><?php echo ueb_icone( 'plus', 18 ); ?></button>
 							</div>
 							<p class="champ-somme__lettres" id="champ-montant-lettres" data-montant-lettres></p>
-							<?php if ( $raccourcis ) : ?>
-								<div class="montant-rapide" data-montant-rapide role="group" aria-label="Montants proposés"<?php echo $classique ? '' : ' hidden'; ?>>
-									<?php foreach ( $raccourcis as $somme => $libelle ) : ?>
-										<button type="button" class="montant-rapide__choix" data-valeur="<?php echo (int) $somme; ?>" aria-pressed="<?php echo (int) $val( 'montant' ) === (int) $somme ? 'true' : 'false'; ?>">
-											<b><?php echo esc_html( ueb_formater_montant( $somme ) ); ?></b><span><?php echo esc_html( $libelle ); ?></span>
-										</button>
-									<?php endforeach; ?>
-								</div>
-							<?php endif; ?>
 							<p class="champ__aide" id="champ-montant-aide"><?php echo esc_html( $aide_montant ); ?></p>
 							<?php if ( $erreur_montant ) : ?>
 								<p class="champ__erreur" id="champ-montant-erreur"><?php echo ueb_icone( 'alerte', 16 ); ?><?php echo esc_html( $erreur_montant ); ?></p>
 							<?php endif; ?>
 						</div>
-						<div class="tranche-auto<?php echo $classique ? ' est-auto' : ''; ?>" data-tranche-auto>
-							<?php ueb_choix_segments( 'tranche', 'Tranche payée', $contexte['tranches'], $val( 'tranche' ), $erreurs['tranche'] ?? '' ); ?>
-							<p class="tranche-auto__note"><?php echo ueb_icone( 'info', 15 ); ?>Déduite du montant saisi.</p>
+
+						<?php
+						/* Jauge de l'année (formations classiques) : déjà préparé, puis ce versement,
+						   sur les 50 000 FCFA ; elle annonce la deuxième tranche à venir. */
+						$ce_versement = 'droits' === $type_courant ? (int) $v['montant'] : 0;
+						$total_annee  = $deja_prepare + $ce_versement;
+						$part         = static fn( $n ) => round( min( 1, max( 0, $n / UEB_DROITS_CLASSIQUES ) ), 4 );
+						?>
+						<div class="jauge-annee" data-jauge-annee<?php echo $classique ? '' : ' hidden'; ?>>
+							<p class="jauge-annee__titre">Tes droits de l’année</p>
+							<div class="jauge-annee__piste" aria-hidden="true">
+								<span class="jauge-annee__ce" data-jauge-ce style="--part: <?php echo esc_attr( $part( $total_annee ) ); ?>"></span>
+								<span class="jauge-annee__deja" style="--part: <?php echo esc_attr( $part( $deja_prepare ) ); ?>"></span>
+							</div>
+							<p class="jauge-annee__texte" data-jauge-texte>
+								<?php
+								echo esc_html( ( $deja_prepare ? sprintf( 'Déjà préparé : %s FCFA. ', ueb_formater_montant( $deja_prepare ) ) : '' )
+									. ( $total_annee >= UEB_DROITS_CLASSIQUES
+										? 'Avec ce versement, les 50 000 FCFA de l’année sont couverts.'
+										: sprintf( 'Avec ce versement : %s sur 50 000 FCFA. Ta deuxième tranche sera de %s FCFA.', ueb_formater_montant( $total_annee ), ueb_formater_montant( UEB_DROITS_CLASSIQUES - $total_annee ) ) ) );
+								?>
+							</p>
 						</div>
 					</div>
-					<?php
-					/* Jauge de l'année (formations classiques) : déjà préparé, puis ce versement, sur les 50 000 FCFA. */
-					$deja_prepare = $regle_droits['second'] ? max( 0, UEB_DROITS_CLASSIQUES - $regle_droits['reste'] ) : 0;
-					$ce_versement = 'droits' === $type_courant ? (int) $v['montant'] : 0;
-					$part         = static fn( $n ) => round( min( 1, max( 0, $n / UEB_DROITS_CLASSIQUES ) ), 4 );
-					?>
-					<div class="jauge-annee champ--droits" data-jauge-annee<?php echo $classique ? '' : ' hidden'; ?>>
-						<div class="jauge-annee__piste" aria-hidden="true">
-							<span class="jauge-annee__ce" data-jauge-ce style="--part: <?php echo esc_attr( $part( $deja_prepare + $ce_versement ) ); ?>"></span>
-							<span class="jauge-annee__deja" style="--part: <?php echo esc_attr( $part( $deja_prepare ) ); ?>"></span>
-						</div>
-						<p class="jauge-annee__texte" data-jauge-texte>
-							<?php
-							$total_annee = $deja_prepare + $ce_versement;
-							echo esc_html( ( $deja_prepare ? sprintf( 'Déjà préparé : %s FCFA. ', ueb_formater_montant( $deja_prepare ) ) : '' )
-								. ( $total_annee >= UEB_DROITS_CLASSIQUES
-									? 'Avec ce versement, les 50 000 FCFA de droits de l’année sont couverts.'
-									: sprintf( 'Avec ce versement : %s sur 50 000 FCFA de droits pour l’année.', ueb_formater_montant( $total_annee ) ) ) );
-							?>
-						</p>
-					</div>
+
 					<div class="paiement-total" role="status" aria-live="polite" aria-atomic="true">
 						<p>Montant total à payer <strong data-total-paiement><?php echo $paiement['total'] ? esc_html( ueb_formater_montant( $paiement['total'] ) . ' FCFA' ) : '—'; ?></strong></p>
 						<p class="paiement-total__detail" data-detail-paiement><?php echo esc_html( ueb_formater_montant( $paiement['droits'] ) . ' FCFA de droits universitaires + ' . ueb_formater_montant( $paiement['medicaux'] ) . ' FCFA de frais médicaux.' ); ?></p>

@@ -457,18 +457,23 @@
 		let dernierEtab;
 		let derniereFormation = filiere.value;
 		const montantProfessionnel = new Map();
-		let montantClassique = config.formations.find((f) => String(f.id) === filiere.value)?.type_formation === "classique" ? champMontant.value : "";
+		const trancheCochee = () => $("input[name=tranche]:checked", formQuitus);
+		let derniereTranche = trancheCochee()?.value || "";
+		/* Dernier montant saisi pour la première tranche, retrouvé après un passage par la deuxième. */
+		let montantPremiere = config.formations.find((f) => String(f.id) === filiere.value)?.type_formation === "classique" && derniereTranche === "1" ? champMontant.value : "";
 		if (config.formations.find((f) => String(f.id) === filiere.value)?.type_formation === "pro") {
 			montantProfessionnel.set(filiere.value, champMontant.value);
 		}
 		/* Mêmes règles que ueb_erreur_montant_classique() côté serveur. */
 		const messageMontantClassique = (n, regle) => {
-			if (!n) return regle.second ? "Saisis le montant de ton second versement." : "Saisis le montant que tu verses : 25 000 FCFA au moins.";
+			if (!n) return "Saisis le montant de ta première tranche : 25 000 FCFA au moins.";
 			if (n % regle.pas) return "Saisis un multiple de 5 000 FCFA : 25 000, 30 000, 35 000…";
-			if (n < regle.min) return `Le premier versement est de ${formater(regle.min)} FCFA au moins.`;
-			if (n > regle.max) return `Vérifie le montant : ${formater(regle.max)} FCFA au plus.`;
+			if (n < regle.min) return "La première tranche est de 25 000 FCFA au moins.";
+			if (n > regle.max) return "La première tranche va jusqu’à 45 000 FCFA. Pour payer 50 000 FCFA, choisis « Les deux tranches ».";
 			return "";
 		};
+		const somme = champMontant.closest("[data-somme]");
+		const tranchesChoix = champMontant.form.querySelector(".choix-tranche");
 		/* Erreur visible dès qu'un montant est saisi ; un champ vide n'est signalé qu'à l'envoi. */
 		const signalerMontant = (message) => {
 			champMontant.setCustomValidity(message);
@@ -508,28 +513,38 @@
 			const formation = config.formations.find((f) => String(f.id) === filiere.value);
 			const classique = formation?.type_formation === "classique";
 			const regle = config.regleDroits;
+			const tranche = trancheCochee();
+			const t = tranche?.value || "";
+			/* Formation classique : deuxième tranche = le reste, les deux = 50 000 (verrouillés) ;
+			   la première se saisit, par pas de 5 000. */
+			const fixe = classique && !medicalSeul ? (t === "2" ? regle.reste : t === "3" ? regle.total : null) : null;
 			if (derniereFormation !== filiere.value) {
-				/* Entre deux formations classiques, le montant saisi est conservé. */
-				champMontant.value = classique ? (montantClassique || (regle.second && regle.reste ? formater(regle.reste) : "")) : (montantProfessionnel.get(filiere.value) || "");
+				champMontant.value = classique ? (montantPremiere || formater(regle.min)) : (montantProfessionnel.get(filiere.value) || "");
 				derniereFormation = filiere.value;
 			}
-			champMontant.readOnly = !formation || medicalSeul;
-			$("[data-tranche-auto]", formQuitus)?.classList.toggle("est-auto", classique && !medicalSeul);
+			if (fixe !== null) {
+				champMontant.value = formater(fixe);
+			} else if (classique && derniereTranche !== t && ["2", "3"].includes(derniereTranche)) {
+				champMontant.value = montantPremiere || formater(regle.min);
+			}
+			derniereTranche = t;
+			champMontant.readOnly = !formation || medicalSeul || fixe !== null;
+			somme?.classList.toggle("est-fixe", fixe !== null);
+			somme?.classList.toggle("est-libre", Boolean(formation) && !classique);
+			tranchesChoix?.classList.toggle("est-libre", Boolean(formation) && !classique);
 			let erreurMontant = "";
-			if (classique && !medicalSeul) {
-				/* Formation classique : la tranche découle du montant saisi. */
+			if (classique && !medicalSeul && fixe === null) {
 				const n = lireMontant();
-				montantClassique = champMontant.value;
+				montantPremiere = champMontant.value;
 				erreurMontant = messageMontantClassique(n, regle);
-				const valeur = regle.second ? "2" : (n >= config.droitsClassiques ? "3" : "1");
-				$$("input[name=tranche]", formQuitus).forEach((radio) => { radio.checked = !erreurMontant && radio.value === valeur; });
-			} else if (formation) montantProfessionnel.set(filiere.value, champMontant.value);
+				$$("[data-pas]", somme).forEach((b) => { b.disabled = Number(b.dataset.pas) < 0 ? n <= regle.min : n >= regle.max; });
+			} else if (formation && !classique) montantProfessionnel.set(filiere.value, champMontant.value);
 			signalerMontant(erreurMontant);
-			const tranche = $("input[name=tranche]:checked", formQuitus);
+			const deja = regle.total - regle.reste;
 			texte("#champ-montant-aide", classique
-				? (regle.second
-					? (regle.reste ? `Montant libre. Il te reste ${formater(regle.reste)} FCFA pour compléter les 50 000 FCFA de l’année.` : "Montant libre.")
-					: "25 000 FCFA au moins, par multiples de 5 000, sans plafond. Moins de 50 000 FCFA : première tranche ; 50 000 FCFA ou plus : les deux tranches.")
+				? (t === "2" ? `Calculé pour toi : 50 000 − ${formater(deja)} FCFA de première tranche.`
+					: t === "3" ? "Les droits de l’année, en une seule fois."
+					: "25 000 FCFA au moins, par multiples de 5 000, jusqu’à 45 000. Pour 50 000 FCFA, choisis « Les deux tranches ».")
 				: formation ? "Pour une formation professionnelle, indique le montant communiqué par ton établissement." : "Choisis une filière pour connaître les modalités de paiement.");
 			const frais = situation.value === "nouveau" ? 0 : (config.medicalInclus ? (config.montantsMedicaux[situation.value] || 0) : 0);
 			const cmsRequis = medicalSeul || (config.medicalInclus && situation.value !== "nouveau");
@@ -563,24 +578,18 @@
 			texte("[data-recap-formation]", formation?.libelle || "À choisir");
 			const niveau = $("[name=parcours]", formQuitus);
 			texte("[data-recap-niveau]", niveau?.value ? niveau.options[niveau.selectedIndex].text : "À choisir");
-			texte("[data-recap-tranche]", medicalSeul ? "Paiement unique" : tranche ? tranche.closest("label").textContent.trim() : "—");
+			texte("[data-recap-tranche]", medicalSeul ? "Paiement unique" : tranche ? tranche.dataset.libelle || tranche.closest("label").textContent.trim() : "—");
 			texte("[data-recap-moyen]", $("select[name=moyen_paiement]", formQuitus)?.value || "À choisir");
-			/* Raccourcis de montant et jauge de l'année : formations classiques seulement. */
-			const rapide = $("[data-montant-rapide]", formQuitus);
-			if (rapide) {
-				rapide.hidden = !classique || medicalSeul;
-				$$("[data-valeur]", rapide).forEach((b) => b.setAttribute("aria-pressed", String(Number(b.dataset.valeur) === lireMontant())));
-			}
+			/* Jauge de l'année (formations classiques) : elle annonce la deuxième tranche à venir. */
 			const jauge = $("[data-jauge-annee]", formQuitus);
 			if (jauge) {
 				jauge.hidden = !classique || medicalSeul;
-				const deja = regle.second ? Math.max(0, config.droitsClassiques - regle.reste) : 0;
 				const total = deja + lireMontant();
-				$("[data-jauge-ce]", jauge).style.setProperty("--part", String(Math.min(1, total / config.droitsClassiques)));
+				$("[data-jauge-ce]", jauge).style.setProperty("--part", String(Math.min(1, total / regle.total)));
 				texte("[data-jauge-texte]", (deja ? `Déjà préparé : ${formater(deja)} FCFA. ` : "")
-					+ (total >= config.droitsClassiques
-						? "Avec ce versement, les 50 000 FCFA de droits de l’année sont couverts."
-						: `Avec ce versement : ${formater(total)} sur 50 000 FCFA de droits pour l’année.`));
+					+ (total >= regle.total
+						? "Avec ce versement, les 50 000 FCFA de l’année sont couverts."
+						: `Avec ce versement : ${formater(total)} sur 50 000 FCFA. Ta deuxième tranche sera de ${formater(regle.total - total)} FCFA.`));
 			}
 			/* Documents réellement produits : le quitus médical et les fiches CMS
 			   n'existent que s'il y a des frais médicaux à payer avec ce quitus. */
@@ -591,9 +600,13 @@
 		};
 		formQuitus.addEventListener("input", maj);
 		formQuitus.addEventListener("change", maj);
-		/* Un raccourci remplit le montant comme une saisie (format, lettres, tranche, jauge). */
-		$$("[data-montant-rapide] [data-valeur]", formQuitus).forEach((bouton) => bouton.addEventListener("click", () => {
-			champMontant.value = formater(Number(bouton.dataset.valeur));
+		/* Boutons − et + : la première tranche avance par pas de 5 000, entre 25 000 et 45 000. */
+		$$("[data-pas]", formQuitus).forEach((bouton) => bouton.addEventListener("click", () => {
+			const regle = config.regleDroits;
+			const n = lireMontant() || regle.min;
+			const arrondi = Math.round(n / regle.pas) * regle.pas;
+			const suivant = Math.min(regle.max, Math.max(regle.min, arrondi + Number(bouton.dataset.pas) * regle.pas));
+			champMontant.value = formater(suivant);
 			champMontant.dispatchEvent(new Event("input", { bubbles: true }));
 		}));
 		const telephoneUrgence = $("[name=numero_urgence]", formQuitus);
