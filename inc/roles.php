@@ -30,7 +30,7 @@ defined( 'ABSPATH' ) || exit;
 const UEB_CAP_GESTION   = 'ueb_gerer_quitus';
 const UEB_CAP_COMPTES   = 'ueb_gerer_comptes';
 const UEB_CAP_DIRECTION = 'ueb_diriger';
-const UEB_ROLES_VERSION = '3';
+const UEB_ROLES_VERSION = '4';
 /* Identifiants des deux rôles historiques. Ils ne servent plus qu'à la
    compatibilité : le code ne teste plus jamais un rôle par son nom. */
 const UEB_ROLE_SCOLARITE = 'ueb_scolarite';
@@ -48,6 +48,7 @@ function ueb_permissions() {
 		'ueb_gerer_quitus'    => array( 'groupe' => 'Quitus et paiements', 'libelle' => 'Consulter les quitus', 'phrase' => 'consulter les quitus, leurs reçus et leurs PDF', 'aide' => 'Tableau de bord, liste des quitus, fiche d’un dossier, reçus envoyés.', 'icone' => 'recu' ),
 		'ueb_decider_quitus'  => array( 'groupe' => 'Quitus et paiements', 'libelle' => 'Rendre les décisions', 'phrase' => 'valider un paiement ou renvoyer un reçu à l’étudiant', 'aide' => 'Boutons « Paiement vérifié », « Renvoyer à l’étudiant », « Annuler la décision ».', 'icone' => 'tampon', 'requiert' => 'ueb_gerer_quitus' ),
 		'ueb_voir_paiements'  => array( 'groupe' => 'Quitus et paiements', 'libelle' => 'Suivre les paiements', 'phrase' => 'suivre le recouvrement des droits par établissement et filière', 'aide' => 'Vue « Paiements » : montants attendus, encaissés, taux.', 'icone' => 'banque' ),
+		'ueb_voir_etudiants'  => array( 'groupe' => 'Étudiants', 'libelle' => 'Voir la liste des étudiants', 'phrase' => 'consulter la liste des étudiants inscrits de sa portée', 'aide' => 'Vue « Étudiants UEB » : les étudiants inscrits, filtrables par établissement, filière, niveau et paiement, en lecture seule. Une portée « un établissement » ne voit que les siens.', 'icone' => 'diplome' ),
 		'ueb_gerer_comptes'   => array( 'groupe' => 'Comptes étudiants', 'libelle' => 'Gérer les comptes étudiants', 'phrase' => 'créer, réinitialiser ou suspendre les comptes étudiants', 'aide' => 'Espace « Comptes étudiants » : recherche, mot de passe provisoire, suspension.', 'icone' => 'utilisateur' ),
 		'ueb_creer_agents'    => array( 'groupe' => 'Personnel', 'libelle' => 'Créer des comptes pour son établissement', 'phrase' => 'créer des comptes pour son établissement, avec un rôle aux droits inférieurs', 'aide' => 'Comme la scolarité qui crée sa cellule informatique.', 'icone' => 'plus' ),
 		'ueb_voir_ipes'       => array( 'groupe' => 'IPES sous tutelle', 'libelle' => 'Voir les IPES sous tutelle', 'phrase' => 'suivre les IPES placés sous la tutelle de son établissement : étudiants, versements, bordereaux', 'aide' => 'Vue « IPES » de l’espace scolarité, en lecture seule, pour les établissements de sa portée.', 'icone' => 'ecole' ),
@@ -145,10 +146,26 @@ add_action( 'init', function () {
 	}
 	if ( ueb_insc_option_en_base( 'ueb_insc_roles_version' ) !== UEB_ROLES_VERSION ) {
 		ueb_migrer_roles_historiques();
+		ueb_migrer_roles_etudiants();
 		update_option( 'ueb_insc_roles_version', UEB_ROLES_VERSION );
 	}
 	ueb_insc_deverrouiller( 'roles' );
 }, 4 );
+
+/**
+ * Version 4 (additive) : la liste des étudiants est donnée aux rôles qui gèrent
+ * déjà les rôles (Direction). Sans elle, ils ne pourraient ni la consulter ni
+ * l'attribuer, puisqu'on n'attribue jamais une permission qu'on n'a pas.
+ */
+function ueb_migrer_roles_etudiants() {
+	foreach ( ueb_roles() as $slug => $def ) {
+		$permissions = (array) ( $def['permissions'] ?? array() );
+		if ( in_array( UEB_CAP_DIRECTION, $permissions, true ) && ! in_array( 'ueb_voir_etudiants', $permissions, true ) ) {
+			$def['permissions'] = array_merge( $permissions, array( 'ueb_voir_etudiants' ) );
+			ueb_enregistrer_role( $slug, $def );
+		}
+	}
+}
 
 /**
  * Reprend dans le registre les rôles déjà en base qui portent une capacité du
@@ -357,10 +374,10 @@ add_action( 'init', function () {
 
 /* ---------- Alias historiques, désormais fondés sur les capacités ---------- */
 
-/** Accès à l'espace scolarité : examiner les quitus ou suivre les paiements (hors administrateur). */
+/** Accès à l'espace scolarité : quitus, paiements, IPES ou liste des étudiants (hors administrateur). */
 function ueb_est_scolarite( $user_id = 0 ) {
 	$user = get_userdata( $user_id ?: get_current_user_id() );
-	return $user && ! user_can( $user, 'manage_options' ) && ( user_can( $user, UEB_CAP_GESTION ) || user_can( $user, 'ueb_voir_paiements' ) || user_can( $user, 'ueb_voir_ipes' ) );
+	return $user && ! user_can( $user, 'manage_options' ) && ( user_can( $user, UEB_CAP_GESTION ) || user_can( $user, 'ueb_voir_paiements' ) || user_can( $user, 'ueb_voir_ipes' ) || user_can( $user, 'ueb_voir_etudiants' ) );
 }
 
 /** Accès à l'espace « comptes étudiants » (hors administrateur). */

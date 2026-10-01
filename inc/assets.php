@@ -131,6 +131,18 @@ add_action( 'wp_enqueue_scripts', function () {
 	if ( ( is_front_page() && ! $page ) || in_array( $page, array( 'connexion', 'creer-compte' ), true ) || $connexion_scolarite || $bord_scolarite || $ipes_heros ) {
 		ueb_script( 'ueb-remotion', 'assets/js/remotion-ueb.js' );
 	}
+	/* Étudiants UEB : registre de l'administration, de l'espace de gestion et de
+	   l'espace scolarité ; couche de l'administration et listes en pilule des IPES. */
+	$vue_etudiants = 'etudiants' === $vue_bo && is_user_logged_in() && (
+		$admin
+		|| is_page_template( 'page-direction.php' )
+		|| ( is_page_template( 'page-scolarite.php' ) && function_exists( 'ueb_est_scolarite' ) && ueb_est_scolarite() )
+	);
+	if ( $vue_etudiants ) {
+		ueb_style( 'ueb-administration', 'assets/css/administration.css', array( 'ueb-pages' ) );
+		ueb_style( 'ueb-ipes', 'assets/css/ipes.css', array( 'ueb-administration' ) );
+		ueb_style( 'ueb-etudiants', 'assets/css/etudiants.css', array( 'ueb-ipes' ) );
+	}
 } );
 
 /* Allègement : ni emojis ni styles de blocs sur ce site sans articles. */

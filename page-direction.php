@@ -56,7 +56,7 @@ $autorise = ueb_peut( UEB_CAP_DIRECTION );
 
 if ( $autorise ) {
 	$vue          = sanitize_key( $_GET['vue'] ?? 'roles' );
-	$vue          = in_array( $vue, array( 'roles', 'role', 'personnel', 'securite' ), true ) ? $vue : 'roles';
+	$vue          = in_array( $vue, array( 'roles', 'role', 'personnel', 'securite' ), true ) || ( 'etudiants' === $vue && ueb_peut( 'ueb_voir_etudiants' ) ) ? $vue : 'roles';
 	$ici          = static fn( array $args = array() ) => esc_url( add_query_arg( $args, ueb_url_direction() ) );
 	$catalogue    = ueb_permissions();
 	$roles        = ueb_roles();
@@ -66,7 +66,7 @@ if ( $autorise ) {
 	$totale       = ueb_portee_totale();
 	$prov         = $_SESSION['ueb_mdp_direction'] ?? null;
 	unset( $_SESSION['ueb_mdp_direction'] );
-	$titres = array( 'roles' => 'Rôles et accès', 'role' => 'Rôles et accès', 'personnel' => 'Comptes du personnel', 'securite' => 'Sécurité' );
+	$titres = array( 'roles' => 'Rôles et accès', 'role' => 'Rôles et accès', 'personnel' => 'Comptes du personnel', 'etudiants' => 'Étudiants UEB', 'securite' => 'Sécurité' );
 }
 
 /* Connecté : coque plein écran et thème clair / sombre, comme l'administration.
@@ -132,6 +132,7 @@ ueb_page_debut( array(
 					array(
 						array( 'url' => $ici(), 'libelle' => 'Rôles et accès', 'icone' => 'bouclier', 'actif' => in_array( $vue, array( 'roles', 'role' ), true ) ),
 						array( 'url' => $ici( array( 'vue' => 'personnel' ) ), 'libelle' => 'Comptes', 'icone' => 'groupe', 'actif' => 'personnel' === $vue ),
+						ueb_peut( 'ueb_voir_etudiants' ) ? array( 'url' => $ici( array( 'vue' => 'etudiants' ) ), 'libelle' => 'Étudiants UEB', 'icone' => 'diplome', 'actif' => 'etudiants' === $vue ) : null,
 						ueb_est_admin_ueb() ? null : array( 'url' => $ici( array( 'vue' => 'securite' ) ), 'libelle' => 'Sécurité', 'icone' => 'cadenas', 'actif' => 'securite' === $vue ),
 					),
 					$autres ? array_merge( array( array( 'groupe' => 'Autres espaces' ) ), $autres ) : array()
@@ -395,6 +396,10 @@ ueb_page_debut( array(
 						'modeles'     => array_map( static fn( $m ) => $m['permissions'], ueb_modeles_roles() ),
 						'etabs'       => array_keys( ueb_etablissements() ),
 					), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT ); ?></script>
+
+				<?php elseif ( 'etudiants' === $vue ) : ?>
+
+					<?php ueb_vue_etudiants( array( 'url' => ueb_url_direction(), 'params' => array( 'vue' => 'etudiants' ), 'etabs' => ueb_etabs_autorises() ) ); ?>
 
 				<?php elseif ( 'personnel' === $vue ) : ?>
 

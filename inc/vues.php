@@ -37,6 +37,7 @@ function ueb_icone( $nom, $taille = 20, $classe = '' ) {
 		'croix'       => '<path d="M18 6 6 18M6 6l12 12"/>',
 		'plus'        => '<path d="M12 5v14M5 12h14"/>',
 		'moins'       => '<path d="M5 12h14"/>',
+		'diplome'     => '<path d="M22 10 12 5 2 10l10 5 10-5Z"/><path d="M6 12v5c3 2.5 9 2.5 12 0v-5M22 10v6"/>',
 		'loupe'       => '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
 		'horloge'     => '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
 		'chevron'     => '<path d="m6 9 6 6 6-6"/>',
@@ -564,7 +565,6 @@ function ueb_entete_site( $variante ) {
 					<a href="<?php echo esc_url( home_url( '/#parcours' ) ); ?>">Comment ça marche</a>
 					<a href="<?php echo esc_url( home_url( '/#etablissements' ) ); ?>">Établissements</a>
 					<a href="<?php echo esc_url( home_url( '/#questions' ) ); ?>">Questions</a>
-					<a href="<?php echo esc_url( ueb_url( 'support' ) ); ?>" <?php echo 'support' === $page ? 'aria-current="page"' : ''; ?>>Support</a>
 					<a class="seul-mobile" href="<?php echo esc_url( ueb_url( 'connexion' ) ); ?>">Se connecter</a>
 					<a class="seul-mobile" href="<?php echo esc_url( ueb_url( 'creer-mon-compte' ) ); ?>">Créer mon compte</a>
 				</nav>

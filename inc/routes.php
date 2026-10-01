@@ -10,6 +10,7 @@
  *   /mon-espace/recus/{numero}        reçus bancaires d'un quitus
  *   /mon-espace/compte                informations de l'étudiant, identifiants et mot de passe
  *   /mon-espace/securite              ancienne adresse, renvoie vers /mon-espace/compte
+ *   /support                          support WhatsApp, réservé aux étudiants connectés
  *   /recu/{id}                        affichage protégé d'un reçu
  *   /verifier/{code}                  vérification publique (QR code)
  *
@@ -76,7 +77,7 @@ function ueb_url( $chemin = '' ) {
 }
 
 /* Pages réservées aux étudiants connectés / aux visiteurs non connectés. */
-const UEB_PAGES_ETUDIANT = array( 'espace', 'quitus', 'quitus-pdf', 'recus', 'compte', 'securite' );
+const UEB_PAGES_ETUDIANT = array( 'espace', 'quitus', 'quitus-pdf', 'recus', 'compte', 'securite', 'support' );
 const UEB_PAGES_INVITE   = array( 'connexion', 'creer-compte' );
 /* Les deux espaces du back-office sont des Pages WordPress (gabarits
    page-scolarite.php et page-administration.php) : elles vérifient
@@ -104,7 +105,7 @@ add_action( 'template_redirect', function () {
 	if ( in_array( $page, UEB_PAGES_ETUDIANT, true ) ) {
 		nocache_headers();
 		if ( ! $compte ) {
-			ueb_flash( 'info', 'Connecte-toi pour accéder à ton espace.' );
+			ueb_flash( 'info', 'support' === $page ? 'Connecte-toi pour contacter le support.' : 'Connecte-toi pour accéder à ton espace.' );
 			ueb_rediriger( ueb_url( 'connexion' ) );
 		}
 		if ( $compte->doit_changer_mdp && 'compte' !== $page ) {

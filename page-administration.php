@@ -55,7 +55,7 @@ $annee    = ueb_annee_academique();
 
 if ( $autorise ) {
 	$vue   = sanitize_key( $_GET['vue'] ?? 'bord' );
-	$vue   = in_array( $vue, array( 'bord', 'paiements', 'scolarites', 'ipes', 'filieres' ), true ) ? $vue : 'bord';
+	$vue   = in_array( $vue, array( 'bord', 'paiements', 'etudiants', 'scolarites', 'ipes', 'filieres' ), true ) ? $vue : 'bord';
 	$focus = strtoupper( sanitize_text_field( wp_unslash( $_GET['etab'] ?? '' ) ) );
 	$focus = ueb_etablissement( $focus ) ? $focus : '';
 	$ici   = static fn( array $args = array() ) => esc_url( add_query_arg( $args, ueb_url_administration() ) );
@@ -135,6 +135,7 @@ ueb_page_debut( array(
 				array(
 					array( 'url' => $ici(), 'libelle' => 'Tableau de bord', 'icone' => 'tableau', 'actif' => 'bord' === $vue ),
 					array( 'url' => $ici( array( 'vue' => 'paiements' ) ), 'libelle' => 'Paiements', 'icone' => 'banque', 'actif' => 'paiements' === $vue ),
+					array( 'url' => $ici( array( 'vue' => 'etudiants' ) ), 'libelle' => 'Étudiants UEB', 'icone' => 'diplome', 'actif' => 'etudiants' === $vue ),
 					array( 'url' => $ici( array( 'vue' => 'scolarites' ) ), 'libelle' => 'Personnel', 'icone' => 'groupe', 'actif' => 'scolarites' === $vue ),
 					array( 'url' => $ici( array( 'vue' => 'filieres' ) ), 'libelle' => 'Filières', 'icone' => 'fichier', 'actif' => 'filieres' === $vue ),
 					array( 'url' => $ici( array( 'vue' => 'ipes' ) ), 'libelle' => 'IPES', 'icone' => 'ecole', 'actif' => 'ipes' === $vue ),
@@ -277,6 +278,17 @@ ueb_page_debut( array(
 							</form>
 						</section>
 					</div>
+
+				<?php elseif ( 'etudiants' === $vue ) : ?>
+
+					<?php
+					ueb_adm_tete( array(
+						'titre'      => 'Étudiants UEB',
+						'sous_titre' => 'Les étudiants inscrits dans les neuf établissements et l’état de leurs droits de l’année.',
+					) );
+					ueb_afficher_flash();
+					ueb_vue_etudiants( array( 'url' => ueb_url_administration(), 'params' => array( 'vue' => 'etudiants' ), 'etabs' => array_keys( ueb_etablissements() ) ) );
+					?>
 
 				<?php elseif ( 'ipes' === $vue ) : ?>
 

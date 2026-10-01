@@ -65,9 +65,10 @@ if ( isset( $_POST['ueb_connexion_gestion'] ) ) {
 $peut_quitus    = ueb_peut( UEB_CAP_GESTION );
 $peut_paiements = ueb_peut( 'ueb_voir_paiements' );
 $peut_ipes      = ueb_peut( 'ueb_voir_ipes' );
-$autorise       = ueb_est_scolarite() && ( $peut_quitus || $peut_paiements || $peut_ipes );
-/* Première vue permise : tableau de bord, sinon paiements, sinon IPES. */
-$vue_defaut     = $peut_quitus ? 'bord' : ( $peut_paiements ? 'paiements' : 'ipes' );
+$peut_etudiants = ueb_peut( 'ueb_voir_etudiants' );
+$autorise       = ueb_est_scolarite() && ( $peut_quitus || $peut_paiements || $peut_ipes || $peut_etudiants );
+/* Première vue permise : tableau de bord, sinon paiements, sinon IPES, sinon étudiants. */
+$vue_defaut     = $peut_quitus ? 'bord' : ( $peut_paiements ? 'paiements' : ( $peut_ipes ? 'ipes' : 'etudiants' ) );
 $annee    = ueb_annee_academique();
 
 if ( $autorise ) {
@@ -79,6 +80,7 @@ if ( $autorise ) {
 		'bord'      => $peut_quitus,
 		'quitus'    => $peut_quitus,
 		'paiements' => $peut_paiements,
+		'etudiants' => $peut_etudiants,
 		'ipes'      => $peut_ipes,
 		'cellule'   => ueb_peut( 'ueb_creer_agents' ),
 		'securite'  => true,
@@ -165,6 +167,7 @@ ueb_page_debut( array( 'titre' => 'Espace scolarité', 'variante' => $autorise ?
 					$peut_quitus ? array( 'url' => $ici(), 'libelle' => 'Tableau de bord', 'icone' => 'tampon', 'actif' => 'bord' === $vue ) : null,
 					$peut_quitus ? array( 'url' => $ici( array( 'vue' => 'quitus' ) ), 'libelle' => 'Quitus', 'icone' => 'recu', 'actif' => 'quitus' === $vue ) : null,
 					$peut_paiements ? array( 'url' => $ici( array( 'vue' => 'paiements' ) ), 'libelle' => 'Paiements', 'icone' => 'banque', 'actif' => 'paiements' === $vue ) : null,
+					$peut_etudiants ? array( 'url' => $ici( array( 'vue' => 'etudiants' ) ), 'libelle' => 'Étudiants UEB', 'icone' => 'diplome', 'actif' => 'etudiants' === $vue ) : null,
 					$peut_ipes ? array( 'url' => $ici( array( 'vue' => 'ipes' ) ), 'libelle' => 'IPES', 'icone' => 'ecole', 'actif' => 'ipes' === $vue ) : null,
 					$roles_creables ? array( 'url' => $ici( array( 'vue' => 'cellule' ) ), 'libelle' => 'Comptes du personnel', 'icone' => 'cle', 'actif' => 'cellule' === $vue ) : null,
 					ueb_peut( UEB_CAP_COMPTES ) ? array( 'url' => ueb_url_cellule(), 'libelle' => 'Comptes étudiants', 'icone' => 'utilisateur', 'actif' => false ) : null,
@@ -183,6 +186,7 @@ ueb_page_debut( array( 'titre' => 'Espace scolarité', 'variante' => $autorise ?
 				$titres = array(
 					'bord'     => array( 'Tableau de bord', sprintf( 'Bonjour %s. Voici où en sont les inscriptions %s.', wp_get_current_user()->display_name ?: wp_get_current_user()->user_login, $etab ? 'de ' . $etab['fr'] : 'de tous les établissements' ) ),
 					'quitus'   => array( 'Quitus', 'Retrouve un dossier, examine ses reçus et rends ta décision après la vérification des originaux.' ),
+					'etudiants' => array( 'Étudiants UEB', 'Les étudiants inscrits de ta portée et l’état de leurs droits de l’année, en lecture seule.' ),
 					'paiements' => array( 'Suivi des paiements', 'Droits universitaires attendus et encaissés, filière par filière. Seuls les reçus vérifiés comptent comme encaissés.' ),
 					'cellule'  => array( 'Comptes du personnel', 'Les comptes que tu crées pour ton établissement, avec un rôle aux droits inférieurs aux tiens.' ),
 					'ipes'     => array( 'IPES sous tutelle', 'Les établissements privés placés sous la tutelle de ton établissement : leurs étudiants et leurs reversements.' ),
@@ -723,6 +727,10 @@ ueb_page_debut( array( 'titre' => 'Espace scolarité', 'variante' => $autorise ?
 							</section>
 						</div>
 					</div>
+
+				<?php elseif ( 'etudiants' === $vue ) : ?>
+
+					<?php ueb_vue_etudiants( array( 'url' => ueb_url_scolarite(), 'params' => array( 'vue' => 'etudiants' ), 'etabs' => ueb_etabs_autorises() ) ); ?>
 
 				<?php elseif ( 'ipes' === $vue ) : ?>
 

@@ -1,0 +1,109 @@
+/*
+ * Étudiants UEB (templates/composants/etudiants.php) : registre filtrable des
+ * étudiants inscrits, dans l'administration, l'espace de gestion et l'espace
+ * scolarité. S'appuie sur administration.css (panneaux, boutons) et ipes.css
+ * (recherche et listes en pilule) ; les jetons de base suivent le thème sombre.
+ * Signature : une barre de paiement par étudiant, vert pour le vérifié, or pour
+ * ce qui attend la scolarité, comme la jauge du formulaire de l'étudiant.
+ */
+
+.etu { display: grid; gap: 1.1rem; padding: clamp(1.1rem, 2vw, 1.5rem); }
+.etu-tete h2 { margin: 0 0 .25rem; font-size: 1.3rem; }
+.etu-tete p { max-width: 70ch; margin: 0; color: var(--gris); font-size: .93rem; }
+
+/* Filtres : une ligne qui passe à la ligne, recherche en tête. */
+.etu-filtres { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin: 0; }
+.etu-recherche { flex: 1 1 15rem; }
+.etu-recherche input { width: 100%; }
+.etu-selecteur--large select { max-width: 20rem; }
+.etu-filtres [data-filtres-bouton][hidden] { display: none; }
+
+.etu-resultats { display: grid; gap: .9rem; min-width: 0; transition: opacity .15s; }
+.etu-resultats[aria-busy="true"] { opacity: .55; }
+
+/* Onglets d'état : le libellé et l'effectif, l'onglet courant souligné. */
+.etu-onglets { display: flex; flex-wrap: wrap; gap: .25rem 1.4rem; border-bottom: 1px solid var(--filet); }
+.etu-onglet { display: inline-flex; align-items: center; gap: .45rem; min-height: 44px; padding: .2rem 0; border-bottom: 2px solid transparent; margin-bottom: -1px; color: var(--gris); font-weight: 600; text-decoration: none; }
+.etu-onglet span { min-width: 1.6rem; padding: .05rem .45rem; border-radius: 999px; background: var(--papier); color: var(--encre); font-size: .82rem; text-align: center; font-variant-numeric: tabular-nums; }
+.etu-onglet:hover { color: var(--encre); }
+.etu-onglet[aria-current="true"] { border-bottom-color: var(--vert-bandeau); color: var(--encre); }
+.etu-onglet[aria-current="true"] span { background: var(--vert-bandeau); color: #fff; }
+.etu-onglet:focus-visible { outline: 3px solid var(--or); outline-offset: 2px; border-radius: 6px; }
+
+/* Filtres actifs : retirables un par un. */
+.etu-actifs { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; }
+.etu-actif { display: inline-flex; align-items: center; gap: .35rem; min-height: 34px; padding: .25rem .6rem .25rem .8rem; border: 1px solid var(--filet-fort); border-radius: 999px; background: var(--blanc); color: var(--encre); font-size: .88rem; font-weight: 600; text-decoration: none; }
+.etu-actif .icone { color: var(--gris); }
+.etu-actif:hover { border-color: var(--danger); }
+.etu-actif:hover .icone { color: var(--danger); }
+.etu-effacer { margin-left: .3rem; color: var(--foret-700); font-size: .88rem; font-weight: 700; }
+.etu-actif:focus-visible, .etu-effacer:focus-visible { outline: 3px solid var(--or); outline-offset: 2px; }
+
+.etu-outils { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .6rem 1rem; }
+.etu-compte { margin: 0; color: var(--gris); font-size: .92rem; }
+/* Exports : trois formats côte à côte, chacun marqué de sa couleur d'usage. */
+.etu-exports { display: inline-flex; flex-wrap: wrap; align-items: center; gap: .4rem; }
+.etu-exports__libelle { display: inline-flex; align-items: center; gap: .35rem; margin-right: .15rem; color: var(--gris); font-size: .88rem; font-weight: 600; }
+.etu-export { display: inline-flex; align-items: center; min-height: 36px; padding: .3rem .85rem; border: 1px solid var(--filet-fort); border-radius: 999px; background: var(--blanc); color: var(--encre); font-size: .88rem; font-weight: 700; text-decoration: none; transition: border-color .15s, background-color .15s; }
+.etu-export::before { content: ""; width: 8px; height: 8px; margin-right: .45rem; border-radius: 2px; background: var(--export, var(--gris)); }
+.etu-export--pdf { --export: #c0392b; }
+.etu-export--docx { --export: #2b579a; }
+.etu-export--xlsx { --export: #1e7145; }
+.etu-export:hover { border-color: var(--export); }
+.etu-export:focus-visible { outline: 3px solid var(--or); outline-offset: 2px; }
+.etu-compte b { color: var(--encre); }
+
+/* Registre */
+.etu-table { width: 100%; border-collapse: collapse; font-size: .94rem; }
+.etu-table th, .etu-table td { padding: .75rem .6rem; border-bottom: 1px solid var(--filet); text-align: left; vertical-align: middle; }
+.etu-table thead th { padding-top: .2rem; color: var(--gris); font-size: .82rem; font-weight: 600; white-space: nowrap; }
+.etu-table tbody tr:hover { background: var(--adm-survol, rgba(19, 53, 26, .03)); }
+.etu-nom { font-weight: 400; }
+.etu-nom b { display: block; font-weight: 700; }
+.etu-nom small { color: var(--gris); font-size: .82rem; font-variant-numeric: tabular-nums; }
+.etu-etab { white-space: nowrap; font-weight: 600; }
+.etu-etab img { display: inline-block; width: 22px; height: 22px; margin-right: .45rem; vertical-align: -6px; object-fit: contain; }
+.etu-niveau { font-weight: 700; font-variant-numeric: tabular-nums; }
+
+/* Barre de paiement : 50 000 FCFA ; vérifié en vert, en vérification en or. */
+.etu-droits { min-width: 12.5rem; }
+.etu-barre { position: relative; display: block; height: 6px; margin-bottom: .4rem; border-radius: 999px; background: var(--papier); box-shadow: inset 0 0 0 1px var(--filet); }
+.etu-barre i { position: absolute; inset: 0; border-radius: inherit; clip-path: inset(0 calc(100% - var(--part, 0) * 100%) 0 0 round 999px); }
+.etu-barre__attente { background: var(--or); }
+.etu-barre__verifie { background: var(--vert-bandeau); }
+.etu-droits__texte { display: grid; gap: .1rem; color: var(--gris); font-size: .84rem; font-variant-numeric: tabular-nums; }
+.etu-droits__texte b { color: var(--encre); }
+.etu-droits__texte small { color: var(--adm-st-genere, #8a6100); font-size: .8rem; }
+
+/* État : badge, plus les reçus qui attendent. */
+.etu-etat { white-space: nowrap; }
+.etu-badge { display: inline-block; padding: .2rem .6rem; border-radius: 999px; font-size: .82rem; font-weight: 700; }
+.etu-badge--solde { background: var(--adm-st-verifie-fond, var(--succes-fond)); color: var(--adm-st-verifie, #0f7a2c); }
+.etu-badge--partiel { background: var(--adm-st-genere-fond, var(--alerte-fond)); color: var(--adm-st-genere, #8a6100); }
+.etu-badge--aucun { background: var(--papier); color: var(--gris); }
+.etu-note { display: flex; align-items: center; gap: .3rem; margin-top: .3rem; color: var(--adm-st-recu, #1f6f94); font-size: .8rem; font-weight: 600; }
+.etu-note--corriger { color: var(--adm-st-rejete, var(--danger)); }
+
+.etu-pages { display: flex; align-items: center; justify-content: center; gap: .8rem; color: var(--gris); font-size: .9rem; }
+.etu-vide { margin: 0; }
+
+/* Thème sombre (administration, espace de gestion) : le vert foncé disparaîtrait sur la surface sombre. */
+:root[data-theme="sombre"] .espace-admin .etu-onglet[aria-current="true"] { border-bottom-color: var(--adm-st-verifie); }
+:root[data-theme="sombre"] .espace-admin .etu-onglet[aria-current="true"] span { background: var(--adm-st-verifie); color: #0b1a10; }
+:root[data-theme="sombre"] .espace-admin .etu-barre__verifie { background: var(--adm-st-verifie); }
+
+/* Téléphone et tablette étroite : chaque étudiant devient une fiche. */
+@media (max-width: 860px) {
+	.etu-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+	.etu-table, .etu-table tbody, .etu-table tr, .etu-table th, .etu-table td { display: block; }
+	.etu-table tr { display: grid; grid-template-columns: 1fr 1fr; gap: .55rem 1rem; padding: .9rem 0; border-bottom: 1px solid var(--filet); }
+	.etu-table th, .etu-table td { padding: 0; border: 0; }
+	.etu-table .etu-nom, .etu-table .etu-droits { grid-column: 1 / -1; }
+	.etu-table .etu-droits { order: 1; } /* niveau et état côte à côte, la barre en dernier */
+	.etu-table td[data-libelle]::before { content: attr(data-libelle); display: block; margin-bottom: .1rem; color: var(--gris); font-size: .76rem; font-weight: 600; }
+	.etu-onglets { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+	.etu-onglet { flex: none; }
+	.etu-selecteur--large select, .ipes-selecteur select { max-width: none; }
+	.etu-filtres .ipes-selecteur { flex: 1 1 9rem; }
+	.etu-filtres .ipes-selecteur select { width: 100%; }
+}

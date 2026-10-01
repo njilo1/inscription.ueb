@@ -51,6 +51,7 @@ function ueb_modeles_roles() {
 	return array(
 		'verification' => array( 'titre' => 'Vérification des paiements', 'texte' => 'Examine les quitus, rend les décisions, suit les paiements et délègue les comptes étudiants.', 'nom' => 'Scolarité', 'portee' => 'un', 'permissions' => array( 'ueb_gerer_quitus', 'ueb_decider_quitus', 'ueb_voir_paiements', 'ueb_gerer_comptes', 'ueb_creer_agents' ), 'icone' => 'tampon' ),
 		'comptes'      => array( 'titre' => 'Comptes étudiants', 'texte' => 'Crée, réinitialise et suspend les comptes étudiants de son établissement.', 'nom' => 'Cellule informatique', 'portee' => 'un', 'permissions' => array( 'ueb_gerer_comptes' ), 'icone' => 'utilisateur' ),
+		'etudiants'    => array( 'titre' => 'Liste des étudiants', 'texte' => 'Consulte les étudiants inscrits de toute l’université, sans rien modifier.', 'nom' => 'Rectorat', 'portee' => 'tous', 'permissions' => array( 'ueb_voir_etudiants' ), 'icone' => 'diplome' ),
 		'finances'     => array( 'titre' => 'Suivi financier', 'texte' => 'Consulte le recouvrement des droits, sans rien modifier.', 'nom' => 'Suivi financier', 'portee' => 'tous', 'permissions' => array( 'ueb_voir_paiements' ), 'icone' => 'banque' ),
 		'direction'    => array( 'titre' => 'Direction', 'texte' => 'Gère les rôles et le personnel, avec une vue sur tout.', 'nom' => 'Direction', 'portee' => 'tous', 'permissions' => array_keys( ueb_permissions() ), 'icone' => 'bouclier' ),
 	);
@@ -379,6 +380,7 @@ function ueb_gestion_ecrans() {
 		array( UEB_CAP_GESTION, 'Tableau de bord', 'tableau' ),
 		array( UEB_CAP_GESTION, 'Quitus', 'recu' ),
 		array( 'ueb_voir_paiements', 'Paiements', 'banque' ),
+		array( 'ueb_voir_etudiants', 'Étudiants UEB', 'diplome' ),
 		array( UEB_CAP_COMPTES, 'Comptes étudiants', 'utilisateur' ),
 		array( 'ueb_creer_agents', 'Comptes du personnel', 'cle' ),
 		array( UEB_CAP_DIRECTION, 'Rôles et accès', 'bouclier' ),

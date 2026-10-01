@@ -14,7 +14,7 @@ require_once ABSPATH . WPINC . '/general-template.php';
 add_filter( 'kses_allowed_protocols', static fn( $protocoles ) => array_merge( $protocoles, array( 'file' ) ) );
 define( 'UEB_INSC_DIR', dirname( __DIR__ ) );
 define( 'UEB_INSC_URI', 'file://' . UEB_INSC_DIR );
-foreach ( array( 'config', 'db-schema', 'comptes', 'nombres', 'inscription', 'quitus', 'profil', 'quitus-pdf', 'recus', 'vues' ) as $module ) {
+foreach ( array( 'config', 'db-schema', 'comptes', 'nombres', 'inscription', 'quitus', 'profil', 'etudiants', 'quitus-pdf', 'recus', 'vues' ) as $module ) {
 	require UEB_INSC_DIR . '/inc/' . $module . '.php';
 }
 class TestRedirect extends RuntimeException {}
@@ -497,5 +497,46 @@ $fenetre = ueb_gestion_activite( $annee['code'], '', 2 );
 verifier( 2 === count( $fenetre['jours'] ) && 4 === end( $fenetre['generes'] ) && $fenetre['generes'][0] >= 3, 'activité : fenêtre de 2 jours, antérieur reporté au départ' );
 verifier( array( 0 ) === ueb_gestion_activite( $annee['code'], 'ETAB-INCONNU' )['generes'], 'activité : établissement sans quitus = un jour à zéro' );
 vider_quitus();
+
+// Étudiants UEB : dernier quitus de droits de l'année par compte, portée imposée, états du paiement.
+$ins = static function ( $compte_id, $etab, $nom, $prenom, $tranche, $montant, $statut, $extra = array() ) use ( $wpdb, $annee, $fs ) {
+	static $n = 0;
+	$n++;
+	$wpdb->insert( 'ueb_insc_quitus', $extra + array(
+		'numero' => 'ETU-' . $n, 'code_verif' => substr( md5( 'etu' . $n ), 0, 20 ), 'compte_id' => $compte_id, 'etablissement' => $etab,
+		'annee_academique' => $annee['code'], 'type' => 'droits', 'situation' => 'ancien', 'filiere_id' => $fs[0]->id,
+		'identifiant' => '24ETU' . $compte_id, 'type_identifiant' => 'matricule', 'nom' => $nom, 'prenom' => $prenom,
+		'date_naissance' => '2003-01-01', 'lieu_naissance' => 'Ebolowa', 'sexe' => 'F', 'nationalite' => 'Camerounaise',
+		'departement' => $fs[0]->libelle, 'parcours' => 'L2', 'montant' => $montant, 'tranche' => $tranche, 'statut' => $statut,
+	) );
+};
+$ins( 201, 'FS', 'ABENA', 'Claire', 1, 25000, 'verifie' );
+$ins( 201, 'FS', 'ABENA', 'Claire', 2, 25000, 'verifie' );                 // soldé
+$ins( 202, 'FS', 'BELINGA', 'Paul', 1, 30000, 'verifie', array( 'sexe' => 'M', 'parcours' => 'L1' ) ); // partiel
+$ins( 203, 'FS', 'ETOA', 'Marie', 1, 25000, 'recu_envoye' );               // aucun, reçu à vérifier
+$ins( 204, 'FSEG', 'MVONDO', 'Jean', 3, 50000, 'verifie', array( 'sexe' => 'M' ) ); // autre établissement
+$ins( 205, 'FS', 'NDZANA', 'Ange', 1, 25000, 'genere', array( 'annee_academique' => '2020-2021' ) ); // autre année
+$wpdb->insert( 'ueb_insc_quitus', array( 'numero' => 'ETU-MED', 'code_verif' => 'etu-medical-00000000', 'compte_id' => 206, 'etablissement' => 'FS', 'annee_academique' => $annee['code'], 'type' => 'medicaux', 'situation' => 'ancien', 'identifiant' => '24ETU206', 'type_identifiant' => 'matricule', 'nom' => 'MEDICAL', 'prenom' => 'Seul', 'date_naissance' => '2003-01-01', 'lieu_naissance' => 'Ebolowa', 'sexe' => 'F', 'nationalite' => 'Camerounaise', 'departement' => 'x', 'parcours' => 'L1', 'montant' => 3000, 'tranche' => 0, 'statut' => 'verifie' ) );
+$f = static fn( $extra = array() ) => array_merge( array( 'annee' => $annee['code'], 'etab' => '', 'filiere' => 0, 'niveau' => '', 'sexe' => '', 'situation' => '', 'statut' => '', 'q' => '', 'p' => 1 ), $extra );
+$tout = ueb_etudiants( $f(), array( 'FS', 'FSEG' ) );
+verifier( 4 === $tout['total'] && array( 'ABENA', 'BELINGA', 'ETOA', 'MVONDO' ) === array_map( static fn( $l ) => $l->nom, $tout['lignes'] ), 'étudiants : un par compte, droits de l’année seulement, triés par nom' );
+verifier( 50000 === (int) $tout['lignes'][0]->verifie && 'solde' === $tout['lignes'][0]->etat && 'partiel' === $tout['lignes'][1]->etat && 'aucun' === $tout['lignes'][2]->etat, 'étudiants : soldé, partiel, aucun paiement vérifié' );
+verifier( array( 'tous' => 4, 'solde' => 2, 'partiel' => 1, 'aucun' => 1, 'a_verifier' => 1 ) === $tout['compteurs'], 'étudiants : compteurs des onglets ' . json_encode( $tout['compteurs'] ) );
+$fs_seul = ueb_etudiants( $f(), array( 'FS' ) );
+verifier( 3 === $fs_seul['total'] && ! array_filter( $fs_seul['lignes'], static fn( $l ) => 'FS' !== $l->etablissement ), 'étudiants : portée « un établissement », jamais les autres' );
+verifier( 0 === ueb_etudiants( $f( array( 'etab' => 'FSEG' ) ), array( 'FS' ) )['total'], 'étudiants : établissement hors portée, aucun résultat' );
+verifier( 0 === ueb_etudiants( $f(), array() )['total'], 'étudiants : portée vide, liste vide' );
+verifier( 1 === ueb_etudiants( $f( array( 'statut' => 'partiel' ) ), array( 'FS', 'FSEG' ) )['total'], 'étudiants : filtre « paiement partiel »' );
+verifier( 'ETOA' === ueb_etudiants( $f( array( 'statut' => 'a_verifier' ) ), array( 'FS', 'FSEG' ) )['lignes'][0]->nom, 'étudiants : filtre « reçu à vérifier »' );
+verifier( 2 === ueb_etudiants( $f( array( 'sexe' => 'M' ) ), array( 'FS', 'FSEG' ) )['total'] && 1 === ueb_etudiants( $f( array( 'niveau' => 'L1' ) ), array( 'FS', 'FSEG' ) )['total'], 'étudiants : filtres sexe et niveau' );
+foreach ( array( 'belin', 'Paul BELINGA', '24ETU202', '%' ) as $recherche ) {
+	$trouve = ueb_etudiants( $f( array( 'q' => $recherche ) ), array( 'FS', 'FSEG' ) );
+	verifier( '%' === $recherche ? 0 === $trouve['total'] : ( 1 === $trouve['total'] && 'BELINGA' === $trouve['lignes'][0]->nom ), 'étudiants : recherche « ' . $recherche . ' »' );
+}
+verifier( 1 === ueb_etudiants( $f( array( 'annee' => '2020-2021' ) ), array( 'FS', 'FSEG' ) )['total'], 'étudiants : autre année' );
+verifier( isset( $tout['filieres']['FS'][ $fs[0]->id ], $tout['filieres']['FSEG'] ) && 3 === $tout['filieres']['FS'][ $fs[0]->id ][1], 'étudiants : filières proposées par établissement, avec leur effectif' );
+verifier( 1 === $tout['pages'] && 1 === ueb_etudiants( $f( array( 'p' => 9 ) ), array( 'FS', 'FSEG' ) )['page'], 'étudiants : page hors limite ramenée à la dernière' );
+verifier( 'http://x/?vue=etudiants&etab=FS' === ueb_etudiants_url( 'http://x/', array( 'vue' => 'etudiants', 'etab' => 'FS', 'q' => '', 'p' => 1 ) ), 'étudiants : adresse sans filtres vides ni page 1' );
+$wpdb->query( "DELETE FROM ueb_insc_quitus WHERE numero LIKE 'ETU-%'" );
 
 echo $GLOBALS['assertions'] . " vérifications réussies. Aperçus : $sortie\n";

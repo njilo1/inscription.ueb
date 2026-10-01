@@ -124,7 +124,10 @@
 	/* ---------- Filtres en direct ----------
 	   <form data-filtres-direct="id-du-bloc"> : chaque saisie ou choix recharge la
 	   même page en arrière-plan et n'en remplace que le bloc des résultats ;
-	   l'adresse suit les filtres. Sans JavaScript, le bouton Rechercher reste. */
+	   l'adresse suit les filtres. Sans JavaScript, le bouton Rechercher reste.
+	   Dans le bloc, un lien a[data-filtre="nom"][data-valeur] change ce champ du
+	   formulaire (onglet, filtre actif retiré, page) et a[data-filtre-effacer="a b"]
+	   vide ces champs ; un champ caché « p » (page) revient à 1 à chaque filtre. */
 	$$("[data-filtres-direct]").forEach((form) => {
 		const bloc = document.getElementById(form.dataset.filtresDirect);
 		if (!bloc || !window.fetch || !window.DOMParser) return;
@@ -154,14 +157,46 @@
 			}
 		};
 		form.addEventListener("input", (e) => {
+			if (form.elements.p && e.target.name !== "p") form.elements.p.value = "";
 			clearTimeout(attente);
 			attente = setTimeout(actualiser, e.target.type === "search" ? 300 : 0);
+		});
+		bloc.addEventListener("click", (e) => {
+			const lien = e.target.closest("a[data-filtre], a[data-filtre-effacer]");
+			if (!lien) return;
+			const noms = lien.dataset.filtreEffacer ? lien.dataset.filtreEffacer.split(" ") : [lien.dataset.filtre];
+			const champs = noms.map((nom) => form.elements[nom]).filter(Boolean);
+			if (!champs.length) return; // lien ordinaire : navigation classique
+			e.preventDefault();
+			champs.forEach((champ) => { champ.value = lien.dataset.filtreEffacer ? "" : (lien.dataset.valeur ?? ""); });
+			if (form.elements.p && lien.dataset.filtre !== "p") form.elements.p.value = "";
+			form.dispatchEvent(new Event("change"));
+			clearTimeout(attente);
+			actualiser().then(() => { if (lien.dataset.filtre === "p") bloc.scrollIntoView({ block: "start", behavior: "smooth" }); });
 		});
 		form.addEventListener("submit", (e) => {
 			e.preventDefault();
 			clearTimeout(attente);
 			actualiser();
 		});
+	});
+
+	/* ---------- Étudiants UEB : la liste des filières suit l'établissement choisi ---------- */
+	$$("form[data-etudiants-filtres]").forEach((form) => {
+		const etab = $("[data-etu-etab]", form);
+		const filiere = $("[data-etu-filiere]", form);
+		if (!etab || !filiere) return;
+		const accorder = () => {
+			$$("optgroup", filiere).forEach((groupe) => {
+				const garde = !etab.value || groupe.dataset.etab === etab.value;
+				groupe.hidden = !garde;
+				groupe.disabled = !garde;
+			});
+			if (filiere.selectedOptions[0]?.parentElement.disabled) filiere.value = "";
+		};
+		form.addEventListener("input", (e) => { if (e.target === etab) accorder(); }, true);
+		form.addEventListener("change", accorder);
+		accorder();
 	});
 
 	/* ---------- Total des cases cochées (bordereau d'un IPES) ----------
