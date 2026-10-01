@@ -135,7 +135,7 @@ a:hover { color: var(--foret-700); }
 .site-nav { display: flex; gap: .25rem; }
 .site-nav a { padding: .55rem .9rem; border-radius: 999px; color: #fff; font-weight: 600; text-decoration: none; font-size: .98rem; transition: background-color .2s, color .2s; }
 .site-nav a:hover { background: rgba(255, 255, 255, .14); color: #fff; }
-.site-nav a[aria-current="page"] { background: #fff; color: var(--foret-900); }
+.site-nav a[aria-current="page"], .site-nav a[aria-current="location"] { background: #fff; color: var(--foret-900); }
 .site-actions { display: flex; align-items: center; gap: .6rem; }
 .site-entete .btn--fantome { --btn-texte: #fff; border-color: rgba(255, 255, 255, .6); }
 .site-entete .btn--fantome:hover { --btn-fond: rgba(255, 255, 255, .14); border-color: #fff; }
@@ -180,7 +180,7 @@ html:has(.bienvenue:modal) { overflow: hidden; }
 	.site-nav.est-ouvert { display: flex; }
 	.site-nav a { color: var(--encre); padding: .85rem 1rem; }
 	.site-nav a:hover { background: var(--papier); color: var(--foret-800); }
-	.site-nav a[aria-current="page"] { background: var(--vert-bandeau); color: #fff; }
+	.site-nav a[aria-current="page"], .site-nav a[aria-current="location"] { background: var(--vert-bandeau); color: #fff; }
 	.site-actions .btn--fantome span, .site-actions .puce-compte { display: none; }
 }
 .seul-mobile { display: none; }

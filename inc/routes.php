@@ -24,7 +24,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-const UEB_INSC_ROUTES_VERSION = '9';
+const UEB_INSC_ROUTES_VERSION = '10';
 
 function ueb_regles_reecriture() {
 	return array(
@@ -38,6 +38,7 @@ function ueb_regles_reecriture() {
 		'^mon-espace/compte/?$'                          => 'index.php?ueb_page=compte',
 		'^mon-espace/securite/?$'                        => 'index.php?ueb_page=securite',
 		'^cellule-informatique/?$'                       => 'index.php?ueb_page=cellule',
+		'^support/?$'                                    => 'index.php?ueb_page=support',
 		'^recu/([0-9]+)/?$'                              => 'index.php?ueb_page=recu&ueb_arg=$matches[1]',
 		'^recu-ipes/([0-9]+)/?$'                         => 'index.php?ueb_page=recu-ipes&ueb_arg=$matches[1]',
 		'^verifier/([A-Za-z0-9]+)/?$'                    => 'index.php?ueb_page=verifier&ueb_arg=$matches[1]',

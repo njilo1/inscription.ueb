@@ -1,0 +1,81 @@
+/* Page support : s'appuie sur les variables et composants de app.css */
+.support {
+	padding-block: clamp(2rem, 1.5rem + 2vw, 3.5rem) clamp(3rem, 2rem + 4vw, 5rem);
+	background: linear-gradient(180deg, var(--papier) 0, var(--blanc) 520px);
+}
+.support__entete { max-width: 46rem; margin: 0 0 clamp(1.75rem, 1.2rem + 2vw, 2.75rem); }
+.support__sur {
+	display: inline-flex; align-items: center; gap: .45rem; margin: 0 0 1rem;
+	padding: .35rem .9rem .35rem .7rem; border-radius: 999px;
+	font-size: .9rem; font-weight: 600; color: var(--foret-700);
+	background: var(--blanc); border: 1px solid var(--filet);
+}
+.support__titre { margin: 0 0 .75rem; font-size: clamp(1.8rem, 1.4rem + 1.6vw, 2.6rem); }
+.support__intro { margin: 0; color: var(--gris); font-size: 1.1rem; line-height: 1.6; max-width: 60ch; }
+
+.support__grille {
+	display: grid; gap: clamp(1.25rem, 1rem + 1vw, 2rem); align-items: start;
+	grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr);
+}
+.support .carte { padding: clamp(1.4rem, 1.1rem + 1vw, 2.25rem); box-shadow: var(--ombre-2); }
+.support__infos { display: grid; gap: 1.25rem; }
+.support__infos .carte { box-shadow: var(--ombre-1); padding: clamp(1.25rem, 1rem + .8vw, 1.75rem); }
+.support__sous-titre { margin: 0 0 1.25rem; font-size: 1.4rem; line-height: 1.2; }
+
+.support .formulaire { display: grid; gap: 1.25rem; }
+.support .formulaire .btn { margin-top: .25rem; }
+.support textarea {
+	width: 100%; box-sizing: border-box; min-height: 9.5rem; resize: vertical;
+	padding: .85rem 1rem; font: inherit; line-height: 1.5; color: var(--encre);
+	background: var(--blanc); border: 1.5px solid var(--filet-fort); border-radius: var(--r-champ);
+	transition: border-color .15s, box-shadow .15s;
+}
+.support textarea::placeholder { color: var(--gris-clair); }
+.support textarea:hover { border-color: var(--gris-clair); }
+.support textarea:focus { outline: none; border-color: var(--foret-700); box-shadow: 0 0 0 4px rgba(29, 90, 56, .15); }
+.support .champ--invalide textarea { border-color: var(--danger); }
+
+.support__ok {
+	display: flex; align-items: flex-start; gap: .75rem; margin-top: 1.25rem;
+	padding: 1rem 1.1rem; border-radius: var(--r-champ);
+	background: var(--succes-fond); color: var(--foret-800);
+}
+.support__ok[hidden] { display: none; }
+.support__ok .icone { flex: none; margin-top: .15rem; }
+.support__ok p { margin: 0; }
+
+.support__etapes { list-style: none; margin: 0; padding: 0; display: grid; gap: 1rem; }
+.support__etapes li { display: flex; align-items: center; gap: .85rem; line-height: 1.4; }
+.support__etapes span {
+	flex: none; display: grid; place-items: center; width: 2rem; height: 2rem;
+	border-radius: 50%; font-weight: 700; font-size: .95rem; color: var(--blanc); background: var(--foret-700);
+}
+
+.support__carte--alerte {
+	display: flex; align-items: flex-start; gap: .85rem;
+	background: var(--alerte-fond); border-color: #f0dca0; color: #5c4400;
+}
+.support__carte--alerte .icone { flex: none; margin-top: .1rem; }
+.support__carte--alerte p { margin: 0; line-height: 1.5; }
+
+/* FAQ : une seule fleche, alignee a droite */
+.support .accordeon details { border-top: 1px solid var(--filet); padding: .95rem 0; }
+.support .accordeon details:first-child { border-top: 0; padding-top: 0; }
+.support .accordeon details:last-child { padding-bottom: 0; }
+.support .accordeon summary {
+	display: flex; justify-content: space-between; align-items: center; gap: 1rem;
+	cursor: pointer; font-weight: 600; list-style: none;
+}
+.support .accordeon summary::-webkit-details-marker { display: none; }
+.support .accordeon summary::marker { content: ""; }
+.support .accordeon summary .icone { flex: none; color: var(--gris); transition: transform .2s; }
+.support .accordeon details[open] summary .icone { transform: rotate(180deg); }
+.support .accordeon p { margin: .6rem 0 0; color: var(--gris); line-height: 1.55; }
+
+@keyframes support-entree { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+.support__entete, .support__formulaire, .support__infos > * { animation: support-entree .6s cubic-bezier(.2, .7, .2, 1) both; }
+.support__formulaire { animation-delay: .1s; }
+.support__infos > :nth-child(2) { animation-delay: .25s; }
+.support__infos > :nth-child(3) { animation-delay: .35s; }
+@media (prefers-reduced-motion: reduce) { .support__entete, .support__formulaire, .support__infos > * { animation: none; } }
+@media (max-width: 860px) { .support__grille { grid-template-columns: 1fr; } }
