@@ -22,6 +22,8 @@ function ueb_icone( $nom, $taille = 20, $classe = '' ) {
 		'cadenas'     => '<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
 		'utilisateur' => '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
 		'telephone'   => '<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.8 19.8 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.18 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.1 9.9a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/>',
+		'discussion'  => '<path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/>',
+		'aide'        => '<circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3M12 17h.01"/>',
 		'banque'      => '<path d="M3 21h18M5 21V10M19 21V10M9 21V10M15 21V10M12 3 2 8h20z"/>',
 		'tampon'      => '<path d="M5 22h14M19.27 13.73A2.5 2.5 0 0 0 17.5 13h-11A2.5 2.5 0 0 0 4 15.5V17a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-1.5a2.5 2.5 0 0 0-.73-1.77M14 13V8.5C14 7 15 7 15 5a3 3 0 0 0-6 0c0 2 1 2 1 3.5V13"/>',
 		'recu'        => '<path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8M12 17.5v-11"/>',
@@ -548,6 +550,7 @@ function ueb_entete_site( $variante ) {
 					<a href="<?php echo esc_url( ueb_url( 'mon-espace' ) ); ?>" <?php echo in_array( $page, array( 'espace', 'recus' ), true ) ? 'aria-current="page"' : ''; ?>>Mon espace</a>
 					<a href="<?php echo esc_url( ueb_url( 'mon-espace/quitus' ) ); ?>" <?php echo 'quitus' === $page ? 'aria-current="page"' : ''; ?>>Nouveau quitus</a>
 					<a href="<?php echo esc_url( ueb_url( 'mon-espace/securite' ) ); ?>" <?php echo 'securite' === $page ? 'aria-current="page"' : ''; ?>>Sécurité</a>
+					<a href="<?php echo esc_url( ueb_url( 'support' ) ); ?>" <?php echo 'support' === $page ? 'aria-current="page"' : ''; ?>>Support</a>
 					<a class="seul-mobile" href="<?php echo esc_url( ueb_url( 'deconnexion' ) ); ?>">Déconnexion</a>
 				</nav>
 				<div class="site-actions">
@@ -560,6 +563,7 @@ function ueb_entete_site( $variante ) {
 					<a href="<?php echo esc_url( home_url( '/#parcours' ) ); ?>">Comment ça marche</a>
 					<a href="<?php echo esc_url( home_url( '/#etablissements' ) ); ?>">Établissements</a>
 					<a href="<?php echo esc_url( home_url( '/#questions' ) ); ?>">Questions</a>
+					<a href="<?php echo esc_url( ueb_url( 'support' ) ); ?>" <?php echo 'support' === $page ? 'aria-current="page"' : ''; ?>>Support</a>
 					<a class="seul-mobile" href="<?php echo esc_url( ueb_url( 'connexion' ) ); ?>">Se connecter</a>
 					<a class="seul-mobile" href="<?php echo esc_url( ueb_url( 'creer-mon-compte' ) ); ?>">Créer mon compte</a>
 				</nav>

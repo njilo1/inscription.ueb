@@ -200,3 +200,7 @@ function ueb_normaliser_telephone( $valeur ) {
 function ueb_formater_telephone( $tel ) {
 	return preg_replace( '/^(\d{3})(\d{2})(\d{2})(\d{2})$/', '$1 $2 $3 $4', (string) $tel );
 }
+
+/* Support : numéros WhatsApp de l'équipe (format international, sans + ni espaces).
+   Les demandes sont réparties à tour de rôle entre ces numéros. */
+const UEB_SUPPORT_NUMEROS = array( '237673414381', '237693899150', '237676295488', '237659490221' );

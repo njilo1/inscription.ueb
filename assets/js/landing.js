@@ -65,6 +65,26 @@
 		fiche.addEventListener("click", (ev) => { if (ev.target === fiche) fiche.close(); });
 	}
 
+	/* ---------- Menu : le lien de la section affichée est marqué ---------- */
+	const liensMenu = $$('.site-nav a[href*="#"]')
+		.map((a) => ({ a, cible: a.hash ? document.querySelector(a.hash) : null }))
+		.filter((x) => x.cible);
+	if (liensMenu.length) {
+		const marquer = () => {
+			const entete = $("[data-entete]");
+			const repere = (entete ? entete.offsetHeight : 72) + window.innerHeight * 0.25;
+			let actif = null;
+			liensMenu.forEach((x) => { if (x.cible.getBoundingClientRect().top <= repere) actif = x; });
+			liensMenu.forEach((x) => {
+				if (x === actif) x.a.setAttribute("aria-current", "location");
+				else x.a.removeAttribute("aria-current");
+			});
+		};
+		window.addEventListener("scroll", marquer, { passive: true });
+		window.addEventListener("resize", marquer);
+		marquer();
+	}
+
 	if (!window.gsap || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
 		$$("[data-frise]").forEach((f) => f.style.setProperty("--progression", 1));
 		return;

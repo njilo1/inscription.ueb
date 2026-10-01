@@ -36,6 +36,7 @@ function ueb_regles_reecriture() {
 		'^mon-espace/recus/([A-Za-z0-9-]+)/?$'           => 'index.php?ueb_page=recus&ueb_arg=$matches[1]',
 		'^mon-espace/securite/?$'                        => 'index.php?ueb_page=securite',
 		'^cellule-informatique/?$'                       => 'index.php?ueb_page=cellule',
+		'^support/?$'                                    => 'index.php?ueb_page=support',
 		'^recu/([0-9]+)/?$'                              => 'index.php?ueb_page=recu&ueb_arg=$matches[1]',
 		'^recu-ipes/([0-9]+)/?$'                         => 'index.php?ueb_page=recu-ipes&ueb_arg=$matches[1]',
 		'^verifier/([A-Za-z0-9]+)/?$'                    => 'index.php?ueb_page=verifier&ueb_arg=$matches[1]',
