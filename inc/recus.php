@@ -119,6 +119,27 @@ function ueb_objets_recu( $quitus ) {
 	return array_intersect_key( UEB_OBJETS_RECU, array_flip( $cles ) );
 }
 
+/**
+ * Paiements de ce quitus qui attendent encore leur reçu : une seule photo
+ * par paiement (première tranche, deuxième tranche, totalité, frais
+ * médicaux). Le reçu de la totalité couvre les deux tranches ; un reçu de
+ * tranche exclut la totalité. Pour en remplacer un, l'étudiant le supprime.
+ *
+ * @param array $recus Reçus déjà envoyés pour ce quitus (ueb_recus_du_quitus).
+ * @return array objet => libellé et aide, comme ueb_objets_recu().
+ */
+function ueb_objets_recu_libres( $quitus, array $recus ) {
+	$objets  = ueb_objets_recu( $quitus );
+	$envoyes = array_values( array_filter( array_map( static fn( $r ) => (string) $r->objet, $recus ) ) );
+	$pris    = $envoyes;
+	if ( in_array( 'totalite', $envoyes, true ) ) {
+		$pris = array_keys( $objets );
+	} elseif ( array_intersect( array( 'tranche1', 'tranche2' ), $envoyes ) ) {
+		$pris[] = 'totalite';
+	}
+	return array_diff_key( $objets, array_flip( $pris ) );
+}
+
 /** Libellé de l'objet d'un reçu ; les reçus antérieurs au choix affichent le type du quitus. */
 function ueb_libelle_objet_recu( $recu, $type_quitus = 'droits' ) {
 	return UEB_OBJETS_RECU[ $recu->objet ?? '' ]['libelle'] ?? ueb_libelle_type_quitus( $type_quitus );
@@ -224,9 +245,27 @@ function ueb_action_envoyer_recus() {
 	}
 
 	$fichiers = ueb_fichiers_envoyes( 'recus' );
-	$deja     = count( ueb_recus_du_quitus( $quitus->id ) );
+	$recus    = ueb_recus_du_quitus( $quitus->id );
+	$deja     = count( $recus );
 	if ( ! $fichiers ) {
-		ueb_flash( 'erreur', 'Choisis au moins une photo ou un scan de ton reçu.' );
+		ueb_flash( 'erreur', 'Choisis la photo ou le scan de ton reçu.' );
+		ueb_rediriger( $retour );
+	}
+	/* Une seule photo par paiement : un reçu à la fois, et pas pour un paiement qui a déjà le sien. */
+	if ( count( $fichiers ) > 1 ) {
+		ueb_flash( 'erreur', 'Un seul reçu à la fois : envoie la photo du reçu de ce paiement seulement.' );
+		ueb_rediriger( $retour );
+	}
+	if ( ! isset( ueb_objets_recu_libres( $quitus, $recus )[ $objet ] ) ) {
+		$envoyes = array_map( static fn( $r ) => (string) $r->objet, $recus );
+		if ( in_array( $objet, $envoyes, true ) ) {
+			$message = 'Un reçu est déjà envoyé pour ce paiement (' . mb_strtolower( $objets[ $objet ]['libelle'] ) . ') : supprime-le d’abord pour le remplacer.';
+		} elseif ( 'totalite' === $objet ) {
+			$message = 'Un reçu de tranche est déjà envoyé : envoie le reçu de l’autre tranche, pas celui de la totalité.';
+		} else {
+			$message = 'Le reçu de la totalité couvre déjà les deux tranches : supprime-le d’abord si tu veux envoyer les reçus par tranche.';
+		}
+		ueb_flash( 'erreur', $message );
 		ueb_rediriger( $retour );
 	}
 	if ( $deja + count( $fichiers ) > UEB_RECUS_MAX_FICHIERS ) {

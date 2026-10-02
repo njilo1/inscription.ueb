@@ -822,6 +822,9 @@
 		const QUALITE = 0.82;
 		const taille = (o) => (o >= 1048576 ? (o / 1048576).toFixed(1).replace(".", ",") + " Mo" : Math.max(1, Math.round(o / 1024)) + " Ko");
 		const peutRegrouper = typeof DataTransfer === "function";
+		/* data-un-seul (reçus des étudiants) : une seule photo par envoi ; dès qu'elle
+		   est chargée, la caméra et l'import sont bloqués jusqu'à ce qu'on la retire. */
+		const unSeul = form.hasAttribute("data-un-seul");
 		let selection = [];
 		let occupe = false;
 
@@ -903,13 +906,26 @@
 			erreur.textContent = problemes.join(" ");
 			envoyer.disabled = occupe || selection.length === 0 || problemes.length > 0;
 			depot.classList.toggle("est-rempli", selection.length > 0);
-			if (titre) titre.textContent = occupe ? "Compression des photos…" : selection.length ? `${selection.length} fichier${selection.length > 1 ? "s" : ""} prêt${selection.length > 1 ? "s" : ""} à l’envoi` : titreInitial;
+			const verrou = unSeul && (occupe || selection.length >= 1);
+			if (unSeul) {
+				champ.disabled = verrou;
+				if (capture) capture.disabled = verrou;
+				const boutonCamera = $("[data-camera-ouvrir]", form);
+				if (boutonCamera) boutonCamera.disabled = verrou;
+				$("[data-camera-natif]", form)?.classList.toggle("est-verrouille", verrou);
+				depot.classList.toggle("est-verrouille", verrou);
+			}
+			if (titre) titre.textContent = occupe ? "Compression des photos…" : verrou ? "Photo chargée : retire-la pour en prendre une autre" : selection.length ? `${selection.length} fichier${selection.length > 1 ? "s" : ""} prêt${selection.length > 1 ? "s" : ""} à l’envoi` : titreInitial;
 			if (libelle) libelle.textContent = selection.length > 1 ? libellePlusieurs.replace("{n}", selection.length) : libelleUn;
 		};
 
 		const ajouter = async (fichiers) => {
 			if (!fichiers.length) return;
 			if (!peutRegrouper) return;
+			if (unSeul) {
+				if (occupe || selection.length) return;
+				fichiers = fichiers.slice(0, 1);
+			}
 			occupe = true;
 			synchroniser();
 			for (const f of fichiers) selection.push({ fichier: await compresser(f), origine: f.size });
@@ -922,6 +938,8 @@
 			ajouter([...capture.files]);
 			capture.value = "";
 		});
+		/* Un champ désactivé n'est pas envoyé : on le réactive au moment de l'envoi. */
+		form.addEventListener("submit", () => { champ.disabled = false; });
 		["dragenter", "dragover"].forEach((t) => depot.addEventListener(t, () => depot.classList.add("est-survole")));
 		["dragleave", "drop"].forEach((t) => depot.addEventListener(t, () => depot.classList.remove("est-survole")));
 

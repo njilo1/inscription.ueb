@@ -976,6 +976,12 @@
 .depot.est-survole { animation: depot-fourmis .6s linear infinite; }
 @keyframes depot-fourmis { to { background-position: 18px 0, -18px 100%, 0 -18px, 100% 18px; } }
 .depot input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+/* Une photo chargée (reçus des étudiants) : dépôt et caméra bloqués jusqu'au retrait. */
+.depot.est-verrouille { opacity: .55; cursor: not-allowed; background-image: none; }
+.depot.est-verrouille input, .depot-camera__natif.est-verrouille, .depot-camera__natif.est-verrouille input { cursor: not-allowed; pointer-events: none; }
+.depot-camera__natif.est-verrouille, .depot-camera [data-camera-ouvrir]:disabled { opacity: .5; }
+.objet-recu__option.est-couvert { opacity: .6; }
+.objet-recu__option.est-couvert input, .objet-recu__option.est-couvert .objet-recu__carte { cursor: not-allowed; }
 .depot:focus-within { outline: 3px solid var(--or); outline-offset: 3px; }
 .depot__icone { display: grid; place-items: center; width: 64px; height: 64px; margin-bottom: .25rem; border-radius: 50%; background: var(--blanc); color: var(--vert-bandeau); box-shadow: var(--ombre-1); transition: transform .35s var(--ease-sortie); }
 .depot:hover .depot__icone, .depot.est-survole .depot__icone { transform: translateY(-4px) rotate(-6deg); }
