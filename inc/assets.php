@@ -128,7 +128,7 @@ add_action( 'wp_enqueue_scripts', function () {
 		ueb_style( 'ueb-direction', 'assets/css/direction.css', array( $direction ? 'ueb-administration' : 'ueb-pages' ) );
 		ueb_script( 'ueb-direction', 'assets/js/direction.js', array( 'ueb-app' ) );
 	}
-	if ( ( is_front_page() && ! $page ) || in_array( $page, array( 'connexion', 'creer-compte' ), true ) || $connexion_scolarite || $bord_scolarite || $ipes_heros ) {
+	if ( ( is_front_page() && ! $page ) || in_array( $page, array( 'connexion', 'creer-compte', 'mdp-oublie' ), true ) || $connexion_scolarite || $bord_scolarite || $ipes_heros ) {
 		ueb_script( 'ueb-remotion', 'assets/js/remotion-ueb.js' );
 	}
 	/* Étudiants UEB : registre de l'administration, de l'espace de gestion et de

@@ -59,6 +59,11 @@
 .acces__oubli p { margin: 0 0 .35rem; padding: .8rem 1rem; border-radius: 14px; background: var(--papier); color: var(--gris); font-size: .9rem; line-height: 1.5; text-align: left; animation: deplier-oubli .3s var(--ease-sortie); }
 @keyframes deplier-oubli { from { opacity: 0; transform: translateY(-4px); } }
 
+.acces__oubli a { display: inline-flex; min-height: 44px; align-items: center; padding: 0 .3rem; color: var(--vert-bandeau); font-weight: 600; font-size: .9rem; }
+/* Mot de passe oublié : la démarche en trois étapes, et le délai de la réinitialisation. */
+.acces__etapes { display: grid; gap: .55rem; margin: 0 0 1rem; padding: .9rem 1rem .9rem 2.2rem; border-radius: 14px; background: var(--papier); color: var(--gris); font-size: .9rem; line-height: 1.45; }
+.acces__etapes b { color: var(--encre); }
+.acces__delai { display: flex; align-items: center; justify-content: center; gap: .4rem; margin: 0 0 1rem; font-size: .88rem; font-weight: 600; color: var(--vert-bandeau); }
 .acces__bascule { margin: clamp(.5rem, 1.6svh, 1rem) 0 0; text-align: center; color: var(--gris); font-size: .9rem; }
 .acces__bascule a { color: var(--vert-bandeau); font-weight: 700; }
 .acces__bascule a:hover { text-decoration-thickness: 2px; }

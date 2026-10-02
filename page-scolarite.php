@@ -395,6 +395,16 @@ ueb_page_debut( array( 'titre' => 'Espace scolarité', 'variante' => $autorise ?
 					$etudiants = ueb_gestion_chercher_etudiants( $filtres_e, $etab_agent );
 					?>
 
+					<?php $reinit = $_SESSION['ueb_reinit_effectuee'] ?? null; unset( $_SESSION['ueb_reinit_effectuee'] ); ?>
+					<?php if ( $reinit ) : ?>
+						<div class="provisoire carte" role="status">
+							<?php echo ueb_icone( 'cle', 26 ); ?>
+							<div>
+								<p>Compte <b><?php echo esc_html( $reinit['compte'] ); ?></b> réinitialisé, <b>jusqu’à <?php echo esc_html( $reinit['jusqua'] ); ?></b>.</p>
+								<p class="champ__aide">Conseille à l’étudiant de choisir son mot de passe maintenant, sur son téléphone : page de connexion → « Mot de passe oublié ? », puis son matricule. Personne d’autre que lui ne connaîtra ce mot de passe. Passé ce délai, il faudra réinitialiser de nouveau.</p>
+							</div>
+						</div>
+					<?php endif; ?>
 					<?php if ( $prov ) : ?>
 						<div class="provisoire carte" role="status">
 							<?php echo ueb_icone( 'cle', 26 ); ?>
@@ -441,10 +451,10 @@ ueb_page_debut( array( 'titre' => 'Espace scolarité', 'variante' => $autorise ?
 									<td class="num"><?php echo (int) $e->quitus; ?><br><small class="texte-discret"><?php echo (int) $e->verifies; ?> vérifié(s)</small></td>
 									<td>
 										<?php echo 'actif' === $e->statut ? '<span class="badge badge--verifie"><i></i>Actif</span>' : '<span class="badge badge--rejete"><i></i>Suspendu</span>'; ?>
-										<?php echo $e->doit_changer_mdp ? ' <span class="badge badge--genere"><i></i>Mdp provisoire</span>' : ''; ?>
+										<?php echo ueb_badge_mdp( $e ); // phpcs:ignore -- échappé ?>
 									</td>
 									<td class="actions-ligne">
-										<form method="post" action="<?php echo esc_url( ueb_url_scolarite() ); ?>" data-confirmer="Réinitialiser le mot de passe de <?php echo esc_attr( ueb_identifiant_compte( $e ) ); ?> ? As-tu vérifié son identité ?">
+										<form method="post" action="<?php echo esc_url( ueb_url_scolarite() ); ?>" data-confirmer="Réinitialiser le mot de passe de <?php echo esc_attr( ueb_identifiant_compte( $e ) ); ?> ? As-tu vérifié sa carte d’identité ? Il aura 1 heure pour choisir son nouveau mot de passe.">
 											<?php ueb_champ_csrf(); ?>
 											<input type="hidden" name="ueb_action" value="gestion_reinit_mdp">
 											<input type="hidden" name="compte_id" value="<?php echo (int) $e->id; ?>">
