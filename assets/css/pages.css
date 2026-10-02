@@ -1823,3 +1823,10 @@
 .bo-marque__icone { flex: none; display: grid; place-items: center; width: 38px; height: 38px; border-radius: 10px; background: var(--blanc); color: var(--vert-bandeau); }
 /* Motif de rejet d'un bordereau : même apparence que les champs de la fenêtre. */
 .bo-agent-mdp textarea { width: 100%; min-height: 5.5rem; padding: .6rem .75rem; border: 1px solid var(--filet-fort); border-radius: 8px; font: inherit; font-size: .95rem; color: var(--encre); resize: vertical; }
+
+/* Correction de la filière ou du niveau d'un dossier envoyé (Mes quitus). */
+.ligne-quitus__correction { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: .75rem 1rem; align-items: end; margin-top: .9rem; padding: .9rem 1rem; border-radius: 12px; background: var(--papier); }
+.ligne-quitus__correction-titre { grid-column: 1 / -1; display: flex; align-items: center; gap: .4rem; margin: 0; font-weight: 700; color: var(--encre); }
+.ligne-quitus__correction .champ { margin: 0; }
+.ligne-quitus__correction .btn { justify-self: start; }
+.dossier-infos__correction dd { color: var(--alerte, #9a5b00); }

@@ -9,6 +9,8 @@ $q = $dossier['principal'];
 $etab = ueb_etablissement( $q->etablissement );
 $faites = array( 'genere' => 1, 'rejete' => 2, 'recu_envoye' => 3, 'verifie' => 4 )[ $dossier['statut'] ] ?? 1;
 $modifiable = ueb_quitus_modifiable( $q );
+/* Après l'envoi : seules la filière et le niveau se corrigent, tant que rien n'est vérifié. */
+$corrigeable = ! $modifiable && ueb_quitus_parcours_modifiable( $q );
 $recus_libelle = $dossier['nb_recus'] || 'verifie' === $dossier['statut'] ? 'Mes reçus (' . (int) $dossier['nb_recus'] . ')' : ( 'rejete' === $dossier['statut'] ? 'Renvoyer mon reçu' : 'Envoyer mon reçu' );
 $formation = array_filter( array(
 	$q->departement,
@@ -40,7 +42,7 @@ $formation = array_filter( array(
 		<?php if ( $modifiable ) : ?>
 			<a class="btn btn--fantome btn--petit" data-dossier-modifier href="<?php echo esc_url( add_query_arg( 'id', $q->id, ueb_url( 'mon-espace/quitus' ) ) ); ?>"><?php echo ueb_icone( 'crayon', 17 ); ?>Modifier</a>
 		<?php else : ?>
-			<span class="ligne-quitus__verrou" title="Les informations sont verrouillées après l’envoi d’un reçu."><?php echo ueb_icone( 'cadenas', 16 ); ?>Verrouillé</span>
+			<span class="ligne-quitus__verrou" title="<?php echo esc_attr( $corrigeable ? 'Après l’envoi d’un reçu, seules la filière et le niveau se corrigent (détails du dossier).' : 'Les informations sont verrouillées.' ); ?>"><?php echo ueb_icone( 'cadenas', 16 ); ?>Verrouillé</span>
 		<?php endif; ?>
 		<a class="btn btn--fantome btn--petit" data-dossier-recus href="<?php echo esc_url( ueb_url( 'mon-espace/recus/' . $q->numero ) ); ?>"><?php echo ueb_icone( $dossier['nb_recus'] ? 'recu' : 'envoyer', 17 ); ?><?php echo esc_html( $recus_libelle ); ?></a>
 	</div>
@@ -60,7 +62,20 @@ $formation = array_filter( array(
 				<?php endforeach; ?>
 			</ul>
 			<p class="ligne-quitus__meta">Créé le <?php echo esc_html( mysql2date( 'j F Y', $q->date_creation ) ); ?> · un seul PDF<?php echo $dossier['pages'] > 1 ? ', fiches CMS incluses' : ''; ?></p>
-			<?php if ( ! $modifiable ) : ?><p class="ligne-quitus__meta"><?php echo $q->annee_academique !== ueb_annee_academique()['code'] ? 'Année archivée : les informations de ce dossier sont conservées.' : 'Les informations sont verrouillées après l’envoi d’un reçu. Pour une correction, contacte la scolarité.'; ?></p><?php endif; ?>
+			<?php if ( $q->corrige_le ) : ?><p class="ligne-quitus__meta"><?php echo esc_html( 'Filière ou niveau corrigé le ' . mysql2date( 'j F Y', $q->corrige_le ) . ' (' . lcfirst( (string) $q->correction ) . ').' ); ?></p><?php endif; ?>
+			<?php if ( $corrigeable ) : ?>
+				<form class="ligne-quitus__correction" method="post" action="<?php echo esc_url( ueb_url( 'mon-espace' ) ); ?>" data-confirmer="Corriger la filière et le niveau de ce dossier ? La scolarité verra la correction.">
+					<?php ueb_champ_csrf(); ?>
+					<input type="hidden" name="ueb_action" value="corriger_parcours">
+					<input type="hidden" name="numero" value="<?php echo esc_attr( $q->numero ); ?>">
+					<p class="ligne-quitus__correction-titre"><?php echo ueb_icone( 'crayon', 16 ); ?>Corriger ma filière ou mon niveau</p>
+					<?php
+					ueb_champ( array( 'nom' => 'filiere_id', 'id' => 'correction-filiere-' . $q->id, 'libelle' => 'Filière', 'type' => 'select', 'options' => array_map( static fn( $f ) => $f->libelle, ueb_filieres_correction( $q ) ), 'valeur' => (string) $q->filiere_id, 'aide' => 'Filières de ' . $q->etablissement . ' du même type : le montant ne change pas.' ) );
+					ueb_champ( array( 'nom' => 'parcours', 'id' => 'correction-niveau-' . $q->id, 'libelle' => 'Niveau', 'type' => 'select', 'options' => UEB_NIVEAUX_INSCRIPTION, 'valeur' => $q->parcours ) );
+					?>
+					<button class="btn btn--fantome btn--petit" type="submit"><?php echo ueb_icone( 'check', 16 ); ?>Enregistrer la correction</button>
+				</form>
+			<?php elseif ( ! $modifiable ) : ?><p class="ligne-quitus__meta"><?php echo $q->annee_academique !== ueb_annee_academique()['code'] ? 'Année archivée : les informations de ce dossier sont conservées.' : 'Dossier vérifié par la scolarité : ses informations sont définitives.'; ?></p><?php endif; ?>
 		</div>
 	</details>
 </li>

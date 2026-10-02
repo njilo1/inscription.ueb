@@ -13,7 +13,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-const UEB_INSC_DB_VERSION = '9';
+const UEB_INSC_DB_VERSION = '10';
 
 function ueb_insc_schema() {
 	return array(
@@ -74,6 +74,8 @@ function ueb_insc_schema() {
 			motif_rejet VARCHAR(255) NULL,
 			verifie_par BIGINT UNSIGNED NULL,
 			date_verification DATETIME NULL,
+			corrige_le DATETIME NULL,
+			correction VARCHAR(255) NULL,
 			date_creation DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 			date_modification DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 			PRIMARY KEY (id),
@@ -271,7 +273,7 @@ function ueb_insc_migrer() {
 			return false;
 		}
 	}
-	foreach ( array( 'situation' => "VARCHAR(12) NOT NULL DEFAULT ''", 'filiere_id' => 'INT UNSIGNED NULL', 'quitus_droits_id' => 'INT UNSIGNED NULL, ADD UNIQUE KEY uniq_medical_droits (quitus_droits_id)', 'email' => "VARCHAR(150) NOT NULL DEFAULT ''", 'adresse' => "VARCHAR(255) NOT NULL DEFAULT ''", 'nom_urgence' => "VARCHAR(150) NOT NULL DEFAULT ''", 'numero_urgence' => "VARCHAR(20) NOT NULL DEFAULT ''", 'adresse_urgence' => "VARCHAR(255) NOT NULL DEFAULT ''", 'moyen_paiement' => "VARCHAR(30) NOT NULL DEFAULT '' AFTER tranche" ) as $colonne => $definition ) {
+	foreach ( array( 'situation' => "VARCHAR(12) NOT NULL DEFAULT ''", 'filiere_id' => 'INT UNSIGNED NULL', 'quitus_droits_id' => 'INT UNSIGNED NULL, ADD UNIQUE KEY uniq_medical_droits (quitus_droits_id)', 'email' => "VARCHAR(150) NOT NULL DEFAULT ''", 'adresse' => "VARCHAR(255) NOT NULL DEFAULT ''", 'nom_urgence' => "VARCHAR(150) NOT NULL DEFAULT ''", 'numero_urgence' => "VARCHAR(20) NOT NULL DEFAULT ''", 'adresse_urgence' => "VARCHAR(255) NOT NULL DEFAULT ''", 'moyen_paiement' => "VARCHAR(30) NOT NULL DEFAULT '' AFTER tranche", 'corrige_le' => 'DATETIME NULL', 'correction' => 'VARCHAR(255) NULL' ) as $colonne => $definition ) {
 		if ( ! in_array( $colonne, $colonnes, true ) && false === $wpdb->query( "ALTER TABLE ueb_insc_quitus ADD COLUMN $colonne $definition" ) ) {
 			return false;
 		}
