@@ -204,7 +204,8 @@ $adresse_fiche = $ici( array( 'quitus' => $fiche->id ) );
 						<?php if ( 'verifie' !== $fiche->statut ) : ?>
 							<form method="post" action="<?php echo $adresse_fiche; ?>">
 								<?php $champs_decision( 'verifie' ); ?>
-								<button class="adm-bouton adm-bouton--primaire qf-bouton" type="submit"><?php echo ueb_icone( 'check', 18 ); ?>Paiement vérifié</button>
+								<button class="adm-bouton adm-bouton--primaire qf-bouton" type="submit" <?php disabled( ! $recus ); ?><?php echo $recus ? '' : ' aria-describedby="qf-sans-recu"'; ?>><?php echo ueb_icone( 'check', 18 ); ?>Paiement vérifié</button>
+								<?php if ( ! $recus ) : ?><p class="qf-aide" id="qf-sans-recu">Possible dès que l’étudiant aura envoyé son reçu.</p><?php endif; ?>
 							</form>
 							<p class="qf-ou"><span>ou</span></p>
 							<form method="post" action="<?php echo $adresse_fiche; ?>" class="qf-rejet">
