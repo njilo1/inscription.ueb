@@ -64,9 +64,6 @@ body {
 	-webkit-font-smoothing: antialiased;
 	text-rendering: optimizeLegibility;
 }
-/* Les pages étudiantes n'affichent pas le pied de page public : conserver
-   une respiration visuelle avant la fin du contenu. */
-body.variante-espace { padding-bottom: clamp(2.5rem, 6vw, 5rem); }
 img, svg { display: block; max-width: 100%; }
 h1, h2, h3, h4 { font-family: var(--f-titre); font-weight: 700; line-height: 1.15; margin: 0 0 .5em; letter-spacing: -.01em; text-wrap: balance; }
 h1 { font-size: clamp(2rem, 1.4rem + 2.6vw, 3.25rem); }

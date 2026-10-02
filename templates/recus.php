@@ -14,13 +14,12 @@ if ( ! $q ) {
 }
 $etab     = ueb_etablissement( $q->etablissement );
 $recus    = ueb_recus_du_quitus( $q->id );
-$restants = max( 0, UEB_RECUS_MAX_FICHIERS - count( $recus ) );
 $ouvert   = ueb_quitus_accepte_recus( $q );
-$dossier = ueb_dossier_du_quitus( $q );
-$objets  = ueb_objets_recu( $q );
-$objets_envoyes = array_count_values( array_filter( array_map( static fn( $r ) => $r->objet, $recus ) ) );
-/* Une photo par paiement : ceux qui ont déjà leur reçu (ou que la totalité couvre) sont fermés. */
-$objets_libres  = ueb_objets_recu_libres( $q, $recus );
+$dossier  = ueb_dossier_du_quitus( $q );
+/* Un seul reçu par paiement : dès qu'il est envoyé, le dépôt reste fermé. */
+$libre    = (bool) ueb_objets_recu_libres( $q, $recus );
+/* Sur cette page, le rappel « À payer » suit l'ordre réel : payer, envoyer le reçu, puis la scolarité. */
+$note     = 'genere' === $q->statut ? 'Une fois le paiement effectué, envoie le reçu ici, puis dirige-toi vers la scolarité de ton établissement pour finaliser ton inscription.' : UEB_STATUTS_QUITUS[ $q->statut ]['aide'];
 
 $titre = $ouvert ? ( 'rejete' === $q->statut ? 'Renvoyer mon reçu' : 'Envoyer mon reçu' ) : 'Reçus du quitus';
 
@@ -54,9 +53,8 @@ ueb_page_debut( array( 'titre' => $titre . ' ' . $q->numero, 'variante' => 'espa
 				<p>Ce dossier compte deux paiements : envoie le reçu de chacun séparément.</p>
 				<div class="choix-paiement__options">
 					<?php foreach ( $dossier['paiements'] as $paiement ) : ?>
-						<a href="<?php echo esc_url( ueb_url( 'mon-espace/recus/' . $paiement->numero ) ); ?>" <?php echo (int) $paiement->id === (int) $q->id ? 'aria-current="page"' : ''; ?>>
-							<strong><?php echo esc_html( ueb_libelle_type_quitus( $paiement->type ) ); ?></strong>
-							<span><?php echo esc_html( ueb_formater_montant( $paiement->montant ) ); ?> FCFA · <?php echo esc_html( UEB_STATUTS_QUITUS[ $paiement->statut ]['libelle'] ); ?></span>
+						<a class="choix-paiement__bouton" href="<?php echo esc_url( ueb_url( 'mon-espace/recus/' . $paiement->numero ) ); ?>" <?php echo (int) $paiement->id === (int) $q->id ? 'aria-current="page"' : ''; ?>>
+							<span class="choix-paiement__rond" aria-hidden="true"></span><?php echo esc_html( ueb_libelle_type_quitus( $paiement->type ) ); ?>
 						</a>
 					<?php endforeach; ?>
 				</div>
@@ -72,37 +70,18 @@ ueb_page_debut( array( 'titre' => $titre . ' ' . $q->numero, 'variante' => 'espa
 			<?php if ( $ouvert ) : ?>
 				<section class="carte envoi-carte" aria-labelledby="envoi-titre">
 					<h2 id="envoi-titre" class="envoi-carte__titre">Ton reçu de paiement</h2>
-					<?php if ( $restants > 0 && $objets_libres ) : ?>
+					<?php if ( $libre ) : ?>
 						<form method="post" action="<?php echo esc_url( ueb_url( 'mon-espace/recus/' . $q->numero ) ); ?>" enctype="multipart/form-data" data-formulaire data-envoi-recus data-un-seul>
 							<?php ueb_champ_csrf(); ?>
 							<input type="hidden" name="ueb_action" value="envoyer_recus">
 							<input type="hidden" name="numero" value="<?php echo esc_attr( $q->numero ); ?>">
-							<fieldset class="objet-recu">
-								<legend>Ce reçu paie…</legend>
-								<div class="objet-recu__options">
-									<?php foreach ( $objets as $cle => $objet ) : ?>
-										<?php $libre = isset( $objets_libres[ $cle ] ); ?>
-										<label class="objet-recu__option<?php echo $libre ? '' : ' est-couvert'; ?>">
-											<input type="radio" name="objet" value="<?php echo esc_attr( $cle ); ?>" required <?php checked( $libre && 1 === count( $objets_libres ) ); ?> <?php disabled( ! $libre ); ?>>
-											<span class="objet-recu__carte">
-												<span class="objet-recu__marque" aria-hidden="true"><?php echo esc_html( array( 'tranche1' => '1', 'tranche2' => '2', 'totalite' => '1+2', 'medicaux' => '+' )[ $cle ] ); ?></span>
-												<span class="objet-recu__texte">
-													<b><?php echo esc_html( $objet['libelle'] ); ?></b>
-													<small><?php echo esc_html( $objet['aide'] ); ?></small>
-													<?php if ( ! empty( $objets_envoyes[ $cle ] ) ) : ?><small class="objet-recu__deja">Reçu déjà envoyé : supprime-le pour le remplacer</small><?php elseif ( ! $libre ) : ?><small class="objet-recu__deja"><?php echo 'totalite' === $cle ? 'Fermé : un reçu de tranche est déjà envoyé' : 'Couvert par le reçu de la totalité'; ?></small><?php endif; ?>
-												</span>
-												<?php echo ueb_icone( 'check', 16, 'objet-recu__coche' ); ?>
-											</span>
-										</label>
-									<?php endforeach; ?>
-								</div>
-							</fieldset>
 							<label class="depot" data-depot>
 								<input type="file" name="recus[]" accept="image/jpeg,image/png,application/pdf" data-max="1" data-max-octets="<?php echo (int) UEB_RECUS_MAX_OCTETS; ?>" aria-describedby="depot-aide">
-								<span class="depot__icone"><?php echo ueb_icone( 'fichier', 28 ); ?></span>
-								<span class="depot__titre" data-depot-titre>Choisis la photo ou le scan de ton reçu</span>
-								<span class="depot__aide" id="depot-aide">Glisse-le ici ou clique pour le choisir · JPG, PNG ou PDF. Il est compressé puis enregistré sous un nom clair, par exemple DU1-12-11-2026-12-13-32-prénom.</span>
-								<span class="depot__places">Une photo par paiement</span>
+								<span class="depot__icone"><?php echo ueb_icone( 'fichier', 22, 'depot__icone-libre' ) . ueb_icone( 'cadenas', 20, 'depot__icone-verrou' ); // phpcs:ignore ?></span>
+								<span class="depot__texte">
+									<span class="depot__titre" data-depot-titre>Glisse-le ici ou clique pour le choisir</span>
+									<span class="depot__aide" id="depot-aide">JPG, PNG ou PDF.</span>
+								</span>
 							</label>
 							<div class="depot-camera">
 								<span>ou</span>
@@ -117,9 +96,12 @@ ueb_page_debut( array( 'titre' => $titre . ' ' . $q->numero, 'variante' => 'espa
 							<button class="btn btn--primaire btn--large" type="submit" disabled data-depot-envoyer><?php echo ueb_icone( 'envoyer', 18 ); ?><span data-depot-libelle>Envoyer mon reçu</span></button>
 						</form>
 					<?php else : ?>
-						<div class="depot-plein">
-							<?php echo ueb_icone( 'info', 20 ); ?>
-							<p><?php echo $objets_libres ? 'Tu as atteint la limite de ' . (int) UEB_RECUS_MAX_FICHIERS . ' fichiers pour ce paiement. Supprime un reçu à droite pour en envoyer un autre.' : 'Chaque paiement de ce quitus a déjà son reçu. Pour en remplacer un, supprime-le à droite puis envoie la nouvelle photo.'; ?></p>
+						<div class="depot est-verrouille" aria-disabled="true">
+							<span class="depot__icone"><?php echo ueb_icone( 'cadenas', 20 ); ?></span>
+							<span class="depot__texte">
+								<span class="depot__titre">Le reçu de ce paiement est envoyé</span>
+								<span class="depot__aide">Pour le remplacer, supprime-le dans « Reçus envoyés ».</span>
+							</span>
 						</div>
 					<?php endif; ?>
 					<ul class="conseils-photo">
@@ -171,12 +153,12 @@ ueb_page_debut( array( 'titre' => $titre . ' ' . $q->numero, 'variante' => 'espa
 						<?php endforeach; ?>
 					</ul>
 				<?php endif; ?>
-				<p class="envoi-carte__note"><?php echo ueb_icone( 'horloge', 16 ); ?><?php echo esc_html( UEB_STATUTS_QUITUS[ $q->statut ]['aide'] ); ?></p>
+				<p class="envoi-carte__note"><?php echo ueb_icone( 'horloge', 16 ); ?><?php echo esc_html( $note ); ?></p>
 			</section>
 		</div>
 	</div>
 
-	<?php if ( $ouvert && $restants > 0 ) : ?>
+	<?php if ( $ouvert && $libre ) : ?>
 		<dialog class="camera" data-camera aria-labelledby="camera-titre">
 			<div class="camera__contenu">
 				<header class="camera__entete">
