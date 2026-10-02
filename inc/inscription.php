@@ -45,10 +45,11 @@ function ueb_contexte_inscription( $compte, $edite = null ) {
 		$compte->id, $annee
 	) );
 	/* Situation déclarée par l'étudiant (« Ta situation cette année ») : celle du
-	   quitus médical de l'année, sinon celle de son premier quitus de droits. */
+	   quitus médical de l'année, sinon celle de son premier quitus de droits.
+	   Rien de déclaré : vide, l'étudiant choisit (« Choisir… »). */
 	$situation = $medical->situation ?? ( $droits[0]->situation ?? '' );
 	if ( 'nouveau' !== $situation && ! isset( UEB_FRAIS_MEDICAUX[ $situation ] ) ) {
-		$situation = $medical && 5000 === (int) $medical->montant ? 'reprise' : 'ancien';
+		$situation = $medical ? ( 5000 === (int) $medical->montant ? 'reprise' : 'ancien' ) : '';
 	}
 	$tranches = array( 1 => 'Première tranche', 2 => 'Deuxième tranche', 3 => 'Les deux tranches' );
 	$premiere_preparee = false;
