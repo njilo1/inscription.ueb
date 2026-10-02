@@ -102,7 +102,7 @@ ueb_page_debut( array( 'titre' => 'Support', 'variante' => 'simple', 'classe' =>
 						</details>
 						<details>
 							<summary>Mot de passe oublié<?php echo ueb_icone( 'chevron', 20 ); ?></summary>
-							<p>Un agent de la scolarité le réinitialise sur présentation de ta carte d’identité. Tu en choisis un nouveau à ta prochaine connexion.</p>
+							<p>Présente-toi à la scolarité de ton établissement avec ta carte d’identité : un agent réinitialise ton compte, sans voir aucun mot de passe. Dans l’heure qui suit, ouvre « Mot de passe oublié ? » sur la page de connexion, saisis ton matricule et choisis ton nouveau mot de passe.</p>
 						</details>
 					</div>
 				</section>

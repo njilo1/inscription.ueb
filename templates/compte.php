@@ -210,7 +210,7 @@ ueb_page_debut( array( 'titre' => 'Mon compte', 'variante' => 'espace' ) );
 					<li><?php echo ueb_icone( 'cle', 17 ); ?><span><b>Un mot de passe par site.</b> Ne réutilise pas celui de ton email ou de tes réseaux sociaux.</span></li>
 				</ul>
 				<div class="reflexes__oubli">
-					<p><b>Mot de passe oublié ?</b> Présente-toi à la cellule informatique de ton établissement avec ta carte d’identité et le téléphone enregistré ici.</p>
+					<p><b>Mot de passe oublié ?</b> Présente-toi à la scolarité de ton établissement avec ta carte d’identité, puis choisis ton nouveau mot de passe sur la page « Mot de passe oublié ? » de la connexion, dans l’heure qui suit.</p>
 				</div>
 			</aside>
 		</div>

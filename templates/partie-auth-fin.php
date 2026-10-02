@@ -10,12 +10,15 @@
 defined( 'ABSPATH' ) || exit;
 
 $courante = $args['page'] ?? 'connexion';
-$panneau  = 'creer-compte' === $courante
-	? array( 'titre' => 'Bienvenue !', 'texte' => 'Un seul compte suffit pour faire toute ton inscription en ligne, sans file d’attente.' )
-	: array( 'titre' => 'Bon retour !', 'texte' => 'Retrouve ton espace étudiant et reprends ton inscription là où tu l’as laissée.' );
+$panneau  = array(
+	'creer-compte' => array( 'titre' => 'Bienvenue !', 'texte' => 'Un seul compte suffit pour faire toute ton inscription en ligne, sans file d’attente.' ),
+	'mdp-oublie'   => array( 'titre' => 'Pas de panique', 'texte' => 'Un passage à la scolarité avec ta carte d’identité, et tu choisis toi-même ton nouveau mot de passe.' ),
+)[ $courante ] ?? array( 'titre' => 'Bon retour !', 'texte' => 'Retrouve ton espace étudiant et reprends ton inscription là où tu l’as laissée.' );
 ?>
 			<p class="acces__bascule">
-				<?php if ( 'creer-compte' === $courante ) : ?>
+				<?php if ( 'mdp-oublie' === $courante ) : ?>
+					Tu retrouves ton mot de passe ? <a href="<?php echo esc_url( ueb_url( 'connexion' ) ); ?>">Se connecter</a>
+				<?php elseif ( 'creer-compte' === $courante ) : ?>
 					Déjà un compte ? <a href="<?php echo esc_url( ueb_url( 'connexion' ) ); ?>">Se connecter</a>
 				<?php else : ?>
 					Pas encore de compte ? <a href="<?php echo esc_url( ueb_url( 'creer-mon-compte' ) ); ?>">Créer mon compte</a>

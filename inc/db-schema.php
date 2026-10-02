@@ -13,7 +13,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-const UEB_INSC_DB_VERSION = '10';
+const UEB_INSC_DB_VERSION = '11';
 
 function ueb_insc_schema() {
 	return array(
@@ -28,6 +28,8 @@ function ueb_insc_schema() {
 			telephone VARCHAR(12) NOT NULL,
 			mot_de_passe VARCHAR(255) NOT NULL,
 			doit_changer_mdp TINYINT(1) NOT NULL DEFAULT 0,
+			reinit_le DATETIME NULL,
+			reinit_par BIGINT UNSIGNED NULL,
 			version_session INT UNSIGNED NOT NULL DEFAULT 1,
 			statut ENUM('actif','bloque') NOT NULL DEFAULT 'actif',
 			date_creation DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -243,6 +245,18 @@ function ueb_insc_schema() {
 
 		/* Photos ou scans des reçus bancaires joints à un bordereau : le paquet
 		   que l'IPES envoie à sa tutelle. Fichiers hors accès direct. */
+		/* Journal des réinitialisations de mot de passe (version 11) : quel agent,
+		   pour quel compte, quand ; date_choix quand l'étudiant a choisi le sien. */
+		'ueb_insc_reinitialisations' => "CREATE TABLE IF NOT EXISTS ueb_insc_reinitialisations (
+			id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+			compte_id INT UNSIGNED NOT NULL,
+			agent_id BIGINT UNSIGNED NULL,
+			date_reinit DATETIME NOT NULL,
+			date_choix DATETIME NULL,
+			PRIMARY KEY (id),
+			KEY idx_compte (compte_id)
+		) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
 		'ueb_insc_ipes_recus' => "CREATE TABLE IF NOT EXISTS ueb_insc_ipes_recus (
 			id INT UNSIGNED NOT NULL AUTO_INCREMENT,
 			bordereau_id INT UNSIGNED NOT NULL,
@@ -267,6 +281,13 @@ function ueb_insc_schema() {
  */
 function ueb_insc_migrer() {
 	global $wpdb;
+	/* Version 11 : réinitialisation du mot de passe par la scolarité, valable 1 h. */
+	$colonnes_comptes = $wpdb->get_col( 'SHOW COLUMNS FROM ueb_insc_comptes' );
+	foreach ( array( 'reinit_le' => 'DATETIME NULL AFTER doit_changer_mdp', 'reinit_par' => 'BIGINT UNSIGNED NULL AFTER reinit_le' ) as $colonne => $definition ) {
+		if ( $colonnes_comptes && ! in_array( $colonne, $colonnes_comptes, true ) && false === $wpdb->query( "ALTER TABLE ueb_insc_comptes ADD COLUMN $colonne $definition" ) ) {
+			return false;
+		}
+	}
 	$colonnes = $wpdb->get_col( 'SHOW COLUMNS FROM ueb_insc_quitus' );
 	if ( $colonnes && ! in_array( 'type', $colonnes, true ) ) {
 		if ( false === $wpdb->query( "ALTER TABLE ueb_insc_quitus ADD COLUMN type ENUM('droits','medicaux') NOT NULL DEFAULT 'droits' AFTER annee_academique" ) ) {

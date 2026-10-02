@@ -735,13 +735,17 @@ function ueb_action_gestion_reinit_mdp() {
 	if ( ! $compte || ! ueb_compte_dans_etab( $compte->id, ueb_etab_agent() ) ) {
 		ueb_rediriger( $retour );
 	}
-	$provisoire = ueb_mot_de_passe_provisoire();
+	/* « Première connexion » à vrai pour UEB_REINIT_DUREE : l'étudiant choisit lui-même
+	   son nouveau mot de passe sur /mot-de-passe-oublie/. L'agent n'en voit aucun. */
+	$maintenant = current_time( 'mysql' );
 	$wpdb->update( 'ueb_insc_comptes', array(
-		'mot_de_passe'     => password_hash( $provisoire, PASSWORD_DEFAULT ),
 		'doit_changer_mdp' => 1,
+		'reinit_le'        => $maintenant,
+		'reinit_par'       => get_current_user_id() ?: null,
 		'version_session'  => (int) $compte->version_session + 1,
 	), array( 'id' => $compte->id ) );
-	$_SESSION['ueb_mdp_provisoire'] = array( 'compte' => ueb_identifiant_compte( $compte ), 'mdp' => $provisoire );
+	$wpdb->insert( 'ueb_insc_reinitialisations', array( 'compte_id' => (int) $compte->id, 'agent_id' => get_current_user_id() ?: null, 'date_reinit' => $maintenant ) );
+	$_SESSION['ueb_reinit_effectuee'] = array( 'compte' => ueb_identifiant_compte( $compte ), 'jusqua' => ueb_reinit_heure( strtotime( $maintenant ) + UEB_REINIT_DUREE ) );
 	ueb_rediriger( $retour );
 }
 

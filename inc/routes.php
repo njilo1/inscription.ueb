@@ -25,12 +25,13 @@
 
 defined( 'ABSPATH' ) || exit;
 
-const UEB_INSC_ROUTES_VERSION = '10';
+const UEB_INSC_ROUTES_VERSION = '11';
 
 function ueb_regles_reecriture() {
 	return array(
 		'^connexion/?$'                                  => 'index.php?ueb_page=connexion',
 		'^creer-mon-compte/?$'                           => 'index.php?ueb_page=creer-compte',
+		'^mot-de-passe-oublie/?$'                        => 'index.php?ueb_page=mdp-oublie',
 		'^deconnexion/?$'                                => 'index.php?ueb_page=deconnexion',
 		'^mon-espace/?$'                                 => 'index.php?ueb_page=espace',
 		'^mon-espace/quitus/?$'                          => 'index.php?ueb_page=quitus',
@@ -78,7 +79,7 @@ function ueb_url( $chemin = '' ) {
 
 /* Pages réservées aux étudiants connectés / aux visiteurs non connectés. */
 const UEB_PAGES_ETUDIANT = array( 'espace', 'quitus', 'quitus-pdf', 'recus', 'compte', 'securite', 'support' );
-const UEB_PAGES_INVITE   = array( 'connexion', 'creer-compte' );
+const UEB_PAGES_INVITE   = array( 'connexion', 'creer-compte', 'mdp-oublie' );
 /* Les deux espaces du back-office sont des Pages WordPress (gabarits
    page-scolarite.php et page-administration.php) : elles vérifient
    elles-mêmes la capacité du compte connecté. */
@@ -160,6 +161,8 @@ function ueb_traiter_action( $action ) {
 	$traitements = array(
 		'connexion'           => 'ueb_action_connexion',
 		'creer_compte'        => 'ueb_action_creer_compte',
+		'mdp_oublie_verifier' => 'ueb_action_mdp_oublie_verifier',
+		'mdp_oublie_choisir'  => 'ueb_action_mdp_oublie_choisir',
 		'changer_mdp'         => 'ueb_action_changer_mdp',
 		'changer_identifiant' => 'ueb_action_changer_identifiant',
 		'enregistrer_profil'  => 'ueb_action_enregistrer_profil',

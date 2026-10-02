@@ -32,7 +32,7 @@ function ueb_landing_donnees() {
 			array( 'titre' => 'Envoie la photo de ton reçu', 'texte' => 'Depuis ton espace, photographie ton reçu de paiement. Présente ensuite les originaux à la scolarité : ton paiement passe à « Vérifié ».' ),
 		),
 		'faq'    => array(
-			array( 'J’ai oublié mon mot de passe. Que faire ?', 'Présente-toi à la scolarité de ton établissement avec ta carte d’identité et le téléphone enregistré sur ton compte. Un agent réinitialise ton mot de passe ; tu en choisis un nouveau à ta connexion suivante.' ),
+			array( 'J’ai oublié mon mot de passe. Que faire ?', 'Présente-toi à la scolarité de ton établissement avec ta carte d’identité : un agent réinitialise ton compte, sans voir aucun mot de passe. Dans l’heure qui suit, ouvre « Mot de passe oublié ? » sur la page de connexion, saisis ton matricule et choisis toi-même ton nouveau mot de passe.' ),
 			array( 'Pourquoi quatre coupons sur la même page ?', 'Chaque service garde le sien : l’étudiant, la Direction des affaires financières (DAF), la scolarité et la banque. Imprime la page entière et découpe-la seulement quand on te le demande.' ),
 			array( 'Quels fichiers puis-je envoyer pour mon reçu ?', 'Une photo JPG ou PNG, ou un scan PDF, de 5 Mo au plus, jusqu’à trois fichiers par quitus. Le montant et le cachet ou la référence du paiement doivent être lisibles.' ),
 			array( 'Je pense que quelqu’un connaît mon mot de passe.', 'Connecte-toi et change-le tout de suite dans « Mon compte ». Toutes les autres sessions ouvertes sur ton compte sont fermées immédiatement.' ),

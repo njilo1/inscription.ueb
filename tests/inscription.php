@@ -528,4 +528,18 @@ verifier( 1 === $tout['pages'] && 1 === ueb_etudiants( $f( array( 'p' => 9 ) ), 
 verifier( 'http://x/?vue=etudiants&etab=FS' === ueb_etudiants_url( 'http://x/', array( 'vue' => 'etudiants', 'etab' => 'FS', 'q' => '', 'p' => 1 ) ), 'étudiants : adresse sans filtres vides ni page 1' );
 $wpdb->query( "DELETE FROM ueb_insc_quitus WHERE numero LIKE 'ETU-%'" );
 
+// Mot de passe oublié : la réinitialisation par la scolarité vaut UEB_REINIT_DUREE (1 h).
+$il_y_a = static fn( $secondes ) => gmdate( 'Y-m-d H:i:s', current_time( 'timestamp' ) - $secondes );
+verifier( HOUR_IN_SECONDS === UEB_REINIT_DUREE, 'réinitialisation valable 1 heure' );
+verifier( '' === ueb_reinit_etat( (object) array( 'doit_changer_mdp' => 0, 'reinit_le' => null ) ), 'aucune réinitialisation : état vide' );
+verifier( 'active' === ueb_reinit_etat( (object) array( 'doit_changer_mdp' => 1, 'reinit_le' => $il_y_a( 10 * MINUTE_IN_SECONDS ) ) ), 'réinitialisée il y a 10 min : active' );
+verifier( 'active' === ueb_reinit_etat( (object) array( 'doit_changer_mdp' => 1, 'reinit_le' => $il_y_a( 59 * MINUTE_IN_SECONDS ) ) ), 'réinitialisée il y a 59 min : encore active' );
+verifier( 'expiree' === ueb_reinit_etat( (object) array( 'doit_changer_mdp' => 1, 'reinit_le' => $il_y_a( 61 * MINUTE_IN_SECONDS ) ) ), 'réinitialisée il y a 61 min : expirée' );
+verifier( '' === ueb_reinit_etat( (object) array( 'doit_changer_mdp' => 1, 'reinit_le' => null ) ), 'mot de passe provisoire de la cellule (sans heure) : pas une réinitialisation' );
+verifier( '' === ueb_reinit_etat( null ), 'compte inconnu : aucune réinitialisation' );
+verifier( str_contains( ueb_badge_mdp( (object) array( 'doit_changer_mdp' => 1, 'reinit_le' => $il_y_a( 60 ) ) ), 'jusqu’à' ), 'badge : réinitialisé, jusqu’à l’heure de fin' );
+verifier( str_contains( ueb_badge_mdp( (object) array( 'doit_changer_mdp' => 1, 'reinit_le' => $il_y_a( 2 * HOUR_IN_SECONDS ) ) ), 'expirée' ), 'badge : réinitialisation expirée' );
+verifier( '' === ueb_badge_mdp( (object) array( 'doit_changer_mdp' => 0, 'reinit_le' => null ) ), 'badge : rien pour un compte normal' );
+verifier( ! str_contains( ueb_reinit_heure( current_time( 'timestamp' ) ), ' à ' ), 'heure de fin du jour même : sans date' );
+
 echo $GLOBALS['assertions'] . " vérifications réussies. Aperçus : $sortie\n";

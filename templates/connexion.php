@@ -38,10 +38,7 @@ get_template_part( 'templates/partie', 'auth-debut', array( 'page' => 'connexion
 						'attrs'   => array( 'autocomplete' => 'current-password' ),
 					) );
 					?>
-					<details class="acces__oubli">
-						<summary>Mot de passe oublié ?</summary>
-						<p>Présente-toi à la scolarité de ton établissement avec ta carte d’identité et le téléphone enregistré sur ton compte. Un agent réinitialisera ton mot de passe ; tu en choisiras un nouveau à ta prochaine connexion.</p>
-					</details>
+					<p class="acces__oubli"><a href="<?php echo esc_url( ueb_url( 'mot-de-passe-oublie' ) ); ?>">Mot de passe oublié ?</a></p>
 					<button class="btn btn--sombre btn--large" type="submit">Se connecter</button>
 				</form>
 <?php
