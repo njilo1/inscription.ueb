@@ -30,6 +30,22 @@ function ueb_profil( $compte_id ) {
 	);
 }
 
+/**
+ * Fiche reprise et figée dans un nouveau quitus. La filière n'y est pas
+ * figée quand elle n'est plus proposée ou pas ouverte au niveau de la fiche
+ * (niveau changé dans Mon compte, nouvelle année) : l'étudiant en choisit
+ * une autre dans le formulaire.
+ *
+ * @param array $formations filières proposées, par identifiant (ueb_formations_inscription())
+ */
+function ueb_profil_fige( $compte_id, array $formations ) {
+	$profil = ueb_profil( $compte_id );
+	if ( isset( $profil['filiere_id'] ) && ! ueb_filiere_ouverte_au_niveau( $formations[ (int) $profil['filiere_id'] ] ?? null, $profil['parcours'] ?? '' ) ) {
+		unset( $profil['filiere_id'] );
+	}
+	return $profil;
+}
+
 /** Enregistre la fiche à partir de valeurs validées. */
 function ueb_profil_enregistrer( $compte_id, array $v ) {
 	global $wpdb;
@@ -129,6 +145,8 @@ function ueb_valider_profil( array $post, array $formations, $cms_requis ) {
 	}
 	if ( ! isset( UEB_NIVEAUX_INSCRIPTION[ $v['parcours'] ] ) ) {
 		$e['parcours'] = 'Choisis ton niveau dans la liste.';
+	} elseif ( empty( $e['filiere_id'] ) && ! ueb_filiere_ouverte_au_niveau( $formation, $v['parcours'] ) ) {
+		$e['filiere_id'] = 'Cette filière n’est pas ouverte en ' . $v['parcours'] . ' : choisis une filière de ton niveau.';
 	}
 	foreach ( array( 'nom' => 100, 'prenom' => 150, 'lieu_naissance' => 150, 'departement' => 150, 'parcours' => 150 ) as $cle => $max ) {
 		if ( mb_strlen( $v[ $cle ] ) > $max && empty( $e[ $cle ] ) ) {

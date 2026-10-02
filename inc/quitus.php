@@ -288,7 +288,7 @@ function ueb_action_enregistrer_quitus() {
 			/* Nouveau quitus : les informations déjà sur la fiche ne changent que dans
 			   Mon compte, elles remplacent celles postées (champs verrouillés du
 			   formulaire). Quitus pas encore envoyé : tout se modifie, la fiche suit. */
-			$profil = $existant ? array() : ueb_profil( $compte->id );
+			$profil = $existant ? array() : ueb_profil_fige( $compte->id, $contexte['formations'] );
 			$post = array_replace( $_POST, wp_slash( array_map( 'strval', $profil ) ) );
 			// Le type est choisi par le parcours, jamais par une valeur modifiée dans le navigateur.
 			$post['type'] = $existant->type ?? 'droits';
@@ -408,6 +408,10 @@ function ueb_action_corriger_parcours() {
 	}
 	if ( ! isset( UEB_NIVEAUX_INSCRIPTION[ $niveau ] ) ) {
 		ueb_flash( 'erreur', 'Choisis ton niveau dans la liste.' );
+		ueb_rediriger( $retour );
+	}
+	if ( ! ueb_filiere_ouverte_au_niveau( $filiere, $niveau ) ) {
+		ueb_flash( 'erreur', 'Cette filière n’est pas ouverte en ' . $niveau . ' : choisis une filière de ton niveau.' );
 		ueb_rediriger( $retour );
 	}
 	if ( (int) $filiere->id === (int) $quitus->filiere_id && $niveau === $quitus->parcours ) {

@@ -81,6 +81,14 @@ const UEB_FORMATIONS_PRO_OUVERTES = false;
    chaque bordereau à l'envoi : la changer ne réécrit pas les bordereaux envoyés. */
 const UEB_IPES_REVERSEMENT_PAR_ETUDIANT = 50000;
 
+/* Nature des établissements qui ne sont pas des facultés (colonne « type » de ueb_facultes). */
+const UEB_TYPES_ETABLISSEMENT = array( 'ENSET' => 'ecole', 'ESTLC' => 'ecole', 'ENSTMO' => 'ecole', 'ISABEE' => 'institut' );
+
+/** « faculte », « ecole » ou « institut ». */
+function ueb_type_etablissement( $sigle ) {
+	return UEB_TYPES_ETABLISSEMENT[ $sigle ] ?? 'faculte';
+}
+
 const UEB_NIVEAUX_INSCRIPTION = array( 'L1' => 'L1 — Licence 1', 'L2' => 'L2 — Licence 2', 'L3' => 'L3 — Licence 3', 'M1' => 'M1 — Master 1', 'M2' => 'M2 — Master 2' );
 
 /**

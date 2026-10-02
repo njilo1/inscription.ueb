@@ -13,7 +13,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-const UEB_INSC_DB_VERSION = '11';
+const UEB_INSC_DB_VERSION = '12';
 
 function ueb_insc_schema() {
 	return array(
@@ -247,6 +247,16 @@ function ueb_insc_schema() {
 		   que l'IPES envoie à sa tutelle. Fichiers hors accès direct. */
 		/* Journal des réinitialisations de mot de passe (version 11) : quel agent,
 		   pour quel compte, quand ; date_choix quand l'étudiant a choisi le sien. */
+		/* Niveaux auxquels chaque filière du catalogue est ouverte (version 12) :
+		   au quitus, l'étudiant choisit son niveau, puis une filière ouverte à ce
+		   niveau. Remplie par l'import des filières (Filieres.xlsx, NiveauFilieres.xlsx). */
+		'ueb_filieres_niveaux' => "CREATE TABLE IF NOT EXISTS ueb_filieres_niveaux (
+			filiere_id INT UNSIGNED NOT NULL,
+			niveau VARCHAR(5) NOT NULL,
+			PRIMARY KEY (filiere_id, niveau),
+			KEY idx_niveau (niveau)
+		) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
 		'ueb_insc_reinitialisations' => "CREATE TABLE IF NOT EXISTS ueb_insc_reinitialisations (
 			id INT UNSIGNED NOT NULL AUTO_INCREMENT,
 			compte_id INT UNSIGNED NOT NULL,
@@ -281,6 +291,17 @@ function ueb_insc_schema() {
  */
 function ueb_insc_migrer() {
 	global $wpdb;
+	/* Version 12 : ueb_facultes porte aussi les écoles et instituts ; sa colonne
+	   « type » les distingue (faculté, école, institut), d'après la configuration. */
+	if ( $wpdb->get_var( "SHOW TABLES LIKE 'ueb\\_facultes'" ) ) {
+		$colonnes_facultes = $wpdb->get_col( 'SHOW COLUMNS FROM ueb_facultes' );
+		if ( ! in_array( 'type', $colonnes_facultes, true ) && false === $wpdb->query( "ALTER TABLE ueb_facultes ADD COLUMN type ENUM('faculte','ecole','institut') NOT NULL DEFAULT 'faculte' AFTER nom_en" ) ) {
+			return false;
+		}
+		foreach ( array_keys( ueb_etablissements() ) as $sigle ) {
+			$wpdb->update( 'ueb_facultes', array( 'type' => ueb_type_etablissement( $sigle ) ), array( 'code' => $sigle ) );
+		}
+	}
 	/* Version 11 : réinitialisation du mot de passe par la scolarité, valable 1 h. */
 	$colonnes_comptes = $wpdb->get_col( 'SHOW COLUMNS FROM ueb_insc_comptes' );
 	foreach ( array( 'reinit_le' => 'DATETIME NULL AFTER doit_changer_mdp', 'reinit_par' => 'BIGINT UNSIGNED NULL AFTER reinit_le' ) as $colonne => $definition ) {

@@ -81,7 +81,8 @@ function ueb_catalogue_filieres( array $filtres = array() ) {
 		$where[] = 'ouverte' === $etat ? 'fi.actif = 1' : 'fi.actif = 0';
 	}
 	$sql = 'SELECT fi.*, fa.code AS etablissement,
-			( SELECT COUNT(*) FROM ueb_insc_quitus q WHERE q.filiere_id = fi.id ) AS nb_quitus
+			( SELECT COUNT(*) FROM ueb_insc_quitus q WHERE q.filiere_id = fi.id ) AS nb_quitus,
+			( SELECT GROUP_CONCAT( n.niveau ORDER BY n.niveau SEPARATOR \', \' ) FROM ueb_filieres_niveaux n WHERE n.filiere_id = fi.id ) AS niveaux
 		FROM ueb_filieres fi
 		JOIN ueb_facultes fa ON fa.id = fi.faculte_id
 		WHERE ' . implode( ' AND ', $where ) . '
@@ -136,6 +137,7 @@ function ueb_catalogue_faculte_id( $sigle ) {
 		'nom_fr' => $etab['fr'],
 		'nom_en' => $etab['en'],
 		'slug'   => sanitize_title( $etab['fr'] ),
+		'type'   => ueb_type_etablissement( $etab['sigle'] ),
 		'actif'  => 1,
 	) );
 	/* Deux créations simultanées : la clé unique sur le code tranche, on relit. */
