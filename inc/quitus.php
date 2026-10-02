@@ -285,9 +285,10 @@ function ueb_action_enregistrer_quitus() {
 			$erreurs['general'] = 'Modifie le quitus des droits universitaires associé pour mettre à jour ce dossier médical.';
 		} else {
 			$contexte = ueb_contexte_inscription( $compte, $existant );
-			/* Les informations déjà sur la fiche ne changent que dans Mon compte :
-			   elles remplacent celles postées (champs verrouillés du formulaire). */
-			$profil = ueb_profil( $compte->id );
+			/* Nouveau quitus : les informations déjà sur la fiche ne changent que dans
+			   Mon compte, elles remplacent celles postées (champs verrouillés du
+			   formulaire). Quitus pas encore envoyé : tout se modifie, la fiche suit. */
+			$profil = $existant ? array() : ueb_profil( $compte->id );
 			$post = array_replace( $_POST, wp_slash( array_map( 'strval', $profil ) ) );
 			// Le type est choisi par le parcours, jamais par une valeur modifiée dans le navigateur.
 			$post['type'] = $existant->type ?? 'droits';

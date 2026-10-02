@@ -32,9 +32,14 @@ if ( $id ) {
 list( $saisie, $erreurs ) = ueb_reprendre_saisie();
 $v = $saisie ?: ( $edite ? (array) $edite : ueb_valeurs_initiales_quitus( $compte ) );
 /* Fiche de l'étudiant : chaque information déjà renseignée est reprise et figée ;
-   elle se corrige dans Mon compte. Le lieu de paiement et le montant restent libres. */
+   elle se corrige dans Mon compte. Le lieu de paiement et le montant restent libres.
+   Un quitus pas encore envoyé (seul cas où il s'ouvre ici) se modifie en entier :
+   rien n'est figé, et l'enregistrement met aussi la fiche à jour. */
 $profil = ueb_profil( $compte->id );
-$v = array_replace( $v, $profil );
+if ( ! ( $edite && $saisie ) ) {
+	$v = array_replace( $v, $profil );
+}
+$verrou = $edite ? array() : $profil;
 $contexte = ueb_contexte_inscription( $compte, $edite );
 $formations = $contexte['formations'];
 /* Situation : une liste déroulante dont chaque option s'explique entre parenthèses. */
@@ -143,7 +148,7 @@ ueb_page_debut( array( 'titre' => $edite ? 'Modifier le quitus' : 'Nouveau quitu
 			</div>
 		<?php endif; ?>
 
-		<?php if ( $profil ) : ?>
+		<?php if ( $verrou ) : ?>
 			<div class="quitus-fiche" role="note">
 				<span class="quitus-fiche__icone" aria-hidden="true"><?php echo ueb_icone( 'cadenas', 20 ); ?></span>
 				<p><b>Tes informations sont reprises de ton compte.</b> Pour corriger une erreur, va dans <a href="<?php echo esc_url( ueb_url( 'mon-espace/compte' ) . '#informations' ); ?>">Mon compte</a>. Ici, choisis où tu vas payer et le montant de ce quitus.</p>
@@ -166,7 +171,7 @@ ueb_page_debut( array( 'titre' => $edite ? 'Modifier le quitus' : 'Nouveau quitu
 					</div>
 				</header>
 				<div class="section-form__corps">
-					<?php ueb_champs_profil( array( 'partie' => 'etablissement', 'v' => $v, 'erreurs' => $erreurs, 'verrou' => $profil ) ); ?>
+					<?php ueb_champs_profil( array( 'partie' => 'etablissement', 'v' => $v, 'erreurs' => $erreurs, 'verrou' => $verrou ) ); ?>
 
 					<div class="quitus-choix-type">
 						<?php
@@ -200,7 +205,7 @@ ueb_page_debut( array( 'titre' => $edite ? 'Modifier le quitus' : 'Nouveau quitu
 						'partie'     => 'identite',
 						'v'          => $v,
 						'erreurs'    => $erreurs,
-						'verrou'     => $profil,
+						'verrou'     => $verrou,
 						'cms_requis' => $cms_requis,
 						'aide_cms'   => $cms_requis ? 'Pour tes fiches CMS, complète ton email, ton adresse et les trois coordonnées de ton contact d’urgence ci-dessous.' : 'Ces coordonnées sont facultatives pour ce paiement : aucune fiche CMS n’est à générer.',
 					) ); ?>
@@ -221,7 +226,7 @@ ueb_page_debut( array( 'titre' => $edite ? 'Modifier le quitus' : 'Nouveau quitu
 						'partie'             => 'formation',
 						'v'                  => $v,
 						'erreurs'            => $erreurs,
-						'verrou'             => $profil,
+						'verrou'             => $verrou,
 						'options_formations' => $options_formations,
 						'libelle_filiere'    => 'Filière',
 						'aide_filiere'       => 'Les filières proposées dépendent de l’établissement sélectionné.',

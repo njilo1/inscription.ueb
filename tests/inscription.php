@@ -193,13 +193,15 @@ verifier( 'ÉTUDIANT TEST' === ( $fiche['nom'] ?? '' ) && (int) $fiche['filiere_
 verifier( 'CCA Bank' === $q->moyen_paiement, 'lieu de paiement enregistré sur le quitus' );
 verifier( ! soumettre( array_replace( $post, array( 'quitus_id' => $q->id, 'tranche' => 3, 'situation' => 'reprise', 'nom' => 'NOM MODIFIÉ', 'parcours' => 'L1', 'montant' => '50 000', 'moyen_paiement' => 'MTN Mobile Money' ) ) ), 'modification du dossier complet' );
 $q = ueb_quitus_par_id( $q->id );
-verifier( 'ÉTUDIANT TEST' === $q->nom && 'M1' === $q->parcours, 'champs de la fiche figés : la valeur postée est ignorée' );
+verifier( 'NOM MODIFIÉ' === $q->nom && 'L1' === $q->parcours, 'quitus pas encore envoyé : les champs de la fiche se modifient' );
+$fiche = ueb_profil( 1 );
+verifier( 'NOM MODIFIÉ' === ( $fiche['nom'] ?? '' ) && 'L1' === ( $fiche['parcours'] ?? '' ), 'modification du quitus : la fiche de l’étudiant suit' );
 verifier( 'MTN Mobile Money' === $q->moyen_paiement && 50000 === (int) $q->montant && 3 === (int) $q->tranche, 'lieu de paiement et montant restent modifiables' );
-verifier( ueb_profil_enregistrer( 1, array( 'nom' => 'NOM MODIFIÉ' ) + ueb_profil( 1 ) ), 'correction de la fiche (Mon compte)' );
-verifier( 'ÉTUDIANT TEST' === ueb_quitus_par_id( $q->id )->nom, 'un quitus généré garde ses valeurs' );
-verifier( ! soumettre( array_replace( $post, array( 'quitus_id' => $q->id, 'tranche' => 3, 'situation' => 'reprise' ) ) ), 'quitus réenregistré après correction' );
+verifier( ueb_profil_enregistrer( 1, array( 'nom' => 'NOM COMPTE' ) + ueb_profil( 1 ) ), 'correction de la fiche (Mon compte)' );
+verifier( 'NOM MODIFIÉ' === ueb_quitus_par_id( $q->id )->nom, 'un quitus généré garde ses valeurs' );
+verifier( ! soumettre( array_replace( $post, array( 'quitus_id' => $q->id, 'tranche' => 3, 'situation' => 'reprise', 'nom' => 'NOM COMPTE' ) ) ), 'quitus réenregistré après correction' );
 $m = ueb_medical_du_dossier( $q );
-verifier( (int) $m->montant === 5000 && 'NOM MODIFIÉ' === $m->nom, 'synchronisation des deux quitus' );
+verifier( (int) $m->montant === 5000 && 'NOM COMPTE' === $m->nom, 'synchronisation des deux quitus' );
 $wpdb->update( 'ueb_insc_quitus', array( 'statut' => 'recu_envoye' ), array( 'id' => $m->id ) );
 verifier( ! ueb_quitus_modifiable( $q ), 'dossier verrouillé après envoi reçu médical' );
 
