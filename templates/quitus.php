@@ -35,7 +35,7 @@ $v = $saisie ?: ( $edite ? (array) $edite : ueb_valeurs_initiales_quitus( $compt
    elle se corrige dans Mon compte. Le lieu de paiement et le montant restent libres.
    Un quitus pas encore envoyé (seul cas où il s'ouvre ici) se modifie en entier :
    rien n'est figé, et l'enregistrement met aussi la fiche à jour. */
-$profil = ueb_profil( $compte->id );
+$profil = ueb_profil_fige( $compte->id, ueb_formations_inscription() );
 if ( ! ( $edite && $saisie ) ) {
 	$v = array_replace( $v, $profil );
 }
@@ -218,7 +218,7 @@ ueb_page_debut( array( 'titre' => $edite ? 'Modifier le quitus' : 'Nouveau quitu
 					<span class="section-form__num">3</span>
 					<div>
 						<h2 id="section-formation">Ta formation</h2>
-						<p>Ton département et ton niveau pour cette année.</p>
+						<p>Ton niveau cette année, puis ta filière.</p>
 					</div>
 				</header>
 				<div class="section-form__corps formulaire">
@@ -229,7 +229,7 @@ ueb_page_debut( array( 'titre' => $edite ? 'Modifier le quitus' : 'Nouveau quitu
 						'verrou'             => $verrou,
 						'options_formations' => $options_formations,
 						'libelle_filiere'    => 'Filière',
-						'aide_filiere'       => 'Les filières proposées dépendent de l’établissement sélectionné.',
+						'aide_filiere'       => 'Les filières proposées dépendent de ton établissement et de ton niveau.',
 					) ); ?>
 				</div>
 			</section>

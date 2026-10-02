@@ -70,8 +70,8 @@ $formation = array_filter( array(
 					<input type="hidden" name="numero" value="<?php echo esc_attr( $q->numero ); ?>">
 					<p class="ligne-quitus__correction-titre"><?php echo ueb_icone( 'crayon', 16 ); ?>Corriger ma filière ou mon niveau</p>
 					<?php
-					ueb_champ( array( 'nom' => 'filiere_id', 'id' => 'correction-filiere-' . $q->id, 'libelle' => 'Filière', 'type' => 'select', 'options' => array_map( static fn( $f ) => $f->libelle, ueb_filieres_correction( $q ) ), 'valeur' => (string) $q->filiere_id, 'aide' => 'Filières de ' . $q->etablissement . ' du même type : le montant ne change pas.' ) );
 					ueb_champ( array( 'nom' => 'parcours', 'id' => 'correction-niveau-' . $q->id, 'libelle' => 'Niveau', 'type' => 'select', 'options' => UEB_NIVEAUX_INSCRIPTION, 'valeur' => $q->parcours ) );
+					ueb_champ( array( 'nom' => 'filiere_id', 'id' => 'correction-filiere-' . $q->id, 'libelle' => 'Filière', 'type' => 'select', 'options' => array_map( static fn( $f ) => $f->libelle, ueb_filieres_correction( $q ) ), 'valeur' => (string) $q->filiere_id, 'aide' => 'Filières de ' . $q->etablissement . ' du même type, ouvertes à ton niveau : le montant ne change pas.' ) );
 					?>
 					<button class="btn btn--fantome btn--petit" type="submit"><?php echo ueb_icone( 'check', 16 ); ?>Enregistrer la correction</button>
 				</form>

@@ -10,18 +10,28 @@ defined( 'ABSPATH' ) || exit;
 function ueb_formations_inscription( $avec_pro = UEB_FORMATIONS_PRO_OUVERTES ) {
 	global $wpdb;
 	$formations = array();
+	/* Niveaux ouverts : ceux de ueb_filieres_niveaux. Table encore vide (import
+	   des filières pas fait) : chaque filière reste ouverte à tous les niveaux. */
+	$par_niveau = (bool) $wpdb->get_var( 'SELECT 1 FROM ueb_filieres_niveaux LIMIT 1' );
 	foreach ( $wpdb->get_results(
-		'SELECT fi.id, fi.libelle, fi.type_formation, f.code AS etablissement
+		'SELECT fi.id, fi.libelle, fi.type_formation, f.code AS etablissement,
+			( SELECT GROUP_CONCAT( n.niveau ORDER BY n.niveau ) FROM ueb_filieres_niveaux n WHERE n.filiere_id = fi.id ) AS niveaux
 		FROM ueb_filieres fi JOIN ueb_facultes f ON f.id = fi.faculte_id
 		WHERE fi.actif = 1 ORDER BY f.code, fi.libelle'
 	) as $f ) {
 		$f->id                = (int) $f->id;
+		$f->niveaux           = $par_niveau ? array_values( array_filter( explode( ',', (string) $f->niveaux ) ) ) : array_keys( UEB_NIVEAUX_INSCRIPTION );
 		$formations[ $f->id ] = $f;
 	}
 	if ( ! $avec_pro ) {
 		$formations = array_filter( $formations, static fn( $f ) => 'classique' === $f->type_formation );
 	}
 	return $formations;
+}
+
+/** Vrai si la filière (de ueb_formations_inscription()) est ouverte à ce niveau. */
+function ueb_filiere_ouverte_au_niveau( $formation, $niveau ) {
+	return $formation && in_array( (string) $niveau, $formation->niveaux, true );
 }
 
 /** Un rejet de reçu n'annule pas les frais : le même quitus doit être corrigé. */

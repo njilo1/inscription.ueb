@@ -84,7 +84,7 @@ ueb_afficher_flash();
 					<table class="adm-registre__table ipes-table catalogue-table">
 						<thead><tr>
 							<th scope="col">Filière</th>
-							<th scope="col">Type · cycle</th>
+							<th scope="col">Type · niveaux</th>
 							<th scope="col" class="num">Quitus</th>
 							<th scope="col">État</th>
 							<th scope="col"><span class="sr">Actions</span></th>
@@ -106,7 +106,7 @@ ueb_afficher_flash();
 							<?php endif; ?>
 							<tr id="filiere-<?php echo $fid; ?>" class="ipes-ligne<?php echo $active ? '' : ' est-inactif'; ?><?php echo $modifiee && (int) $modifiee->id === $fid ? ' est-selectionnee' : ''; ?>">
 								<td class="ipes-c-qui"><span class="ipes-ligne__texte"><b><?php echo esc_html( $f->libelle ); ?></b><small><?php echo esc_html( $f->code ); ?></small></span></td>
-								<td data-titre="Type · cycle"><span class="ipes-ligne__texte"><span><?php echo esc_html( UEB_TYPES_FORMATION[ $f->type_formation ] ?? $f->type_formation ); ?></span><small><?php echo esc_html( UEB_CYCLES_FILIERE[ $f->cycle ] ?? $f->cycle ); ?></small></span></td>
+								<td data-titre="Type · niveaux"><span class="ipes-ligne__texte"><span><?php echo esc_html( UEB_TYPES_FORMATION[ $f->type_formation ] ?? $f->type_formation ); ?></span><small><?php echo esc_html( $f->niveaux ?: 'Aucun niveau : pas proposée au quitus' ); ?></small></span></td>
 								<td class="num ipes-ligne__nombre" data-titre="Quitus"><b><?php echo (int) $f->nb_quitus; ?></b></td>
 								<td data-titre="État"><?php echo $active ? '<span class="ipes-statut ipes-statut--verifie">' . ueb_icone( 'check', 14 ) . 'Ouverte</span>' : '<span class="ipes-statut ipes-statut--libre">' . ueb_icone( 'pause', 14 ) . 'Fermée</span>'; // phpcs:ignore -- SVG interne ?></td>
 								<td class="ipes-ligne__actions">

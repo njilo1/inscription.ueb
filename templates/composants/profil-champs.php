@@ -101,8 +101,9 @@ switch ( $a['partie'] ) :
 		?>
 		<div class="formulaire__rangee">
 			<?php
-			ueb_champ( array( 'nom' => 'filiere_id', 'libelle' => $a['libelle_filiere'], 'type' => 'select', 'icone' => $icone( 'filiere_id', 'ecole' ), 'valeur' => $val( 'filiere_id' ), 'erreur' => $erreurs['filiere_id'] ?? '', 'options' => $a['options_formations'], 'aide' => $fige( 'filiere_id' ) ? '' : $a['aide_filiere'], 'attrs' => $liste( 'filiere_id' ) ) );
+			/* Le niveau d'abord : il restreint les filières proposées. */
 			ueb_champ( array( 'nom' => 'parcours', 'libelle' => 'Niveau', 'type' => 'select', 'icone' => $fige( 'parcours' ) ? 'cadenas' : '', 'valeur' => $val( 'parcours' ), 'erreur' => $erreurs['parcours'] ?? '', 'options' => UEB_NIVEAUX_INSCRIPTION, 'aide' => $fige( 'parcours' ) ? '' : 'Ex. : L1 pour Licence 1, M1 pour Master 1.', 'attrs' => $liste( 'parcours' ) ) );
+			ueb_champ( array( 'nom' => 'filiere_id', 'libelle' => $a['libelle_filiere'], 'type' => 'select', 'icone' => $icone( 'filiere_id', 'ecole' ), 'valeur' => $val( 'filiere_id' ), 'erreur' => $erreurs['filiere_id'] ?? '', 'options' => $a['options_formations'], 'aide' => $fige( 'filiere_id' ) ? '' : $a['aide_filiere'], 'attrs' => $liste( 'filiere_id' ) ) );
 			?>
 		</div>
 		<?php

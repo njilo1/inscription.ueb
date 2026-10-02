@@ -537,13 +537,16 @@
 		};
 		const maj = () => {
 			const etablissement = $("input[name=etablissement]:checked", formQuitus)?.value || "";
-			if (etablissement !== dernierEtab) {
+			const niveau = $("[name=parcours]", formQuitus)?.value || "";
+			/* Filières de l'établissement ouvertes au niveau choisi. */
+			if (`${etablissement}|${niveau}` !== dernierEtab) {
 				const selection = filiere.value;
-				const liste = config.formations.filter((f) => f.etablissement === etablissement);
-				filiere.replaceChildren(new Option(etablissement ? (liste.length ? "Choisir une filière…" : "Aucune filière disponible") : "Choisis d’abord ton établissement", ""));
+				const liste = niveau ? config.formations.filter((f) => f.etablissement === etablissement && f.niveaux.includes(niveau)) : [];
+				const invite = !etablissement ? "Choisis d’abord ton établissement" : !niveau ? "Choisis d’abord ton niveau" : liste.length ? "Choisir une filière…" : "Aucune filière à ce niveau";
+				filiere.replaceChildren(new Option(invite, ""));
 				liste.forEach((f) => filiere.add(new Option((f.choix ? `Choix ${f.choix} — ` : "") + f.libelle, String(f.id))));
 				filiere.value = liste.some((f) => String(f.id) === selection) ? selection : "";
-				dernierEtab = etablissement;
+				dernierEtab = `${etablissement}|${niveau}`;
 			}
 			const formation = config.formations.find((f) => String(f.id) === filiere.value);
 			const classique = formation?.type_formation === "classique";
@@ -611,8 +614,8 @@
 			texte("[data-recap-medicaux]", formater(frais) + " FCFA");
 			texte("[data-recap-total]", pret ? formater(total) + " FCFA" : "—");
 			texte("[data-recap-formation]", formation?.libelle || "À choisir");
-			const niveau = $("[name=parcours]", formQuitus);
-			texte("[data-recap-niveau]", niveau?.value ? niveau.options[niveau.selectedIndex].text : "À choisir");
+			const champNiveau = $("[name=parcours]", formQuitus);
+			texte("[data-recap-niveau]", champNiveau?.value ? champNiveau.options[champNiveau.selectedIndex].text : "À choisir");
 			texte("[data-recap-tranche]", medicalSeul ? "Paiement unique" : tranche ? tranche.dataset.libelle || tranche.closest("label").textContent.trim() : "—");
 			texte("[data-recap-moyen]", $("select[name=moyen_paiement]", formQuitus)?.value || "À choisir");
 			/* Jauge de l'année (formations classiques) : elle annonce la deuxième tranche à venir. */

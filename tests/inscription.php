@@ -544,4 +544,21 @@ verifier( str_contains( ueb_badge_mdp( (object) array( 'doit_changer_mdp' => 1, 
 verifier( '' === ueb_badge_mdp( (object) array( 'doit_changer_mdp' => 0, 'reinit_le' => null ) ), 'badge : rien pour un compte normal' );
 verifier( ! str_contains( ueb_reinit_heure( current_time( 'timestamp' ) ), ' à ' ), 'heure de fin du jour même : sans date' );
 
+// Filières par niveau : table vide, chaque filière est ouverte à tous les niveaux ; remplie, elle seule compte.
+verifier( ueb_filiere_ouverte_au_niveau( ueb_formations_inscription()[ $fs[0]->id ], 'M2' ), 'sans niveaux importés : filière ouverte à tous les niveaux' );
+$wpdb->insert( 'ueb_filieres_niveaux', array( 'filiere_id' => $fs[0]->id, 'niveau' => 'L1' ) );
+$wpdb->insert( 'ueb_filieres_niveaux', array( 'filiere_id' => $fs[1]->id, 'niveau' => 'M1' ) );
+$par_niveau = ueb_formations_inscription();
+verifier( array( 'L1' ) === $par_niveau[ $fs[0]->id ]->niveaux && ueb_filiere_ouverte_au_niveau( $par_niveau[ $fs[0]->id ], 'L1' ) && ! ueb_filiere_ouverte_au_niveau( $par_niveau[ $fs[0]->id ], 'M1' ), 'filière ouverte à ses seuls niveaux' );
+verifier( array() === $par_niveau[ $fs[2]->id ]->niveaux, 'filière sans niveau : proposée nulle part' );
+list( , $e ) = ueb_valider_profil( array_replace( $post, array( 'filiere_id' => $fs[0]->id, 'parcours' => 'M1' ) ), $par_niveau, false );
+verifier( isset( $e['filiere_id'] ) && str_contains( $e['filiere_id'], 'pas ouverte en M1' ), 'filière refusée hors de ses niveaux' );
+list( , $e ) = ueb_valider_profil( array_replace( $post, array( 'filiere_id' => $fs[1]->id, 'parcours' => 'M1' ) ), $par_niveau, false );
+verifier( ! isset( $e['filiere_id'] ), 'filière acceptée à son niveau' );
+ueb_profil_enregistrer( 1, array( 'etablissement' => 'FS', 'filiere_id' => $fs[0]->id, 'parcours' => 'M1' ) + ueb_profil( 1 ) );
+verifier( ! isset( ueb_profil_fige( 1, $par_niveau )['filiere_id'] ) && 'FS' === ueb_profil_fige( 1, $par_niveau )['etablissement'], 'nouveau niveau : la filière de la fiche n’est plus figée, l’établissement reste figé' );
+ueb_profil_enregistrer( 1, array( 'parcours' => 'L1' ) + ueb_profil( 1 ) );
+verifier( (int) ueb_profil_fige( 1, $par_niveau )['filiere_id'] === $fs[0]->id, 'filière ouverte au niveau de la fiche : figée' );
+$wpdb->query( 'DELETE FROM ueb_filieres_niveaux' );
+
 echo $GLOBALS['assertions'] . " vérifications réussies. Aperçus : $sortie\n";
