@@ -26,10 +26,12 @@ require_once __DIR__ . '/administration-exports.php';
  * @param array $a titre, sous_titre, fil (array( array( url, libellé ) ), le
  *                 dernier élément étant la page courante), actions (HTML déjà échappé),
  *                 visuel (HTML posé à gauche du titre, ex. un logo), apres (HTML
- *                 sous la phrase, ex. des repères) — tous deux déjà échappés.
+ *                 sous la phrase, ex. des repères) — tous deux déjà échappés ;
+ *                 theme (bool, vrai par défaut) : bascule clair / sombre, propre
+ *                 à l'administration.
  */
 function ueb_adm_tete( array $a ) {
-	$a     = array_merge( array( 'titre' => '', 'sous_titre' => '', 'fil' => array(), 'actions' => '', 'visuel' => '', 'apres' => '' ), $a );
+	$a     = array_merge( array( 'titre' => '', 'sous_titre' => '', 'fil' => array(), 'actions' => '', 'visuel' => '', 'apres' => '', 'theme' => true ), $a );
 	$annee = ueb_annee_academique();
 	$n     = count( $a['fil'] );
 	?>
@@ -60,7 +62,7 @@ function ueb_adm_tete( array $a ) {
 		</div>
 		<div class="adm-tete__actions">
 			<span class="adm-annee"><?php echo ueb_icone( 'calendrier', 16 ); ?>Année <?php echo esc_html( $annee['libelle'] ); ?></span>
-			<?php ueb_adm_bascule_theme(); ?>
+			<?php if ( $a['theme'] ) { ueb_adm_bascule_theme(); } ?>
 			<?php echo $a['actions']; // phpcs:ignore -- construit et échappé par l'appelant ?>
 		</div>
 	</header>

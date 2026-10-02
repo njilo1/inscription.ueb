@@ -86,3 +86,14 @@ adm-compte { display: inline-block; }
 	.adm-finances__legende li, .adm-donut .donut-part, .adm-comparaison .adm-barre i,
 	.adm-registre__ligne .suivi-barre, .adm-registre__ligne .adm-registre__logo { transition: none; }
 }
+
+/* File « Reçus à vérifier » : propre au tableau de bord de la scolarité,
+   qui reprend ce tableau de bord pour son établissement. */
+.adm-dashboard .file-verif { display: block; }
+.adm-dashboard .file-verif__liste { border-radius: 12px; }
+.adm-dashboard .file-verif__liste li { animation: none; }
+.adm-dashboard .file-verif__pied { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem 1rem; margin-top: .9rem; }
+.adm-dashboard .file-verif__pied p { display: flex; align-items: center; gap: .45rem; margin: 0; font-size: .88rem; color: var(--gris); }
+.adm-dashboard .file-verif__pied p .icone { flex: none; color: #8a6100; }
+.adm-dashboard .file-verif__pied .bo-lien { min-height: 44px; }
+.adm-dashboard .file-verif__vide { border-radius: 12px; }

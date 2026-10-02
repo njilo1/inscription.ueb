@@ -60,7 +60,7 @@ add_action( 'wp_enqueue_scripts', function () {
 	if ( $bord_scolarite ) {
 		ueb_style( 'ueb-bord', 'assets/css/bord.css', array( 'ueb-pages' ) );
 		ueb_style( 'ueb-bord-graphes', 'assets/css/bord-graphes.css', array( 'ueb-bord' ) );
-		if ( 'paiements' === $vue_bo || ( is_page_template( 'page-scolarite.php' ) && 'bord' === $vue_bo && ! isset( $_GET['quitus'] ) ) ) {
+		if ( 'paiements' === $vue_bo ) {
 			ueb_style( 'ueb-scolarite-dashboard', 'assets/css/scolarite-dashboard.css', array( 'ueb-bord-graphes' ) );
 		}
 		if ( 'paiements' === $vue_bo ) {
@@ -68,6 +68,18 @@ add_action( 'wp_enqueue_scripts', function () {
 			ueb_script( 'ueb-paiements', 'assets/js/paiements.js' );
 		}
 		ueb_script( 'ueb-bord', 'assets/js/bord.js' );
+	}
+	/* Tableau de bord de la scolarité : le même que celui de l'administration
+	   (cartes à mini-courbes, anneau, évolution, mouvement), sans la bascule de thème. */
+	$tableau_scolarite = is_page_template( 'page-scolarite.php' ) && 'bord' === $vue_bo && ! isset( $_GET['quitus'] ) // phpcs:ignore -- lecture seule
+		&& is_user_logged_in() && function_exists( 'ueb_est_scolarite' ) && ueb_est_scolarite() && ueb_peut( UEB_CAP_GESTION );
+	if ( $tableau_scolarite ) {
+		ueb_style( 'ueb-administration', 'assets/css/administration.css', array( 'ueb-pages', 'ueb-bord-graphes' ) );
+		ueb_style( 'ueb-administration-dashboard', 'assets/css/administration-dashboard.css', array( 'ueb-administration' ) );
+		ueb_style( 'ueb-administration-analytics', 'assets/css/administration-analytics.css', array( 'ueb-administration-dashboard' ) );
+		ueb_script( 'ueb-administration-sparklines', 'assets/js/administration-sparklines.js' );
+		ueb_script( 'gsap', 'assets/js/vendor/gsap.min.js' );
+		ueb_script( 'ueb-administration-mouvement', 'assets/js/administration-mouvement.js', array( 'gsap', 'ueb-remotion' ) );
 	}
 	/* Administration : coque, composants et thème clair / sombre, chargés en
 	   dernier pour habiller aussi les composants partagés. */
