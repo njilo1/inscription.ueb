@@ -318,9 +318,9 @@
 		});
 	});
 
-	/* ---------- Matricule reconnu ; un n° de dossier (UEB-…) est refusé, comme ueb_erreur_matricule() ---------- */
-	const DOSSIER = /^(DEMO-)?UEB/;
-	const MATRICULE = /^\d{2}[A-Z0-9]{4,13}$/;
+	/* ---------- Matricule : lettres, chiffres, « - », « _ » ou « . », 3 à 30 caractères.
+	   Même règle que UEB_REGEX_MATRICULE (inc/config.php) ; le serveur revalide. ---------- */
+	const MATRICULE = /^[A-Z0-9._-]{3,30}$/;
 	$$("[data-identifiant]").forEach((champ) => {
 		const apercu = document.createElement("p");
 		apercu.className = "apercu";
@@ -328,9 +328,9 @@
 		(champ.closest(".champ__boite") ?? champ).insertAdjacentElement("afterend", apercu);
 		const maj = () => {
 			const v = champ.value.replace(/\s+/g, "").toUpperCase();
-			const dossier = DOSSIER.test(v);
-			apercu.textContent = dossier ? "Matricule attendu" : MATRICULE.test(v) ? "✓ Matricule" : "";
-			apercu.classList.toggle("apercu--erreur", dossier);
+			const interdit = v !== "" && /[^A-Z0-9._-]/.test(v);
+			apercu.textContent = interdit ? "Lettres, chiffres, « - », « _ » ou « . » seulement" : MATRICULE.test(v) ? "✓ Matricule" : "";
+			apercu.classList.toggle("apercu--erreur", interdit);
 		};
 		champ.addEventListener("input", maj);
 		maj();

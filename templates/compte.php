@@ -37,7 +37,7 @@ ueb_page_debut( array( 'titre' => 'Mon compte', 'variante' => 'espace' ) );
 				<span class="carte-compte__avatar" aria-hidden="true"><?php echo esc_html( $initiales ); ?></span>
 				<div class="carte-compte__ident">
 					<?php if ( $nom_complet ) : ?><p class="carte-compte__nom"><?php echo esc_html( $nom_complet ); ?></p><?php endif; ?>
-					<p><?php echo $compte->matricule ? 'Matricule' : 'N° de dossier'; ?> <b><?php echo esc_html( ueb_identifiant_compte( $compte ) ); ?></b></p>
+					<p>Matricule <b><?php echo esc_html( ueb_identifiant_compte( $compte ) ); ?></b></p>
 				</div>
 				<dl class="carte-compte__infos">
 					<div><dt><?php echo ueb_icone( 'telephone', 15 ); ?>Téléphone</dt><dd><?php echo esc_html( ueb_formater_telephone( $compte->telephone ) ); ?></dd></div>
@@ -162,9 +162,6 @@ ueb_page_debut( array( 'titre' => 'Mon compte', 'variante' => 'espace' ) );
 							<span>Matricule</span>
 							<b><?php echo $compte->matricule ? esc_html( $compte->matricule ) : 'Pas encore enregistré'; ?></b>
 						</li>
-						<?php if ( $compte->numero_dossier ) : ?>
-							<li><span>N° de dossier</span><b><?php echo esc_html( $compte->numero_dossier ); ?></b></li>
-						<?php endif; ?>
 					</ul>
 					<section class="matricule-correction" aria-labelledby="titre-matricule">
 						<h3 id="titre-matricule"><?php echo $compte->matricule ? 'Corriger mon matricule' : 'Enregistrer mon matricule'; ?></h3>

@@ -187,9 +187,11 @@ function ueb_annee_academique( $timestamp = null ) {
 	);
 }
 
-/* Formats d'identifiants (comparés en majuscules, sans espaces). */
-const UEB_REGEX_DOSSIER   = '/^(DEMO-)?UEB-\d{4}-\d{6}$/';
-const UEB_REGEX_MATRICULE = '/^\d{2}[A-Z0-9]{4,13}$/';
+/* Matricule : seul identifiant de connexion. Lettres, chiffres, « - », « _ »
+   ou « . », 3 à 30 caractères, comparé en majuscules et sans espaces : chaque
+   établissement a son propre format, aucun n'est imposé. */
+const UEB_REGEX_MATRICULE = '/^[A-Z0-9._-]{3,30}$/';
+const UEB_MESSAGE_MATRICULE = 'Le matricule compte 3 à 30 caractères : lettres, chiffres, « - », « _ » ou « . ».';
 const UEB_REGEX_TELEPHONE = '/^6\d{8}$/'; /* mobile camerounais : 9 chiffres commençant par 6 */
 
 /** Normalise un identifiant saisi : majuscules, sans espaces. */
@@ -197,15 +199,9 @@ function ueb_normaliser_identifiant( $valeur ) {
 	return strtoupper( preg_replace( '/\s+/', '', (string) $valeur ) );
 }
 
-/** « dossier », « matricule » ou null selon le format de l'identifiant. */
+/** « matricule » si l'identifiant (normalisé) a le format d'un matricule, sinon null. */
 function ueb_type_identifiant( $identifiant ) {
-	if ( preg_match( UEB_REGEX_DOSSIER, $identifiant ) ) {
-		return 'dossier';
-	}
-	if ( preg_match( UEB_REGEX_MATRICULE, $identifiant ) ) {
-		return 'matricule';
-	}
-	return null;
+	return preg_match( UEB_REGEX_MATRICULE, (string) $identifiant ) ? 'matricule' : null;
 }
 
 /** Téléphone mobile camerounais (9 chiffres commençant par 6), sans indicatif ni espaces, ou null. */

@@ -3,32 +3,19 @@
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Les trois vœux du préinscrit ; toutes les filières actives pour les anciens.
+ * Filières proposées dans le quitus : toutes celles du catalogue encore
+ * ouvertes (onglet Filières de l'administration), par établissement.
  * Filières classiques seulement tant que UEB_FORMATIONS_PRO_OUVERTES est faux.
  */
-function ueb_formations_inscription( $compte, $preinscrit, $avec_pro = UEB_FORMATIONS_PRO_OUVERTES ) {
+function ueb_formations_inscription( $avec_pro = UEB_FORMATIONS_PRO_OUVERTES ) {
 	global $wpdb;
-	$sql = 'SELECT fi.id, fi.libelle, fi.type_formation, f.code AS etablissement
-		FROM ueb_filieres fi JOIN ueb_facultes f ON f.id = fi.faculte_id';
-	if ( $preinscrit ) {
-		$pre = ueb_preinscription_par_dossier( $compte->numero_dossier );
-		if ( ! $pre ) {
-			return array();
-		}
-		$ids = array_values( array_unique( array_filter( array_map( 'intval', array( $pre->filiere_1_id, $pre->filiere_2_id, $pre->filiere_3_id ) ) ) ) );
-		if ( ! $ids ) {
-			return array();
-		}
-		$marques = implode( ',', array_fill( 0, count( $ids ), '%d' ) );
-		// Conserver les vœux soumis, même si une filière n'est plus ouverte aux nouvelles candidatures.
-		$sql = $wpdb->prepare( $sql . " WHERE fi.id IN ($marques) ORDER BY FIELD(fi.id, $marques)", array_merge( $ids, $ids ) );
-	} else {
-		$sql .= ' WHERE fi.actif = 1 ORDER BY f.code, fi.libelle';
-	}
 	$formations = array();
-	foreach ( $wpdb->get_results( $sql ) as $i => $f ) {
-		$f->id = (int) $f->id;
-		$f->choix = $preinscrit ? $i + 1 : null;
+	foreach ( $wpdb->get_results(
+		'SELECT fi.id, fi.libelle, fi.type_formation, f.code AS etablissement
+		FROM ueb_filieres fi JOIN ueb_facultes f ON f.id = fi.faculte_id
+		WHERE fi.actif = 1 ORDER BY f.code, fi.libelle'
+	) as $f ) {
+		$f->id                = (int) $f->id;
 		$formations[ $f->id ] = $f;
 	}
 	if ( ! $avec_pro ) {
@@ -51,15 +38,16 @@ function ueb_quitus_medical_annuel( $compte_id, $annee ) {
 function ueb_contexte_inscription( $compte, $edite = null ) {
 	global $wpdb;
 	$annee = ueb_annee_academique()['code'];
-	$nouveau = ueb_preinscrit_cette_annee( $compte );
 	$medical = ueb_quitus_medical_annuel( $compte->id, $annee );
 	$droits = $wpdb->get_results( $wpdb->prepare(
 		"SELECT id, numero, tranche, montant, situation, statut FROM ueb_insc_quitus
 		 WHERE compte_id = %d AND annee_academique = %s AND type = 'droits' ORDER BY id",
 		$compte->id, $annee
 	) );
-	$situation = $nouveau ? 'nouveau' : ( $medical->situation ?? ( $droits[0]->situation ?? '' ) );
-	if ( ! $nouveau && ! isset( UEB_FRAIS_MEDICAUX[ $situation ] ) ) {
+	/* Situation déclarée par l'étudiant (« Ta situation cette année ») : celle du
+	   quitus médical de l'année, sinon celle de son premier quitus de droits. */
+	$situation = $medical->situation ?? ( $droits[0]->situation ?? '' );
+	if ( 'nouveau' !== $situation && ! isset( UEB_FRAIS_MEDICAUX[ $situation ] ) ) {
 		$situation = $medical && 5000 === (int) $medical->montant ? 'reprise' : 'ancien';
 	}
 	$tranches = array( 1 => 'Première tranche', 2 => 'Deuxième tranche', 3 => 'Les deux tranches' );
@@ -86,10 +74,9 @@ function ueb_contexte_inscription( $compte, $edite = null ) {
 	}
 	$medical_dans_dossier = $medical && $edite && ( (int) ( $medical->quitus_droits_id ?? 0 ) === (int) $edite->id || (int) $medical->id === (int) $edite->id );
 	return array(
-		'nouveau' => $nouveau,
-		'formations' => ueb_formations_inscription( $compte, $nouveau ),
+		'formations' => ueb_formations_inscription(),
 		'medical' => $medical,
-		'medical_inclus' => ! $nouveau && ( ! $medical || $medical_dans_dossier ),
+		'medical_inclus' => ! $medical || $medical_dans_dossier,
 		'situation' => $situation,
 		'situation_verrouillee' => (bool) ( $medical && ( ! $medical_dans_dossier || 'genere' !== $medical->statut ) ),
 		'tranches' => $tranches,

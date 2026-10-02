@@ -13,7 +13,7 @@ ueb_page_debut( array( 'titre' => 'Créer mon compte', 'variante' => 'auth' ) );
 get_template_part( 'templates/partie', 'auth-debut', array( 'page' => 'creer-compte' ) );
 ?>
 			<h1 class="acces__titre" id="acces-titre">Créer ton compte</h1>
-			<p class="acces__intro">Ton matricule te sert d’identifiant. Le numéro de dossier de préinscription n’est pas accepté.</p>
+			<p class="acces__intro">Ton matricule te sert d’identifiant.</p>
 
 			<?php ueb_afficher_flash(); ?>
 			<?php if ( ! empty( $erreurs['general'] ) ) : ?>

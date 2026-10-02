@@ -23,7 +23,7 @@ function ueb_cms_couleurs() {
     return array(
         'vert'       => array( 22, 82, 49 ),   // barres de section, bandeaux
         'vert_titre' => array( 22, 106, 58 ),  // grands titres
-        'orange'     => array( 232, 126, 24 ), // numéro de dossier
+        'orange'     => array( 232, 126, 24 ), // matricule
         'or'         => array( 240, 190, 60 ), // code sur bandeau vert (page 2)
         'noir'       => array( 33, 37, 41 ),
         'gris'       => array( 107, 114, 128 ),
@@ -123,14 +123,14 @@ function ueb_cms_page_medicale( $pdf, $d ) {
     ueb_cms_entete_bilingue( $pdf, 6 );
     /* ── Titre "FICHE CMS" — même style que page 1 ── */
     ueb_cms_txt( $pdf, 37, 30, 'FICHE CMS', 15.5, 'B', $c['vert_titre'], 'C', 130 );
-    /* ── N° Dossier — même style que page 1 (noir + orange) */
+    /* ── Matricule — même style que page 1 (noir + orange) */
     $pdf->SetFont( 'uebsansb', '', 10.5 );
     $w1 = $pdf->GetStringWidth( $d['libelle_identifiant'] . ' : ' );
     $pdf->SetFont( 'uebsansb', '', 11 );
-    $w2 = $pdf->GetStringWidth( $d['numero_dossier'] );
+    $w2 = $pdf->GetStringWidth( $d['identifiant'] );
     $x0 = 37 + ( 130 - $w1 - $w2 ) / 2;
     ueb_cms_txt( $pdf, $x0, 41, $d['libelle_identifiant'] . ' : ', 10.5, 'B', $c['noir'] );
-    ueb_cms_txt( $pdf, $x0 + $w1, 40.9, $d['numero_dossier'], 11, 'B', $c['orange'] );
+    ueb_cms_txt( $pdf, $x0 + $w1, 40.9, $d['identifiant'], 11, 'B', $c['orange'] );
     ueb_cms_txt( $pdf, 0, 55,
         '(Imprimez ces deux fiches et apportez-les au Centre médico-social lors de la visite médicale)',
         9, 'I', $c['gris'], 'C', 210 );

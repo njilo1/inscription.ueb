@@ -172,7 +172,7 @@ $fmt = static fn( $n ) => ueb_formater_montant( (int) $n );
 						<tr>
 							<th scope="row" class="etu-nom">
 								<b><?php echo esc_html( $e->nom . ' ' . $e->prenom ); ?></b>
-								<small><?php echo esc_html( ( 'matricule' === $e->type_identifiant ? 'Matricule ' : 'Dossier ' ) . $e->identifiant ); ?></small>
+								<small><?php echo esc_html( 'Matricule ' . $e->identifiant ); ?></small>
 							</th>
 							<td data-libelle="Établissement" class="etu-etab"><img src="<?php echo esc_url( ueb_logo_url( $e->etablissement ) ); ?>" alt="" width="22" height="22" loading="lazy"><?php echo esc_html( $e->etablissement ); ?></td>
 							<td data-libelle="Filière"><?php echo esc_html( $e->departement ); ?></td>

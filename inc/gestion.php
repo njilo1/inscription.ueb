@@ -607,7 +607,7 @@ function ueb_gestion_liste_quitus( array $filtres, $par_page = 30 ) {
 
 /**
  * Recherche d'étudiants : un seul champ qui cherche dans le matricule, le
- * numéro de dossier, le téléphone, le nom et le prénom, plus un filtre sur
+ * téléphone, le nom et le prénom, plus un filtre sur
  * le paiement. $etab limite à un établissement.
  *
  * @param array $filtres q (texte), paiement ('paye' | 'non_paye' | '')
@@ -628,9 +628,9 @@ function ueb_gestion_chercher_etudiants( array $filtres, $etab = '' ) {
 		$like = '%' . $wpdb->esc_like( $texte ) . '%';
 		$maj  = '%' . $wpdb->esc_like( ueb_normaliser_identifiant( $texte ) ) . '%';
 		$tel  = ueb_normaliser_telephone( $texte );
-		$where[] = '( c.matricule LIKE %s OR c.numero_dossier LIKE %s OR c.telephone = %s
+		$where[] = '( c.matricule LIKE %s OR c.telephone = %s
 			OR EXISTS ( SELECT 1 FROM ueb_insc_quitus r WHERE r.compte_id = c.id AND ( r.nom LIKE %s OR r.prenom LIKE %s ) ) )';
-		array_push( $params, $maj, $maj, $tel ?: '-', $like, $like );
+		array_push( $params, $maj, $tel ?: '-', $like, $like );
 	}
 
 	$ayant = '';
@@ -675,9 +675,9 @@ function ueb_gestion_chercher_comptes( $recherche, $etab = '' ) {
 	$like = '%' . $wpdb->esc_like( ueb_normaliser_identifiant( $recherche ) ) . '%';
 	return $wpdb->get_results( $wpdb->prepare(
 		"SELECT DISTINCT c.* FROM ueb_insc_comptes c $jointure
-		  WHERE c.matricule LIKE %s OR c.numero_dossier LIKE %s OR c.telephone = %s
+		  WHERE c.matricule LIKE %s OR c.telephone = %s
 		  ORDER BY c.date_creation DESC LIMIT 50", // phpcs:ignore -- jointure sans saisie
-		array_merge( $params, array( $like, $like, $tel ?: '-' ) )
+		array_merge( $params, array( $like, $tel ?: '-' ) )
 	) );
 }
 
@@ -758,8 +758,9 @@ function ueb_action_gestion_creer_etudiant() {
 	$tel_saisi   = sanitize_text_field( wp_unslash( $_POST['telephone'] ?? '' ) );
 	$telephone   = $tel_saisi ? ueb_normaliser_telephone( $tel_saisi ) : '';
 
-	if ( 'matricule' !== ueb_type_identifiant( $identifiant ) ) {
-		ueb_flash( 'erreur', 'Saisis le matricule de l’étudiant, par exemple 24I0017FS. Le numéro de dossier de préinscription n’est pas accepté.' );
+	$erreur_matricule = ueb_erreur_matricule( $identifiant );
+	if ( $erreur_matricule ) {
+		ueb_flash( 'erreur', $erreur_matricule );
 		ueb_rediriger( $retour );
 	}
 	if ( $tel_saisi && ! $telephone ) {

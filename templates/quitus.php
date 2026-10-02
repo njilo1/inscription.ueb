@@ -36,7 +36,6 @@ $v = $saisie ?: ( $edite ? (array) $edite : ueb_valeurs_initiales_quitus( $compt
 $profil = ueb_profil( $compte->id );
 $v = array_replace( $v, $profil );
 $contexte = ueb_contexte_inscription( $compte, $edite );
-$preinscrit_cette_annee = $contexte['nouveau'];
 $formations = $contexte['formations'];
 /* Situation : une liste déroulante dont chaque option s'explique entre parenthèses. */
 $options_situation = array(
@@ -87,12 +86,11 @@ foreach ( $etablissements as $sigle => $e ) {
 }
 $options_formations = array();
 foreach ( $formations as $f ) {
-	$options_formations[ $f->id ] = ( $f->choix ? 'Choix ' . $f->choix . ' — ' : $f->etablissement . ' — ' ) . $f->libelle;
+	$options_formations[ $f->id ] = $f->etablissement . ' — ' . $f->libelle;
 }
 $montants_medicaux = array_map( static fn( $f ) => $f['montant'], UEB_FRAIS_MEDICAUX );
 $donnees_paiement = array(
 	'formations' => array_values( $formations ),
-	'nouveau' => $contexte['nouveau'],
 	'medicalInclus' => (bool) $contexte['medical_inclus'],
 	'medicalExistant' => $contexte['medical'] ? array( 'numero' => $contexte['medical']->numero, 'statut' => $contexte['medical']->statut ) : null,
 	'montantsMedicaux' => $montants_medicaux,
@@ -120,7 +118,7 @@ ueb_page_debut( array( 'titre' => $edite ? 'Modifier le quitus' : 'Nouveau quitu
 
 		<ul class="quitus-contexte">
 			<li><?php echo ueb_icone( 'horloge', 16 ); ?>Année académique <b><?php echo esc_html( $annee['libelle'] ); ?></b></li>
-			<li><?php echo ueb_icone( 'utilisateur', 16 ); ?><?php echo $compte->matricule ? 'Matricule' : 'N° de dossier'; ?> <b><?php echo esc_html( ueb_identifiant_compte( $compte ) ); ?></b></li>
+			<li><?php echo ueb_icone( 'utilisateur', 16 ); ?>Matricule <b><?php echo esc_html( ueb_identifiant_compte( $compte ) ); ?></b></li>
 		</ul>
 		<?php if ( ! $compte->matricule ) : ?>
 			<p class="quitus-contexte__note">Tu as reçu ton matricule ? Enregistre-le dans <a href="<?php echo esc_url( ueb_url( 'mon-espace/compte' ) ); ?>">Mon compte</a> avant de générer ton quitus.</p>
@@ -168,7 +166,7 @@ ueb_page_debut( array( 'titre' => $edite ? 'Modifier le quitus' : 'Nouveau quitu
 					</div>
 				</header>
 				<div class="section-form__corps">
-					<?php ueb_champs_profil( array( 'partie' => 'etablissement', 'v' => $v, 'erreurs' => $erreurs, 'verrou' => $profil, 'etabs_permis' => $preinscrit_cette_annee ? array_column( $formations, 'etablissement' ) : null ) ); ?>
+					<?php ueb_champs_profil( array( 'partie' => 'etablissement', 'v' => $v, 'erreurs' => $erreurs, 'verrou' => $profil ) ); ?>
 
 					<div class="quitus-choix-type">
 						<?php
@@ -180,7 +178,7 @@ ueb_page_debut( array( 'titre' => $edite ? 'Modifier le quitus' : 'Nouveau quitu
 							'attrs' => $contexte['situation_verrouillee'] ? array( 'disabled' => true ) : array(),
 							'aide' => $contexte['situation_verrouillee']
 								? 'Ta situation est déjà fixée par ton quitus médical de cette année : elle ne peut plus changer.'
-								: sprintf( 'Visite médicale : déjà payée à la préinscription si tu es nouveau, %s FCFA sans interruption, %s FCFA avec interruption (réactivation du matricule).%s', ueb_formater_montant( UEB_FRAIS_MEDICAUX['ancien']['montant'] ), ueb_formater_montant( UEB_FRAIS_MEDICAUX['reprise']['montant'] ), $preinscrit_cette_annee ? ' Ta préinscription de cette année a été retrouvée : « Nouveau » est présélectionné.' : '' ),
+								: sprintf( 'Visite médicale : déjà payée à la préinscription si tu es nouveau, %s FCFA sans interruption, %s FCFA avec interruption (réactivation du matricule).', ueb_formater_montant( UEB_FRAIS_MEDICAUX['ancien']['montant'] ), ueb_formater_montant( UEB_FRAIS_MEDICAUX['reprise']['montant'] ) ),
 						) );
 						?>
 						<?php if ( $contexte['situation_verrouillee'] ) : ?><input type="hidden" name="situation" value="<?php echo esc_attr( $val( 'situation' ) ); ?>"><?php endif; ?>
@@ -225,8 +223,8 @@ ueb_page_debut( array( 'titre' => $edite ? 'Modifier le quitus' : 'Nouveau quitu
 						'erreurs'            => $erreurs,
 						'verrou'             => $profil,
 						'options_formations' => $options_formations,
-						'libelle_filiere'    => $preinscrit_cette_annee ? 'Un de tes choix de préinscription' : 'Filière',
-						'aide_filiere'       => $preinscrit_cette_annee ? 'Choisis parmi les filières enregistrées dans ton dossier de préinscription.' : 'Les filières proposées dépendent de l’établissement sélectionné.',
+						'libelle_filiere'    => 'Filière',
+						'aide_filiere'       => 'Les filières proposées dépendent de l’établissement sélectionné.',
 					) ); ?>
 				</div>
 			</section>
@@ -336,7 +334,7 @@ ueb_page_debut( array( 'titre' => $edite ? 'Modifier le quitus' : 'Nouveau quitu
 						<p>Montant total à payer <strong data-total-paiement><?php echo $paiement['total'] ? esc_html( ueb_formater_montant( $paiement['total'] ) . ' FCFA' ) : '—'; ?></strong></p>
 						<p class="paiement-total__detail" data-detail-paiement><?php echo esc_html( ueb_formater_montant( $paiement['droits'] ) . ' FCFA de droits universitaires + ' . ueb_formater_montant( $paiement['medicaux'] ) . ' FCFA de frais médicaux.' ); ?></p>
 					</div>
-					<p class="champ__aide" data-note-medicale><?php echo $preinscrit_cette_annee ? 'Frais médicaux déjà compris dans ta préinscription de cette année.' : ( $contexte['medical_inclus'] ? 'Les frais médicaux sont payables en une seule fois pour l’année en cours, sur le compte des services centraux.' : 'Les frais médicaux figurent déjà sur ton quitus ' . esc_html( $contexte['medical']->numero ) . ' : ils ne sont pas ajoutés à cette tranche.' ); ?></p>
+					<p class="champ__aide" data-note-medicale><?php echo 'nouveau' === ( $v['situation'] ?? '' ) ? 'Frais médicaux déjà compris dans ta préinscription de cette année.' : ( $contexte['medical_inclus'] ? 'Les frais médicaux sont payables en une seule fois pour l’année en cours, sur le compte des services centraux.' : 'Les frais médicaux figurent déjà sur ton quitus ' . esc_html( $contexte['medical']->numero ) . ' : ils ne sont pas ajoutés à cette tranche.' ); ?></p>
 					<noscript><p class="quitus-note">Après avoir choisi ta formation, ta situation ou ta tranche, actualise les montants avant de générer tes documents.</p><button class="btn btn--fantome" type="submit" name="actualiser_paiement" value="1">Actualiser les montants</button></noscript>
 					<?php if ( ! $contexte['tranches'] && 'droits' === $type_courant ) : ?><p class="quitus-note">Tes deux tranches ont déjà un quitus pour cette année. Retrouve-les dans <a href="<?php echo esc_url( ueb_url( 'mon-espace' ) ); ?>">ton espace</a>.</p><?php endif; ?>
 				</div>

@@ -46,11 +46,10 @@ $attente   = array_sum( array_map( static fn( $q ) => in_array( $q->statut, arra
 $recus_annee = array_filter( $recus_compte, static fn( $r ) => $annee['code'] === $r->annee_academique );
 $recus_statuts = array_count_values( array_map( static fn( $r ) => $r->statut_quitus, $recus_annee ) );
 
-/* Prénom et établissement : ceux du dernier quitus, sinon ceux de la préinscription. */
-$preinscription = $compte->numero_dossier ? ueb_preinscription_par_dossier( $compte->numero_dossier ) : null;
-$prenom         = trim( (string) ( $quitus[0]->prenom ?? ( $preinscription->prenom ?? '' ) ) );
+/* Prénom et établissement : ceux du dernier quitus. */
+$prenom         = trim( (string) ( $quitus[0]->prenom ?? '' ) );
 $prenom         = $prenom ? mb_convert_case( strtok( $prenom, ' ' ), MB_CASE_TITLE ) : '';
-$etab_focus     = ueb_etablissement( $focus->etablissement ?? ( $quitus[0]->etablissement ?? ( $preinscription->etablissement ?? '' ) ) );
+$etab_focus     = ueb_etablissement( $focus->etablissement ?? ( $quitus[0]->etablissement ?? '' ) );
 
 $url_nouveau = ueb_url( 'mon-espace/quitus' );
 $url_espace  = ueb_url( 'mon-espace' );
@@ -170,9 +169,6 @@ ueb_page_debut( array( 'titre' => $vue ? ( 'quitus' === $vue ? 'Mes quitus' : 'M
 					<dl class="encart__fiche">
 						<?php if ( $compte->matricule ) : ?>
 							<div><dt>Matricule</dt><dd><?php echo esc_html( $compte->matricule ); ?></dd></div>
-						<?php endif; ?>
-						<?php if ( $compte->numero_dossier ) : ?>
-							<div><dt>N° de dossier</dt><dd><?php echo esc_html( $compte->numero_dossier ); ?></dd></div>
 						<?php endif; ?>
 						<div><dt>Téléphone</dt><dd><?php echo esc_html( ueb_formater_telephone( $compte->telephone ) ); ?></dd></div>
 						<div><dt>Compte créé le</dt><dd><?php echo esc_html( mysql2date( 'j F Y', $compte->date_creation ) ); ?></dd></div>

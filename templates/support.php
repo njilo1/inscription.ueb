@@ -94,7 +94,7 @@ ueb_page_debut( array( 'titre' => 'Support', 'variante' => 'simple', 'classe' =>
 					<div class="accordeon">
 						<details>
 							<summary>Comment générer mon quitus ?<?php echo ueb_icone( 'chevron', 20 ); ?></summary>
-							<p>Connecte-toi avec ton matricule, ou avec le numéro de dossier reçu à la préinscription, puis ouvre « Nouveau quitus ». Choisis ton établissement, vérifie tes informations et indique le montant : ton quitus sort en PDF, avec les quatre coupons (étudiant, DAF, scolarité et banque) sur une page A4.</p>
+							<p>Connecte-toi avec ton matricule, puis ouvre « Nouveau quitus ». Choisis ton établissement, vérifie tes informations et indique le montant : ton quitus sort en PDF, avec les quatre coupons (étudiant, DAF, scolarité et banque) sur une page A4.</p>
 						</details>
 						<details>
 							<summary>Que faire après avoir payé à la banque ?<?php echo ueb_icone( 'chevron', 20 ); ?></summary>
