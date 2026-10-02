@@ -3,9 +3,7 @@
  * Comptes étudiants : création, connexion, déconnexion, changement de mot
  * de passe et d'identifiant.
  *
- * Identifiant de connexion : le matricule seul. Le n° de dossier de
- * préinscription (UEB-…) n'est plus accepté ; les anciens comptes créés avec
- * lui enregistrent leur matricule dans leur espace.
+ * Identifiant de connexion : le matricule seul (UEB_REGEX_MATRICULE, inc/config.php).
  *
  * @package Inscription_UEB
  */
@@ -22,8 +20,7 @@ function ueb_compte_par_id( $id ) {
 function ueb_compte_par_identifiant( $identifiant ) {
 	global $wpdb;
 	return $wpdb->get_row( $wpdb->prepare(
-		'SELECT * FROM ueb_insc_comptes WHERE matricule = %s OR numero_dossier = %s LIMIT 1',
-		$identifiant,
+		'SELECT * FROM ueb_insc_comptes WHERE matricule = %s LIMIT 1',
 		$identifiant
 	) );
 }
@@ -50,73 +47,17 @@ function ueb_compte_courant() {
 	return $compte;
 }
 
-/**
- * Message d'erreur si l'identifiant saisi n'est pas un matricule, sinon ''.
- * Un numéro de dossier de préinscription (UEB-…) est refusé.
- */
+/** Message d'erreur si l'identifiant saisi (normalisé) n'est pas un matricule valable, sinon ''. */
 function ueb_erreur_matricule( $identifiant ) {
 	if ( '' === $identifiant ) {
 		return 'Saisis ton matricule.';
 	}
-	if ( str_starts_with( $identifiant, 'UEB' ) || 'dossier' === ueb_type_identifiant( $identifiant ) ) {
-		return 'Le numéro de dossier de préinscription n’est pas accepté : saisis ton matricule, par exemple 24I0017FS.';
-	}
-	if ( 'matricule' !== ueb_type_identifiant( $identifiant ) ) {
-		return 'Matricule non reconnu. Exemple : 24I0017FS.';
-	}
-	return '';
+	return 'matricule' === ueb_type_identifiant( $identifiant ) ? '' : UEB_MESSAGE_MATRICULE;
 }
 
-/** Identifiant affiché : le matricule s'il existe, sinon le n° de dossier. */
+/** Identifiant affiché du compte : son matricule. */
 function ueb_identifiant_compte( $compte ) {
-	return $compte->matricule ?: $compte->numero_dossier;
-}
-
-/**
- * Données de préinscription d'un n° de dossier soumis (lecture seule),
- * pour vérifier le dossier et pré-remplir le quitus.
- */
-function ueb_preinscription_par_dossier( $dossier ) {
-	global $wpdb;
-	return $wpdb->get_row( $wpdb->prepare(
-		"SELECT p.numero_dossier, p.nom, p.prenom, p.date_naissance, p.lieu_naissance, p.sexe,
-		        p.email, p.adresse, p.nom_urgence, p.numero_urgence, p.adresse_urgence,
-		        p.filiere_1_id, p.filiere_2_id, p.filiere_3_id,
-		        n.nom AS nationalite, f.code AS etablissement, fi.libelle AS filiere, nv.code AS niveau
-		   FROM ueb_preinscriptions p
-		   LEFT JOIN ueb_nationalites n ON n.id = p.nationalite_id
-		   LEFT JOIN ueb_facultes f ON f.id = p.faculte_id
-		   LEFT JOIN ueb_filieres fi ON fi.id = p.filiere_1_id
-		   LEFT JOIN ueb_niveaux_lmd nv ON nv.id = p.niveau_lmd_id
-		  WHERE p.numero_dossier = %s AND p.statut = 'soumis'",
-		$dossier
-	) );
-}
-
-/**
- * Vrai si l'étudiant s'est préinscrit pendant l'année académique en cours :
- * sa visite médicale est alors déjà payée avec les frais de préinscription,
- * et il n'a pas de quitus médical à générer.
- */
-function ueb_preinscrit_cette_annee( $compte ) {
-	global $wpdb;
-	if ( empty( $compte->numero_dossier ) ) {
-		return false;
-	}
-	/* Le numéro de dossier porte l'année de la campagne : UEB-2026-000150 vaut
-	   pour l'année 2026-2027. On ne peut pas se fier à la date de saisie : les
-	   préinscriptions se font avant la rentrée, donc avant le 1er septembre. */
-	if ( ! preg_match( '/(\d{4})-\d{6}$/', $compte->numero_dossier, $trouve ) ) {
-		return false;
-	}
-	if ( (int) $trouve[1] !== ueb_annee_academique()['debut'] ) {
-		return false;
-	}
-	/* Le dossier doit exister et avoir été soumis. */
-	return (bool) $wpdb->get_var( $wpdb->prepare(
-		"SELECT id FROM ueb_preinscriptions WHERE numero_dossier = %s AND statut = 'soumis'",
-		$compte->numero_dossier
-	) );
+	return (string) $compte->matricule;
 }
 
 /* ---------- Session ---------- */
@@ -322,8 +263,9 @@ function ueb_action_changer_identifiant() {
 	$mdp       = (string) wp_unslash( $_POST['mdp_confirmation_id'] ?? '' );
 	$erreurs   = array();
 
-	if ( 'matricule' !== ueb_type_identifiant( $matricule ) ) {
-		$erreurs['matricule'] = 'Format de matricule non reconnu (exemple : 24I0017FS).';
+	$erreur_matricule = ueb_erreur_matricule( $matricule );
+	if ( $erreur_matricule ) {
+		$erreurs['matricule'] = $erreur_matricule;
 	} elseif ( $matricule === $compte->matricule ) {
 		$erreurs['matricule'] = "C'est déjà ton matricule enregistré.";
 	} else {

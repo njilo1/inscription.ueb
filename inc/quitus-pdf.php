@@ -67,8 +67,8 @@ function ueb_generer_pdf_quitus( $quitus ) {
 		require_once UEB_INSC_DIR . '/inc/cms-pdf.php';
 		$compte = ueb_compte_par_id( $medical->compte_id );
 		$d = array(
-			'libelle_identifiant' => 'matricule' === $medical->type_identifiant ? 'Matricule' : 'N° Dossier',
-			'numero_dossier' => $medical->identifiant,
+			'libelle_identifiant' => 'Matricule',
+			'identifiant' => $medical->identifiant,
 			'nom' => $medical->nom,
 			'prenom' => $medical->prenom,
 			'date_naissance' => $medical->date_naissance,
@@ -219,7 +219,7 @@ function ueb_pdf_contenu_qr( $q ) {
 	$nom_ascii = iconv( 'UTF-8', 'ASCII//TRANSLIT//IGNORE', $nom );
 	$nom  = false === $nom_ascii ? $nom : $nom_ascii;
 	return 'Quitus inscription ' . $q->annee_academique . "\n"
-		. 'Dossier : ' . $q->identifiant . "\n"
+		. 'Matricule : ' . $q->identifiant . "\n"
 		. 'Nom : ' . mb_strtoupper( $nom ) . "\n"
 		. ( $etab && ! empty( $etab['sigle'] ) ? 'Etab : ' . $etab['sigle'] . "\n" : '' )
 		. 'Montant : ' . (int) $q->montant . ' FCFA';
@@ -373,7 +373,7 @@ function ueb_pdf_registre( TCPDF $pdf, $q, array $c, $x, $y, $w, $h ) {
 	$hL    = $h / 5;
 	$pad   = 1.8;
 
-	$identifiant = 'matricule' === $q->type_identifiant ? 'Matricule' : 'N° de dossier';
+	$identifiant = 'Matricule';
 	$naissance   = ( new DateTimeImmutable( $q->date_naissance ) )->format( 'd/m/Y' );
 	$lieu        = (string) ( $q->moyen_paiement ?? '' );
 	$lignes = array(

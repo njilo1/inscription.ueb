@@ -29,7 +29,7 @@ ueb_page_debut( array( 'titre' => 'Vérification de quitus', 'variante' => 'simp
 					<div><dt>Numéro</dt><dd><?php echo esc_html( $q->numero ); ?></dd></div>
 					<div><dt>Établissement</dt><dd><?php echo esc_html( $etab['fr'] ); ?></dd></div>
 					<div><dt>Étudiant</dt><dd><?php echo esc_html( $q->nom . ' ' . $initiales( $q->prenom ) ); ?></dd></div>
-					<div><dt><?php echo 'matricule' === $q->type_identifiant ? 'Matricule' : 'N° de dossier'; ?></dt><dd><?php echo esc_html( $q->identifiant ); ?></dd></div>
+					<div><dt>Matricule</dt><dd><?php echo esc_html( $q->identifiant ); ?></dd></div>
 					<div><dt>Année académique</dt><dd><?php echo esc_html( str_replace( '-', ' – ', $q->annee_academique ) ); ?></dd></div>
 					<div><dt>Montant</dt><dd><?php echo esc_html( ueb_formater_montant( $q->montant ) ); ?> FCFA · <?php echo esc_html( ueb_detail_quitus( $q ) ); ?></dd></div>
 					<div><dt>Statut du paiement</dt><dd><?php echo ueb_badge_statut( $q->statut ); // phpcs:ignore ?></dd></div>

@@ -95,8 +95,7 @@ function ueb_nationalites() {
 }
 
 /**
- * Valeurs de départ du formulaire : le dernier quitus de l'étudiant, sinon
- * sa préinscription (nouveaux étudiants), sinon rien.
+ * Valeurs de départ du formulaire : le dernier quitus de l'étudiant, sinon rien.
  */
 function ueb_valeurs_initiales_quitus( $compte ) {
 	global $wpdb;
@@ -111,28 +110,6 @@ function ueb_valeurs_initiales_quitus( $compte ) {
 			unset( $dernier['situation'] );
 		}
 		return $dernier;
-	}
-	if ( $compte->numero_dossier ) {
-		$pre = ueb_preinscription_par_dossier( $compte->numero_dossier );
-		if ( $pre ) {
-			return array(
-				'etablissement'  => $pre->etablissement,
-				'nom'            => mb_strtoupper( $pre->nom ),
-				'prenom'         => $pre->prenom,
-				'date_naissance' => $pre->date_naissance,
-				'lieu_naissance' => $pre->lieu_naissance,
-				'email'          => $pre->email,
-				'adresse'        => $pre->adresse,
-				'nom_urgence'    => $pre->nom_urgence,
-				'numero_urgence' => $pre->numero_urgence,
-				'adresse_urgence'=> $pre->adresse_urgence,
-				'sexe'           => $pre->sexe,
-				'nationalite'    => $pre->nationalite,
-				'departement'    => $pre->filiere,
-				'filiere_id'     => $pre->filiere_1_id,
-				'parcours'       => $pre->niveau,
-			);
-		}
 	}
 	return array();
 }
@@ -152,7 +129,7 @@ function ueb_valider_quitus( array $post, array $contexte ) {
 		'moyen_paiement' => $texte( 'moyen_paiement' ),
 	);
 	$cms_requis = ueb_fiches_cms_requises( $contexte, $v['situation'], $v['type'] );
-	list( $profil, $e ) = ueb_valider_profil( $post, $contexte['formations'], $cms_requis, $contexte['nouveau'] );
+	list( $profil, $e ) = ueb_valider_profil( $post, $contexte['formations'], $cms_requis );
 	$v = $profil + $v;
 	$formation = $contexte['formations'][ $v['filiere_id'] ] ?? null;
 
@@ -284,8 +261,8 @@ function ueb_action_enregistrer_quitus() {
 				/* L'établissement et la filière ne se changent pas dans Mon compte. */
 				$erreurs[ $cle ] = $message . ( in_array( $cle, array( 'etablissement', 'filiere_id' ), true ) ? ' Adresse-toi à la scolarité de ton établissement.' : ' Modifie cette information dans Mon compte.' );
 			}
-			if ( 'medicaux' === $v['type'] && $contexte['nouveau'] ) {
-				$erreurs['general'] = 'La visite médicale est déjà comprise dans ta préinscription de cette année.';
+			if ( 'medicaux' === $v['type'] && 'nouveau' === $v['situation'] ) {
+				$erreurs['general'] = 'Un nouvel étudiant a déjà payé la visite médicale avec sa préinscription : pas de quitus médical.';
 			}
 		}
 		if ( $erreurs || $actualiser ) {
@@ -293,7 +270,7 @@ function ueb_action_enregistrer_quitus() {
 		} else {
 			$donnees = $v + array(
 				'identifiant' => ueb_identifiant_compte( $compte ),
-				'type_identifiant' => $compte->matricule ? 'matricule' : 'dossier',
+				'type_identifiant' => 'matricule',
 			);
 			if ( $existant ) {
 				$numero = $existant->etablissement === $v['etablissement'] ? $existant->numero : ueb_prochain_numero_quitus( $v['etablissement'], $annee, $v['type'] );

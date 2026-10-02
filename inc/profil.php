@@ -55,10 +55,9 @@ function ueb_texte_poste( array $post, $cle ) {
  *
  * @param array $formations filières proposées, par identifiant (ueb_formations_inscription())
  * @param bool  $cms_requis email, adresse et contact d'urgence obligatoires (fiches CMS)
- * @param bool  $preinscrit filières limitées aux vœux de la préinscription
  * @return array{0: array, 1: array} valeurs nettoyées (avec le libellé « departement »), erreurs par champ
  */
-function ueb_valider_profil( array $post, array $formations, $cms_requis, $preinscrit = false ) {
+function ueb_valider_profil( array $post, array $formations, $cms_requis ) {
 	$texte = static fn( $cle ) => ueb_texte_poste( $post, $cle );
 	$v = array(
 		'etablissement'  => strtoupper( $texte( 'etablissement' ) ),
@@ -124,7 +123,7 @@ function ueb_valider_profil( array $post, array $formations, $cms_requis, $prein
 	}
 	$formation = $formations[ $v['filiere_id'] ] ?? null;
 	if ( ! $formation || $formation->etablissement !== $v['etablissement'] ) {
-		$e['filiere_id'] = $preinscrit ? 'Choisis une des filières de ta préinscription dans cet établissement.' : 'Choisis une filière rattachée à cet établissement.';
+		$e['filiere_id'] = 'Choisis une filière rattachée à cet établissement.';
 	} else {
 		$v['departement'] = $formation->libelle;
 	}
@@ -146,8 +145,7 @@ function ueb_action_enregistrer_profil() {
 		ueb_rediriger( ueb_url( 'connexion' ) );
 	}
 	$retour     = ueb_url( 'mon-espace/compte' ) . '#informations';
-	$preinscrit = ueb_preinscrit_cette_annee( $compte );
-	list( $v, $erreurs ) = ueb_valider_profil( $_POST, ueb_formations_inscription( $compte, $preinscrit ), false, $preinscrit );
+	list( $v, $erreurs ) = ueb_valider_profil( $_POST, ueb_formations_inscription(), false );
 	/* L'établissement et la filière ne se modifient pas dans Mon compte : ceux
 	   fixés au premier quitus sont conservés tels quels. */
 	$profil = ueb_profil( $compte->id );

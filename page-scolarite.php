@@ -399,7 +399,7 @@ ueb_page_debut( array( 'titre' => 'Espace scolarité', 'variante' => $autorise ?
 						<input type="hidden" name="vue" value="comptes">
 						<div class="champ">
 							<label for="e-q">Rechercher un étudiant</label>
-							<input id="e-q" type="search" name="qc" value="<?php echo esc_attr( $filtres_e['q'] ); ?>" placeholder="Nom, prénom, matricule, n° de dossier ou téléphone">
+							<input id="e-q" type="search" name="qc" value="<?php echo esc_attr( $filtres_e['q'] ); ?>" placeholder="Nom, prénom, matricule ou téléphone">
 						</div>
 						<div class="champ">
 							<label for="e-paiement">Paiement</label>
@@ -424,7 +424,7 @@ ueb_page_debut( array( 'titre' => 'Espace scolarité', 'variante' => $autorise ?
 							<?php foreach ( $etudiants as $e ) : ?>
 								<tr>
 									<td><b><?php echo esc_html( trim( $e->nom . ' ' . $e->prenom ) ?: '—' ); ?></b></td>
-									<td><?php echo esc_html( $e->matricule ?: '—' ); ?><br><small class="texte-discret"><?php echo esc_html( $e->numero_dossier ?: '' ); ?></small></td>
+									<td><?php echo esc_html( $e->matricule ?: '—' ); ?></td>
 									<td class="num"><?php echo esc_html( $e->telephone ? ueb_formater_telephone( $e->telephone ) : '—' ); ?></td>
 									<td class="num"><?php echo (int) $e->quitus; ?><br><small class="texte-discret"><?php echo (int) $e->verifies; ?> vérifié(s)</small></td>
 									<td>
@@ -571,7 +571,7 @@ ueb_page_debut( array( 'titre' => 'Espace scolarité', 'variante' => $autorise ?
 								<h1><?php echo esc_html( $fiche->nom . ' ' . $fiche->prenom ); ?></h1>
 								<ul class="dossier-entete__ident">
 									<li>Quitus <b><?php echo esc_html( $fiche->numero ); ?></b></li>
-									<li><?php echo 'matricule' === $fiche->type_identifiant ? 'Matricule' : 'N° de dossier'; ?> <b><?php echo esc_html( $fiche->identifiant ); ?></b></li>
+									<li>Matricule <b><?php echo esc_html( $fiche->identifiant ); ?></b></li>
 									<?php if ( $compte && $compte->telephone ) : ?><li>Téléphone <b><?php echo esc_html( ueb_formater_telephone( $compte->telephone ) ); ?></b></li><?php endif; ?>
 								</ul>
 							</div>

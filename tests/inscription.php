@@ -46,11 +46,6 @@ function vider_quitus() {
 foreach ( ueb_insc_schema() as $table => $sql ) {
 	verifier( false !== $wpdb->query( str_replace( 'CREATE TABLE IF NOT EXISTS', 'CREATE TEMPORARY TABLE', $sql ) ), 'création temporaire ' . $table );
 }
-verifier( false !== $wpdb->query( "CREATE TEMPORARY TABLE ueb_preinscriptions (
- id INT PRIMARY KEY, numero_dossier VARCHAR(30), statut VARCHAR(20), nom VARCHAR(100), prenom VARCHAR(150), email VARCHAR(150), adresse VARCHAR(255), nom_urgence VARCHAR(150), numero_urgence VARCHAR(20), adresse_urgence VARCHAR(255),
- date_naissance DATE, lieu_naissance VARCHAR(150), sexe CHAR(1), nationalite_id INT, faculte_id INT,
- filiere_1_id INT, filiere_2_id INT, filiere_3_id INT, niveau_lmd_id INT
-)" ), 'préinscriptions fictives isolées' );
 $wpdb->query( 'ALTER TABLE ueb_insc_quitus DROP INDEX uniq_medical_droits, DROP COLUMN situation, DROP COLUMN filiere_id, DROP COLUMN quitus_droits_id' );
 verifier( ueb_insc_migrer(), 'migration depuis le schéma précédent' );
 verifier( ! array_diff( array( 'situation', 'filiere_id', 'quitus_droits_id' ), $wpdb->get_col( 'SHOW COLUMNS FROM ueb_insc_quitus' ) ), 'colonnes de migration présentes' );
@@ -60,7 +55,7 @@ $annee = ueb_annee_academique();
 $wpdb->insert( 'ueb_insc_comptes', array( 'id' => 1, 'matricule' => '24TEST01FS', 'telephone' => '699000000', 'mot_de_passe' => 'fixture-non-utilisable' ) );
 $_SESSION = array( 'ueb_compte_id' => 1, 'ueb_version_session' => 1 );
 $compte = ueb_compte_courant();
-$catalogue = ueb_formations_inscription( $compte, false, true ); // avec les formations professionnelles
+$catalogue = ueb_formations_inscription( true ); // avec les formations professionnelles
 $fs = array_values( array_filter( $catalogue, static fn( $f ) => 'FS' === $f->etablissement && 'classique' === $f->type_formation ) );
 $pro = array_values( array_filter( $catalogue, static fn( $f ) => 'pro' === $f->type_formation ) )[0];
 verifier( count( $fs ) >= 3, 'catalogue classique disponible' );
@@ -208,38 +203,34 @@ verifier( (int) $m->montant === 5000 && 'NOM MODIFIÉ' === $m->nom, 'synchronisa
 $wpdb->update( 'ueb_insc_quitus', array( 'statut' => 'recu_envoye' ), array( 'id' => $m->id ) );
 verifier( ! ueb_quitus_modifiable( $q ), 'dossier verrouillé après envoi reçu médical' );
 
-// Préinscrit : ses trois vœux seulement ; tarif médical impossible à réintroduire.
-vider_quitus();
-$compte->numero_dossier = 'UEB-' . $annee['debut'] . '-999999';
-$wpdb->insert( 'ueb_preinscriptions', array(
- 'id' => 1, 'numero_dossier' => $compte->numero_dossier, 'statut' => 'soumis',
- 'nom' => 'ÉTUDIANT TEST', 'prenom' => 'Marie Anne', 'date_naissance' => '2002-04-12', 'lieu_naissance' => 'Ebolowa', 'sexe' => 'F',
- 'nationalite_id' => $wpdb->get_var( "SELECT id FROM ueb_nationalites WHERE nom = 'Camerounaise'" ),
- 'faculte_id' => $wpdb->get_var( "SELECT id FROM ueb_facultes WHERE code = 'FS'" ),
- 'filiere_1_id' => $fs[0]->id, 'filiere_2_id' => $fs[1]->id, 'filiere_3_id' => $fs[2]->id,
- 'niveau_lmd_id' => $wpdb->get_var( "SELECT id FROM ueb_niveaux_lmd WHERE code = 'L1'" ),
-) );
-$c = ueb_contexte_inscription( $compte );
-verifier( $c['nouveau'] && $c['situation'] === 'nouveau' && count( $c['formations'] ) === 3, 'nouveau reconnu avec trois choix' );
-foreach ( $fs as $i => $f ) {
-	if ( $i > 2 ) { break; }
-	list( $v, $e ) = ueb_valider_quitus( array_replace( $post, array( 'filiere_id' => $f->id, 'situation' => 'nouveau' ) ), $c );
-	verifier( ! $e && $v['situation'] === 'nouveau', 'vœu ' . ( $i + 1 ) . ' autorisé et situation imposée' );
+// Matricule : lettres, chiffres, « - », « _ » ou « . », 3 à 30 caractères ; plus aucun numéro de dossier.
+foreach ( array( 'ABC123', '17FS0042', '2024-UEB_17.B', 'UEB-2026-000123', str_repeat( 'A', 30 ) ) as $matricule ) {
+	verifier( '' === ueb_erreur_matricule( ueb_normaliser_identifiant( $matricule ) ), 'matricule accepté : ' . $matricule );
 }
-list( $v, $e ) = ueb_valider_quitus( array_replace( $post, array( 'filiere_id' => $pro->id ) ), $c );
-verifier( isset( $e['filiere_id'] ), 'filière hors vœux interdite' );
-verifier( ! soumettre( array_replace( $post, $cms_vide ) ), 'enregistrement nouveau sans coordonnées CMS' );
+verifier( '17FS0042' === ueb_normaliser_identifiant( ' 17fs 0042 ' ), 'matricule mis en majuscules, espaces retirés' );
+foreach ( array( 'AB', 'MAT#01', 'MAT/01', 'MATRICULE+01', 'É12345', str_repeat( 'A', 31 ) ) as $matricule ) {
+	verifier( UEB_MESSAGE_MATRICULE === ueb_erreur_matricule( ueb_normaliser_identifiant( $matricule ) ), 'matricule refusé : ' . $matricule );
+}
+verifier( 'Saisis ton matricule.' === ueb_erreur_matricule( '' ), 'matricule vide refusé' );
+
+// Nouvel étudiant : il le déclare dans « Ta situation cette année ». Droits seuls, pas de visite médicale à payer.
+vider_quitus();
+$c = ueb_contexte_inscription( $compte );
+verifier( ! isset( $c['nouveau'] ) && count( $c['formations'] ) === count( ueb_formations_inscription() ), 'plus de lien avec la préinscription : toutes les filières ouvertes' );
+list( $v, $e ) = ueb_valider_quitus( array_replace( $post, array( 'filiere_id' => $fs[2]->id, 'situation' => 'nouveau' ) ), $c );
+verifier( ! $e && 'nouveau' === $v['situation'], 'nouveau déclaré : toute filière ouverte de l’établissement acceptée' );
+verifier( ! soumettre( array_replace( $post, $cms_vide, array( 'situation' => 'nouveau' ) ) ), 'enregistrement nouveau sans coordonnées CMS' );
 $qs = ueb_quitus_du_compte( 1 );
 verifier( count( $qs ) === 1 && (int) $qs[0]->montant === 25000, 'nouveau : droits seuls' );
 verifier( ueb_dossiers_quitus( $qs )[0]['pages'] === 1, 'nouveau : une seule page sur la carte' );
 $pdf = ueb_generer_pdf_quitus( $qs[0] );
 verifier( $pdf->getNumPages() === 1, 'nouveau : PDF une page' );
 $pdf->Output( $sortie . '/nouveau.pdf', 'F' );
-verifier( ! soumettre( array_replace( $post, array( 'tranche' => 2 ) ) ), 'nouveau : deuxième tranche sans frais médicaux' );
-
+verifier( 'matricule' === $qs[0]->type_identifiant && '24TEST01FS' === $qs[0]->identifiant, 'quitus identifié par le matricule' );
+verifier( ! soumettre( array_replace( $post, array( 'tranche' => 2, 'situation' => 'nouveau' ) ) ), 'nouveau : deuxième tranche sans frais médicaux' );
+verifier( ! array_filter( ueb_quitus_du_compte( 1 ), static fn( $q ) => 'medicaux' === $q->type ), 'nouveau : aucun quitus médical créé' );
 // Formations professionnelles et appartenance à l'établissement.
 vider_quitus();
-$compte->numero_dossier = null;
 $c = ueb_contexte_inscription( $compte );
 foreach ( array( '', 'Banque inconnue' ) as $moyen ) {
 	list( $v, $e ) = ueb_valider_quitus( array_replace( $post, array( 'moyen_paiement' => $moyen ) ), $c );
@@ -272,7 +263,7 @@ vider_quitus();
 $c = ueb_contexte_inscription( $compte );
 list( $v, $e ) = ueb_valider_quitus( array_replace( $post, array( 'filiere_id' => $pro->id, 'etablissement' => $pro->etablissement, 'montant' => '85 000' ) ), $c );
 verifier( isset( $e['filiere_id'] ), 'formation professionnelle refusée tant qu’elle est fermée' );
-$c_pro = array( 'formations' => ueb_formations_inscription( $compte, false, true ) ) + $c;
+$c_pro = array( 'formations' => ueb_formations_inscription( true ) ) + $c;
 list( $v, $e ) = ueb_valider_quitus( array_replace( $post, array( 'filiere_id' => $pro->id, 'etablissement' => $pro->etablissement, 'montant' => '85 000' ) ), $c_pro );
 verifier( ! $e && $v['montant'] === 85000, 'formations professionnelles rouvertes : tarif conservé' );
 list( $v, $e ) = ueb_valider_quitus( array_replace( $post, array( 'etablissement' => 'FSEG' ) ), $c );
@@ -343,9 +334,8 @@ function ueb_reprendre_saisie() { return array( $GLOBALS['saisie_test'] ?? array
 function ueb_champ_csrf() {}
 foreach ( array( 'ancien', 'reprise', 'nouveau', 'deuxieme', 'erreurs-cms' ) as $cas ) {
 	vider_quitus();
-	$compte->numero_dossier = $cas === 'nouveau' ? 'UEB-' . $annee['debut'] . '-999999' : null;
 	if ( $cas === 'deuxieme' ) { soumettre( $post ); }
-	$GLOBALS['saisie_test'] = $cas === 'nouveau' ? array() : array_replace( $post, array( 'situation' => $cas === 'reprise' ? 'reprise' : 'ancien', 'tranche' => $cas === 'deuxieme' ? 2 : 1 ) );
+	$GLOBALS['saisie_test'] = array_replace( $post, array( 'situation' => array( 'reprise' => 'reprise', 'nouveau' => 'nouveau' )[ $cas ] ?? 'ancien', 'tranche' => $cas === 'deuxieme' ? 2 : 1 ) );
 	$GLOBALS['erreurs_apercu'] = array();
 	if ( 'erreurs-cms' === $cas ) {
 		list( $GLOBALS['saisie_test'], $GLOBALS['erreurs_apercu'] ) = ueb_valider_quitus( array_replace( $post, $contact_vide ), ueb_contexte_inscription( $compte ) );
@@ -384,9 +374,8 @@ function exporter_vue_espace( $nom, $fichier, $sortie ) {
 }
 foreach ( array( 'vide', 'ancien', 'nouveau', 'deuxieme', 'mixte', 'rejete', 'verifie', 'archives', 'nouvelle-annee', 'medical-seul', 'bienvenue', 'telechargement' ) as $cas_espace ) {
 	vider_quitus();
-	$compte->numero_dossier = 'nouveau' === $cas_espace ? 'UEB-' . $annee['debut'] . '-999999' : null;
 	if ( ! in_array( $cas_espace, array( 'vide', 'bienvenue' ), true ) ) {
-		verifier( ! soumettre( $post ), 'création pour aperçu : ' . $cas_espace );
+		verifier( ! soumettre( 'nouveau' === $cas_espace ? array_replace( $post, $cms_vide, array( 'situation' => 'nouveau' ) ) : $post ), 'création pour aperçu : ' . $cas_espace );
 		if ( 'deuxieme' === $cas_espace ) {
 			verifier( ! soumettre( array_replace( $post, array( 'tranche' => 2 ) ) ), 'second dossier pour la deuxième tranche' );
 		}
