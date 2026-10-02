@@ -943,13 +943,14 @@
 		["dragenter", "dragover"].forEach((t) => depot.addEventListener(t, () => depot.classList.add("est-survole")));
 		["dragleave", "drop"].forEach((t) => depot.addEventListener(t, () => depot.classList.remove("est-survole")));
 
-		/* Caméra : aperçu en direct si le navigateur y donne accès (HTTPS ou
-		   localhost), sinon l'appareil photo du téléphone via le champ natif. */
+		/* Caméra : sur téléphone ou tablette, l'appareil photo natif (champ
+		   capture) : pleine résolution, mise au point, aucun recadrage. Ailleurs,
+		   aperçu en direct si le navigateur y donne accès (HTTPS ou localhost). */
 		const dialogue = $("[data-camera]");
 		const ouvrir = $("[data-camera-ouvrir]", form);
 		const natif = $("[data-camera-natif]", form);
-		const direct = Boolean(dialogue?.showModal && navigator.mediaDevices?.getUserMedia && window.isSecureContext);
 		const tactile = window.matchMedia("(pointer: coarse)").matches;
+		const direct = !tactile && Boolean(dialogue?.showModal && navigator.mediaDevices?.getUserMedia && window.isSecureContext);
 		if (ouvrir) ouvrir.hidden = !direct;
 		if (natif) natif.hidden = direct || !tactile;
 		const blocCamera = ouvrir?.parentElement;
@@ -983,11 +984,18 @@
 			mode("attente");
 			message.textContent = "Ouverture de la caméra…";
 			try {
+				/* Image 4:3, celle du capteur : un format 16:9 imposé la recadre (effet de zoom). */
 				flux = await navigator.mediaDevices.getUserMedia({
-					video: { facingMode: { ideal: "environment" }, width: { ideal: 1920 }, height: { ideal: 1080 } },
+					video: { facingMode: { ideal: "environment" }, aspectRatio: { ideal: 4 / 3 }, width: { ideal: 2560 } },
 					audio: false,
 				});
 				if (!dialogue.open) return arreter();
+				/* Zoom au plus large quand la caméra le permet. */
+				const piste = flux.getVideoTracks()[0];
+				const zoom = piste?.getCapabilities?.().zoom;
+				if (zoom && piste.getSettings().zoom > zoom.min) {
+					await piste.applyConstraints({ advanced: [{ zoom: zoom.min }] }).catch(() => {});
+				}
 				video.srcObject = flux;
 				await video.play();
 				message.textContent = "";
