@@ -115,6 +115,14 @@ function ueb_adm_dashboard( array $c, array $suivi, array $activite, $focus, $pe
 		</section>
 	</div>
 	<?php
+	/* IPES : tous, ou ceux de l'établissement filtré (et seulement sa part). */
+	ueb_ipes_panneau_synthese(
+		ueb_ipes_synthese( ueb_ipes_liste( $focus ? array( 'etablissement' => $focus ) : array() ), $focus ? array( $focus ) : null ),
+		array(
+			'url'    => $url( array( 'vue' => 'ipes' ) + ( $focus ? array( 'tutelle' => strtolower( $focus ) ) : array() ) ),
+			'portee' => $focus ? 'IPES sous la tutelle de ' . $focus . ' : seule sa part des reversements (' . ueb_fcfa( UEB_IPES_REVERSEMENT_PAR_ETUDIANT ) . ' par étudiant).' : '',
+		)
+	);
 }
 
 /** Valeur exacte des courbes ; le taux reste indéfini en l'absence de droits. */

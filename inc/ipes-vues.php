@@ -612,3 +612,99 @@ function ueb_ipes_recus_panneau( $b, array $o = array() ) {
 	</section>
 	<?php
 }
+
+/* ---------- Synthèse des IPES pour les tableaux de bord ---------- */
+
+/**
+ * Chiffres cumulés des IPES d'une liste, pour l'année en cours : IPES
+ * (actifs), étudiants déclarés, montant dû (étudiants × montant par
+ * étudiant), envoyé, vérifié, reste à percevoir, bordereaux à vérifier.
+ *
+ * @param array               $liste    IPES (ueb_ipes_liste, ueb_ipes_sous_tutelle).
+ * @param array|callable|null $tutelles Part regardée : null pour l'IPES entier,
+ *                                      une liste de sigles (filtre d'établissement
+ *                                      de l'admin), ou $ipes => sigles (scolarité).
+ */
+function ueb_ipes_synthese( array $liste, $tutelles = null ) {
+	$s   = array( 'ipes' => count( $liste ), 'actifs' => 0, 'etudiants' => 0, 'du' => 0, 'envoye' => 0, 'verifie' => 0, 'reste' => 0, 'a_verifier' => 0 );
+	$vus = array();
+	foreach ( $liste as $ipes ) {
+		$vues = is_callable( $tutelles ) ? $tutelles( $ipes ) : $tutelles;
+		$vus[ (int) $ipes->id ] = $vues;
+		$j = ueb_ipes_jauge( $ipes->id, null, $vues );
+		$s['actifs'] += (int) $ipes->actif;
+		foreach ( array( 'etudiants', 'du', 'envoye', 'verifie', 'reste' ) as $cle ) {
+			$s[ $cle ] += (int) $j[ $cle ];
+		}
+	}
+	foreach ( ueb_ipes_bordereaux_envoyes() as $b ) {
+		$id = (int) $b->ipes_id;
+		if ( array_key_exists( $id, $vus ) && ( null === $vus[ $id ] || in_array( $b->etablissement, (array) $vus[ $id ], true ) ) ) {
+			$s['a_verifier']++;
+		}
+	}
+	return $s;
+}
+
+/**
+ * Panneau « IPES » des tableaux de bord (administration et scolarité) :
+ * chiffres clés, barre vérifié / en vérification / pas encore reversé sur le
+ * montant dû, bordereaux à vérifier, lien vers l'onglet IPES.
+ *
+ * @param array $s Synthèse (ueb_ipes_synthese).
+ * @param array $o url (onglet IPES), classe (classe du panneau : adm-panneau
+ *                 ou carte), portee (phrase sous le titre).
+ */
+function ueb_ipes_panneau_synthese( array $s, array $o ) {
+	$o     = array_merge( array( 'url' => '', 'classe' => 'adm-panneau', 'portee' => '' ), $o );
+	$du    = max( 0, (int) $s['du'] );
+	$base  = max( 1, $du );
+	$verif = min( $du, (int) $s['verifie'] );
+	$cours = min( $du - $verif, max( 0, (int) $s['envoye'] - (int) $s['verifie'] ) );
+	$parts = array(
+		'encaisse'     => array( 'Vérifié', $verif ),
+		'verification' => array( 'En vérification', $cours ),
+		'declare'      => array( 'Pas encore reversé', max( 0, $du - $verif - $cours ) ),
+	);
+	$taux = $du ? min( 100, 100 * $verif / $du ) : null;
+	?>
+	<section class="<?php echo esc_attr( $o['classe'] ); ?> ipes-synthese" aria-labelledby="ipes-synthese-titre">
+		<header class="ipes-synthese__tete">
+			<div>
+				<h2 id="ipes-synthese-titre">IPES sous tutelle</h2>
+				<p><?php echo esc_html( $o['portee'] ?: 'Reversements de l’année : ' . ueb_fcfa( UEB_IPES_REVERSEMENT_PAR_ETUDIANT ) . ' par étudiant inscrit.' ); ?></p>
+			</div>
+			<?php if ( $o['url'] ) : ?><a class="ipes-synthese__lien" href="<?php echo esc_url( $o['url'] ); ?>">Voir les IPES<?php echo ueb_icone( 'fleche', 16 ); ?></a><?php endif; ?>
+		</header>
+		<?php if ( ! $s['ipes'] ) : ?>
+			<p class="ipes-synthese__vide"><?php echo ueb_icone( 'ecole', 18 ); ?>Aucun IPES dans ce périmètre.</p>
+		<?php else : ?>
+			<dl class="ipes-synthese__chiffres">
+				<div><dt>IPES</dt><dd><?php echo (int) $s['ipes']; ?><?php if ( $s['actifs'] < $s['ipes'] ) : ?><small><?php echo esc_html( $s['actifs'] . ' actif' . ( $s['actifs'] > 1 ? 's' : '' ) ); ?></small><?php endif; ?></dd></div>
+				<div><dt>Étudiants déclarés</dt><dd><?php echo esc_html( ueb_formater_montant( $s['etudiants'] ) ); ?></dd></div>
+				<div><dt>Montant dû</dt><dd><?php echo esc_html( ueb_formater_montant( $du ) ); ?><small>FCFA</small></dd></div>
+				<div><dt>Vérifié</dt><dd><?php echo esc_html( null === $taux ? '—' : ueb_pourcent( $taux ) ); ?><small><?php echo esc_html( ueb_fcfa( $verif ) ); ?></small></dd></div>
+			</dl>
+			<?php if ( $du ) : ?>
+				<div class="suivi-barre ipes-synthese__barre" role="img" aria-label="<?php echo esc_attr( implode( ', ', array_map( static fn( $p ) => $p[0] . ' ' . ueb_fcfa( $p[1] ), $parts ) ) ); ?>">
+					<?php foreach ( $parts as $cle => $p ) : if ( $p[1] <= 0 ) { continue; } ?>
+						<span class="suivi-barre__part suivi-barre__part--<?php echo esc_attr( $cle ); ?>" style="--part: <?php echo esc_attr( round( 100 * $p[1] / $base, 3 ) ); ?>%" data-info="<?php echo esc_attr( $p[0] . ' : ' . ueb_fcfa( $p[1] ) ); ?>"></span>
+					<?php endforeach; ?>
+				</div>
+				<ul class="ipes-synthese__legende">
+					<?php foreach ( $parts as $cle => $p ) : ?>
+						<li class="suivi-legende__item--<?php echo esc_attr( $cle ); ?>"><i aria-hidden="true"></i><?php echo esc_html( $p[0] ); ?> <b><?php echo esc_html( ueb_fcfa( $p[1] ) ); ?></b></li>
+					<?php endforeach; ?>
+				</ul>
+			<?php endif; ?>
+			<p class="ipes-synthese__pied">
+				<?php if ( $s['a_verifier'] ) : ?>
+					<a class="ipes-synthese__a-verifier" href="<?php echo esc_url( $o['url'] ); ?>"><?php echo ueb_icone( 'horloge', 15 ); ?><?php echo esc_html( $s['a_verifier'] . ' bordereau' . ( $s['a_verifier'] > 1 ? 'x' : '' ) . ' à vérifier' ); ?></a>
+				<?php else : ?>
+					<span><?php echo ueb_icone( 'check', 15 ); ?>Aucun bordereau en attente de vérification.</span>
+				<?php endif; ?>
+			</p>
+		<?php endif; ?>
+	</section>
+	<?php
+}
