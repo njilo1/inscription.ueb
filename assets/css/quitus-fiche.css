@@ -123,3 +123,8 @@
 	.qf-infos { grid-template-columns: minmax(0, 1fr); }
 	.qf-recu { grid-template-columns: 84px minmax(0, 1fr); gap: .8rem; }
 }
+
+/* « Paiement vérifié » sans reçu : bouton grisé et explication dessous. */
+.qf-bouton:disabled { opacity: .5; cursor: not-allowed; }
+.qf-bouton:disabled:active { transform: none; }
+.qf-aide { margin: .45rem 0 0; text-align: center; font-size: .8rem; color: var(--gris); }

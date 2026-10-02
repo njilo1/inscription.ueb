@@ -694,6 +694,11 @@ function ueb_action_gestion_statut() {
 	}
 	ueb_exiger_etab( $quitus->etablissement );
 	$retour = add_query_arg( 'quitus', $quitus->id, ueb_url_scolarite() );
+	/* Rien à vérifier tant que l'étudiant n'a envoyé aucun reçu. */
+	if ( 'verifie' === $statut && ! ueb_recus_du_quitus( $quitus->id ) ) {
+		ueb_flash( 'erreur', "Aucun reçu envoyé pour ce quitus : le paiement ne peut pas encore être vérifié." );
+		ueb_rediriger( $retour );
+	}
 	if ( 'rejete' === $statut && mb_strlen( $motif ) < 5 ) {
 		ueb_flash( 'erreur', "Indique le motif du rejet : l'étudiant le verra dans son espace." );
 		ueb_rediriger( $retour );
