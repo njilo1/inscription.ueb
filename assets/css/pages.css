@@ -1589,6 +1589,26 @@
 .suivi-barre__part--verification, .suivi-legende__item--verification i { background: var(--viz-pas-2); }
 .suivi-barre__part--declare, .suivi-legende__item--declare i { background: var(--viz-pas-1); }
 .suivi-barre__part--non_declare, .suivi-legende__item--non_declare i { background: var(--viz-piste); box-shadow: inset 0 0 0 1px var(--filet-fort); }
+/* Panneau « IPES » des tableaux de bord (administration et scolarité). */
+.ipes-synthese { display: grid; gap: 1rem; margin-top: 1.25rem; padding: 1.1rem 1.25rem; }
+.ipes-synthese__tete { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+.ipes-synthese__tete h2 { margin: 0; font-size: 1.05rem; }
+.ipes-synthese__tete p { margin: .2rem 0 0; font-size: .88rem; color: var(--gris); }
+.ipes-synthese__lien, .ipes-synthese__a-verifier { display: inline-flex; align-items: center; gap: .35rem; font-weight: 700; font-size: .9rem; color: var(--foret-800, var(--vert-bandeau)); text-decoration: none; }
+.ipes-synthese__lien:hover, .ipes-synthese__a-verifier:hover { text-decoration: underline; text-underline-offset: 3px; }
+.ipes-synthese__chiffres { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: .75rem 1.25rem; margin: 0; }
+.ipes-synthese__chiffres div { display: grid; gap: .15rem; }
+.ipes-synthese__chiffres dt { font-size: .8rem; color: var(--gris); }
+.ipes-synthese__chiffres dd { margin: 0; font-size: 1.35rem; font-weight: 700; line-height: 1.15; color: var(--encre); }
+.ipes-synthese__chiffres dd small { display: block; margin-top: .1rem; font-size: .78rem; font-weight: 600; color: var(--gris); }
+.ipes-synthese__barre { height: 12px; }
+.ipes-synthese__legende { display: flex; flex-wrap: wrap; gap: .4rem 1.25rem; margin: 0; padding: 0; list-style: none; font-size: .84rem; color: var(--gris); }
+.ipes-synthese__legende li { display: inline-flex; align-items: center; gap: .4rem; }
+.ipes-synthese__legende i { width: 10px; height: 10px; border-radius: 3px; }
+.ipes-synthese__legende b { color: var(--encre); }
+.ipes-synthese__pied { margin: 0; font-size: .88rem; color: var(--gris); }
+.ipes-synthese__pied span, .ipes-synthese__vide { display: inline-flex; align-items: center; gap: .4rem; margin: 0; color: var(--gris); }
+
 .suivi-barre__part:hover { filter: brightness(1.12); }
 .suivi-barre__part::after { content: attr(data-info); position: absolute; left: 50%; bottom: calc(100% + 8px); z-index: 5; translate: -50% 4px; padding: .35rem .6rem; border-radius: 8px; background: var(--encre); color: var(--blanc); font-size: .78rem; font-weight: 600; white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity .15s, translate .15s var(--ease-sortie); }
 .suivi-barre__part:hover::after { opacity: 1; translate: -50% 0; }

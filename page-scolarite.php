@@ -313,6 +313,18 @@ ueb_page_debut( array( 'titre' => 'Espace scolarité', 'variante' => $autorise ?
 							</section>
 						</div>
 
+						<?php if ( $peut_ipes ) : ?>
+							<?php
+							/* IPES sous tutelle : seulement la part des établissements regardés. */
+							$sous_tutelle = ueb_ipes_sous_tutelle();
+							ueb_ipes_panneau_synthese( ueb_ipes_synthese( $sous_tutelle, 'ueb_ipes_tutelles_vues' ), array(
+								'url'    => $ici( array( 'vue' => 'ipes' ) ),
+								'classe' => 'carte',
+								'portee' => 'Ta part des reversements des IPES sous tutelle : ' . ueb_fcfa( UEB_IPES_REVERSEMENT_PAR_ETUDIANT ) . ' par étudiant de tes filières.',
+							) );
+							?>
+						<?php endif; ?>
+
 						<div class="bord__rangee bord__rangee--3">
 							<?php
 							ueb_graphe_anneau( 'Répartition par sexe', 'Étudiants ayant au moins un quitus', array(
