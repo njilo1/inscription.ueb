@@ -1,0 +1,125 @@
+/**
+ * Espace scolarité : fiche d'un quitus (?quitus={id}).
+ * Complète administration.css et ipes.css (panneaux, boutons, repères,
+ * pastilles de statut) ; gabarit : templates/composants/scolarite-quitus.php.
+ */
+
+/* ---------- En-tête : identité à gauche, statut et PDF à droite ---------- */
+
+.qf-entete { align-items: center; }
+.qf-entete .ipes-reperes img { width: 18px; height: 18px; border-radius: 50%; background: var(--blanc); object-fit: contain; }
+.qf-entete .ipes-reperes a { color: inherit; text-decoration: none; }
+.qf-entete .ipes-reperes a:hover { color: var(--foret-800); text-decoration: underline; text-underline-offset: 3px; }
+.qf-entete .ipes-reperes li { font-variant-numeric: tabular-nums; }
+.qf-entete__actions { display: flex; align-items: center; flex-wrap: wrap; gap: .6rem; }
+.qf-entete__actions .ipes-statut { min-height: 40px; padding-inline: .9rem; font-size: .86rem; }
+
+/* ---------- Suivi du dossier : quatre étapes reliées par un trait ---------- */
+
+.qf-etapes { --rond: 34px; position: relative; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 0 0 1.3rem; padding: 0; list-style: none; }
+/* Trait gris d'un centre de rond à l'autre, puis la part franchie en vert. */
+.qf-etapes::before, .qf-etapes::after { content: ""; position: absolute; top: calc(var(--rond) / 2 - 2px); left: 12.5%; height: 4px; border-radius: 4px; }
+.qf-etapes::before { right: 12.5%; background: var(--adm-puce); }
+.qf-etapes::after { width: calc(75% * var(--rempli, 0)); background: var(--adm-st-verifie); }
+.qf-etapes--rejete::after { background: linear-gradient(90deg, var(--adm-st-verifie) 60%, var(--adm-st-rejete)); }
+.qf-etapes li { position: relative; display: grid; justify-items: center; gap: .5rem; text-align: center; }
+.qf-etapes__rond { display: grid; place-items: center; width: var(--rond); height: var(--rond); border-radius: 50%; background: var(--blanc); box-shadow: inset 0 0 0 2px var(--filet-fort); font-size: .85rem; font-weight: 700; color: var(--gris); font-variant-numeric: tabular-nums; }
+.qf-etapes__rond .icone { width: 18px; height: 18px; stroke-width: 2.6; }
+.qf-etapes__libelle { max-width: 14ch; font-size: .84rem; font-weight: 600; line-height: 1.3; color: var(--gris); }
+.qf-etapes .est-faite .qf-etapes__rond { background: var(--adm-st-verifie); box-shadow: none; color: #fff; }
+.qf-etapes .est-faite .qf-etapes__libelle { color: var(--encre); }
+.qf-etapes .est-courante .qf-etapes__rond { background: var(--adm-st-recu); box-shadow: 0 0 0 5px var(--adm-st-recu-fond); color: #fff; }
+.qf-etapes .est-courante .qf-etapes__libelle { font-weight: 700; color: var(--adm-st-recu); }
+.qf-etapes .est-rejetee .qf-etapes__rond { background: var(--adm-st-rejete); box-shadow: 0 0 0 5px var(--adm-st-rejete-fond); color: #fff; }
+.qf-etapes .est-rejetee .qf-etapes__libelle { font-weight: 700; color: var(--adm-st-rejete); }
+
+.qf-faits { padding-top: 1.1rem; border-top: 1px solid var(--filet); }
+.qf-faits dd { font-variant-numeric: tabular-nums; }
+.qf-montant { font-size: 1.15rem !important; font-weight: 700 !important; }
+.qf-montant small { font-size: .72rem; font-weight: 600; color: var(--gris); }
+
+/* ---------- Reçus envoyés : vignette et détails côte à côte ---------- */
+
+.qf-compte { display: inline-flex; align-items: center; min-height: 28px; padding: 0 .7rem; border-radius: 999px; background: var(--adm-puce); font-size: .8rem; font-weight: 700; color: var(--gris); white-space: nowrap; }
+.qf-recus { display: grid; gap: .85rem; margin: 0; padding: 0; list-style: none; }
+.qf-recu { display: grid; grid-template-columns: 112px minmax(0, 1fr); gap: 1rem; padding: .85rem; border: 1px solid var(--filet); border-radius: 14px; background: var(--blanc); }
+.qf-recu__vue { display: grid; overflow: hidden; aspect-ratio: 3 / 4; border: 1px solid var(--filet); border-radius: 10px; background: var(--adm-puce); transition: border-color .2s; }
+.qf-recu__vue:hover { border-color: var(--foret-700); }
+.qf-recu__vue img { width: 100%; height: 100%; object-fit: cover; }
+.qf-recu__pdf { display: grid; place-content: center; justify-items: center; gap: .25rem; background: var(--danger-fond); font-size: .8rem; font-weight: 700; color: var(--danger); }
+.qf-recu__infos { display: grid; align-content: start; gap: .3rem; min-width: 0; }
+.qf-recu__infos p { margin: 0; }
+.qf-recu__objet { font-weight: 700; color: var(--encre); }
+.qf-recu__date { font-size: .85rem; color: var(--gris); }
+.qf-recu__fichier { display: flex; align-items: center; gap: .35rem; min-width: 0; font-size: .82rem; color: var(--gris); }
+.qf-recu__fichier .icone { flex: none; }
+.qf-recu__fichier span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.qf-recu__actions { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .45rem; }
+
+/* ---------- Informations imprimées ---------- */
+
+.qf-infos { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 1.5rem; }
+.qf-infos div { padding: .7rem 0; border-bottom: 1px solid var(--filet); }
+.qf-infos .qf-infos__large { grid-column: 1 / -1; padding-top: 0; }
+.qf-note { display: flex; align-items: flex-start; gap: .55rem; margin: 1rem 0 0; padding: .75rem .9rem; border-radius: 12px; background: var(--adm-st-genere-fond); font-size: .88rem; line-height: 1.45; color: var(--encre); }
+.qf-note .icone { flex: none; margin-top: .1rem; color: var(--adm-st-genere); }
+
+/* ---------- Décision ---------- */
+
+.qf-decision { border-top: 4px solid var(--adm-st-recu); }
+.qf-decision--genere { border-top-color: var(--adm-st-genere); }
+.qf-decision--verifie { border-top-color: var(--adm-st-verifie); }
+.qf-decision--rejete { border-top-color: var(--adm-st-rejete); }
+.qf-decision > * + * { margin-top: 1rem; }
+.qf-decision > .adm-panneau__tete + * { margin-top: 0; }
+.qf-etat { display: flex; align-items: flex-start; gap: .55rem; margin: 0; padding: .75rem .9rem; border-radius: 12px; background: var(--adm-puce); font-size: .9rem; font-weight: 600; line-height: 1.45; color: var(--gris); }
+.qf-etat .icone { flex: none; margin-top: .1rem; }
+.qf-etat--verifie { background: var(--adm-st-verifie-fond); color: var(--adm-st-verifie); }
+.qf-etat--rejete { background: var(--adm-st-rejete-fond); color: var(--adm-st-rejete); font-weight: 500; }
+.qf-etat--rejete b { font-weight: 700; }
+
+.qf-comparer { padding: .9rem 1rem; border-radius: 12px; background: var(--adm-puce); }
+.qf-comparer__titre { display: flex; align-items: center; gap: .45rem; margin: 0 0 .6rem; font-size: .85rem; font-weight: 700; color: var(--foret-800); }
+.qf-comparer dl { display: grid; margin: 0; }
+.qf-comparer dl div { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; padding: .4rem 0; }
+.qf-comparer dl div + div { border-top: 1px dashed var(--filet-fort); }
+.qf-comparer dt { font-size: .85rem; color: var(--gris); }
+.qf-comparer dd { margin: 0; min-width: 0; overflow-wrap: anywhere; text-align: right; font-size: .88rem; font-weight: 700; color: var(--encre); font-variant-numeric: tabular-nums; }
+
+.qf-actions { display: grid; gap: .85rem; }
+.qf-actions form { margin: 0; }
+.qf-bouton { width: 100%; min-height: 46px; font-size: .92rem; }
+.qf-ou { position: relative; margin: 0; text-align: center; font-size: .8rem; color: var(--gris); }
+.qf-ou::before { content: ""; position: absolute; left: 0; right: 0; top: 50%; border-top: 1px solid var(--filet); }
+.qf-ou span { position: relative; padding: 0 .6rem; background: var(--blanc); }
+.qf-rejet { display: grid; gap: .75rem; }
+.qf-rejet .champ { gap: .35rem; }
+.qf-rejet textarea { width: 100%; min-height: 76px; padding: .65rem .8rem; border: 1px solid var(--filet-fort); border-radius: 12px; background: var(--blanc); font: inherit; font-size: .92rem; resize: vertical; }
+.qf-rejet textarea:focus { border-color: var(--danger); outline: 0; box-shadow: 0 0 0 4px var(--adm-st-rejete-fond); }
+.qf-rejet .champ__aide { margin: 0; font-size: .8rem; color: var(--gris); }
+.qf-annuler { justify-self: center; }
+
+/* ---------- Historique ---------- */
+
+.qf-historique .historique__detail { font-weight: 500; color: var(--gris); }
+.qf-historique .historique__detail::before { content: "· "; }
+
+/* ---------- Écrans étroits ---------- */
+
+@media (max-width: 1180px) {
+	/* Une colonne : la décision suit directement les reçus qu'elle tranche. */
+	.qf .ipes-grille { grid-template-columns: minmax(0, 1fr); }
+	.qf .ipes-pile { display: contents; }
+	.qf .ipes-pile:first-child > :first-child { order: 1; }
+	.qf .ipes-pile:last-child > :first-child { order: 2; }
+	.qf .ipes-pile:first-child > :last-child { order: 3; }
+	.qf .ipes-pile:last-child > :last-child { order: 4; }
+}
+@media (max-width: 640px) {
+	.qf-entete__actions { width: 100%; }
+	.qf-entete__actions .adm-bouton { flex: 1; }
+	.qf-etapes { --rond: 30px; }
+	.qf-etapes__libelle { font-size: .74rem; }
+	.qf-infos { grid-template-columns: minmax(0, 1fr); }
+	.qf-recu { grid-template-columns: 84px minmax(0, 1fr); gap: .8rem; }
+}

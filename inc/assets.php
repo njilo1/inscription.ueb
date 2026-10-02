@@ -105,7 +105,9 @@ add_action( 'wp_enqueue_scripts', function () {
 	$ipes_scolarite = is_page_template( 'page-scolarite.php' ) && 'ipes' === $vue_bo && is_user_logged_in() && function_exists( 'ueb_est_scolarite' ) && ueb_est_scolarite();
 	/* L'onglet Filières de l'administration reprend les composants de l'onglet IPES. */
 	$ipes_admin     = $admin && in_array( $vue_bo, array( 'ipes', 'filieres' ), true );
-	if ( $ipes_espace || $ipes_scolarite || $ipes_admin ) {
+	/* Fiche d’\un quitus de la scolarité : mêmes panneaux que la fiche d’\un IPES. */
+	$quitus_scolarite = is_page_template( 'page-scolarite.php' ) && ctype_digit( (string) ( $_GET['quitus'] ?? '' ) ) && is_user_logged_in() && function_exists( 'ueb_est_scolarite' ) && ueb_est_scolarite(); // phpcs:ignore -- lecture seule
+	if ( $ipes_espace || $ipes_scolarite || $ipes_admin || $quitus_scolarite ) {
 		if ( ! $admin ) {
 			ueb_style( 'ueb-administration', 'assets/css/administration.css', array( 'ueb-pages' ) );
 		}
@@ -113,6 +115,9 @@ add_action( 'wp_enqueue_scripts', function () {
 			ueb_script( 'ueb-administration', 'assets/js/administration.js' );
 		}
 		ueb_style( 'ueb-ipes', 'assets/css/ipes.css', array( 'ueb-administration' ) );
+		if ( $quitus_scolarite ) {
+			ueb_style( 'ueb-quitus-fiche', 'assets/css/quitus-fiche.css', array( 'ueb-ipes' ) );
+		}
 	}
 	$ipes_heros = ( ( $ipes_admin || $ipes_scolarite ) && ctype_digit( (string) ( $_GET['ipes'] ?? '' ) ) && ! isset( $_GET['etudiant'] ) ) // phpcs:ignore -- lecture seule
 		|| ( $ipes_espace && ! isset( $_GET['vue'] ) ) || ( $ipes_espace && 'bord' === $vue_bo );
