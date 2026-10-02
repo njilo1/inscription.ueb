@@ -408,7 +408,7 @@ ueb_page_debut( array( 'titre' => $edite ? 'Modifier le quitus' : 'Nouveau quitu
 				</div>
 
 				<footer class="quitus-final__pied">
-					<p>Après génération, imprime tes quitus et fais-les tamponner avant de payer.</p>
+					<p>Après génération, imprime tes quitus, paie, puis envoie la photo de ton reçu.</p>
 					<div class="quitus-final__actions">
 						<button class="btn btn--primaire quitus-final__generer" type="submit" <?php disabled( ! $contexte['tranches'] && 'droits' === $type_courant ); ?><?php if ( $edite ) : ?> data-confirmer-ton="enregistrer" data-confirmer-titre="Enregistrer les modifications ?" data-confirmer-bouton="Oui, enregistrer" data-confirmer="<?php echo esc_attr( sprintf( 'Le quitus %s sera refait avec ces informations. S’il est déjà imprimé ou tamponné, imprime la nouvelle version.', $edite->numero ) ); ?>"<?php endif; ?>><?php echo $edite ? 'Enregistrer les modifications' : 'Générer mes documents'; ?><?php echo ueb_icone( 'fleche', 18 ); ?></button>
 						<a class="quitus-final__annuler" href="<?php echo esc_url( ueb_url( 'mon-espace' ) ); ?>">Annuler</a>
