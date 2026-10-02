@@ -164,6 +164,7 @@ function ueb_traiter_action( $action ) {
 		'changer_identifiant' => 'ueb_action_changer_identifiant',
 		'enregistrer_profil'  => 'ueb_action_enregistrer_profil',
 		'enregistrer_quitus'  => 'ueb_action_enregistrer_quitus',
+		'corriger_parcours'   => 'ueb_action_corriger_parcours',
 		'envoyer_recus'       => 'ueb_action_envoyer_recus',
 		'supprimer_recu'      => 'ueb_action_supprimer_recu',
 		'gestion_statut'      => 'ueb_action_gestion_statut',

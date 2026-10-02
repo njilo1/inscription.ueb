@@ -82,9 +82,26 @@ function ueb_generer_pdf_quitus( $quitus ) {
 	return $pdf;
 }
 
+/**
+ * Identité de l'université, à la place de celle de la faculté sur le quitus
+ * des frais médicaux : ils se paient au compte des services centraux.
+ */
+function ueb_pdf_identite_universite() {
+	return array(
+		'sigle'   => 'UEB',
+		'fr'      => UEB_UNIVERSITE['fr'],
+		'en'      => UEB_UNIVERSITE['en'],
+		'bp'      => UEB_UNIVERSITE['bp'],
+		'tel'     => UEB_UNIVERSITE['tel'],
+		'email'   => UEB_UNIVERSITE['email'],
+		'couleur' => UEB_UNIVERSITE['couleur'],
+	);
+}
+
 /** Ajoute une page contenant les quatre coupons d'un seul paiement. */
 function ueb_pdf_page_quitus( TCPDF $pdf, $quitus ) {
-	$etab = ueb_etablissement( $quitus->etablissement );
+	/* Frais médicaux : logo, nom, coordonnées et couleur de l'université seuls. */
+	$etab = 'medicaux' === ( $quitus->type ?? 'droits' ) ? ueb_pdf_identite_universite() : ueb_etablissement( $quitus->etablissement );
 	$pdf->AddPage();
 	$c = ueb_pdf_couleurs( $etab['couleur'] );
 	for ( $i = 0; $i < 4; $i++ ) {
@@ -202,7 +219,7 @@ function ueb_pdf_colonne_entete( TCPDF $pdf, array $lignes, $x, $y, $largeur, ar
 function ueb_pdf_lignes_entete( $langue, $etab, array $c ) {
 	$fr   = 'fr' === $langue;
 	$long = mb_strlen( $etab[ $langue ] ) > 44;
-	return array(
+	$lignes = array(
 		array( 'type' => 'txt', 'texte' => $fr ? 'RÉPUBLIQUE DU CAMEROUN' : 'REPUBLIC OF CAMEROON', 'famille' => 'uebserifb', 'style' => '', 'taille' => 7, 'espacement' => 0.15, 'couleur' => $c['etab'] ),
 		array( 'type' => 'txt', 'texte' => $fr ? 'Paix – Travail – Patrie' : 'Peace – Work – Fatherland', 'famille' => 'uebserifi', 'style' => '', 'taille' => 6.4, 'couleur' => $c['etab'] ),
 		array( 'type' => 'sep' ),
@@ -210,6 +227,8 @@ function ueb_pdf_lignes_entete( $langue, $etab, array $c ) {
 		array( 'type' => 'sep' ),
 		array( 'type' => 'txt', 'texte' => mb_strtoupper( $etab[ $langue ] ), 'famille' => $fr ? 'uebserifb' : 'uebserifbi', 'style' => '', 'taille' => $long ? 6.9 : 8.4, 'espacement' => 0.05, 'couleur' => $c['etab'] ),
 	);
+	/* Université seule (frais médicaux) : son nom figure déjà, pas de ligne d'établissement. */
+	return 'UEB' === ( $etab['sigle'] ?? '' ) ? array_slice( $lignes, 0, 4 ) : $lignes;
 }
 
 /** Contenu court aligné sur le QR du site de préinscription. */
@@ -252,10 +271,15 @@ function ueb_pdf_coupon( TCPDF $pdf, $q, array $etab, array $c, $libelle_coupon,
 	ueb_pdf_colonne_entete( $pdf, $lignesEn, $xEn, $y + ( $hEntete - $hEn ) / 2, $colW, $c, true );
 
 	$yLogo = $y + ( $hEntete - $logo ) / 2;
-	$pdf->Image( ueb_logo_chemin( 'UEB' ), $xEmb, $yLogo, $logo, $logo, 'PNG', '', '', true, 300, '', false, false, 0, 'CM' );
-	$pdf->Image( ueb_logo_chemin( $etab['sigle'] ), $xEmb + $logo + 5, $yLogo, $logo, $logo, 'PNG', '', '', true, 300, '', false, false, 0, 'CM' );
-	$pdf->SetLineStyle( array( 'width' => 0.25, 'color' => $c['filet'], 'dash' => 0 ) );
-	$pdf->Line( $xEmb + $logo + 2.5, $yLogo + 2, $xEmb + $logo + 2.5, $yLogo + $logo - 2 );
+	if ( 'UEB' === $etab['sigle'] ) {
+		/* Université seule (frais médicaux) : un logo, centré. */
+		$pdf->Image( ueb_logo_chemin( 'UEB' ), $xEmb + ( $emblW - $logo ) / 2, $yLogo, $logo, $logo, 'PNG', '', '', true, 300, '', false, false, 0, 'CM' );
+	} else {
+		$pdf->Image( ueb_logo_chemin( 'UEB' ), $xEmb, $yLogo, $logo, $logo, 'PNG', '', '', true, 300, '', false, false, 0, 'CM' );
+		$pdf->Image( ueb_logo_chemin( $etab['sigle'] ), $xEmb + $logo + 5, $yLogo, $logo, $logo, 'PNG', '', '', true, 300, '', false, false, 0, 'CM' );
+		$pdf->SetLineStyle( array( 'width' => 0.25, 'color' => $c['filet'], 'dash' => 0 ) );
+		$pdf->Line( $xEmb + $logo + 2.5, $yLogo + 2, $xEmb + $logo + 2.5, $yLogo + $logo - 2 );
+	}
 	$y += $hEntete + 0.6;
 
 	/* ---- Coordonnées ---- */

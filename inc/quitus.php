@@ -85,6 +85,41 @@ function ueb_quitus_modifiable( $quitus ) {
 	return ! $medical || 'genere' === $medical->statut;
 }
 
+/**
+ * Vrai si l'étudiant peut encore corriger la filière et le niveau de ce
+ * dossier après l'envoi : année en cours et aucun paiement du dossier vérifié
+ * (version 10). Le reste du quitus est figé dès l'envoi d'un reçu.
+ */
+function ueb_quitus_parcours_modifiable( $quitus ) {
+	if ( $quitus->annee_academique !== ueb_annee_academique()['code'] ) {
+		return false;
+	}
+	$dossier = ueb_dossier_du_quitus( $quitus );
+	foreach ( $dossier ? $dossier['paiements'] : array( $quitus ) as $paiement ) {
+		if ( 'verifie' === $paiement->statut ) {
+			return false;
+		}
+	}
+	return true;
+}
+
+/**
+ * Filières vers lesquelles ce quitus peut être corrigé : ouvertes, du même
+ * établissement et du même type (classique ou pro) que sa filière actuelle,
+ * pour que le montant reste juste. Par identifiant.
+ */
+function ueb_filieres_correction( $quitus ) {
+	$toutes  = ueb_formations_inscription( true );
+	$actuelle = $toutes[ (int) $quitus->filiere_id ] ?? null;
+	if ( ! $actuelle ) {
+		global $wpdb;
+		/* Filière fermée depuis : son type se lit dans le catalogue. */
+		$actuelle = $wpdb->get_row( $wpdb->prepare( 'SELECT type_formation FROM ueb_filieres WHERE id = %d', (int) $quitus->filiere_id ) );
+	}
+	$type = $actuelle->type_formation ?? 'classique';
+	return array_filter( $toutes, static fn( $f ) => $f->etablissement === $quitus->etablissement && $f->type_formation === $type );
+}
+
 function ueb_nationalites() {
 	global $wpdb;
 	static $liste = null;
@@ -339,4 +374,64 @@ function ueb_action_enregistrer_quitus() {
 /** URL publique de vérification, conservée pour les liens et les anciens QR codes. */
 function ueb_url_verification( $quitus ) {
 	return ueb_url( 'verifier/' . $quitus->code_verif );
+}
+
+/**
+ * Correction de la filière ou du niveau d'un dossier déjà envoyé, tant
+ * qu'aucun de ses paiements n'est vérifié. Le quitus des droits et le quitus
+ * médical du dossier sont corrigés ensemble, ainsi que la fiche de
+ * l'étudiant ; la correction est tracée (corrige_le, correction) pour la
+ * scolarité qui vérifie.
+ */
+function ueb_action_corriger_parcours() {
+	global $wpdb;
+	$compte = ueb_compte_courant();
+	if ( ! $compte ) {
+		ueb_rediriger( ueb_url( 'connexion' ) );
+	}
+	$quitus = ueb_quitus_du_compte_par_numero( $compte->id, sanitize_text_field( wp_unslash( $_POST['numero'] ?? '' ) ) );
+	if ( ! $quitus ) {
+		ueb_rediriger( ueb_url( 'mon-espace' ) );
+	}
+	$retour = add_query_arg( 'vue', 'quitus', ueb_url( 'mon-espace' ) ) . '#quitus-' . $quitus->numero;
+	if ( ! ueb_quitus_parcours_modifiable( $quitus ) ) {
+		ueb_flash( 'erreur', 'Ce dossier a déjà été vérifié par la scolarité : la filière et le niveau ne peuvent plus changer.' );
+		ueb_rediriger( $retour );
+	}
+	$filieres = ueb_filieres_correction( $quitus );
+	$filiere  = $filieres[ (int) ( $_POST['filiere_id'] ?? 0 ) ] ?? null;
+	$niveau   = sanitize_text_field( wp_unslash( $_POST['parcours'] ?? '' ) );
+	if ( ! $filiere ) {
+		ueb_flash( 'erreur', 'Choisis une filière de ' . $quitus->etablissement . ' du même type que la tienne : le montant du quitus en dépend.' );
+		ueb_rediriger( $retour );
+	}
+	if ( ! isset( UEB_NIVEAUX_INSCRIPTION[ $niveau ] ) ) {
+		ueb_flash( 'erreur', 'Choisis ton niveau dans la liste.' );
+		ueb_rediriger( $retour );
+	}
+	if ( (int) $filiere->id === (int) $quitus->filiere_id && $niveau === $quitus->parcours ) {
+		ueb_flash( 'info', 'Aucun changement : ta filière et ton niveau sont déjà ceux-là.' );
+		ueb_rediriger( $retour );
+	}
+
+	$avant      = 'Avant : ' . $quitus->departement . ' · ' . ( UEB_NIVEAUX_INSCRIPTION[ $quitus->parcours ] ?? $quitus->parcours );
+	$dossier    = ueb_dossier_du_quitus( $quitus );
+	$paiements  = $dossier ? $dossier['paiements'] : array( $quitus );
+	$ids        = array_map( static fn( $p ) => (int) $p->id, $paiements );
+	$marques    = implode( ',', array_fill( 0, count( $ids ), '%d' ) );
+	/* Condition sur le statut dans la même requête : une vérification arrivée entre-temps l'emporte. */
+	$modifies = $wpdb->query( $wpdb->prepare(
+		"UPDATE ueb_insc_quitus SET filiere_id = %d, departement = %s, parcours = %s, corrige_le = %s, correction = %s
+		 WHERE compte_id = %d AND statut <> 'verifie' AND id IN ($marques)",
+		array_merge( array( $filiere->id, $filiere->libelle, $niveau, current_time( 'mysql' ), mb_substr( $avant, 0, 255 ), $compte->id ), $ids )
+	) );
+	if ( ! $modifies ) {
+		ueb_flash( 'erreur', 'La correction n’a pas pu être enregistrée. Réessaie dans un instant.' );
+		ueb_rediriger( $retour );
+	}
+	/* La fiche de l'étudiant suit : ses prochains quitus partent de la bonne filière. */
+	$wpdb->update( 'ueb_insc_profils', array( 'filiere_id' => $filiere->id, 'parcours' => $niveau ), array( 'compte_id' => $compte->id ) );
+
+	ueb_flash( 'succes', 'Filière et niveau corrigés : ' . $filiere->libelle . ' · ' . UEB_NIVEAUX_INSCRIPTION[ $niveau ] . '. Télécharge de nouveau ton quitus : la scolarité verra la correction.' );
+	ueb_rediriger( $retour );
 }

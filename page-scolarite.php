@@ -643,6 +643,9 @@ ueb_page_debut( array( 'titre' => 'Espace scolarité', 'variante' => $autorise ?
 									<div><dt>Nationalité</dt><dd><?php echo esc_html( $fiche->nationalite ); ?></dd></div>
 									<div class="dossier-infos__large"><dt>Filière</dt><dd><?php echo esc_html( $fiche->departement ); ?></dd></div>
 									<div><dt>Niveau</dt><dd><?php echo esc_html( UEB_NIVEAUX_INSCRIPTION[ $fiche->parcours ] ?? $fiche->parcours ); ?></dd></div>
+									<?php if ( ! empty( $fiche->corrige_le ) ) : ?>
+										<div class="dossier-infos__large dossier-infos__correction"><dt>Correction par l’étudiant</dt><dd><?php echo esc_html( 'Le ' . mysql2date( 'j F Y à H:i', $fiche->corrige_le ) . ' — ' . $fiche->correction ); ?></dd></div>
+									<?php endif; ?>
 									<div><dt>Établissement</dt><dd><?php echo esc_html( $etab_fiche['sigle'] ?? $fiche->etablissement ); ?></dd></div>
 								</dl>
 							</section>
