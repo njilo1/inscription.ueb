@@ -31,8 +31,8 @@ $d = ueb_landing_donnees();
 $villes = array_values( array_unique( array_column( $d['fiches'], 'ville' ) ) );
 $debut_url = ueb_url( $d['compte'] ? 'mon-espace' : 'creer-mon-compte' );
 $debut_texte = $d['compte'] ? 'Aller à mon espace' : 'Créer mon compte';
-$etapes_courtes = array( 'Prépare ton quitus.', 'Imprime tes coupons.', 'Fais tamponner, puis paie.', 'Envoie ton reçu.' );
-$etapes_lieux = array( 'Sur la plateforme', 'En PDF · Format A4', 'Scolarité, puis paiement', 'Dans ton espace' );
+$etapes_courtes = array( 'Prépare ton quitus.', 'Imprime tes coupons.', 'Paie, puis envoie ton reçu.', 'Fais tamponner ton reçu.' );
+$etapes_lieux = array( 'Sur la plateforme', 'En PDF · Format A4', 'Paiement, puis ton espace', 'À la scolarité' );
 
 ueb_page_debut( array( 'titre' => 'Ton inscription à Ebolowa · ' . $d['annee']['libelle'], 'variante' => 'auth', 'classe' => 'ueb-v2' ) );
 ?>
@@ -70,14 +70,14 @@ ueb_page_debut( array( 'titre' => 'Ton inscription à Ebolowa · ' . $d['annee']
 			<div class="v2-demo" data-enter>
 				<div class="v2-demo__note"><span class="v2-demo__dash" aria-hidden="true"></span>Du premier clic au reçu vérifié.</div>
 				<figure class="v2-ticket">
-					<figcaption class="v2-ticket__header"><span>LE PARCOURS D’INSCRIPTION</span><span><?php echo ueb_icone( 'horloge', 15 ); ?>13 secondes</span></figcaption>
+					<figcaption class="v2-ticket__header"><span>LE PARCOURS D’INSCRIPTION</span><span><?php echo ueb_icone( 'horloge', 15 ); ?>14 secondes</span></figcaption>
 					<div class="animation v2-player" data-remotion="parcours" data-props="<?php echo esc_attr( wp_json_encode( ueb_props_parcours() ) ); ?>" role="group" aria-label="Le parcours d’inscription en animation" aria-describedby="v2-video-description">
 						<div class="animation__scene" data-remotion-scene></div>
 						<button type="button" class="animation__pause" data-remotion-pause aria-label="Mettre l’animation en pause" aria-pressed="false"><?php echo ueb_icone( 'pause', 16, 'icone-pause' ); ?><?php echo ueb_icone( 'lecture', 16, 'icone-lecture' ); ?></button>
 					</div>
 					<div class="v2-ticket__footer"><span><?php echo ueb_icone( 'fichier', 20 ); ?><b>Un quitus. Quatre coupons.</b></span><span>Étudiant · DAF · Scolarité · Banque</span></div>
 				</figure>
-				<p id="v2-video-description" class="sr">Crée ton compte et ton quitus, télécharge les quatre coupons, fais tamponner le quitus à la scolarité, paie <?php echo esc_html( ueb_moyens_paiement() ); ?>, puis envoie ton reçu pour vérification.</p>
+				<p id="v2-video-description" class="sr">Crée ton compte et ton quitus, télécharge les quatre coupons, paie <?php echo esc_html( ueb_moyens_paiement() ); ?>, envoie ton reçu, puis fais-le tamponner à la scolarité.</p>
 				<noscript><p class="v2-demo__fallback">Le parcours animé nécessite JavaScript. Les quatre étapes sont détaillées juste en dessous.</p></noscript>
 				<div class="v2-demo__caption"><?php echo ueb_icone( 'check', 16 ); ?>Les mêmes démarches, quel que soit ton établissement.</div>
 			</div>
@@ -109,7 +109,7 @@ ueb_page_debut( array( 'titre' => 'Ton inscription à Ebolowa · ' . $d['annee']
 					</li>
 				<?php endforeach; ?>
 			</ol>
-			<p class="v2-process__reminder" data-reveal><?php echo ueb_icone( 'info', 19 ); ?><span>Garde les originaux de tes reçus : ils seront demandés à la scolarité pour vérifier ton paiement.</span></p>
+			<p class="v2-process__reminder" data-reveal><?php echo ueb_icone( 'info', 19 ); ?><span>Garde l’original de ton reçu : la scolarité le tamponne pour vérifier ton paiement.</span></p>
 		</div>
 	</section>
 

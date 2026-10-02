@@ -7,7 +7,8 @@
 defined( 'ABSPATH' ) || exit;
 $q = $dossier['principal'];
 $etab = ueb_etablissement( $q->etablissement );
-$faites = array( 'genere' => 1, 'rejete' => 2, 'recu_envoye' => 3, 'verifie' => 4 )[ $dossier['statut'] ] ?? 1;
+/* Étapes : généré, payé et reçu envoyé, reçu tamponné à la scolarité, vérifié. */
+$faites = array( 'genere' => 1, 'rejete' => 2, 'recu_envoye' => 2, 'verifie' => 4 )[ $dossier['statut'] ] ?? 1;
 $modifiable = ueb_quitus_modifiable( $q );
 /* Après l'envoi : seules la filière et le niveau se corrigent, tant que rien n'est vérifié. */
 $corrigeable = ! $modifiable && ueb_quitus_parcours_modifiable( $q );

@@ -97,8 +97,8 @@ ueb_page_debut( array( 'titre' => 'Support', 'variante' => 'simple', 'classe' =>
 							<p>Connecte-toi avec ton matricule, puis ouvre « Nouveau quitus ». Choisis ton établissement, vérifie tes informations et indique le montant : ton quitus sort en PDF, avec les quatre coupons (étudiant, DAF, scolarité et banque) sur une page A4.</p>
 						</details>
 						<details>
-							<summary>Que faire après avoir payé à la banque ?<?php echo ueb_icone( 'chevron', 20 ); ?></summary>
-							<p>Photographie le reçu de la banque et envoie-le depuis ton espace. Présente ensuite les originaux à la scolarité de ton établissement : ton paiement passe à « Vérifié ». Garde les originaux de tes reçus jusqu’à la vérification.</p>
+							<summary>Que faire après avoir payé ?<?php echo ueb_icone( 'chevron', 20 ); ?></summary>
+							<p>Photographie ton reçu de paiement et envoie-le depuis ton espace. Présente ensuite l’original à la scolarité de ton établissement pour le faire tamponner : ton paiement passe à « Vérifié ».</p>
 						</details>
 						<details>
 							<summary>Mot de passe oublié<?php echo ueb_icone( 'chevron', 20 ); ?></summary>
