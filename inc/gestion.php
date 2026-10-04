@@ -606,6 +606,28 @@ function ueb_gestion_liste_quitus( array $filtres, $par_page = 30 ) {
 }
 
 /**
+ * Reçu suivant à vérifier depuis la fiche d'un quitus : même établissement,
+ * même année, le plus ancien en attente d'abord.
+ *
+ * @return array{id: int, reste: int}|null reste = reçus en attente hors ce quitus.
+ */
+function ueb_gestion_quitus_suivant( $quitus ) {
+	global $wpdb;
+	$where = $wpdb->prepare(
+		"statut = 'recu_envoye' AND annee_academique = %s AND etablissement = %s AND id <> %d",
+		$quitus->annee_academique,
+		$quitus->etablissement,
+		$quitus->id
+	);
+	$reste = (int) $wpdb->get_var( "SELECT COUNT(*) FROM ueb_insc_quitus WHERE $where" ); // phpcs:ignore -- préparé ci-dessus
+	if ( ! $reste ) {
+		return null;
+	}
+	$id = (int) $wpdb->get_var( "SELECT id FROM ueb_insc_quitus WHERE $where ORDER BY date_modification ASC, id ASC LIMIT 1" ); // phpcs:ignore
+	return array( 'id' => $id, 'reste' => $reste );
+}
+
+/**
  * Recherche d'étudiants : un seul champ qui cherche dans le matricule, le
  * téléphone, le nom et le prénom, plus un filtre sur
  * le paiement. $etab limite à un établissement.

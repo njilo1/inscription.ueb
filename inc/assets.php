@@ -117,6 +117,7 @@ add_action( 'wp_enqueue_scripts', function () {
 		ueb_style( 'ueb-ipes', 'assets/css/ipes.css', array( 'ueb-administration' ) );
 		if ( $quitus_scolarite ) {
 			ueb_style( 'ueb-quitus-fiche', 'assets/css/quitus-fiche.css', array( 'ueb-ipes' ) );
+			ueb_script( 'ueb-quitus-fiche', 'assets/js/quitus-fiche.js' );
 		}
 	}
 	$ipes_heros = ( ( $ipes_admin || $ipes_scolarite ) && ctype_digit( (string) ( $_GET['ipes'] ?? '' ) ) && ! isset( $_GET['etudiant'] ) ) // phpcs:ignore -- lecture seule
