@@ -889,9 +889,11 @@
 				nom.className = "depot__nom";
 				nom.textContent = f.name;
 				const infos = document.createElement("small");
+				/* Côté étudiant (data-un-seul), seul le poids final s'affiche : la compression ne le concerne pas. */
+				const gain = !unSeul && s.origine > f.size * 1.1;
 				infos.textContent = souci ? souci.charAt(0).toUpperCase() + souci.slice(1)
-					: s.origine > f.size * 1.1 ? `${taille(s.origine)} → ${taille(f.size)}` : taille(f.size);
-				if (!souci && s.origine > f.size * 1.1) infos.classList.add("depot__gain");
+					: gain ? `${taille(s.origine)} → ${taille(f.size)}` : taille(f.size);
+				if (!souci && gain) infos.classList.add("depot__gain");
 				const retirer = document.createElement("button");
 				retirer.type = "button";
 				retirer.className = "depot__retirer";
@@ -917,8 +919,9 @@
 				if (boutonCamera) boutonCamera.disabled = verrou;
 				$("[data-camera-natif]", form)?.classList.toggle("est-verrouille", verrou);
 				depot.classList.toggle("est-verrouille", verrou);
+				depot.setAttribute("aria-disabled", String(verrou));
 			}
-			if (titre) titre.textContent = occupe ? "Compression des photos…" : verrou ? "Photo chargée : retire-la pour en prendre une autre" : selection.length ? `${selection.length} fichier${selection.length > 1 ? "s" : ""} prêt${selection.length > 1 ? "s" : ""} à l’envoi` : titreInitial;
+			if (titre) titre.textContent = occupe ? (unSeul ? "Préparation du reçu…" : "Compression des photos…") : verrou ? "Reçu chargé : retire-le pour en choisir un autre" : selection.length ? `${selection.length} fichier${selection.length > 1 ? "s" : ""} prêt${selection.length > 1 ? "s" : ""} à l’envoi` : titreInitial;
 			if (libelle) libelle.textContent = selection.length > 1 ? libellePlusieurs.replace("{n}", selection.length) : libelleUn;
 		};
 
