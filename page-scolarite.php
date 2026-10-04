@@ -526,153 +526,294 @@ ueb_page_debut( array( 'titre' => 'Espace scolarité', 'variante' => $autorise ?
 					<?php include UEB_INSC_DIR . '/templates/composants/scolarite-ipes.php'; ?>
 
 				<?php elseif ( 'quitus' === $vue ) : /* jamais un « else » : une vue sans branche n'affiche rien, surtout pas les quitus */ ?>
-
 					<?php
 					$filtres = array(
-						'annee'  => $annee['code'],
-						'etab'   => $etab_agent,
-						'statut' => sanitize_key( $_GET['statut'] ?? '' ),
-						'q'      => sanitize_text_field( wp_unslash( $_GET['q'] ?? '' ) ),
-						'page'   => (int) ( $_GET['p'] ?? 1 ),
+						'annee'     => $annee['code'],
+						'etab'      => $etab_agent,
+						'statut'    => sanitize_key( $_GET['statut'] ?? '' ),
+						'paiements' => sanitize_key( $_GET['paiements'] ?? '' ),
+						'q'         => sanitize_text_field( wp_unslash( $_GET['q'] ?? '' ) ),
+						'filiere'   => sanitize_text_field( wp_unslash( $_GET['filiere'] ?? '' ) ),
+						'niveau'    => sanitize_text_field( wp_unslash( $_GET['niveau'] ?? '' ) ),
+						'moyen'     => sanitize_text_field( wp_unslash( $_GET['moyen'] ?? '' ) ),
+						'page'      => (int) ( $_GET['p'] ?? 1 ),
 					);
-					$stats = $stats_entete;
-					$liste = ueb_gestion_liste_quitus( $filtres );
-					/* Chaque statut a son icône ; le libellé l'accompagne toujours. */
-					$icones_statut  = array( 'genere' => 'horloge', 'recu_envoye' => 'envoyer', 'verifie' => 'check', 'rejete' => 'alerte' );
-					$libelle_statut = UEB_STATUTS_QUITUS[ $filtres['statut'] ]['libelle'] ?? '';
-					/* Bandeau de la file : le montant déclaré et le plus ancien envoi se
-					   lisent sur la page affichée quand elle porte toute la file (pas de
-					   requête de plus) ; sinon le bandeau s'en tient au nombre. */
-					$en_attente = array_values( array_filter( $liste['lignes'], static fn( $q ) => 'recu_envoye' === $q->statut ) );
-					usort( $en_attente, static fn( $a, $b ) => strcmp( $a->date_modification, $b->date_modification ) );
-					$plus_ancien  = $a_verifier && count( $en_attente ) === $a_verifier ? $en_attente[0] : null;
-					$montant_file = $plus_ancien ? array_sum( array_map( static fn( $q ) => (int) $q->montant, $en_attente ) ) : 0;
-					$maintenant   = current_time( 'timestamp' );
+					if ( ! isset( UEB_STATUTS_QUITUS[ $filtres['statut'] ] ) ) {
+						$filtres['statut'] = '';
+					}
+					if ( ! isset( UEB_FILTRES_PAIEMENTS[ $filtres['paiements'] ] ) ) {
+						$filtres['paiements'] = '';
+					}
+					/* Une ligne par dossier : les droits universitaires (DU) et les frais
+					   médicaux (FM) d'un même étudiant sont réunis (inc/gestion.php). */
+					$dossiers    = ueb_gestion_stats_dossiers( $filtres );
+					$liste       = ueb_gestion_liste_dossiers( $filtres );
+					$options     = ueb_gestion_options_dossiers( $filtres );
+					$maintenant  = current_time( 'timestamp' );
+					$plus_ancien = $dossiers['plus_ancien'];
+					$attente     = (int) ( $dossiers['attente']->paiements ?? 0 );
+					$depuis      = $plus_ancien ? human_time_diff( strtotime( $plus_ancien->date_modification ), $maintenant ) : '';
+					/* Les compteurs et les pastilles parlent comme l'agent : ce qu'il
+					   a à valider, ce qui n'est pas encore validé, rejeté ou validé. */
+					$etats = array(
+						'recu_envoye' => array( 'compteur' => 'À valider', 'pastille' => 'À valider', 'icone' => 'envoyer', 'note' => 'Reçus envoyés, à contrôler', 'vide' => 'Les reçus envoyés par les étudiants s’afficheront ici, prêts à être vérifiés.' ),
+						'genere'      => array( 'compteur' => 'Non validés', 'pastille' => 'À payer', 'icone' => 'horloge', 'note' => 'Reçu pas encore envoyé', 'vide' => 'Les dossiers dont l’étudiant n’a pas encore envoyé le reçu s’afficheront ici.' ),
+						'rejete'      => array( 'compteur' => 'Rejetés', 'pastille' => 'Rejeté', 'icone' => 'alerte', 'note' => 'Renvoyés à l’étudiant', 'vide' => 'Les dossiers renvoyés à l’étudiant avec un motif s’afficheront ici.' ),
+						'verifie'     => array( 'compteur' => 'Validés', 'pastille' => 'Validé', 'icone' => 'check', 'note' => 'Tous les paiements vérifiés', 'vide' => 'Les dossiers dont tous les paiements sont vérifiés s’afficheront ici.' ),
+					);
+					$abreviations   = array( 'droits' => array( 'DU', 'Droits universitaires' ), 'medicaux' => array( 'FM', 'Frais médicaux' ) );
+					$libelle_statut = $filtres['statut'] ? $etats[ $filtres['statut'] ]['compteur'] : '';
+					/* Filtres en cours (hors statut) : gardés par les compteurs, l'alerte et les pages. */
+					$actifs    = array_filter( array_intersect_key( $filtres, array_flip( array( 'paiements', 'q', 'filiere', 'niveau', 'moyen' ) ) ), 'strlen' );
+					$url_liste = static fn( array $args = array() ) => $ici( array_merge( array( 'vue' => 'quitus', 'statut' => $filtres['statut'] ?: null ), $actifs, $args ) );
+					$niveau_lu = static function ( $code ) {
+						foreach ( UEB_NIVEAUX_INSCRIPTION as $cle_niveau => $libelle ) {
+							if ( 0 === strcasecmp( $cle_niveau, $code ) ) {
+								return preg_replace( '/^.*—\s*/u', '', $libelle );
+							}
+						}
+						return $code;
+					};
+					$selects = array(
+						'paiements' => array( 'Tous les paiements', array_map( static fn( $f ) => $f[0], UEB_FILTRES_PAIEMENTS ) ),
+						'filiere'   => array( 'Toutes les filières', array_combine( $options['filiere'], $options['filiere'] ) ),
+						'niveau'    => array( 'Tous les niveaux', array_combine( $options['niveau'], array_map( $niveau_lu, $options['niveau'] ) ) ),
+						'moyen'     => array( 'Tous les moyens de paiement', array_combine( $options['moyen'], $options['moyen'] ) ),
+					);
+					$aujourdhui = wp_date( 'd.m.Y' );
+					/* Anneau « Tous les dossiers » : la composition Remotion « donut »
+					   (un balayage, la part « à valider » respire), et son repli SVG,
+					   identique à la dernière image. */
+					$couleurs_etat = array( 'recu_envoye' => 'var(--ciel-fonce)', 'genere' => 'var(--or)', 'rejete' => 'var(--danger)', 'verifie' => 'var(--vert)' );
+					$parts_anneau  = array();
+					foreach ( $couleurs_etat as $cle => $couleur ) {
+						if ( $dossiers['total'] && $dossiers['statuts'][ $cle ] ) {
+							$parts_anneau[] = array( 'cle' => $cle, 'valeur' => round( 100 * $dossiers['statuts'][ $cle ] / $dossiers['total'], 2 ), 'couleur' => $couleur );
+						}
+					}
+					$anneau_repli = '<svg viewBox="0 0 200 200" class="compteurs__repli" aria-hidden="true"><circle cx="100" cy="100" r="76" fill="none" stroke="var(--filet)" stroke-width="25"/><g transform="rotate(-90 100 100)">';
+					$depart       = 0;
+					foreach ( $parts_anneau as $part ) {
+						$anneau_repli .= sprintf( '<circle cx="100" cy="100" r="76" fill="none" pathLength="100" stroke="%s" stroke-width="25" stroke-dasharray="%s %s" stroke-dashoffset="%s"/>', esc_attr( $part['couleur'] ), $part['valeur'], 100 - $part['valeur'], -$depart );
+						$depart       += $part['valeur'];
+					}
+					$anneau_repli .= '</g></svg>';
 					?>
 
-					<section class="registre-file<?php echo $a_verifier ? '' : ' registre-file--a-jour'; ?>" aria-labelledby="titre-file-quitus">
-						<span class="registre-file__icone" aria-hidden="true"><?php echo ueb_icone( $a_verifier ? 'envoyer' : 'check', 20 ); ?></span>
-						<div class="registre-file__texte">
-							<?php if ( $a_verifier ) : ?>
-								<h2 id="titre-file-quitus"><?php echo esc_html( 1 === $a_verifier ? 'Un reçu attend ta vérification' : $a_verifier . ' reçus attendent ta vérification' ); ?></h2>
-								<?php if ( $plus_ancien ) : ?>
-									<p><?php echo esc_html( sprintf( 1 === $a_verifier ? '%1$s déclarés. Il attend depuis %2$s.' : '%1$s déclarés au total. Le plus ancien attend depuis %2$s.', ueb_fcfa( $montant_file ), human_time_diff( strtotime( $plus_ancien->date_modification ), $maintenant ) ) ); ?></p>
-								<?php else : ?>
-									<p>Compare chaque reçu à l’original présenté par l’étudiant avant de rendre ta décision.</p>
-								<?php endif; ?>
+					<div class="registre-quitus" data-registre-quitus>
+						<?php if ( $attente ) : ?>
+							<?php if ( 'recu_envoye' === $filtres['statut'] ) : ?>
+								<div class="attente attente--filtre" role="status">
+									<span class="attente__icone" aria-hidden="true"><?php echo ueb_icone( 'tampon', 20 ); ?></span>
+									<div class="attente__texte">
+										<p class="attente__titre">Seuls les reçus à valider sont affichés</p>
+										<p><?php echo esc_html( sprintf( '%d %s en attente dans %d %s.', $attente, 1 === $attente ? 'validation' : 'validations', (int) $dossiers['attente']->dossiers, 1 === (int) $dossiers['attente']->dossiers ? 'dossier' : 'dossiers' ) ); ?></p>
+									</div>
+									<a class="attente__action" href="<?php echo $url_liste( array( 'statut' => null ) ); ?>"><?php echo ueb_icone( 'croix', 16 ); ?>Tout afficher</a>
+								</div>
 							<?php else : ?>
-								<h2 id="titre-file-quitus">Aucun reçu n’attend ta vérification</h2>
-								<p>Les prochains envois des étudiants apparaîtront en tête du registre.</p>
+								<div class="attente">
+									<span class="attente__icone" aria-hidden="true"><?php echo ueb_icone( 'tampon', 20 ); ?><span class="attente__nombre"><?php echo (int) $attente; ?></span></span>
+									<div class="attente__texte">
+										<p class="attente__titre"><a class="attente__lien" href="<?php echo $url_liste( array( 'statut' => 'recu_envoye' ) ); ?>"><?php echo esc_html( sprintf( '%d %s en attente', $attente, 1 === $attente ? 'validation' : 'validations' ) ); ?></a></p>
+										<p><?php echo esc_html( sprintf( 'Dans %d %s. Le plus ancien reçu attend depuis %s.', (int) $dossiers['attente']->dossiers, 1 === (int) $dossiers['attente']->dossiers ? 'dossier' : 'dossiers', $depuis ) ); ?></p>
+									</div>
+									<span class="attente__voir" aria-hidden="true">Afficher les reçus à valider<?php echo ueb_icone( 'chevron-d', 18 ); ?></span>
+									<?php if ( $plus_ancien ) : ?>
+										<a class="attente__second" href="<?php echo $ici( array( 'quitus' => $plus_ancien->id ) ); ?>">Ouvrir le plus ancien</a>
+									<?php endif; ?>
+								</div>
 							<?php endif; ?>
-						</div>
-						<?php if ( $plus_ancien ) : ?>
-							<a class="btn btn--primaire registre-file__action" href="<?php echo $ici( array( 'quitus' => $plus_ancien->id ) ); ?>"><?php echo 1 === $a_verifier ? 'Ouvrir le dossier' : 'Ouvrir le plus ancien'; ?><?php echo ueb_icone( 'fleche', 18 ); ?></a>
-						<?php elseif ( $a_verifier && 'recu_envoye' !== $filtres['statut'] ) : ?>
-							<a class="btn btn--primaire registre-file__action" href="<?php echo $ici( array( 'vue' => 'quitus', 'statut' => 'recu_envoye' ) ); ?>">Afficher les reçus à vérifier<?php echo ueb_icone( 'fleche', 18 ); ?></a>
 						<?php endif; ?>
-					</section>
 
-					<section class="carte registre registre--quitus" aria-label="Quitus de l’année">
-						<div class="registre__barre">
-							<nav class="onglets-statut" aria-label="Filtrer par statut">
-								<span class="onglets-statut__titre" aria-hidden="true">Filtrer par statut</span>
-								<a class="<?php echo '' === $filtres['statut'] ? 'est-actif' : ''; ?>" href="<?php echo $ici( array( 'vue' => 'quitus', 'q' => $filtres['q'] ?: null ) ); ?>" <?php echo '' === $filtres['statut'] ? 'aria-current="page"' : ''; ?>>Tous <span class="onglets-statut__nb"><?php echo (int) $stats['total']; ?></span></a>
-								<?php foreach ( array( 'recu_envoye', 'genere', 'rejete', 'verifie' ) as $cle ) : $actif = $cle === $filtres['statut']; ?>
-									<a class="onglets-statut__<?php echo esc_attr( $cle ); ?><?php echo $actif ? ' est-actif' : ''; ?>" href="<?php echo $ici( array( 'vue' => 'quitus', 'statut' => $cle, 'q' => $filtres['q'] ?: null ) ); ?>" <?php echo $actif ? 'aria-current="page"' : ''; ?>><?php echo ueb_icone( $icones_statut[ $cle ], 16 ); ?><?php echo esc_html( UEB_STATUTS_QUITUS[ $cle ]['libelle'] ); ?> <span class="onglets-statut__nb"><?php echo (int) $stats['statuts'][ $cle ]; ?></span></a>
-								<?php endforeach; ?>
-							</nav>
-							<form class="registre__recherche" method="get" action="<?php echo esc_url( ueb_url_scolarite() ); ?>" role="search">
+						<nav class="compteurs" aria-label="Dossiers par statut">
+							<a class="compteurs__carte compteurs__carte--tous" href="<?php echo $url_liste( array( 'statut' => null ) ); ?>"<?php echo '' === $filtres['statut'] ? ' aria-current="page"' : ''; ?>>
+								<span class="compteurs__libelle">Tous les dossiers</span>
+								<span class="compteurs__corps">
+									<span class="compteurs__nombre"><span data-compte="<?php echo (int) $dossiers['total']; ?>" data-cle="tous"><?php echo (int) $dossiers['total']; ?></span><span class="sr"> dossiers</span></span>
+									<?php if ( $parts_anneau ) : ?>
+										<span class="compteurs__anneau" aria-hidden="true"><span class="animation" data-remotion-differe="donut" data-props="<?php echo esc_attr( wp_json_encode( array( 'parts' => $parts_anneau, 'piste' => 'var(--filet)' ) ) ); ?>"><span class="animation__scene" data-remotion-scene><?php echo $anneau_repli; // phpcs:ignore -- construit et échappé ci-dessus ?></span></span></span>
+									<?php endif; ?>
+								</span>
+							</a>
+							<?php foreach ( $etats as $cle => $etat ) : ?>
+								<a class="compteurs__carte compteurs__carte--<?php echo esc_attr( $cle ); ?>" href="<?php echo $url_liste( array( 'statut' => $cle ) ); ?>"<?php echo $cle === $filtres['statut'] ? ' aria-current="page"' : ''; ?>>
+									<span class="compteurs__libelle"><span class="compteurs__pastille" aria-hidden="true"><?php echo ueb_icone( $etat['icone'], 14 ); ?></span><?php echo esc_html( $etat['compteur'] ); ?></span>
+									<span class="compteurs__nombre"><span data-compte="<?php echo (int) $dossiers['statuts'][ $cle ]; ?>" data-cle="<?php echo esc_attr( $cle ); ?>"><?php echo (int) $dossiers['statuts'][ $cle ]; ?></span><span class="sr"> dossiers</span></span>
+									<span class="compteurs__note"><?php echo esc_html( $etat['note'] ); ?></span>
+								</a>
+							<?php endforeach; ?>
+						</nav>
+						<script>
+						/* Avant le premier affichage : arrivée d'ailleurs (les compteurs partent de
+						   zéro, les lignes arrivent en cascade) ou depuis le registre lui-même
+						   (filtre, carte, validation : les compteurs partent des anciennes valeurs).
+						   Rien ne bouge si l'agent a demandé de réduire les animations. */
+						( function () {
+							try {
+								var racine = document.querySelector( '[data-registre-quitus]' );
+								var ref = document.referrer ? new URL( document.referrer ) : null;
+								var interne = !! ref && ref.pathname === location.pathname && ref.searchParams.get( 'vue' ) === 'quitus' && ! ref.searchParams.has( 'quitus' );
+								racine.dataset.arrivee = interne ? 'interne' : 'entree';
+								if ( matchMedia( '(prefers-reduced-motion: reduce)' ).matches ) { return; }
+								if ( ! interne ) { racine.classList.add( 'est-entree' ); }
+								var anciens = interne ? JSON.parse( sessionStorage.getItem( 'ueb-registre-comptes' ) || '{}' ) : {};
+								var nombres = racine.querySelectorAll( '[data-compte]' );
+								nombres.forEach( function ( el ) {
+									var depart = interne ? anciens[ el.dataset.cle ] : 0;
+									if ( depart === undefined || +depart === +el.dataset.compte ) { return; }
+									el.dataset.depart = depart;
+									el.textContent = depart;
+								} );
+								/* Filet de sécurité : les vraies valeurs reviennent quoi qu'il arrive. */
+								setTimeout( function () { nombres.forEach( function ( el ) { el.textContent = el.dataset.compte; } ); }, 2500 );
+							} catch ( e ) {}
+						} )();
+						</script>
+
+						<section class="carte registre registre--quitus" aria-label="<?php echo esc_attr( $libelle_statut ? 'Dossiers ' . mb_strtolower( $libelle_statut ) : 'Dossiers de l’année' ); ?>">
+							<form class="registre__filtres" method="get" action="<?php echo esc_url( ueb_url_scolarite() ); ?>" role="search" data-filtres-registre>
 								<input type="hidden" name="vue" value="quitus">
 								<?php if ( $filtres['statut'] ) : ?><input type="hidden" name="statut" value="<?php echo esc_attr( $filtres['statut'] ); ?>"><?php endif; ?>
-								<label class="sr" for="f-q">Rechercher un quitus</label>
+								<label class="sr" for="f-q">Rechercher un dossier</label>
 								<span class="registre__champ">
 									<?php echo ueb_icone( 'loupe', 18 ); ?>
 									<input id="f-q" type="search" name="q" value="<?php echo esc_attr( $filtres['q'] ); ?>" placeholder="N° de quitus, matricule, nom…" enterkeyhint="search" autocomplete="off">
 									<kbd class="registre__touche" aria-hidden="true">Entrée</kbd>
 								</span>
-								<button class="btn btn--fantome btn--petit" type="submit">Rechercher</button>
+								<?php foreach ( $selects as $nom => list( $tous, $choix ) ) : if ( ! $choix ) { continue; } ?>
+									<label class="sr" for="f-<?php echo esc_attr( $nom ); ?>"><?php echo esc_html( $tous ); ?></label>
+									<span class="registre__select<?php echo '' !== $filtres[ $nom ] ? ' est-actif' : ''; ?>">
+										<select id="f-<?php echo esc_attr( $nom ); ?>" name="<?php echo esc_attr( $nom ); ?>">
+											<option value=""><?php echo esc_html( $tous ); ?></option>
+											<?php foreach ( $choix as $valeur => $libelle ) : ?>
+												<option value="<?php echo esc_attr( $valeur ); ?>" <?php selected( 0 === strcasecmp( (string) $valeur, $filtres[ $nom ] ) ); ?>><?php echo esc_html( $libelle ); ?></option>
+											<?php endforeach; ?>
+										</select><?php echo ueb_icone( 'chevron', 16 ); ?>
+									</span>
+								<?php endforeach; ?>
+								<button class="btn btn--fantome btn--petit registre__filtrer" type="submit">Filtrer</button>
+								<?php if ( $actifs ) : ?>
+									<a class="registre__effacer" href="<?php echo $ici( array( 'vue' => 'quitus', 'statut' => $filtres['statut'] ?: null ) ); ?>"><?php echo ueb_icone( 'croix', 15 ); ?>Effacer les filtres</a>
+								<?php endif; ?>
+								<p class="registre__legende"><abbr class="registre__abr registre__abr--droits" title="Droits universitaires">DU</abbr>droits universitaires<abbr class="registre__abr registre__abr--medicaux" title="Frais médicaux">FM</abbr>frais médicaux</p>
 							</form>
-						</div>
 
-						<?php if ( ! $liste['lignes'] ) : ?>
-							<div class="registre-vide">
-								<span class="registre-vide__icone" aria-hidden="true"><?php echo ueb_icone( $filtres['q'] ? 'loupe' : 'recu', 24 ); ?></span>
-								<?php if ( $filtres['q'] ) : ?>
-									<p class="registre-vide__titre">Aucun quitus ne correspond à « <?php echo esc_html( $filtres['q'] ); ?> »<?php echo $libelle_statut ? esc_html( ' parmi les « ' . $libelle_statut . ' »' ) : ''; ?></p>
-									<p>Vérifie l’orthographe, ou cherche par numéro de quitus, matricule ou nom de famille.</p>
-									<div class="registre-vide__actions">
-										<a class="btn btn--fantome btn--petit" href="<?php echo $ici( array( 'vue' => 'quitus', 'statut' => $libelle_statut ? $filtres['statut'] : null ) ); ?>"><?php echo ueb_icone( 'croix', 16 ); ?>Effacer la recherche</a>
-										<?php if ( $libelle_statut ) : ?><a class="btn btn--lien btn--petit" href="<?php echo $ici( array( 'vue' => 'quitus', 'q' => $filtres['q'] ) ); ?>">Chercher dans tous les statuts</a><?php endif; ?>
-									</div>
-								<?php elseif ( $libelle_statut ) : ?>
-									<p class="registre-vide__titre">Aucun quitus « <?php echo esc_html( $libelle_statut ); ?> » pour le moment</p>
-									<p><?php echo esc_html( array(
-										'recu_envoye' => 'Les reçus envoyés par les étudiants s’afficheront ici, prêts à être vérifiés.',
-										'genere'      => 'Les quitus générés et pas encore payés s’afficheront ici.',
-										'rejete'      => 'Les dossiers renvoyés à l’étudiant avec un motif s’afficheront ici.',
-										'verifie'     => 'Les paiements vérifiés par la scolarité s’afficheront ici.',
-									)[ $filtres['statut'] ] ); ?></p>
-									<div class="registre-vide__actions"><a class="btn btn--fantome btn--petit" href="<?php echo $ici( array( 'vue' => 'quitus' ) ); ?>">Voir tous les quitus</a></div>
-								<?php else : ?>
-									<p class="registre-vide__titre">Aucun quitus pour l’année <?php echo esc_html( $annee['libelle'] ); ?></p>
-									<p>Les quitus apparaîtront ici dès que les étudiants les auront générés.</p>
+							<?php if ( ! $liste['lignes'] ) : ?>
+								<div class="registre-vide">
+									<span class="registre-vide__icone" aria-hidden="true"><?php echo ueb_icone( $actifs ? 'loupe' : 'recu', 24 ); ?></span>
+									<?php if ( $actifs ) : ?>
+										<p class="registre-vide__titre">Aucun dossier ne correspond à ces filtres<?php echo $libelle_statut ? esc_html( ' parmi les « ' . mb_strtolower( $libelle_statut ) . ' »' ) : ''; ?></p>
+										<p>Retire un filtre, ou cherche par numéro de quitus, matricule ou nom de famille.</p>
+										<div class="registre-vide__actions">
+											<a class="btn btn--fantome btn--petit" href="<?php echo $ici( array( 'vue' => 'quitus', 'statut' => $filtres['statut'] ?: null ) ); ?>"><?php echo ueb_icone( 'croix', 16 ); ?>Effacer les filtres</a>
+											<?php if ( $libelle_statut ) : ?><a class="btn btn--lien btn--petit" href="<?php echo $url_liste( array( 'statut' => null ) ); ?>">Chercher dans tous les dossiers</a><?php endif; ?>
+										</div>
+									<?php elseif ( $libelle_statut ) : ?>
+										<p class="registre-vide__titre">Aucun dossier « <?php echo esc_html( mb_strtolower( $libelle_statut ) ); ?> » pour le moment</p>
+										<p><?php echo esc_html( $etats[ $filtres['statut'] ]['vide'] ); ?></p>
+										<div class="registre-vide__actions"><a class="btn btn--fantome btn--petit" href="<?php echo $ici( array( 'vue' => 'quitus' ) ); ?>">Voir tous les dossiers</a></div>
+									<?php else : ?>
+										<p class="registre-vide__titre">Aucun quitus pour l’année <?php echo esc_html( $annee['libelle'] ); ?></p>
+										<p>Les dossiers apparaîtront ici dès que les étudiants auront généré leurs quitus.</p>
+									<?php endif; ?>
+								</div>
+							<?php else : ?>
+								<?php if ( $actifs ) : ?>
+									<p class="registre__resultat"><span><b><?php echo (int) $liste['total']; ?></b> <?php echo 1 === (int) $liste['total'] ? 'dossier correspond' : 'dossiers correspondent'; ?> aux filtres<?php echo $filtres['q'] ? ' et à « <b>' . esc_html( $filtres['q'] ) . '</b> »' : ''; ?></span></p>
 								<?php endif; ?>
-							</div>
-						<?php else : ?>
-							<?php if ( $filtres['q'] ) : ?>
-								<p class="registre__resultat"><span><b><?php echo (int) $liste['total']; ?></b> <?php echo 1 === (int) $liste['total'] ? 'résultat' : 'résultats'; ?> pour « <b><?php echo esc_html( $filtres['q'] ); ?></b> »</span><a class="bo-lien" href="<?php echo $ici( array( 'vue' => 'quitus', 'statut' => $libelle_statut ? $filtres['statut'] : null ) ); ?>"><?php echo ueb_icone( 'croix', 15 ); ?>Effacer la recherche</a></p>
-							<?php endif; ?>
-							<div class="tableau-conteneur">
-								<table class="tableau registre__tableau">
-									<thead><tr><th scope="col">Étudiant</th><th scope="col">Quitus</th><th scope="col">Paiement</th><th scope="col" class="num">Montant</th><th scope="col" class="num">Reçus</th><th scope="col">Statut</th><th scope="col"><span class="sr">Ouvrir</span></th></tr></thead>
-									<tbody>
-									<?php foreach ( $liste['lignes'] as $q ) :
-										$type_q   = 'medicaux' === ( $q->type ?? 'droits' ) ? 'medicaux' : 'droits';
-										$modalite = 'medicaux' === $type_q ? 'Paiement unique' : ueb_libelle_tranche( $q->tranche );
-										$nb_recus = (int) $q->nb_recus;
-										?>
-										<tr class="registre__ligne registre__ligne--<?php echo esc_attr( $q->statut ); ?>">
-											<td class="registre__c-qui">
-												<span class="registre__qui">
-													<span class="bo-avatar" aria-hidden="true"><?php echo esc_html( ueb_initiales( $q->prenom, $q->nom ) ); ?></span>
-													<span><b><?php echo esc_html( $q->nom . ' ' . $q->prenom ); ?></b><small><?php echo esc_html( $q->identifiant ); ?></small></span>
-												</span>
-											</td>
-											<td class="registre__c-quitus"><span class="registre__numero"><?php echo esc_html( $q->numero ); ?></span><small class="registre__date" title="Dernière mise à jour"><time datetime="<?php echo esc_attr( mysql2date( 'Y-m-d', $q->date_modification ) ); ?>"><?php echo esc_html( mysql2date( 'd/m/Y', $q->date_modification ) ); ?></time></small></td>
-											<td class="registre__paiement"><span class="registre__type registre__type--<?php echo esc_attr( $type_q ); ?>"><?php echo esc_html( ueb_libelle_type_quitus( $type_q ) ); ?></span><?php if ( $modalite ) : ?><small><?php echo esc_html( $modalite ); ?></small><?php endif; ?></td>
-											<td class="num registre__montant"><?php echo esc_html( ueb_formater_montant( $q->montant ) ); ?> <small>FCFA</small></td>
-											<td class="num registre__c-recus"><?php if ( $nb_recus ) : ?><span class="registre__recus"><?php echo ueb_icone( 'recu', 15 ); ?><?php echo $nb_recus; ?><span class="registre__recus-mot"><?php echo 1 === $nb_recus ? ' reçu' : ' reçus'; ?></span></span><?php else : ?><span class="registre__aucun">—<span class="sr">Aucun reçu</span></span><?php endif; ?></td>
-											<td class="registre__c-statut"><span class="badge badge--<?php echo esc_attr( $q->statut ); ?> registre__statut"><?php echo ueb_icone( $icones_statut[ $q->statut ] ?? 'info', 14 ); ?><?php echo esc_html( UEB_STATUTS_QUITUS[ $q->statut ]['libelle'] ?? $q->statut ); ?></span></td>
-											<td class="registre__action"><a class="registre__ouvrir" href="<?php echo $ici( array( 'quitus' => $q->id ) ); ?>" aria-label="<?php echo esc_attr( 'Ouvrir le quitus ' . $q->numero . ' de ' . trim( $q->nom . ' ' . $q->prenom ) ); ?>"><?php echo ueb_icone( 'fleche', 18 ); ?></a></td>
-										</tr>
-									<?php endforeach; ?>
-									</tbody>
-								</table>
-							</div>
-							<footer class="registre__pied">
-								<p><b><?php echo (int) $liste['total']; ?></b> quitus<?php echo $liste['pages'] > 1 ? ', page ' . (int) $liste['page'] . ' sur ' . (int) $liste['pages'] : ''; ?></p>
-								<?php if ( $liste['pages'] > 1 ) :
-									/* Première et dernière pages, la courante et ses voisines ; « … » entre deux trous. */
-									$courante = (int) $liste['page'];
-									$derniere = (int) $liste['pages'];
-									$url_page = static fn( $n ) => $ici( array( 'vue' => 'quitus', 'p' => $n, 'statut' => $filtres['statut'] ?: null, 'q' => $filtres['q'] ?: null ) );
-									$visibles = array_values( array_unique( array_filter( array( 1, $courante - 1, $courante, $courante + 1, $derniere ), static fn( $n ) => $n >= 1 && $n <= $derniere ) ) );
-									sort( $visibles );
-									$precedente = 0;
-									?>
-									<nav class="pagination registre__pagination" aria-label="Pages du registre">
-										<?php if ( $courante > 1 ) : ?><a class="registre__pas" href="<?php echo $url_page( $courante - 1 ); ?>" rel="prev"><?php echo ueb_icone( 'fleche-g', 16 ); ?><span class="sr">Page précédente</span></a><?php endif; ?>
-										<?php foreach ( $visibles as $n ) : ?>
-											<?php if ( $precedente && $n > $precedente + 1 ) : ?><span class="registre__ellipse" aria-hidden="true">…</span><?php endif; ?>
-											<a href="<?php echo $url_page( $n ); ?>" <?php echo $n === $courante ? 'aria-current="page"' : ''; ?>><span class="sr">Page </span><?php echo (int) $n; ?></a>
-											<?php $precedente = $n; ?>
+								<div class="tableau-conteneur">
+									<table class="tableau registre__tableau">
+										<thead><tr><th scope="col">Étudiant</th><th scope="col">Paiements</th><th scope="col" class="num">Montant</th><th scope="col" class="num">Reçus</th><th scope="col" class="registre__c-action"><span class="sr">Décision</span></th><th scope="col">Statut</th></tr></thead>
+										<tbody>
+										<?php foreach ( $liste['lignes'] as $rang => $d ) :
+											$p0        = $d->principal;
+											$nom       = trim( $p0->nom . ' ' . $p0->prenom );
+											$url       = $ici( array( 'quitus' => $p0->id ) );
+											$total     = array_sum( array_map( static fn( $q ) => (int) $q->montant, $d->paiements ) );
+											$nb_recus  = array_sum( array_map( static fn( $q ) => (int) $q->nb_recus, $d->paiements ) );
+											$abr       = static fn( $q ) => $abreviations[ 'medicaux' === $q->type ? 'medicaux' : 'droits' ][0];
+											/* Les paiements dont le statut diffère de celui du dossier, en abrégé. */
+											$autres    = array_filter( $d->paiements, static fn( $q ) => $q->statut !== $d->statut );
+											/* Ce que « Valider » enregistre : les paiements dont le reçu attend. */
+											$a_valider = array_values( array_filter( $d->paiements, static fn( $q ) => 'recu_envoye' === $q->statut && (int) $q->nb_recus > 0 ) );
+											$valider   = $a_valider && ueb_peut( 'ueb_decider_quitus', $p0->etablissement );
+											if ( $valider ) {
+												$detail = implode( ' et ', array_map( static fn( $q ) => mb_strtolower( ueb_libelle_type_quitus( $q->type ) ) . ' (' . ueb_fcfa( $q->montant ) . ')', $a_valider ) );
+												$deux   = count( $a_valider ) > 1;
+												$bouton = count( $d->paiements ) > 1 ? 'Valider ' . implode( ' et ', array_map( $abr, $a_valider ) ) : 'Valider';
+											}
+											?>
+											<tr class="registre__dossier registre__dossier--<?php echo esc_attr( $d->statut ); ?>" id="dossier-<?php echo (int) $p0->id; ?>" style="--i: <?php echo (int) min( $rang, 12 ); ?>" data-href="<?php echo $url; ?>">
+												<td class="registre__c-qui">
+													<span class="registre__qui">
+														<span class="bo-avatar" aria-hidden="true"><?php echo esc_html( ueb_initiales( $p0->prenom, $p0->nom ) ); ?></span>
+														<span><a class="registre__lien" href="<?php echo $url; ?>" title="<?php echo esc_attr( $nom ); ?>"><?php echo esc_html( $nom ); ?></a><small><?php echo esc_html( $p0->identifiant ); ?></small></span>
+													</span>
+												</td>
+												<td class="registre__c-paiements">
+													<ul class="registre__paiements">
+														<?php foreach ( $d->paiements as $q ) :
+															$type_q   = 'medicaux' === ( $q->type ?? 'droits' ) ? 'medicaux' : 'droits';
+															$modalite = 'medicaux' === $type_q ? 'Paiement unique' : ueb_libelle_tranche( $q->tranche ); ?>
+															<li><abbr class="registre__abr registre__abr--<?php echo esc_attr( $type_q ); ?>" title="<?php echo esc_attr( $abreviations[ $type_q ][1] ); ?>"><?php echo esc_html( $abreviations[ $type_q ][0] ); ?></abbr><span class="registre__numero"><?php echo esc_html( $q->numero ); ?></span><?php if ( $modalite ) : ?><small><?php echo esc_html( $modalite ); ?></small><?php endif; ?></li>
+														<?php endforeach; ?>
+													</ul>
+												</td>
+												<td class="num registre__montant"><?php echo esc_html( ueb_formater_montant( $total ) ); ?> <small>FCFA</small><?php if ( count( $d->paiements ) > 1 ) : ?><span class="registre__detail"><?php echo esc_html( implode( ' + ', array_map( static fn( $q ) => ueb_formater_montant( $q->montant ), $d->paiements ) ) ); ?></span><?php endif; ?></td>
+												<td class="num registre__c-recus"><?php if ( $nb_recus ) : ?><span class="registre__recus" title="<?php echo esc_attr( implode( ', ', array_map( static fn( $q ) => $abr( $q ) . ' : ' . (int) $q->nb_recus, $d->paiements ) ) ); ?>"><?php echo ueb_icone( 'recu', 15 ); ?><?php echo (int) $nb_recus; ?><span class="registre__recus-mot"><?php echo 1 === $nb_recus ? ' reçu' : ' reçus'; ?></span></span><?php else : ?><span class="registre__aucun">—<span class="sr">Aucun reçu</span></span><?php endif; ?></td>
+												<td class="registre__c-action">
+													<?php if ( $valider ) : ?>
+														<form method="post" action="<?php echo esc_url( ueb_url_scolarite() ); ?>" class="registre__valider" data-registre-valider
+															data-confirmer="<?php echo esc_attr( sprintf( $deux ? 'Les paiements de %1$s seront marqués comme vérifiés : %2$s. Valide seulement après avoir contrôlé les originaux des reçus.' : 'Le paiement de %1$s sera marqué comme vérifié : %2$s. Valide seulement après avoir contrôlé l’original du reçu.', $nom, $detail ) ); ?>"
+															data-confirmer-titre="<?php echo $deux ? 'Valider les deux paiements ?' : 'Valider ce paiement ?'; ?>" data-confirmer-bouton="<?php echo $deux ? 'Valider les deux' : 'Valider le paiement'; ?>" data-confirmer-ton="enregistrer">
+															<?php ueb_champ_csrf(); ?>
+															<input type="hidden" name="ueb_action" value="gestion_valider">
+															<input type="hidden" name="quitus_id" value="<?php echo (int) $p0->id; ?>">
+															<?php foreach ( array_merge( array( 'statut' => $filtres['statut'], 'p' => $liste['page'] > 1 ? $liste['page'] : '' ), $actifs ) as $champ => $valeur ) : if ( '' === (string) $valeur ) { continue; } ?>
+																<input type="hidden" name="retour[<?php echo esc_attr( $champ ); ?>]" value="<?php echo esc_attr( $valeur ); ?>">
+															<?php endforeach; ?>
+															<button class="registre__bouton-valider" type="submit"><?php echo ueb_icone( 'tampon', 16 ); ?><?php echo esc_html( $bouton ); ?><span class="sr"> <?php echo esc_html( ( $deux ? 'les paiements de ' : 'le paiement de ' ) . $nom ); ?></span></button>
+															<div class="registre__tampon" data-registre-tampon hidden>
+																<div class="animation" data-remotion-differe="tampon" data-props="<?php echo esc_attr( wp_json_encode( array( 'etat' => 'verifie', 'sigle' => ueb_etablissement( $p0->etablissement )['sigle'] ?? $p0->etablissement, 'date' => $aujourdhui ) ) ); ?>" role="img" aria-label="Tampon : paiement vérifié"><div class="animation__scene" data-remotion-scene></div></div>
+															</div>
+														</form>
+													<?php endif; ?>
+												</td>
+												<td class="registre__c-statut">
+													<span class="badge badge--<?php echo esc_attr( $d->statut ); ?> registre__statut"><?php echo ueb_icone( $etats[ $d->statut ]['icone'] ?? 'info', 13 ); ?><?php echo esc_html( $etats[ $d->statut ]['pastille'] ?? $d->statut ); ?></span>
+													<?php if ( $autres ) : ?><span class="registre__detail"><?php echo esc_html( implode( ', ', array_map( static fn( $q ) => $abr( $q ) . ' ' . mb_strtolower( $etats[ $q->statut ]['pastille'] ?? $q->statut ), $autres ) ) ); ?></span><?php endif; ?>
+												</td>
+											</tr>
 										<?php endforeach; ?>
-										<?php if ( $courante < $derniere ) : ?><a class="registre__pas" href="<?php echo $url_page( $courante + 1 ); ?>" rel="next"><span class="sr">Page suivante</span><?php echo ueb_icone( 'fleche', 16 ); ?></a><?php endif; ?>
-									</nav>
-								<?php endif; ?>
-							</footer>
-						<?php endif; ?>
-					</section>
+										</tbody>
+									</table>
+								</div>
+								<footer class="registre__pied">
+									<p><b><?php echo (int) $liste['total']; ?></b> <?php echo 1 === (int) $liste['total'] ? 'dossier' : 'dossiers'; ?><?php echo $liste['pages'] > 1 ? ', page ' . (int) $liste['page'] . ' sur ' . (int) $liste['pages'] : ''; ?></p>
+									<?php if ( $liste['pages'] > 1 ) :
+										/* Première et dernière pages, la courante et ses voisines ; « … » entre deux trous. */
+										$courante = (int) $liste['page'];
+										$derniere = (int) $liste['pages'];
+										$url_page = static fn( $n ) => $url_liste( array( 'p' => $n ) );
+										$visibles = array_values( array_unique( array_filter( array( 1, $courante - 1, $courante, $courante + 1, $derniere ), static fn( $n ) => $n >= 1 && $n <= $derniere ) ) );
+										sort( $visibles );
+										$precedente = 0;
+										?>
+										<nav class="pagination registre__pagination" aria-label="Pages du registre">
+											<?php if ( $courante > 1 ) : ?><a class="registre__pas" href="<?php echo $url_page( $courante - 1 ); ?>" rel="prev"><?php echo ueb_icone( 'fleche-g', 16 ); ?><span class="sr">Page précédente</span></a><?php endif; ?>
+											<?php foreach ( $visibles as $n ) : ?>
+												<?php if ( $precedente && $n > $precedente + 1 ) : ?><span class="registre__ellipse" aria-hidden="true">…</span><?php endif; ?>
+												<a href="<?php echo $url_page( $n ); ?>" <?php echo $n === $courante ? 'aria-current="page"' : ''; ?>><span class="sr">Page </span><?php echo (int) $n; ?></a>
+												<?php $precedente = $n; ?>
+											<?php endforeach; ?>
+											<?php if ( $courante < $derniere ) : ?><a class="registre__pas" href="<?php echo $url_page( $courante + 1 ); ?>" rel="next"><span class="sr">Page suivante</span><?php echo ueb_icone( 'fleche', 16 ); ?></a><?php endif; ?>
+										</nav>
+									<?php endif; ?>
+								</footer>
+							<?php endif; ?>
+						</section>
+					</div>
 
 				<?php endif; ?>
 			</div>

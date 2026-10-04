@@ -1,0 +1,241 @@
+/* Registre des quitus, espace scolarité (?vue=quitus).
+ * De haut en bas : l'alerte des validations en attente (elle n'affiche que
+ * les reçus à valider), les compteurs en cartes blanches qui filtrent par
+ * statut, puis le registre avec ses filtres. Une ligne par dossier, toutes de
+ * la même hauteur : les droits universitaires (DU) et les frais médicaux (FM)
+ * d'un même étudiant tiennent sur deux lignes de texte au plus.
+ * Toute la ligne ouvre la fiche ; « Valider » fait frapper le tampon de la
+ * scolarité sur la ligne avant l'envoi. La recherche, le pied et les états
+ * vides gardent leurs styles de pages.css. */
+
+.registre-quitus {
+	--rq-survol: #f5f8f4;
+	--rq-attente: #f4f9fc;
+	--rq-attente-survol: #e9f2f8;
+	display: grid;
+	gap: 1rem;
+}
+
+/* ---------- Alerte : les validations en attente ---------- */
+.attente {
+	position: relative;
+	display: flex; align-items: center; flex-wrap: wrap; gap: .75rem 1.1rem;
+	padding: .8rem 1rem .8rem .85rem;
+	border: 1px solid #ecd28f; border-radius: 16px;
+	background: var(--alerte-fond);
+	color: #4a3700;
+	transition: border-color .18s, background-color .18s;
+}
+.attente:hover { border-color: #d9b14a; background: #fff0c4; }
+.attente:has(.attente__lien:focus-visible) { outline: 3px solid var(--or); outline-offset: 2px; }
+.attente__icone { position: relative; flex: none; display: grid; place-items: center; width: 42px; height: 42px; border-radius: 12px; background: var(--blanc); color: var(--or-fonce); box-shadow: 0 0 0 1px #ecd28f; }
+.attente__nombre { position: absolute; top: -7px; right: -8px; display: grid; place-items: center; min-width: 22px; height: 22px; padding: 0 .35rem; border-radius: 999px; background: var(--or-fonce); color: var(--blanc); font-size: .74rem; font-weight: 800; font-variant-numeric: tabular-nums; box-shadow: 0 0 0 2px var(--alerte-fond); }
+.attente__texte { flex: 1 1 18rem; min-width: 0; }
+.attente__titre { margin: 0; font: 600 1.08rem/1.25 var(--f-titre); color: #3b2c00; }
+.attente__texte p:not(.attente__titre) { margin: .15rem 0 0; font-size: .88rem; color: #6b5310; }
+/* Toute l'alerte est cliquable : le lien du titre la recouvre. */
+.attente__lien { color: inherit; text-decoration: none; }
+.attente__lien::after { content: ""; position: absolute; inset: 0; border-radius: inherit; }
+.attente__lien:focus-visible { outline: 0; }
+.attente__voir { display: inline-flex; align-items: center; gap: .3rem; color: #4a3700; font-size: .9rem; font-weight: 700; white-space: nowrap; }
+.attente__second { position: relative; z-index: 1; padding: .3rem .1rem; color: #6b5310; font-size: .86rem; font-weight: 600; text-decoration: underline; text-underline-offset: .2em; white-space: nowrap; }
+.attente__second:hover { color: #3b2c00; }
+.attente__second:focus-visible { outline: 3px solid var(--or); outline-offset: 2px; border-radius: 4px; }
+/* Filtre actif : l'alerte rappelle ce qui est affiché et permet de tout revoir. */
+.attente--filtre { border-color: #bcd9e8; background: var(--info-fond); color: #134c66; }
+.attente--filtre:hover { border-color: #bcd9e8; background: var(--info-fond); }
+.attente--filtre .attente__icone { color: var(--ciel-fonce); box-shadow: 0 0 0 1px #bcd9e8; }
+.attente--filtre .attente__titre { color: #0f3d52; }
+.attente--filtre .attente__texte p:not(.attente__titre) { color: #2f6380; }
+.attente__action { display: inline-flex; align-items: center; gap: .4rem; min-height: 40px; padding: .4rem .85rem; border: 1px solid #9cc5da; border-radius: 10px; background: var(--blanc); color: #134c66; font-size: .88rem; font-weight: 700; text-decoration: none; }
+.attente__action:hover { border-color: var(--ciel-fonce); color: #0f3d52; }
+.attente__action:focus-visible { outline: 3px solid var(--or); outline-offset: 2px; }
+
+/* ---------- Compteurs : cartes blanches à bordure ---------- */
+.compteurs { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: .6rem; }
+.compteurs__carte {
+	display: grid; align-content: start; gap: .2rem; min-width: 0;
+	padding: .75rem .9rem .8rem;
+	border: 1px solid var(--filet); border-radius: 14px;
+	background: var(--blanc); color: var(--encre); text-decoration: none;
+	transition: border-color .15s, box-shadow .15s;
+}
+.compteurs__carte:hover { border-color: var(--filet-fort); color: var(--encre); }
+.compteurs__carte:focus-visible { outline: 3px solid var(--or); outline-offset: 2px; }
+.compteurs__carte[aria-current="page"] { border-color: var(--vert-bandeau); box-shadow: inset 0 0 0 1px var(--vert-bandeau); }
+.compteurs__libelle { display: flex; align-items: center; gap: .45rem; min-width: 0; color: var(--gris); font-size: .84rem; font-weight: 600; }
+.compteurs__carte[aria-current="page"] .compteurs__libelle { color: var(--encre); }
+.compteurs__pastille { flex: none; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; }
+.compteurs__carte--recu_envoye .compteurs__pastille { background: var(--info-fond); color: var(--ciel-fonce); }
+.compteurs__carte--genere .compteurs__pastille { background: var(--alerte-fond); color: var(--or-fonce); }
+.compteurs__carte--rejete .compteurs__pastille { background: var(--danger-fond); color: var(--danger); }
+.compteurs__carte--verifie .compteurs__pastille { background: var(--succes-fond); color: var(--vert); }
+.compteurs__nombre { font: 600 1.7rem/1.1 var(--f-titre); font-variant-numeric: tabular-nums; }
+.compteurs__note { overflow: hidden; color: var(--gris); font-size: .78rem; line-height: 1.3; text-overflow: ellipsis; white-space: nowrap; }
+/* « Tous les dossiers » : le nombre et l'anneau de répartition (Remotion). */
+.compteurs__corps { display: flex; align-items: center; justify-content: space-between; gap: .75rem; }
+.compteurs__anneau { flex: none; width: 54px; height: 54px; }
+.compteurs__anneau .animation { display: block; width: 100%; height: 100%; aspect-ratio: 1; }
+.compteurs__anneau .animation__pause { display: none; }
+.compteurs__repli { display: block; width: 100%; height: 100%; }
+
+/* ---------- Filtres ---------- */
+.registre__filtres { display: flex; align-items: center; flex-wrap: wrap; gap: .5rem; padding: .75rem .9rem; border-bottom: 1px solid var(--filet); }
+.registre__filtres .registre__champ { flex: 1 1 15rem; min-width: 12rem; }
+.registre__filtres .registre__champ input { min-height: 40px; border-radius: 10px; }
+.registre__select { position: relative; display: inline-flex; align-items: center; flex: 0 1 auto; min-width: 0; }
+.registre__select select {
+	appearance: none; max-width: 15rem; min-height: 40px; padding: .4rem 2rem .4rem .75rem;
+	border: 1px solid var(--filet-fort); border-radius: 10px; background: var(--blanc);
+	color: var(--encre); font: 600 .86rem var(--f-texte); text-overflow: ellipsis; cursor: pointer;
+}
+.registre__select select:hover { border-color: var(--gris-clair); }
+.registre__select select:focus-visible { outline: 3px solid var(--or); outline-offset: 2px; }
+.registre__select .icone { position: absolute; right: .6rem; color: var(--gris); pointer-events: none; }
+.registre__select.est-actif select { border-color: var(--vert-bandeau); background: #eef5ef; color: var(--foret-800); }
+.registre__filtrer { min-height: 40px; border-radius: 10px; }
+.registre__effacer { display: inline-flex; align-items: center; gap: .3rem; padding: .3rem .2rem; color: var(--gris); font-size: .86rem; font-weight: 600; text-decoration: none; }
+.registre__effacer:hover { color: var(--encre); text-decoration: underline; text-underline-offset: .2em; }
+.registre__legende { display: flex; align-items: center; flex-wrap: wrap; gap: .3rem .45rem; margin: 0 0 0 auto; color: var(--gris); font-size: .8rem; }
+.registre__legende .registre__abr:not(:first-child) { margin-left: .5rem; }
+
+/* Abréviations DU et FM : une pastille courte, le nom complet en info-bulle. */
+.registre__abr {
+	flex: none; display: inline-grid; place-items: center; min-width: 2.1rem; height: 1.3rem; padding: 0 .3rem;
+	border-radius: 5px; font-size: .7rem; font-weight: 800; text-decoration: none; cursor: help;
+}
+.registre__abr--droits { background: rgba(19, 53, 26, .09); color: var(--foret-800); }
+.registre__abr--medicaux { background: var(--blanc); color: #7a3e12; box-shadow: inset 0 0 0 1px #e5c3a6; }
+
+/* ---------- Tableau : une ligne fine par dossier ---------- */
+.registre--quitus .tableau-conteneur { overflow: visible; background: transparent; }
+.registre__tableau { font-size: .93rem; }
+.registre__tableau th { position: sticky; top: var(--bo-chrome, 0px); z-index: 2; padding: .6rem .8rem; border-bottom: 0; background: #f7f9f6; box-shadow: inset 0 -1px 0 var(--filet); color: var(--gris); font-size: .78rem; font-weight: 600; }
+.registre__tableau td { height: 4.2rem; padding: .6rem .8rem; border-bottom: 1px solid var(--filet); background: var(--blanc); transition: background-color .15s; }
+.registre__tableau tbody tr:last-child td { border-bottom: 0; }
+.registre__tableau :is(th, td):first-child { padding-left: 1rem; }
+.registre__tableau :is(th, td):last-child { padding-right: 1rem; }
+.registre__tableau :is(th, td).num { text-align: right; }
+.registre__dossier { cursor: pointer; }
+.registre__dossier:hover td, .registre__dossier:focus-within td { background: var(--rq-survol); }
+/* Les reçus à valider sont le travail de l'agent : fond à peine teinté. */
+.registre__dossier--recu_envoye td { background: var(--rq-attente); }
+.registre__dossier--recu_envoye:hover td, .registre__dossier--recu_envoye:focus-within td { background: var(--rq-attente-survol); }
+.registre__dossier.est-tamponne td { background: #edf6ee; }
+
+.registre__c-qui .bo-avatar { width: 38px; height: 38px; font-size: .78rem; }
+.registre__c-qui .registre__qui { gap: .75rem; }
+.registre__lien { display: block; max-width: 15rem; overflow: hidden; color: var(--encre); font-weight: 600; line-height: 1.3; text-decoration: none; text-overflow: ellipsis; white-space: nowrap; }
+.registre__dossier--recu_envoye .registre__lien { font-weight: 700; }
+.registre__dossier:hover .registre__lien { text-decoration: underline; text-underline-offset: .2em; text-decoration-thickness: 1px; }
+.registre__lien:focus-visible { outline: 3px solid var(--or); outline-offset: 3px; border-radius: 3px; }
+.registre__c-qui small { overflow: hidden; margin-top: .15rem; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Paiements : une ligne par paiement, deux au plus. */
+.registre__paiements { display: grid; gap: .3rem; margin: 0; padding: 0; list-style: none; }
+.registre__paiements li { display: flex; align-items: center; gap: .5rem; min-width: 0; line-height: 1.3; white-space: nowrap; }
+.registre__numero { color: var(--encre); font-weight: 600; font-variant-numeric: tabular-nums; }
+.registre__paiements small { overflow: hidden; color: var(--gris); font-size: .82rem; text-overflow: ellipsis; }
+
+.registre__montant { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; line-height: 1.3; }
+.registre__montant small { color: var(--gris); font-size: .74rem; font-weight: 600; }
+.registre__detail { display: block; margin-top: .2rem; color: var(--gris); font-size: .78rem; font-weight: 500; line-height: 1.25; white-space: nowrap; }
+.registre__recus { display: inline-flex; align-items: center; gap: .25rem; color: var(--ciel-fonce); font-weight: 700; }
+.registre__recus-mot { display: none; }
+.registre__aucun { color: var(--gris-clair); }
+.registre__c-statut { white-space: nowrap; }
+.registre__statut { gap: .3rem; padding: .22rem .65rem; font-size: .8rem; line-height: 1.35; }
+
+/* ---------- Décision depuis la ligne ---------- */
+.registre__c-action { position: relative; width: 1%; white-space: nowrap; }
+.registre__valider { margin: 0; }
+.registre__bouton-valider {
+	display: inline-flex; align-items: center; gap: .4rem;
+	min-height: 38px; padding: .35rem .85rem;
+	border: 1px solid var(--foret-700); border-radius: 10px;
+	background: var(--blanc); color: var(--foret-800);
+	font: 700 .85rem/1.2 var(--f-texte); white-space: nowrap; cursor: pointer;
+	transition: background-color .15s, border-color .15s, color .15s, scale .12s var(--ease-sortie);
+}
+.registre__bouton-valider:hover { border-color: var(--vert-bandeau); background: var(--vert-bandeau); color: var(--blanc); }
+.registre__bouton-valider:focus-visible { outline: 3px solid var(--or); outline-offset: 2px; }
+.registre__bouton-valider[aria-busy="true"] { pointer-events: none; opacity: .7; }
+.registre__bouton-valider:active { scale: .96; }
+/* Le tampon frappe à cheval sur la colonne des statuts, encre multipliée. */
+.registre__tampon { position: absolute; top: 50%; left: 100%; z-index: 3; width: 92px; aspect-ratio: 1; translate: -12% -50%; pointer-events: none; mix-blend-mode: multiply; }
+.registre__tampon .animation { width: 100%; height: 100%; aspect-ratio: 1; }
+.registre__tampon .animation__pause { display: none; }
+
+/* ---------- Mouvement ----------
+   Un seul moment à l'arrivée (classe est-entree, posée avant le premier
+   affichage) : le badge de l'alerte apparaît et une onde part une fois,
+   l'anneau se dessine (Remotion), les compteurs défilent (JavaScript), les
+   lignes arrivent en cascade courte. Ensuite, le mouvement répond aux
+   actions : transition de vue entre deux états du registre et vers la fiche,
+   ligne du dossier validé mise en évidence, tampon sur la ligne. */
+@keyframes rq-pop { from { opacity: 0; scale: .4; } 60% { opacity: 1; scale: 1.12; } to { scale: 1; } }
+@keyframes rq-onde { from { opacity: .75; scale: .92; } to { opacity: 0; scale: 1.45; } }
+@keyframes rq-ligne { from { opacity: 0; translate: 0 6px; } }
+@keyframes rq-retrouve { 0%, 30% { box-shadow: inset 0 0 0 100vmax rgba(46, 125, 50, .16); } to { box-shadow: inset 0 0 0 100vmax rgba(46, 125, 50, 0); } }
+
+.attente__icone::after { content: ""; position: absolute; inset: -5px; border: 2px solid var(--or); border-radius: 16px; opacity: 0; pointer-events: none; }
+.est-entree .attente__nombre { animation: rq-pop .55s var(--ease-sortie) .2s both; }
+.est-entree .attente__icone::after { animation: rq-onde 1.1s ease-out .55s 1 both; }
+.est-entree .registre__dossier { animation: rq-ligne .4s var(--ease-sortie) both; animation-delay: calc(var(--i, 0) * 28ms + 180ms); }
+.registre__dossier.est-retrouve td { animation: rq-retrouve 2.4s ease-out both; }
+.registre__dossier.est-retrouve .registre__statut { animation: rq-pop .5s var(--ease-sortie) .15s both; }
+
+/* Transitions de vue entre deux pages du registre et vers la fiche d'un
+   dossier : la barre latérale ne bouge pas, les compteurs et le registre se
+   fondent, l'avatar de la ligne rejoint l'en-tête de la fiche. */
+@view-transition { navigation: auto; }
+.bo-sidebar { view-transition-name: bo-barre; }
+.attente { view-transition-name: rq-attente; }
+.compteurs { view-transition-name: rq-compteurs; }
+.registre--quitus { view-transition-name: rq-registre; }
+::view-transition-group(*) { animation-duration: .38s; animation-timing-function: var(--ease-sortie); }
+::view-transition-old(root), ::view-transition-new(root) { animation-duration: .24s; }
+
+/* ---------- Écrans étroits ---------- */
+@container registre (max-width: 1080px) {
+	.registre__legende { margin-left: 0; flex-basis: 100%; }
+}
+@media (max-width: 1100px) {
+	.compteurs { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+	.compteurs__carte--tous { grid-column: 1 / -1; }
+	}
+/* Sur un panneau étroit, chaque dossier devient une carte compacte. */
+@container registre (max-width: 899px) {
+	.registre__tableau thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+	.registre__tableau, .registre__tableau tbody, .registre__tableau td { display: block; }
+	.registre__dossier { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "qui statut" "paiements montant" "recus action"; align-items: center; gap: .45rem .75rem; padding: .8rem .9rem; border-bottom: 1px solid var(--filet); background: var(--blanc); }
+	.registre__dossier:last-child { border-bottom: 0; }
+	.registre__dossier--recu_envoye { background: var(--rq-attente); }
+	.registre__tableau .registre__dossier td, .registre__tableau .registre__dossier td:first-child, .registre__tableau .registre__dossier td:last-child { height: auto; min-width: 0; padding: 0; border: 0; background: none; }
+	.registre__c-qui { grid-area: qui; }
+	.registre__c-statut { grid-area: statut; justify-self: end; text-align: right; }
+	.registre__c-paiements { grid-area: paiements; }
+	.registre__montant { grid-area: montant; justify-self: end; }
+	.registre__c-recus { grid-area: recus; justify-self: start; font-size: .84rem; }
+	.registre__c-action { grid-area: action; justify-self: end; width: auto; }
+	.registre__recus-mot { display: inline; }
+	.registre__aucun { display: none; }
+	.registre__lien { max-width: none; }
+	.registre__bouton-valider { min-height: 40px; }
+	.registre__tampon { top: 0; left: auto; right: 0; translate: 10% -30%; width: 84px; }
+	.registre__filtres .registre__champ { flex-basis: 100%; }
+	.registre__select { flex: 1 1 10rem; }
+	.registre__select select { width: 100%; max-width: none; }
+}
+@media (max-width: 640px) {
+	.compteurs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+	.attente__voir { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+	@view-transition { navigation: none; }
+	.attente, .compteurs__carte, .registre__tableau td, .registre__bouton-valider { transition: none; }
+	.est-entree .attente__nombre, .est-entree .attente__icone::after, .est-entree .registre__dossier, .registre__dossier.est-retrouve .registre__statut { animation: none; }
+	.registre__dossier.est-retrouve td { animation: none; box-shadow: inset 0 0 0 100vmax rgba(46, 125, 50, .1); }
+	.registre__bouton-valider:active { scale: none; }
+}

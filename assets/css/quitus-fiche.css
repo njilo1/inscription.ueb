@@ -66,7 +66,8 @@
 
 /* ---------- En-tête : l'étudiant et son quitus ---------- */
 .qf-tete { display: flex; align-items: flex-end; justify-content: space-between; flex-wrap: wrap; gap: 1.1rem 2rem; }
-.qf-tete__identite { display: flex; align-items: center; gap: 1.1rem; min-width: 0; }
+/* L'identité prend la place et passe à la ligne ; le statut et le PDF restent à droite. */
+.qf-tete__identite { display: flex; flex: 1 1 26rem; align-items: center; gap: 1.1rem; min-width: 0; }
 .qf-avatar {
 	flex: none; display: grid; place-items: center; width: 64px; height: 64px;
 	border-radius: 20px; background: var(--qf-sous-main); color: #f3e3b6;
@@ -79,7 +80,7 @@
 .qf-reperes img { border-radius: 50%; }
 .qf-reperes__numero { color: var(--qf-encre); font-weight: 700; font-variant-numeric: tabular-nums; }
 .qf-reperes__numero .icone { color: var(--qf-gris-doux); }
-.qf-tete__actions { display: flex; align-items: center; flex-wrap: wrap; gap: .75rem; }
+.qf-tete__actions { display: flex; flex: none; align-items: center; flex-wrap: wrap; gap: .75rem; margin-left: auto; }
 
 .qf-statut { display: inline-flex; align-items: center; gap: .45rem; min-height: 36px; padding: .3rem .85rem; border-radius: 999px; font-size: .9rem; font-weight: 700; }
 .qf-statut--genere { background: rgba(250, 178, 25, .16); color: var(--qf-or-fonce); }
@@ -106,19 +107,71 @@
 .qf-rail .est-bloquee .qf-rail__libelle { color: var(--qf-rouge); }
 .qf-rail__detail { margin-top: .1rem; font-size: .83rem; color: var(--qf-gris-doux); }
 
-/* ---------- Le poste : à gauche le reçu puis les informations du quitus,
-   à droite l'historique puis la fiche de contrôle ---------- */
-.qf-poste { display: grid; grid-template-columns: minmax(0, 420px) minmax(330px, 1fr); align-items: start; gap: 1.4rem; }
-.qf-poste__principal, .qf-poste__cote { display: grid; align-content: start; gap: 1.4rem; min-width: 0; }
-/* Sur un grand écran, la colonne de droite deviendrait trop large pour la
-   fiche de contrôle : l'historique passe à côté d'elle. */
-@container qf (min-width: 1180px) {
-	.qf-poste__cote { grid-template-columns: minmax(0, 1fr) minmax(330px, 392px); align-items: start; }
+/* ---------- Le poste ----------
+   À gauche, une fiche par paiement : le reçu sur le sous-main contre sa fiche
+   de contrôle, d'un seul tenant. À droite, le dossier : l'historique, toujours
+   en haut, puis les informations du quitus. */
+.qf-poste {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) minmax(280px, min(26%, 350px));
+	grid-template-rows: auto 1fr;
+	grid-template-areas: "paiements journal" "paiements infos";
+	align-items: start;
+	gap: 1.4rem 1.6rem;
 }
-/* Trop étroit pour deux colonnes : reçu, informations, historique, contrôle. */
-@container qf (max-width: 639px) {
-	.qf-poste { grid-template-columns: minmax(0, 1fr); }
-	.qf-controle { position: static; }
+.qf-paiements { grid-area: paiements; container: paiements / inline-size; display: grid; gap: 1.75rem; min-width: 0; }
+.qf-journal { grid-area: journal; }
+.qf-infos { grid-area: infos; }
+/* Trop étroit pour la colonne du dossier : l'historique reste en haut, les
+   informations passent sous les paiements. */
+@container qf (max-width: 939px) {
+	.qf-poste { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; grid-template-areas: "journal" "paiements" "infos"; }
+}
+
+/* Fiche d'un paiement : le sous-main sombre et la fiche de contrôle papier se
+   rejoignent sur un bord net, sous une seule ombre. Format resserré : le
+   sous-main reste étroit et le reçu n'y dépasse pas 320 px de haut. Sur un
+   panneau étroit, le reçu passe au-dessus de sa fiche de contrôle. */
+.qf-paiement {
+	--qf-rayon: 22px;
+	display: grid;
+	grid-template-columns: minmax(0, 1fr);
+	min-width: 0;
+	border-radius: var(--qf-rayon);
+	box-shadow: 0 1px 2px rgba(15, 44, 31, .06), 0 32px 60px -42px rgba(10, 31, 22, .65);
+}
+.qf-paiement .qf-platine { --scene: clamp(210px, 27svh, 260px); gap: .6rem; padding: .7rem .75rem .8rem; border-radius: var(--qf-rayon) var(--qf-rayon) 0 0; box-shadow: none; }
+.qf-paiement .qf-platine h2 { font-size: 1.06rem; }
+.qf-paiement .qf-platine__titre p { font-size: .84rem; }
+.qf-paiement .qf-controle { gap: 1rem; padding: 1.2rem 1.35rem 1.15rem; border-top: 0; border-radius: 0 0 var(--qf-rayon) var(--qf-rayon); }
+.qf-paiement .qf-controle__resume, .qf-paiement .qf-controle__examen { gap: 1rem; }
+.qf-paiement .qf-controle__tete h2 { font-size: 1.2rem; }
+.qf-paiement .qf-attendu { padding-bottom: .9rem; }
+.qf-paiement .qf-attendu__montant { font-size: clamp(1.85rem, 1.55rem + .7vw, 2.25rem); }
+/* Points de contrôle plus serrés : deux colonnes dès que la fiche le permet. */
+.qf-paiement .qf-points { grid-template-columns: repeat(auto-fill, minmax(min(100%, 178px), 1fr)); gap: .4rem; }
+.qf-paiement .qf-points legend { margin-bottom: .45rem; font-size: .93rem; }
+.qf-paiement .qf-point { gap: .6rem; min-height: 50px; padding: .45rem .65rem; border-radius: 12px; }
+.qf-paiement .qf-point__case { width: 24px; height: 24px; border-radius: 7px; }
+.qf-paiement .qf-point__libelle { font-size: .78rem; }
+.qf-paiement .qf-point__valeur { font-size: .92rem; line-height: 1.3; }
+.qf-paiement .qf-bouton--valider { min-height: 50px; font-size: .98rem; }
+.qf-paiement .qf-renvoi summary { min-height: 46px; }
+@container paiements (min-width: 640px) {
+	.qf-paiement { grid-template-columns: minmax(250px, 320px) minmax(320px, 1fr); }
+	.qf-paiement .qf-platine { display: flex; flex-direction: column; border-radius: var(--qf-rayon) 0 0 var(--qf-rayon); }
+	.qf-paiement .qf-controle { border-top: 1px solid var(--qf-filet); border-left: 0; border-radius: 0 var(--qf-rayon) var(--qf-rayon) 0; }
+	/* Le sous-main suit la hauteur de la fiche ; le reçu reste centré, sans
+	   dépasser 320 px de haut. */
+	.qf-paiement .qf-scene { flex: 1 1 auto; height: auto; min-height: var(--scene); }
+	.qf-paiement .qf-scene:not(.qf-scene--vide) { container-type: size; }
+	.qf-paiement .qf-scene:not(.qf-scene--vide) .qf-feuille img { max-height: min(320px, calc(100cqh - 1.25rem)); }
+}
+/* Une fiche large se lit en deux temps : ce qui est attendu à gauche,
+   l'examen et la décision à droite. */
+@container paiements (min-width: 980px) {
+	.qf-paiement .qf-controle { grid-template-columns: minmax(0, 14.5rem) minmax(0, 1fr); column-gap: 2rem; align-items: start; }
+	.qf-paiement .qf-controle__tete { flex-direction: column; gap: .6rem; }
 }
 
 /* Sous-main : vert de la charte, quadrillage de table de travail. */
@@ -201,12 +254,15 @@
 .qf-vide__tampon .animation__pause { display: none; }
 .qf-vide p { color: #c9d9ce; font-size: .97rem; line-height: 1.55; }
 
-/* ---------- Fiche de contrôle ---------- */
-.qf-controle {
-	position: sticky; top: 1.25rem; display: grid; gap: 1.2rem; padding: 1.4rem;
-	border: 1px solid var(--qf-filet); border-radius: 20px; background: var(--qf-papier);
-	box-shadow: 0 1px 2px rgba(15, 44, 31, .05), 0 22px 44px -34px rgba(15, 44, 31, .45);
-}
+/* ---------- Fiche de contrôle : le papier de la fiche d'un paiement ---------- */
+.qf-controle { display: grid; gap: 1.2rem; min-width: 0; padding: 1.5rem 1.6rem 1.4rem; border: 1px solid var(--qf-filet); background: var(--qf-papier); }
+.qf-controle__resume, .qf-controle__examen { display: grid; align-content: start; gap: 1.2rem; min-width: 0; }
+.qf-controle__tete { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: .5rem 1rem; }
+/* Le titre garde sa ligne : faute de place, la pastille passe dessous. */
+.qf-controle__tete > div { flex: 1 1 12.5rem; min-width: 0; }
+.qf-controle__tete h2 { font: 600 1.3rem/1.2 var(--f-titre); letter-spacing: -.01em; }
+.qf-controle__numero { margin-top: .2rem; color: var(--qf-gris); font-size: .86rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.qf-statut--petit { flex: none; min-height: 30px; padding: .2rem .7rem; font-size: .82rem; }
 .qf-attendu { padding-bottom: 1.15rem; border-bottom: 1px solid var(--qf-filet-doux); }
 .qf-attendu__libelle { font-size: .9rem; color: var(--qf-gris); }
 .qf-attendu__montant { margin-top: .15rem; font: 700 clamp(2.2rem, 1.8rem + 1vw, 2.75rem)/1.05 var(--f-texte); letter-spacing: -.03em; color: var(--qf-encre); white-space: nowrap; }
@@ -288,7 +344,7 @@
 .qf-note .icone { flex: none; }
 
 /* ---------- Informations et historique ---------- */
-.qf-panneau { min-width: 0; padding: 1.35rem 1.45rem; border: 1px solid var(--qf-filet); border-radius: 18px; background: var(--qf-papier); }
+.qf-panneau { min-width: 0; padding: 1.35rem 1.45rem; border: 1px solid var(--qf-filet); border-radius: 20px; background: var(--qf-papier); box-shadow: 0 1px 2px rgba(15, 44, 31, .04); }
 .qf-panneau__tete { margin-bottom: 1.1rem; }
 .qf-panneau__tete h2 { font: 600 1.15rem/1.3 var(--f-titre); }
 .qf-panneau__tete p { margin-top: .2rem; font-size: .9rem; color: var(--qf-gris); }
@@ -296,6 +352,9 @@
 .qf-infos__liste div { padding: .6rem 0; border-top: 1px solid var(--qf-filet-doux); min-width: 0; }
 .qf-infos__liste dt { font-size: .84rem; color: var(--qf-gris); }
 .qf-infos__liste dd { margin: .15rem 0 0; font-weight: 600; overflow-wrap: anywhere; }
+/* Dans la colonne du dossier : deux colonnes serrées, les longues valeurs sur toute la largeur. */
+.qf-poste .qf-infos__liste { grid-template-columns: repeat(auto-fill, minmax(108px, 1fr)); column-gap: 1.1rem; }
+.qf-infos__liste .qf-infos__large { grid-column: 1 / -1; }
 .qf-chiffres { font-variant-numeric: tabular-nums; letter-spacing: .01em; }
 .qf-correction { display: flex; gap: .55rem; margin-top: 1rem; padding: .75rem .9rem; border-radius: 12px; background: rgba(250, 178, 25, .12); color: #5b4300; font-size: .9rem; }
 .qf-correction .icone { flex: none; margin-top: .15rem; }
@@ -313,6 +372,7 @@
 /* ---------- Écrans plus étroits ---------- */
 @media (max-width: 760px) {
 	.qf-tete { align-items: flex-start; }
+	.qf-tete__actions { margin-left: 0; }
 	.qf-avatar { width: 52px; height: 52px; border-radius: 16px; font-size: 1.2rem; }
 	.qf-rail { grid-template-columns: minmax(0, 1fr); gap: 0; }
 	.qf-rail li { grid-template-columns: auto minmax(0, 1fr); column-gap: .75rem; padding: 0 0 .9rem; }
@@ -330,6 +390,15 @@
 	.qf-lien--suivant { width: 100%; justify-content: space-between; }
 }
 
+/* Transition de vue depuis le registre (et vers le dossier suivant) : la
+   barre latérale reste en place, l'avatar de la ligne rejoint l'en-tête. */
+@view-transition { navigation: auto; }
+.bo-sidebar { view-transition-name: bo-barre; }
+.qf-avatar { view-transition-name: qf-avatar; }
+::view-transition-group(*) { animation-duration: .38s; animation-timing-function: cubic-bezier(.16, 1, .3, 1); }
+::view-transition-old(root), ::view-transition-new(root) { animation-duration: .24s; }
+
 @media (prefers-reduced-motion: reduce) {
+	@view-transition { navigation: none; }
 	.qf-feuille, .qf-progression__piste i, .qf-point__case, .qf-renvoi__chevron { transition: none; }
 }

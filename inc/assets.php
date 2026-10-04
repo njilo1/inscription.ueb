@@ -68,6 +68,11 @@ add_action( 'wp_enqueue_scripts', function () {
 			ueb_script( 'ueb-paiements', 'assets/js/paiements.js' );
 		}
 		ueb_script( 'ueb-bord', 'assets/js/bord.js' );
+		/* Registre des quitus : compteurs, dossiers et validation depuis la ligne. */
+		if ( is_page_template( 'page-scolarite.php' ) && 'quitus' === $vue_bo && ! isset( $_GET['quitus'] ) ) { // phpcs:ignore -- lecture seule
+			ueb_style( 'ueb-quitus-registre', 'assets/css/quitus-registre.css', array( 'ueb-bord' ) );
+			ueb_script( 'ueb-quitus-registre', 'assets/js/quitus-registre.js', array( 'ueb-app', 'ueb-remotion' ) );
+		}
 	}
 	/* Administration : coque, composants et thème clair / sombre, chargés en
 	   dernier pour habiller aussi les composants partagés. */
