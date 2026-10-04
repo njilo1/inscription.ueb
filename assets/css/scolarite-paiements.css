@@ -1,0 +1,87 @@
+/* Suivi des paiements de l'espace scolarité (?vue=paiements) : les composants
+ * de la page Paiements de l'administration (administration-paiements.css),
+ * recomposés en rangées égales. En haut, les cartes alignées : les quatre
+ * bilans, puis la situation des étudiants, les contrôles et la répartition ;
+ * en bas, les graphes : l'histogramme à côté de la courbe, puis les niveaux et
+ * l'écart de rapprochement ; enfin le registre par filière. Dans une rangée,
+ * tous les blocs ont la même hauteur. */
+
+.sco-pay { gap: 1.25rem; }
+.sco-pay > div { min-width: 0; }
+
+/* ---------- Rangée 1 : les bilans ---------- */
+.sco-pay__cartes { display: grid; grid-template-columns: minmax(0, 1.35fr) repeat(3, minmax(0, 1fr)); gap: 1rem; align-items: stretch; }
+/* La carte des droits porte aussi la jauge du taux recouvré : elle est plus
+   large que les autres et sa forme dit ce qu'elle mesure. */
+.sco-pay__taux { display: grid; gap: .6rem; margin-top: auto; }
+.sco-pay__piste { display: block; height: 7px; overflow: hidden; border-radius: 7px; background: rgba(255, 255, 255, .16); }
+.sco-pay__piste i { display: block; height: 100%; border-radius: inherit; background: #d2e8b9; transform-origin: left; }
+.sco-pay__taux .pay-kpi__repere { margin-top: 0; }
+.adm-anime .sco-pay .sco-pay__piste i { transform: scaleX(0); }
+.adm-anime-pret .sco-pay .sco-pay__piste i { transform: none; transition: transform 1.4s cubic-bezier(.65, 0, .35, 1) .35s; }
+
+/* ---------- Rangée 2 : situation, contrôles, répartition ---------- */
+.sco-pay__tuiles { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.25fr); gap: 1rem; align-items: stretch; }
+.sco-pay__tuiles > * { height: 100%; }
+.sco-pay__tuiles .pay-repartition { display: flex; flex-direction: column; }
+.sco-pay__tuiles .pay-repartition__corps { flex: 1; }
+
+/* ---------- Rangée 3 : histogramme et courbe ---------- */
+.sco-pay__graphes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.2rem; align-items: stretch; }
+.sco-pay__graphes > * { height: 100%; }
+.sco-pay__graphes .pay-legende { margin-top: auto; }
+
+/* Courbe : même cadre que l'histogramme (axe, grille, hauteur), un trait
+   pour chaque type de paiement, une aire sous les droits universitaires. */
+.sco-courbe { display: flex; flex-direction: column; }
+/* Total de la courbe : même typographie que celui de l'histogramme, sa
+   propre classe (l'animation de l'administration ne révèle que l'autre). */
+.sco-courbe__total { display: flex; align-items: baseline; flex-wrap: wrap; gap: .65rem; margin: 0 0 1.2rem; }
+.sco-courbe__total b { font-size: 1.5rem; font-weight: 600; letter-spacing: -.025em; }
+.sco-courbe__total span { font-size: .74rem; color: var(--gris); }
+.sco-courbe__graphe { display: grid; grid-template-columns: 4.7rem minmax(0, 1fr); gap: .65rem; height: 190px; margin: 0 0 3.2rem; }
+.sco-courbe__zone { position: relative; min-width: 0; }
+.sco-courbe__trace { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.sco-courbe__aire { fill: color-mix(in srgb, var(--pay-vert) 13%, transparent); stroke: none; }
+.sco-courbe__droits, .sco-courbe__medicaux { fill: none; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.sco-courbe__droits { stroke: var(--pay-vert); stroke-width: 2.5; }
+.sco-courbe__medicaux { stroke: var(--pay-or); stroke-width: 2; }
+.sco-courbe__point { position: absolute; left: var(--x); bottom: var(--v); width: 11px; height: 11px; margin: 0 0 -5.5px -5.5px; border-radius: 50%; background: var(--pay-vert); box-shadow: 0 0 0 3px var(--blanc), 0 2px 6px rgba(15, 44, 31, .25); }
+.sco-courbe__point--medicaux { width: 9px; height: 9px; margin: 0 0 -4.5px -4.5px; background: var(--pay-or); }
+.sco-courbe__point b { position: absolute; right: 12px; bottom: 9px; padding: .12rem .4rem; border-radius: 6px; background: var(--blanc); box-shadow: 0 0 0 1px var(--filet); color: var(--pay-vert); font-size: .76rem; font-weight: 700; white-space: nowrap; }
+.sco-courbe__mois { position: absolute; left: 0; right: 0; top: calc(100% + .55rem); height: 1.2rem; }
+.sco-courbe__mois span { position: absolute; left: var(--x); translate: -50% 0; color: var(--gris); font-size: .72rem; white-space: nowrap; }
+.sco-courbe__mois span:first-child { translate: 0 0; }
+/* Tracé à l'entrée à l'écran (scolarite-paiements.js), jamais en mouvement réduit. */
+.sco-courbe.est-a-tracer .sco-courbe__trace { clip-path: inset(-8px 100% -8px -8px); }
+.sco-courbe.est-a-tracer .sco-courbe__point { opacity: 0; scale: .4; }
+.sco-courbe.est-a-tracer .sco-courbe__total b { opacity: 0; }
+.sco-courbe.est-tracee .sco-courbe__total b { opacity: 1; transition: opacity .6s ease-out .2s; }
+.sco-courbe.est-tracee .sco-courbe__trace { clip-path: inset(-8px -8px -8px -8px); transition: clip-path 1.6s cubic-bezier(.65, 0, .35, 1); }
+.sco-courbe.est-tracee .sco-courbe__point { opacity: 1; scale: 1; transition: opacity .35s ease-out 1.45s, scale .5s cubic-bezier(.16, 1, .3, 1) 1.45s; }
+
+/* ---------- Rangée 4 : recouvrement par niveau ----------
+   Sans la ligne pointillée du taux de l'établissement ni son entrée de
+   légende : le taux reste sur la carte des droits encaissés. */
+.sco-pay .pay-niveau::before { display: none; }
+.sco-pay .pay-legende span:has(> .pay-couleur-moyenne) { display: none; }
+
+/* ---------- Écrans plus étroits ---------- */
+@media (max-width: 1250px) {
+	.sco-pay__cartes { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+	.sco-pay__tuiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+	.sco-pay__tuiles .pay-repartition { grid-column: 1 / -1; }
+	.sco-pay__graphes { grid-template-columns: minmax(0, 1fr); }
+	.sco-courbe__graphe { height: 180px; }
+}
+@media (max-width: 760px) {
+	.sco-pay__tuiles { grid-template-columns: minmax(0, 1fr); }
+	.sco-courbe__graphe { grid-template-columns: 3.9rem minmax(0, 1fr); gap: .4rem; }
+	.sco-courbe__point b { display: none; }
+}
+@media (max-width: 420px) {
+	.sco-pay__cartes { gap: .7rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+	.sco-courbe .sco-courbe__trace, .sco-courbe .sco-courbe__point, .sco-courbe .sco-courbe__total b, .sco-pay .sco-pay__piste i { clip-path: none; opacity: 1; scale: 1; transform: none; transition: none; }
+}

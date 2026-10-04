@@ -60,10 +60,8 @@ add_action( 'wp_enqueue_scripts', function () {
 	if ( $bord_scolarite ) {
 		ueb_style( 'ueb-bord', 'assets/css/bord.css', array( 'ueb-pages' ) );
 		ueb_style( 'ueb-bord-graphes', 'assets/css/bord-graphes.css', array( 'ueb-bord' ) );
-		if ( 'paiements' === $vue_bo ) {
+		if ( 'paiements' === $vue_bo && $admin ) {
 			ueb_style( 'ueb-scolarite-dashboard', 'assets/css/scolarite-dashboard.css', array( 'ueb-bord-graphes' ) );
-		}
-		if ( 'paiements' === $vue_bo ) {
 			ueb_style( 'ueb-paiements', 'assets/css/paiements.css', array( 'ueb-scolarite-dashboard' ) );
 			ueb_script( 'ueb-paiements', 'assets/js/paiements.js' );
 		}
@@ -80,6 +78,20 @@ add_action( 'wp_enqueue_scripts', function () {
 		ueb_script( 'ueb-administration-sparklines', 'assets/js/administration-sparklines.js' );
 		ueb_script( 'gsap', 'assets/js/vendor/gsap.min.js' );
 		ueb_script( 'ueb-administration-mouvement', 'assets/js/administration-mouvement.js', array( 'gsap', 'ueb-remotion' ) );
+	}
+	/* Suivi des paiements de la scolarité : le rendu de la page Paiements de
+	   l'administration (mêmes composants et mouvement), recomposé en rangées
+	   égales par scolarite-paiements.css. */
+	$paiements_scolarite = is_page_template( 'page-scolarite.php' ) && 'paiements' === $vue_bo && ! isset( $_GET['quitus'] ) // phpcs:ignore -- lecture seule
+		&& is_user_logged_in() && function_exists( 'ueb_est_scolarite' ) && ueb_est_scolarite() && ueb_peut( 'ueb_voir_paiements' );
+	if ( $paiements_scolarite ) {
+		ueb_style( 'ueb-administration', 'assets/css/administration.css', array( 'ueb-pages', 'ueb-bord-graphes' ) );
+		ueb_style( 'ueb-administration-paiements', 'assets/css/administration-paiements.css', array( 'ueb-administration' ) );
+		ueb_style( 'ueb-scolarite-paiements', 'assets/css/scolarite-paiements.css', array( 'ueb-administration-paiements' ) );
+		ueb_script( 'ueb-administration-paiements', 'assets/js/administration-paiements.js' );
+		ueb_script( 'gsap', 'assets/js/vendor/gsap.min.js' );
+		ueb_script( 'ueb-administration-mouvement', 'assets/js/administration-mouvement.js', array( 'gsap', 'ueb-remotion' ) );
+		ueb_script( 'ueb-scolarite-paiements', 'assets/js/scolarite-paiements.js' );
 	}
 	/* Administration : coque, composants et thème clair / sombre, chargés en
 	   dernier pour habiller aussi les composants partagés. */

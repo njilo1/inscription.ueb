@@ -110,6 +110,8 @@ if ( $autorise ) {
 	}
 	/* Tableau de bord : même rendu que celui de l'administration (inc/administration-dashboard.php). */
 	$tableau = 'bord' === $vue && ! $fiche;
+	/* Suivi des paiements : même rendu que la page Paiements de l'administration (inc/scolarite-paiements.php). */
+	$suivi_admin = 'paiements' === $vue && ! $fiche;
 }
 
 /* Coque plein écran une fois connecté ; en-tête de site conservé sur l'écran
@@ -117,7 +119,7 @@ if ( $autorise ) {
 ueb_page_debut( array(
 	'titre'    => 'Espace scolarité',
 	'variante' => $autorise ? 'bo' : 'gestion',
-	'classe'   => $autorise && $tableau ? 'espace-admin' : '',
+	'classe'   => $autorise && ( $tableau || $suivi_admin ) ? 'espace-admin' : '',
 ) );
 ?>
 <main id="contenu" class="page-app gestion<?php echo $autorise ? ' page-app--bo' : ''; ?>">
@@ -187,7 +189,7 @@ ueb_page_debut( array(
 			);
 			?>
 
-			<div class="bo-contenu<?php echo $tableau ? ' adm adm-dashboard' : ''; ?>">
+			<div class="bo-contenu<?php echo $tableau ? ' adm adm-dashboard' : ( $suivi_admin ? ' adm' : '' ); ?>">
 				<?php
 				$titres = array(
 					'bord'     => array( 'Tableau de bord', sprintf( 'Bonjour %s. Voici où en sont les inscriptions %s.', wp_get_current_user()->display_name ?: wp_get_current_user()->user_login, $etab ? 'de ' . $etab['fr'] : 'de tous les établissements' ) ),
@@ -213,6 +215,16 @@ ueb_page_debut( array(
 						'theme'      => false,
 						'actions'    => ( $a_verifier ? ueb_adm_action( add_query_arg( array( 'vue' => 'quitus', 'statut' => 'recu_envoye' ), ueb_url_scolarite() ), 'Reçus à vérifier (' . $a_verifier . ')', 'recu' ) : '' )
 							. ( $peut_paiements ? ueb_adm_action( add_query_arg( 'vue', 'paiements', ueb_url_scolarite() ), $etab ? 'Paiements de ' . $etab['sigle'] : 'Suivi des paiements', 'banque', true ) : '' ),
+					) );
+					?>
+				<?php elseif ( $suivi_admin ) : ?>
+					<?php
+					ueb_adm_tete( array(
+						'titre'      => 'Suivi des paiements',
+						'sous_titre' => ( $etab ? $etab['fr'] . ' : d' : 'Tous les établissements : d' ) . 'roits universitaires et frais médicaux de l’année. Seuls les reçus vérifiés comptent comme encaissés.',
+						'theme'      => false,
+						'actions'    => ueb_adm_exports_menu( $etab ? $etab['sigle'] : '', UEB_SCO_EXPORT_FORMATS, 'ueb_sco_export_url' )
+							. ( $peut_quitus && $a_verifier ? ueb_adm_action( add_query_arg( array( 'vue' => 'quitus', 'statut' => 'recu_envoye' ), ueb_url_scolarite() ), 'Reçus à vérifier (' . $a_verifier . ')', 'recu' ) : '' ),
 					) );
 					?>
 				<?php elseif ( ! $fiche && ! ( 'ipes' === $vue && isset( $_GET['ipes'] ) ) ) : /* la fiche d'un IPES a son propre en-tête */ ?>
@@ -272,12 +284,8 @@ ueb_page_debut( array(
 
 				<?php elseif ( 'paiements' === $vue ) : ?>
 
-					<?php
-					ueb_suivi_paiements_vue( ueb_suivi_paiements( $annee['code'], $etab_agent ), array(
-						'perimetre' => $etab ? $etab['sigle'] : 'Université',
-						'lignes'    => $etab ? 'filieres' : 'etabs',
-					) );
-					?>
+					<?php /* Rendu de la page Paiements de l'administration, limité à l'établissement (inc/scolarite-paiements.php). */ ?>
+					<?php ueb_sco_paiements( ueb_suivi_paiements( $annee['code'], $etab_agent, 366 ), $etab ? $etab['sigle'] : '' ); ?>
 
 				<?php elseif ( 'bord' === $vue ) : ?>
 

@@ -29,13 +29,23 @@ function ueb_adm_export_url( $format, $focus ) {
 	return wp_nonce_url( add_query_arg( $args, ueb_url_administration() ), 'ueb_export_paiements', 'jeton' );
 }
 
-/** Menu « Exporter » de l'en-tête de la vue Paiements (HTML échappé). */
-function ueb_adm_exports_menu( $focus ) {
+/**
+ * Menu « Exporter » de l'en-tête de la vue Paiements (HTML échappé).
+ * L'espace scolarité passe ses formats et l'adresse de ses liens
+ * (inc/scolarite-paiements.php).
+ *
+ * @param string        $focus   Établissement suivi, vide pour toute l'université.
+ * @param string[]|null $formats Formats proposés ; tous par défaut.
+ * @param callable|null $url     Adresse d'un format ; celle de l'administration par défaut.
+ */
+function ueb_adm_exports_menu( $focus, $formats = null, $url = null ) {
 	$choix = array(
 		'pdf'  => array( 'PDF', 'Rapport PDF', 'Document officiel, prêt à imprimer' ),
 		'docx' => array( 'DOCX', 'Rapport Word', 'Document officiel modifiable' ),
 		'xlsx' => array( 'XLSX', 'Tableur Excel', 'Données brutes, sans en-tête' ),
 	);
+	$choix = $formats ? array_intersect_key( $choix, array_flip( $formats ) ) : $choix;
+	$url   = $url ?? static fn( $format ) => ueb_adm_export_url( $format, $focus );
 	ob_start();
 	?>
 	<div class="adm-export" data-export>
@@ -43,7 +53,7 @@ function ueb_adm_exports_menu( $focus ) {
 		<div class="adm-export__menu" id="adm-export-menu" hidden>
 			<p class="adm-export__titre">Suivi des paiements<?php echo $focus ? ' de ' . esc_html( $focus ) : ''; ?></p>
 			<?php foreach ( $choix as $format => $c ) : ?>
-				<a class="adm-export__choix" href="<?php echo esc_url( ueb_adm_export_url( $format, $focus ) ); ?>" data-format="<?php echo esc_attr( $format ); ?>">
+				<a class="adm-export__choix" href="<?php echo esc_url( $url( $format ) ); ?>" data-format="<?php echo esc_attr( $format ); ?>">
 					<span class="adm-export__format adm-export__format--<?php echo esc_attr( $format ); ?>" aria-hidden="true"><?php echo esc_html( $c[0] ); ?></span>
 					<span class="adm-export__texte"><b><?php echo esc_html( $c[1] ); ?></b><small><?php echo esc_html( $c[2] ); ?></small></span>
 				</a>
@@ -103,11 +113,10 @@ function ueb_adm_accord( $nombre, $singulier, $pluriel ) {
 /** Notes de lecture des rapports PDF et Word. */
 function ueb_adm_paiements_notes() {
 	return array(
-		array( 'Droits attendus', ueb_fcfa( UEB_DROITS_CLASSIQUES ) . ' par étudiant en formation classique ; somme des quitus préparés en formation professionnelle. La formation retenue est celle du dernier quitus.' ),
-		array( 'Frais médicaux', 'Montants des quitus médicaux effectivement générés, versés au compte des services centraux. Ils ne représentent pas tous les frais potentiellement dus par les étudiants.' ),
-		array( 'Encaissé et reste', 'Seuls les paiements vérifiés sont encaissés. Les droits sont plafonnés à l’attendu par étudiant et établissement. Le reste inclut les montants en vérification ; un reçu déposé ne vaut pas validation.' ),
-		array( 'Historique mensuel', 'Reconstitué avec les dates de validation des dossiers conservés et les formations actuelles. Les anciennes décisions annulées et les pièces supprimées ne sont pas conservées. Le mois en cours est incomplet.' ),
-		array( 'Effectifs et filtres', 'Les droits comptent les étudiants par établissement ; les frais médicaux comptent les quitus. La recherche et les filtres du registre ne modifient pas le bilan du périmètre affiché en haut.' ),
+		array( 'Droits attendus', ueb_fcfa( UEB_DROITS_CLASSIQUES ) . ' par étudiant en formation classique ; en formation professionnelle, la somme des quitus préparés. La formation retenue est celle du dernier quitus.' ),
+		array( 'Frais médicaux', 'montants des quitus médicaux effectivement générés, versés au compte des services centraux. Ils ne représentent pas tous les frais potentiellement dus par les étudiants.' ),
+		array( 'Encaissé et reste', 'seuls les paiements vérifiés sont encaissés. Les droits sont plafonnés à l’attendu par étudiant et par établissement. Le reste inclut les montants en vérification : un reçu déposé ne vaut pas validation.' ),
+		array( 'Effectifs', 'les droits universitaires comptent les étudiants par établissement ; les frais médicaux comptent les quitus.' ),
 	);
 }
 
@@ -196,7 +205,7 @@ function ueb_adm_rapport_donnees( array $suivi, $focus, array $annee ) {
 
 	$tableaux = array(
 		array(
-			'titre'    => $focus ? 'Suivi détaillé de ' . $focus : 'Suivi par établissement',
+			'titre'    => $focus ? 'Suivi détaillé par filière' : 'Suivi par établissement',
 			'feuille'  => $focus ? 'Filières' : 'Établissements',
 			'colonnes' => $colonnes_registre,
 			'lignes'   => $lignes,
@@ -276,15 +285,15 @@ function ueb_adm_rapport_entete( array $d ) {
    ========================================================================== */
 
 function ueb_adm_export_pdf( array $d ) {
-	require_once UEB_INSC_DIR . '/lib/tcpdf/tcpdf.php';
+	require_once UEB_INSC_DIR . '/inc/pdf-ueb.php';
 	$couleur = ueb_pdf_rvb( $d['couleur'] );
 	$encre   = array( 33, 37, 41 );
 	$gris    = array( 100, 108, 104 );
 	$marge   = 14.0;
 
-	$pdf = new TCPDF( 'L', 'mm', 'A4', true, 'UTF-8', false );
-	$pdf->SetCreator( 'Plateforme d’inscription, ' . UEB_UNIVERSITE['fr'] );
-	$pdf->SetAuthor( UEB_UNIVERSITE['fr'] );
+	$pdf = new UEB_TCPDF( 'L', 'mm', 'A4', true, 'UTF-8', false );
+	$pdf->SetCreator( 'Plateforme d’inscription, ' . str_replace( "'", '’', UEB_UNIVERSITE['fr'] ) );
+	$pdf->SetAuthor( str_replace( "'", '’', UEB_UNIVERSITE['fr'] ) );
 	$pdf->SetTitle( $d['titre'] . ' ' . $d['annee']['libelle'] );
 	$pdf->SetSubject( $d['sous_titre'] );
 	$pdf->setPrintHeader( false );
@@ -393,10 +402,22 @@ function ueb_adm_export_pdf( array $d ) {
 		$pdf->writeHTML( '<p style="font-family:uebsans;font-size:8.4pt;color:#212529;"><span style="font-family:uebsansb;">' . esc_html( $nt[0] ) . ' : </span>' . esc_html( $nt[1] ) . '</p>', true, false, false, false, '' );
 		$pdf->Ln( 0.8 );
 	}
-	$pdf->Ln( 4 );
+	/* « Fait à Ebolowa » reste sur la page des notes quand il tient au-dessus du
+	   filet du pied de page, plutôt que d'aller seul sur une nouvelle page. */
 	$pdf->SetFont( 'uebserifi', '', 9.5 );
 	$pdf->SetTextColorArray( $encre );
-	$pdf->Cell( 0, 6, 'Fait à Ebolowa, le ' . $d['fait_le'] . '.', 0, 1, 'R' );
+	$fait  = 'Fait à Ebolowa, le ' . $d['fait_le'] . '.';
+	$plafond = $pdf->getPageHeight() - 13.5; // juste au-dessus du filet du pied
+	$y       = $pdf->GetY();
+	if ( $y + 7 <= $plafond ) {
+		$pdf->SetAutoPageBreak( false );
+		$pdf->SetY( $y + min( 4, $plafond - $y - 6 ) );
+		$pdf->Cell( 0, 6, $fait, 0, 1, 'R' );
+		$pdf->SetAutoPageBreak( true, 18 );
+	} else {
+		$pdf->Ln( 4 );
+		$pdf->Cell( 0, 6, $fait, 0, 1, 'R' );
+	}
 
 	/* Pied de chaque page : origine du document et pagination. */
 	$total = $pdf->getNumPages();
@@ -422,7 +443,7 @@ function ueb_adm_export_pdf( array $d ) {
    ========================================================================== */
 
 function ueb_ooxml_txt( $texte ) {
-	return htmlspecialchars( (string) $texte, ENT_XML1 | ENT_QUOTES, 'UTF-8' );
+	return htmlspecialchars( str_replace( "'", '’', (string) $texte ), ENT_XML1 | ENT_QUOTES, 'UTF-8' );
 }
 
 /** Assemble une archive OOXML et l'envoie. */

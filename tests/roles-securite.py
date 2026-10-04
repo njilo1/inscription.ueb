@@ -139,7 +139,7 @@ try:
     st, html = get(s12, '/cellule-informatique/')
     verifier('cellule FS historique : espace « Comptes étudiants » toujours ouvert', st == 200 and 'Comptes étudiants' in html and 'Ce compte n' not in html)
     st, html = get(d, '/scolarite/')
-    verifier('Direction FS avec suivi : espace scolarité en vue Paiements seulement', 'Suivi des paiements' in html and 'À vérifier' not in html)
+    verifier('Direction FS avec suivi : espace scolarité en vue Paiements seulement', 'Suivi des paiements' in html and 'Reçus à vérifier' not in html and 'vue=quitus' not in html)
     st, html = get(session(0), '/direction/')
     verifier('visiteur non connecté : écran de connexion', 'gestion-connexion' in html and 'Rôles et accès' not in html)
 

@@ -98,7 +98,10 @@ function ueb_adm_paiements_niveaux( array $niveaux, array $g, $focus ) {
  * ventilés par établissement, ou par filière dans la vue d'un établissement.
  * Rien ne s'affiche tant qu'il n'y a pas d'écart.
  */
-function ueb_adm_paiements_rapprochement( array $suivi, $focus ) {
+function ueb_adm_paiements_rapprochement( array $suivi, $focus, $url_ligne = null ) {
+ /* Lien d'une ligne d'établissement : la vue de l'administration par défaut ;
+    l'espace scolarité passe une fonction qui n'en donne pas. */
+ $url_ligne = $url_ligne ?? static fn( $sigle ) => add_query_arg( array( 'vue' => 'paiements', 'etab' => $sigle ), ueb_url_administration() );
  $total = $suivi['global']['trop_percu'];
  if ( $total <= 0 ) {
   return;
@@ -143,11 +146,12 @@ function ueb_adm_paiements_rapprochement( array $suivi, $focus ) {
         esc_html( ueb_pourcent( $part ) . ' du total' )
        );
        ?>
+       <?php $href = $focus ? '' : $url_ligne( $p['sigle'] ); ?>
        <li class="pay-ecart">
-        <?php if ( $focus ) : ?>
+        <?php if ( ! $href ) : ?>
          <div class="pay-ecart__ligne"><?php echo $corps; // phpcs:ignore -- composé et échappé ci-dessus ?></div>
         <?php else : ?>
-         <a class="pay-ecart__ligne" href="<?php echo esc_url( add_query_arg( array( 'vue' => 'paiements', 'etab' => $p['sigle'] ), ueb_url_administration() ) ); ?>"><?php echo $corps; // phpcs:ignore -- composé et échappé ci-dessus ?><?php echo ueb_icone( 'chevron-d', 16 ); ?></a>
+         <a class="pay-ecart__ligne" href="<?php echo esc_url( $href ); ?>"><?php echo $corps; // phpcs:ignore -- composé et échappé ci-dessus ?><?php echo ueb_icone( 'chevron-d', 16 ); ?></a>
         <?php endif; ?>
        </li>
       <?php endforeach; ?>
@@ -296,11 +300,12 @@ function ueb_adm_paiements_repartition( $droits, $medicaux ) {
  <?php
 }
 
-function ueb_adm_paiements_registre( array $lignes, $focus ) {
- $libelles = array( 'solde' => 'Soldé', 'partiel' => 'Partiel', 'attente' => 'À encaisser', 'vide' => 'Aucun montant' );
+function ueb_adm_paiements_registre( array $lignes, $focus, $url_ligne = null ) {
+ $libelles  = array( 'solde' => 'Soldé', 'partiel' => 'Partiel', 'attente' => 'À encaisser', 'vide' => 'Aucun montant' );
+ $url_ligne = $url_ligne ?? static fn( $sigle ) => add_query_arg( array( 'vue' => 'paiements', 'etab' => $sigle ), ueb_url_administration() );
  ?>
  <section class="pay-panneau pay-registre" id="pay-registre" data-pay-registre aria-labelledby="pay-registre-titre">
-  <header class="pay-entete"><div><h2 id="pay-registre-titre"><?php echo $focus ? 'Suivi détaillé de ' . esc_html( $focus ) : 'Suivi par établissement'; ?></h2><p>Droits et frais médicaux séparés, montants en FCFA</p></div><button class="pay-btn" type="button" data-pay-export hidden><?php echo ueb_icone( 'telecharger', 17 ); ?>Lignes affichées en CSV</button></header>
+  <header class="pay-entete"><div><h2 id="pay-registre-titre"><?php echo $focus ? 'Suivi détaillé par filière' : 'Suivi par établissement'; ?></h2><p>Droits et frais médicaux séparés, montants en FCFA</p></div><button class="pay-btn" type="button" data-pay-export hidden><?php echo ueb_icone( 'telecharger', 17 ); ?>Lignes affichées en CSV</button></header>
   <div class="pay-outils" data-pay-outils hidden>
    <div class="pay-types" role="group" aria-label="Type de paiement"><button type="button" data-pay-type="tous" aria-pressed="true">Tous les paiements</button><button type="button" data-pay-type="droits" aria-pressed="false">Droits universitaires</button><button type="button" data-pay-type="medicaux" aria-pressed="false">Frais médicaux</button></div>
    <div class="pay-filtres">
@@ -316,7 +321,7 @@ function ueb_adm_paiements_registre( array $lignes, $focus ) {
    <?php foreach ( $lignes as $ligne ) : $a = $ligne['a']; $reste = max( 0, $a['attendu'] - $a['encaisse'] ); $taux = ueb_suivi_taux( $a ); $etat = ueb_adm_paiement_situation( $a );
     $data = array( 'nom' => $ligne['nom'], 'detail' => $ligne['detail'], 'type' => $ligne['type'], 'unite' => $ligne['unite'], 'effectif' => $a['etudiants'], 'attendu' => $a['attendu'], 'encaisse' => $a['encaisse'], 'verification' => $a['verification'], 'reste' => $reste, 'taux' => $taux, 'situation' => $etat ); ?>
     <tr data-pay-ligne="<?php echo esc_attr( wp_json_encode( $data ) ); ?>">
-     <th scope="row"><div class="pay-identite"><?php if ( ! $focus ) : ?><img src="<?php echo esc_url( ueb_logo_url( $ligne['sigle'] ) ); ?>" alt="" width="30" height="30" loading="lazy"><?php endif; ?><div><?php if ( ! $focus ) : ?><a href="<?php echo esc_url( add_query_arg( array( 'vue' => 'paiements', 'etab' => $ligne['sigle'] ), ueb_url_administration() ) ); ?>"><?php echo esc_html( $ligne['nom'] ); ?><?php echo ueb_icone( 'chevron-d', 13 ); ?></a><?php else : ?><b><?php echo esc_html( $ligne['nom'] ); ?></b><?php endif; ?><small><?php echo esc_html( $ligne['detail'] ); ?></small></div></div></th>
+     <th scope="row"><div class="pay-identite"><?php if ( ! $focus ) : ?><img src="<?php echo esc_url( ueb_logo_url( $ligne['sigle'] ) ); ?>" alt="" width="30" height="30" loading="lazy"><?php endif; ?><div><?php $href = $focus ? '' : $url_ligne( $ligne['sigle'] ); if ( $href ) : ?><a href="<?php echo esc_url( $href ); ?>"><?php echo esc_html( $ligne['nom'] ); ?><?php echo ueb_icone( 'chevron-d', 13 ); ?></a><?php else : ?><b><?php echo esc_html( $ligne['nom'] ); ?></b><?php endif; ?><small><?php echo esc_html( $ligne['detail'] ); ?></small></div></div></th>
      <td data-titre="Type"><span class="pay-type pay-type--<?php echo esc_attr( $ligne['type'] ); ?>"><?php echo 'droits' === $ligne['type'] ? 'Droits' : 'Médicaux'; ?></span></td>
      <td data-titre="Effectif"><?php echo esc_html( ueb_formater_montant( $a['etudiants'] ) ); ?><small class="pay-unite"><?php echo esc_html( $ligne['unite'] ); ?></small></td>
      <?php foreach ( array( 'attendu' => 'Attendu', 'encaisse' => 'Encaissé', 'verification' => 'À vérifier' ) as $cle => $titre ) : ?><td class="pay-montant pay-montant--<?php echo esc_attr( $cle ); ?>" data-titre="<?php echo esc_attr( $titre ); ?>"><?php echo esc_html( ueb_formater_montant( $a[ $cle ] ) ); ?></td><?php endforeach; ?>
