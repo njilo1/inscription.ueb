@@ -28,13 +28,13 @@ function ueb_landing_donnees() {
 		'etapes' => array(
 			array( 'titre' => 'Crée ton compte et remplis ton quitus', 'texte' => 'Connecte-toi avec ton matricule. Choisis ton établissement, vérifie tes informations et indique le montant.' ),
 			array( 'titre' => 'Télécharge tes quatre coupons', 'texte' => 'Ton quitus sort en PDF, aux couleurs de ton établissement : une page A4 avec les coupons étudiant, DAF, scolarité et banque.' ),
-			array( 'titre' => 'Fais-le tamponner, puis paie', 'texte' => 'Présente ton quitus imprimé à la scolarité de ton établissement pour le faire tamponner. Paie ensuite le montant sur le compte imprimé en bas de chaque coupon, ' . ueb_moyens_paiement() . '.' ),
-			array( 'titre' => 'Envoie la photo de ton reçu', 'texte' => 'Depuis ton espace, photographie ton reçu de paiement. Présente ensuite les originaux à la scolarité : ton paiement passe à « Vérifié ».' ),
+			array( 'titre' => 'Paie, puis envoie ton reçu', 'texte' => 'Paie le montant sur le compte imprimé en bas de chaque coupon, ' . ueb_moyens_paiement() . '. Depuis ton espace, envoie ensuite la photo de ton reçu de paiement.' ),
+			array( 'titre' => 'Fais tamponner ton reçu', 'texte' => 'Présente l’original de ton reçu à la scolarité de ton établissement : il y est tamponné et ton paiement passe à « Vérifié ».' ),
 		),
 		'faq'    => array(
 			array( 'J’ai oublié mon mot de passe. Que faire ?', 'Présente-toi à la scolarité de ton établissement avec ta carte d’identité : un agent réinitialise ton compte, sans voir aucun mot de passe. Dans l’heure qui suit, ouvre « Mot de passe oublié ? » sur la page de connexion, saisis ton matricule et choisis toi-même ton nouveau mot de passe.' ),
 			array( 'Pourquoi quatre coupons sur la même page ?', 'Chaque service garde le sien : l’étudiant, la Direction des affaires financières (DAF), la scolarité et la banque. Imprime la page entière et découpe-la seulement quand on te le demande.' ),
-			array( 'Quels fichiers puis-je envoyer pour mon reçu ?', 'Une photo JPG ou PNG, ou un scan PDF, de 5 Mo au plus, jusqu’à trois fichiers par quitus. Le montant et le cachet ou la référence du paiement doivent être lisibles.' ),
+			array( 'Quels fichiers puis-je envoyer pour mon reçu ?', 'Une photo JPG ou PNG, ou un scan PDF, de 5 Mo au plus : un seul reçu par paiement. Le montant et le cachet ou la référence du paiement doivent être lisibles.' ),
 			array( 'Je pense que quelqu’un connaît mon mot de passe.', 'Connecte-toi et change-le tout de suite dans « Mon compte ». Toutes les autres sessions ouvertes sur ton compte sont fermées immédiatement.' ),
 		),
 	);

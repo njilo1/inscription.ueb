@@ -326,7 +326,7 @@ function ueb_action_envoyer_recus() {
 
 	if ( $acceptes ) {
 		$wpdb->update( 'ueb_insc_quitus', array( 'statut' => 'recu_envoye', 'motif_rejet' => null ), array( 'id' => $quitus->id ) );
-		ueb_flash( 'succes', sprintf( '%d reçu(s) envoyé(s). Présente-toi à la scolarité avec les originaux pour la vérification.', $acceptes ) );
+		ueb_flash( 'succes', 'Reçu envoyé. Présente l’original à la scolarité de ton établissement pour le faire tamponner.' );
 	}
 	if ( $refus ) {
 		ueb_flash( 'erreur', 'Fichier(s) refusé(s) — ' . implode( ' ; ', $refus ) . '.' );

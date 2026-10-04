@@ -14,7 +14,7 @@ $recus      = ueb_recus_du_quitus( $fiche->id );
 $decideur   = $fiche->verifie_par ? get_userdata( $fiche->verifie_par ) : null;
 $type_fiche = 'medicaux' === ( $fiche->type ?? 'droits' ) ? 'medicaux' : 'droits';
 $rejete     = 'rejete' === $fiche->statut;
-$etape      = array( 'genere' => 1, 'recu_envoye' => 3, 'rejete' => 3, 'verifie' => 4 )[ $fiche->statut ] ?? 1;
+$etape      = array( 'genere' => 2, 'recu_envoye' => 3, 'rejete' => 2, 'verifie' => 4 )[ $fiche->statut ] ?? 1;
 $peut_decider = ueb_peut( 'ueb_decider_quitus', $fiche->etablissement );
 $dernier_recu = $recus ? end( $recus ) : null;
 
@@ -92,7 +92,7 @@ $adresse_fiche = $ici( array( 'quitus' => $fiche->id ) );
 		</header>
 		<ol class="qf-etapes<?php echo $rejete ? ' qf-etapes--rejete' : ''; ?>" style="--rempli: <?php echo esc_attr( round( ( $etape - 1 ) / 3, 4 ) ); ?>">
 			<?php
-			foreach ( array( 'Quitus généré', 'Tamponné et payé', 'Reçu envoyé', 'Vérifié' ) as $i => $libelle ) :
+			foreach ( array( 'Quitus généré', 'Payé et reçu envoyé', 'Reçu tamponné', 'Vérifié' ) as $i => $libelle ) :
 				$n        = $i + 1;
 				$courante = $n === $etape;
 				$faite    = $n < $etape || 4 === $etape;

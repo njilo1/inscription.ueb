@@ -13,8 +13,8 @@
 defined( 'ABSPATH' ) || exit;
 
 const UEB_STATUTS_QUITUS = array(
-	'genere'      => array( 'libelle' => 'À payer', 'aide' => 'Fais tamponner le quitus à ton établissement, puis paie-le.' ),
-	'recu_envoye' => array( 'libelle' => 'Reçu envoyé', 'aide' => 'Présente-toi à la scolarité avec les originaux pour la vérification physique.' ),
+	'genere'      => array( 'libelle' => 'À payer', 'aide' => 'Paie-le, puis envoie la photo de ton reçu.' ),
+	'recu_envoye' => array( 'libelle' => 'Reçu envoyé', 'aide' => 'Présente l’original de ton reçu à la scolarité pour le faire tamponner.' ),
 	'verifie'     => array( 'libelle' => 'Vérifié', 'aide' => 'Paiement vérifié par la scolarité.' ),
 	'rejete'      => array( 'libelle' => 'À corriger', 'aide' => 'La scolarité a signalé un problème : lis le motif et renvoie tes reçus.' ),
 );
@@ -368,7 +368,7 @@ function ueb_action_enregistrer_quitus() {
 		ueb_rediriger( $retour );
 	}
 	$_SESSION['ueb_telechargement'] = array( 'compte_id' => (int) $compte->id, 'numero' => $numero );
-	ueb_flash( 'succes', 'Tes documents sont enregistrés dans Mes quitus. Fais tamponner chaque quitus avant de payer.' );
+	ueb_flash( 'succes', 'Tes documents sont enregistrés dans Mes quitus. Imprime-les, paie, puis envoie la photo de ton reçu.' );
 	ueb_rediriger( add_query_arg( 'vue', 'quitus', ueb_url( 'mon-espace' ) ) . '#quitus-' . $numero );
 }
 
