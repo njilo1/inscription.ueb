@@ -171,6 +171,7 @@ function ueb_traiter_action( $action ) {
 		'envoyer_recus'       => 'ueb_action_envoyer_recus',
 		'supprimer_recu'      => 'ueb_action_supprimer_recu',
 		'gestion_statut'      => 'ueb_action_gestion_statut',
+		'gestion_valider'     => 'ueb_action_gestion_valider',
 		'gestion_reinit_mdp'  => 'ueb_action_gestion_reinit_mdp',
 		'gestion_bloquer'     => 'ueb_action_gestion_bloquer',
 		'gestion_creer_etudiant' => 'ueb_action_gestion_creer_etudiant',

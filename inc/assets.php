@@ -68,6 +68,11 @@ add_action( 'wp_enqueue_scripts', function () {
 			ueb_script( 'ueb-paiements', 'assets/js/paiements.js' );
 		}
 		ueb_script( 'ueb-bord', 'assets/js/bord.js' );
+		/* Registre des quitus : compteurs, dossiers et validation depuis la ligne. */
+		if ( is_page_template( 'page-scolarite.php' ) && 'quitus' === $vue_bo && ! isset( $_GET['quitus'] ) ) { // phpcs:ignore -- lecture seule
+			ueb_style( 'ueb-quitus-registre', 'assets/css/quitus-registre.css', array( 'ueb-bord' ) );
+			ueb_script( 'ueb-quitus-registre', 'assets/js/quitus-registre.js', array( 'ueb-app', 'ueb-remotion' ) );
+		}
 	}
 	/* Tableau de bord de la scolarité : le même que celui de l'administration
 	   (cartes à mini-courbes, anneau, évolution, mouvement), sans la bascule de thème. */
@@ -129,6 +134,7 @@ add_action( 'wp_enqueue_scripts', function () {
 		ueb_style( 'ueb-ipes', 'assets/css/ipes.css', array( 'ueb-administration' ) );
 		if ( $quitus_scolarite ) {
 			ueb_style( 'ueb-quitus-fiche', 'assets/css/quitus-fiche.css', array( 'ueb-ipes' ) );
+			ueb_script( 'ueb-quitus-fiche', 'assets/js/quitus-fiche.js' );
 		}
 	}
 	$ipes_heros = ( ( $ipes_admin || $ipes_scolarite ) && ctype_digit( (string) ( $_GET['ipes'] ?? '' ) ) && ! isset( $_GET['etudiant'] ) ) // phpcs:ignore -- lecture seule
