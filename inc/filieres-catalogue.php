@@ -33,6 +33,7 @@ const UEB_CYCLES_FILIERE = array(
 	'tronc_commun' => 'Tronc commun',
 	'licence_3'    => 'Licence 3',
 	'master'       => 'Master',
+	'doctorat'     => 'Doctorat',
 );
 const UEB_CODE_FILIERE_REGEX = '/^[A-Z0-9][A-Z0-9_-]{1,29}$/';
 
@@ -286,4 +287,91 @@ function ueb_action_catalogue_filiere_etat() {
 	}
 	$retour = wp_validate_redirect( (string) wp_get_referer(), ueb_url_filieres() ) ?: ueb_url_filieres();
 	ueb_rediriger( $retour . '#filiere-' . (int) $filiere->id );
+}
+
+/* ---------- Unités de formation doctorale ---------- */
+
+/* Liste de l'École Doctorale : chaque unité (UFD) est une filière du cycle
+   « doctorat », rattachée à l'établissement indiqué (sa faculté, ou l'école ou
+   l'institut cité entre parenthèses sur la liste). */
+const UEB_UFD_DOCTORALES = array(
+	array( 'code' => 'UFD-2SAD', 'etablissement' => 'FALSH',  'libelle' => 'Unité de Formation Doctorale en Sciences Humaines, Société, Arts et Développement' ),
+	array( 'code' => 'UFD-SS',   'etablissement' => 'FMSP',   'libelle' => 'Unité de Formation Doctorale en Sciences de la Santé' ),
+	array( 'code' => 'UFD-SATI', 'etablissement' => 'FS',     'libelle' => 'Unité de Formation Doctorale en Sciences Appliquées et Technologies Industrielles' ),
+	array( 'code' => 'UFD-SMAP', 'etablissement' => 'ISABEE', 'libelle' => 'Unité de Formation Doctorale des Sciences de la Matière, de l’Agroenvironnement et des Procédés' ),
+	array( 'code' => 'UFD-SIGD', 'etablissement' => 'ENSET',  'libelle' => 'Unité de Formation Doctorale en Sciences d’Ingénieries Globales et Durables' ),
+	array( 'code' => 'UFD-STML', 'etablissement' => 'ENSTMO', 'libelle' => 'Unité de Formation Doctorale des Sciences et Technologies de la Mer et du Littoral' ),
+	array( 'code' => 'UFD-SEG',  'etablissement' => 'FSEG',   'libelle' => 'Unité de Formation Doctorale en Sciences Économiques et de Gestion' ),
+	array( 'code' => 'UFD-TSI',  'etablissement' => 'ESTLC',  'libelle' => 'Unité de Formation Doctorale en Technologies et Sciences de l’Innovation' ),
+	array( 'code' => 'UFD-DSP',  'etablissement' => 'FSJP',   'libelle' => 'Unité de Formation Doctorale en Droit et Science Politique' ),
+);
+
+/**
+ * Fait accepter le cycle « doctorat » par la colonne « cycle » de ueb_filieres.
+ * Si cette colonne est une liste fermée (ENUM) qui ne le contient pas, on ajoute
+ * « doctorat » à la fin de la liste : les cycles existants ne bougent pas, et
+ * rien n'est réécrit dans la table. Une colonne de texte n'a rien à changer.
+ *
+ * @return bool Vrai si la colonne accepte « doctorat ».
+ */
+function ueb_catalogue_accepter_doctorat() {
+	global $wpdb;
+	$colonne = $wpdb->get_row( "SHOW COLUMNS FROM ueb_filieres LIKE 'cycle'" );
+	if ( ! $colonne ) {
+		return false;
+	}
+	if ( 0 !== stripos( $colonne->Type, 'enum(' ) || false !== stripos( $colonne->Type, "'doctorat'" ) ) {
+		return true;
+	}
+	$sql = 'ALTER TABLE ueb_filieres MODIFY cycle ' . substr( $colonne->Type, 0, -1 ) . ",'doctorat') "
+		. ( 'NO' === $colonne->Null ? 'NOT NULL' : 'NULL' )
+		. ( null !== $colonne->Default ? $wpdb->prepare( ' DEFAULT %s', $colonne->Default ) : '' );
+	if ( false === $wpdb->query( $sql ) ) {
+		error_log( '[inscriptions-ueb] Le cycle « doctorat » n’a pas pu être ajouté à ueb_filieres.cycle : ' . $wpdb->last_error );
+		return false;
+	}
+	return true;
+}
+
+/**
+ * Ajoute au catalogue les unités doctorales qui n'y figurent pas encore (filière
+ * classique, cycle « doctorat »), par les mêmes contrôles que l'onglet Filières.
+ * Une unité déjà présente (même code, même établissement) est laissée telle
+ * quelle, ouverte ou fermée : on ne la recrée ni ne la rouvre.
+ *
+ * Sans effet si le catalogue n'est pas importé ou s'il n'a pas encore les
+ * colonnes « cycle » et « actif ». Si la colonne « cycle » est une liste fermée,
+ * « doctorat » y est d'abord ajouté. Un échec est consigné, jamais bloquant.
+ *
+ * @return int Nombre d'unités ajoutées.
+ */
+function ueb_catalogue_semer_ufd() {
+	global $wpdb;
+	if ( ! ueb_catalogue_disponible() ) {
+		return 0;
+	}
+	if ( array_diff( array( 'cycle', 'actif' ), $wpdb->get_col( 'SHOW COLUMNS FROM ueb_filieres' ) ) ) {
+		error_log( '[inscriptions-ueb] Unités doctorales non ajoutées : ueb_filieres n’a pas les colonnes « cycle » et « actif ».' );
+		return 0;
+	}
+	if ( ! ueb_catalogue_accepter_doctorat() ) {
+		return 0;
+	}
+	$ajoutees = 0;
+	foreach ( UEB_UFD_DOCTORALES as $ufd ) {
+		$existe = $wpdb->get_var( $wpdb->prepare(
+			'SELECT fi.id FROM ueb_filieres fi JOIN ueb_facultes fa ON fa.id = fi.faculte_id WHERE fi.code = %s AND fa.code = %s',
+			$ufd['code'], $ufd['etablissement']
+		) );
+		if ( $existe ) {
+			continue;
+		}
+		$resultat = ueb_catalogue_filiere_enregistrer( $ufd + array( 'type_formation' => 'classique', 'cycle' => 'doctorat' ) );
+		if ( is_wp_error( $resultat ) ) {
+			error_log( '[inscriptions-ueb] Unité doctorale ' . $ufd['code'] . ' non ajoutée : ' . wp_json_encode( $resultat->get_error_data() ?: $resultat->get_error_message() ) );
+			continue;
+		}
+		++$ajoutees;
+	}
+	return $ajoutees;
 }

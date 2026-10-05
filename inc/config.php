@@ -89,7 +89,7 @@ function ueb_type_etablissement( $sigle ) {
 	return UEB_TYPES_ETABLISSEMENT[ $sigle ] ?? 'faculte';
 }
 
-const UEB_NIVEAUX_INSCRIPTION = array( 'L1' => 'L1 — Licence 1', 'L2' => 'L2 — Licence 2', 'L3' => 'L3 — Licence 3', 'M1' => 'M1 — Master 1', 'M2' => 'M2 — Master 2' );
+const UEB_NIVEAUX_INSCRIPTION = array( 'L1' => 'L1 — Licence 1', 'L2' => 'L2 — Licence 2', 'L3' => 'L3 — Licence 3', 'M1' => 'M1 — Master 1', 'M2' => 'M2 — Master 2', 'D1' => 'D1 — Doctorat 1', 'D2' => 'D2 — Doctorat 2', 'D3' => 'D3 — Doctorat 3' );
 
 /**
  * Les neuf établissements. « couleur » est la couleur d'identité utilisée

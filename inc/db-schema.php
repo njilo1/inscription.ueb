@@ -13,7 +13,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-const UEB_INSC_DB_VERSION = '12';
+const UEB_INSC_DB_VERSION = '13';
 
 function ueb_insc_schema() {
 	return array(
@@ -367,6 +367,12 @@ function ueb_insc_migrer() {
 	$colonnes_ipes = $wpdb->get_col( 'SHOW COLUMNS FROM ueb_insc_ipes' );
 	if ( $colonnes_ipes && in_array( 'montant_annuel_du', $colonnes_ipes, true ) && false === $wpdb->query( 'ALTER TABLE ueb_insc_ipes DROP COLUMN montant_annuel_du' ) ) {
 		return false;
+	}
+	/* Version 13 : unités de formation doctorale (cycle « doctorat ») ajoutées au
+	   catalogue des filières. Sans effet si le catalogue n'est pas importé ; ne
+	   bloque jamais la migration. */
+	if ( function_exists( 'ueb_catalogue_semer_ufd' ) ) {
+		ueb_catalogue_semer_ufd();
 	}
 	return true;
 }
