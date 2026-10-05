@@ -62,13 +62,16 @@ if ( isset( $_POST['ueb_connexion_gestion'] ) ) {
 
 /* Accès par capacité et portée (inc/roles.php) : examiner les quitus, suivre les
    paiements ou suivre les IPES sous tutelle (inc/ipes-tutelle.php). */
-$peut_quitus    = ueb_peut( UEB_CAP_GESTION );
+/* Quitus : ceux des droits universitaires (scolarité) ou des frais médicaux (CMS).
+   Le tableau de bord porte sur les droits : réservé à la scolarité. */
+$peut_bord      = ueb_peut( UEB_CAP_GESTION );
+$peut_quitus    = (bool) ueb_types_quitus_visibles();
 $peut_paiements = ueb_peut( 'ueb_voir_paiements' );
 $peut_ipes      = ueb_peut( 'ueb_voir_ipes' );
 $peut_etudiants = ueb_peut( 'ueb_voir_etudiants' );
 $autorise       = ueb_est_scolarite() && ( $peut_quitus || $peut_paiements || $peut_ipes || $peut_etudiants );
 /* Première vue permise : tableau de bord, sinon paiements, sinon IPES, sinon étudiants. */
-$vue_defaut     = $peut_quitus ? 'bord' : ( $peut_paiements ? 'paiements' : ( $peut_ipes ? 'ipes' : 'etudiants' ) );
+$vue_defaut     = $peut_bord ? 'bord' : ( $peut_quitus ? 'quitus' : ( $peut_paiements ? 'paiements' : ( $peut_ipes ? 'ipes' : 'etudiants' ) ) );
 $annee    = ueb_annee_academique();
 
 if ( $autorise ) {
@@ -77,7 +80,7 @@ if ( $autorise ) {
 	$vue        = sanitize_key( $_GET['vue'] ?? $vue_defaut );
 	/* Chaque vue exige sa permission ; sinon retour à la première vue permise. */
 	$permises = array_filter( array(
-		'bord'      => $peut_quitus,
+		'bord'      => $peut_bord,
 		'quitus'    => $peut_quitus,
 		'paiements' => $peut_paiements,
 		'etudiants' => $peut_etudiants,
@@ -90,7 +93,7 @@ if ( $autorise ) {
 		$vue = $vue_defaut;
 	}
 	$fiche      = $peut_quitus && isset( $_GET['quitus'] ) ? ueb_quitus_par_id( (int) $_GET['quitus'] ) : null;
-	if ( $fiche && ! ueb_peut( UEB_CAP_GESTION, $fiche->etablissement ) ) {
+	if ( $fiche && ! ueb_peut_voir_quitus( $fiche ) ) {
 		$fiche = null;
 	}
 	if ( $fiche ) {
@@ -766,7 +769,8 @@ ueb_page_debut( array(
 											$autres    = array_filter( $d->paiements, static fn( $q ) => $q->statut !== $d->statut );
 											/* Ce que « Valider » enregistre : les paiements dont le reçu attend. */
 											$a_valider = array_values( array_filter( $d->paiements, static fn( $q ) => 'recu_envoye' === $q->statut && (int) $q->nb_recus > 0 ) );
-											$valider   = $a_valider && ueb_peut( 'ueb_decider_quitus', $p0->etablissement );
+											$a_valider = array_values( array_filter( $a_valider, 'ueb_peut_decider_quitus' ) );
+											$valider   = (bool) $a_valider;
 											if ( $valider ) {
 												$detail = implode( ' et ', array_map( static fn( $q ) => mb_strtolower( ueb_libelle_type_quitus( $q->type ) ) . ' (' . ueb_fcfa( $q->montant ) . ')', $a_valider ) );
 												$deux   = count( $a_valider ) > 1;

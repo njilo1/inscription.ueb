@@ -14,13 +14,14 @@
  */
 defined( 'ABSPATH' ) || exit;
 
-$paiements    = ueb_gestion_dossier( $fiche );
+/* Les paiements que ce compte consulte : droits universitaires (scolarité),
+   frais médicaux (CMS), ou les deux (administrateur). */
+$paiements    = array_values( array_filter( ueb_gestion_dossier( $fiche ), 'ueb_peut_voir_quitus' ) ) ?: array( $fiche );
 $fiche        = $paiements[0]; /* les droits d'abord, même ouverts depuis le quitus médical */
 $double       = count( $paiements ) > 1;
 $etab_fiche   = ueb_etablissement( $fiche->etablissement );
 $sigle        = $etab_fiche['sigle'] ?? $fiche->etablissement;
 $compte       = ueb_compte_par_id( $fiche->compte_id );
-$peut_decider = ueb_peut( 'ueb_decider_quitus', $fiche->etablissement );
 $nom_complet  = $fiche->nom . ' ' . $fiche->prenom;
 /* « L1 — Licence 1 » : seul le libellé complet est affiché. */
 $niveau       = preg_replace( '/^.*—\s*/u', '', UEB_NIVEAUX_INSCRIPTION[ $fiche->parcours ] ?? $fiche->parcours );
@@ -68,6 +69,7 @@ foreach ( $paiements as $q ) {
 		'modalite'    => 'medicaux' === $type ? 'paiement unique' : mb_strtolower( ueb_libelle_tranche( $q->tranche ) ),
 		/* Le contrôle se fait sur un reçu reçu et pas encore validé. */
 		'a_controler' => $recus && ! $verif,
+		'peut_decider' => ueb_peut_decider_quitus( $q ),
 		'points'      => array(
 			array( 'Montant versé', $somme, 'balance' ),
 			array( 'Nom de l’étudiant', $nom_complet, 'utilisateur' ),
@@ -278,7 +280,7 @@ $motifs = array(
 													<?php ueb_animation( 'tampon', $tampon_props( $v->statut, $date_tampon ), 'qf-tampon__animation animation--fige', ( $v->verifie ? 'Tampon de la scolarité : paiement vérifié le ' : 'Tampon de la scolarité : dossier à corriger depuis le ' ) . mysql2date( 'd/m/Y', $v->q->date_verification ), $tampon_repli( $v->statut, $date_tampon ) ); ?>
 												</div>
 											<?php endif; ?>
-											<?php if ( $peut_decider && $v->a_controler ) : /* tampons prêts à frapper, montés à la décision */ ?>
+											<?php if ( $v->peut_decider && $v->a_controler ) : /* tampons prêts à frapper, montés à la décision */ ?>
 												<?php foreach ( array( 'verifie', 'rejete' ) as $etat ) : ?>
 													<div class="qf-tampon" data-qf-tampon="<?php echo esc_attr( $etat ); ?>" hidden>
 														<div class="animation qf-tampon__animation" data-remotion-differe="tampon" data-props="<?php echo esc_attr( wp_json_encode( $tampon_props( $etat, $aujourdhui ) ) ); ?>" role="img" aria-label="<?php echo esc_attr( 'verifie' === $etat ? 'Tampon : paiement vérifié' : 'Tampon : dossier à corriger' ); ?>"><div class="animation__scene" data-remotion-scene></div></div>
@@ -339,7 +341,7 @@ $motifs = array(
 						</div>
 
 						<div class="qf-controle__examen">
-						<?php if ( $peut_decider && $v->a_controler ) : ?>
+						<?php if ( $v->peut_decider && $v->a_controler ) : ?>
 							<fieldset class="qf-points" data-qf-points>
 								<legend>Compare le reçu et l’original</legend>
 								<?php foreach ( $v->points as list( $libelle, $valeur ) ) : ?>
@@ -362,7 +364,7 @@ $motifs = array(
 							</dl>
 						<?php endif; ?>
 
-						<?php if ( ! $peut_decider ) : ?>
+						<?php if ( ! $v->peut_decider ) : ?>
 							<p class="qf-note"><?php echo ueb_icone( 'cadenas', 16 ); ?>Consultation seule : ton rôle ne permet pas de rendre une décision.</p>
 						<?php else : ?>
 							<div class="qf-decision">

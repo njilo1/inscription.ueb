@@ -50,6 +50,7 @@ add_action( 'init', function () {
 function ueb_modeles_roles() {
 	return array(
 		'verification' => array( 'titre' => 'Vérification des paiements', 'texte' => 'Examine les quitus, rend les décisions, suit les paiements et délègue les comptes étudiants.', 'nom' => 'Scolarité', 'portee' => 'un', 'permissions' => array( 'ueb_gerer_quitus', 'ueb_decider_quitus', 'ueb_voir_paiements', 'ueb_gerer_comptes', 'ueb_creer_agents' ), 'icone' => 'tampon' ),
+		'cms'          => array( 'titre' => 'Reçus CMS', 'texte' => 'Consulte et valide les reçus des frais médicaux envoyés par les étudiants, et eux seuls.', 'nom' => 'Régisseur CMS', 'portee' => 'tous', 'permissions' => array( 'ueb_voir_cms', 'ueb_decider_cms' ), 'icone' => 'recu' ),
 		'comptes'      => array( 'titre' => 'Comptes étudiants', 'texte' => 'Crée, réinitialise et suspend les comptes étudiants de son établissement.', 'nom' => 'Cellule informatique', 'portee' => 'un', 'permissions' => array( 'ueb_gerer_comptes' ), 'icone' => 'utilisateur' ),
 		'etudiants'    => array( 'titre' => 'Liste des étudiants', 'texte' => 'Consulte les étudiants inscrits de toute l’université, sans rien modifier.', 'nom' => 'Rectorat', 'portee' => 'tous', 'permissions' => array( 'ueb_voir_etudiants' ), 'icone' => 'diplome' ),
 		'finances'     => array( 'titre' => 'Suivi financier', 'texte' => 'Consulte le recouvrement des droits, sans rien modifier.', 'nom' => 'Suivi financier', 'portee' => 'tous', 'permissions' => array( 'ueb_voir_paiements' ), 'icone' => 'banque' ),
@@ -379,6 +380,7 @@ function ueb_gestion_ecrans() {
 	return array(
 		array( UEB_CAP_GESTION, 'Tableau de bord', 'tableau' ),
 		array( UEB_CAP_GESTION, 'Quitus', 'recu' ),
+		array( 'ueb_voir_cms', 'Quitus (frais médicaux)', 'recu' ),
 		array( 'ueb_voir_paiements', 'Paiements', 'banque' ),
 		array( 'ueb_voir_etudiants', 'Étudiants UEB', 'diplome' ),
 		array( UEB_CAP_COMPTES, 'Comptes étudiants', 'utilisateur' ),
