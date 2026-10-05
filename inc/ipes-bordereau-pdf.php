@@ -290,7 +290,7 @@ function ueb_brd_signature( TCPDF $pdf, $x, $y, $w, $titre, $mention, array $c )
 /* PDF d'un bordereau depuis l'administration : fiche de l'IPES,
    ?vue=ipes&ipes={id}&bordereau={id}&pdf=1. Réservé à l'administrateur. */
 add_action( 'template_redirect', function () {
-	if ( ! isset( $_GET['pdf'], $_GET['bordereau'], $_GET['ipes'] ) || ! is_page_template( 'page-administration.php' ) || ! ueb_est_admin_ueb() ) {
+	if ( ! isset( $_GET['pdf'], $_GET['bordereau'], $_GET['ipes'] ) || 'admin' !== ueb_espace_courant() || ! ueb_est_admin_ueb() ) {
 		return;
 	}
 	$ipes      = ueb_ipes( (int) $_GET['ipes'] );

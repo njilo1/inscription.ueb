@@ -29,7 +29,7 @@ if ( isset( $_POST['ueb_connexion_cellule'] ) ) {
 }
 
 /* Accès par capacité et portée (inc/roles.php), jamais par nom de rôle. */
-$autorise = ueb_est_cellule() && ueb_peut( UEB_CAP_COMPTES );
+$autorise = ( ueb_est_cellule() || ueb_est_admin_ueb() ) && ueb_peut( UEB_CAP_COMPTES );
 $annee    = ueb_annee_academique();
 $etab     = $autorise ? ueb_etablissement( ueb_etab_agent() ) : null;
 $etab     = $etab ?: array( 'sigle' => 'Tous', 'fr' => 'Tous les établissements' );

@@ -14,8 +14,8 @@
  *   /recu/{id}                        affichage protégé d'un reçu
  *   /verifier/{code}                  vérification publique (QR code)
  *
- * Le back-office, lui, tient dans deux Pages WordPress : « Espace scolarité »
- * et « Administration » (gabarits page-scolarite.php et page-administration.php).
+ * Le back-office, lui, tient dans une seule Page WordPress, « Administration »
+ * (gabarit page-administration.php), dont les espaces sont décrits dans inc/espaces.php.
  *
  * Les formulaires postent un champ « ueb_action » traité ici avant tout
  * affichage, puis redirigent (Post/Redirect/Get).
@@ -25,7 +25,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-const UEB_INSC_ROUTES_VERSION = '11';
+const UEB_INSC_ROUTES_VERSION = '12';
 
 function ueb_regles_reecriture() {
 	return array(
@@ -39,7 +39,6 @@ function ueb_regles_reecriture() {
 		'^mon-espace/recus/([A-Za-z0-9-]+)/?$'           => 'index.php?ueb_page=recus&ueb_arg=$matches[1]',
 		'^mon-espace/compte/?$'                          => 'index.php?ueb_page=compte',
 		'^mon-espace/securite/?$'                        => 'index.php?ueb_page=securite',
-		'^cellule-informatique/?$'                       => 'index.php?ueb_page=cellule',
 		'^support/?$'                                    => 'index.php?ueb_page=support',
 		'^recu/([0-9]+)/?$'                              => 'index.php?ueb_page=recu&ueb_arg=$matches[1]',
 		'^recu-ipes/([0-9]+)/?$'                         => 'index.php?ueb_page=recu-ipes&ueb_arg=$matches[1]',
@@ -80,9 +79,8 @@ function ueb_url( $chemin = '' ) {
 /* Pages réservées aux étudiants connectés / aux visiteurs non connectés. */
 const UEB_PAGES_ETUDIANT = array( 'espace', 'quitus', 'quitus-pdf', 'recus', 'compte', 'securite', 'support' );
 const UEB_PAGES_INVITE   = array( 'connexion', 'creer-compte', 'mdp-oublie' );
-/* Les deux espaces du back-office sont des Pages WordPress (gabarits
-   page-scolarite.php et page-administration.php) : elles vérifient
-   elles-mêmes la capacité du compte connecté. */
+/* Le back-office est la Page « Administration » (page-administration.php) :
+   elle vérifie elle-même la capacité du compte connecté (inc/espaces.php). */
 
 /* Les formulaires du back-office postent sur des Pages WordPress. Leurs
    actions doivent être traitées avant les redirections canoniques de

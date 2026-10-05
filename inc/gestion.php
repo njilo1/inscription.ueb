@@ -1276,7 +1276,7 @@ add_filter( 'login_redirect', function ( $url, $demande, $utilisateur ) {
 
 /* PDF d'un quitus depuis l'espace scolarité : ?quitus={id}&pdf=1 */
 add_action( 'template_redirect', function () {
-	if ( ! isset( $_GET['pdf'], $_GET['quitus'] ) || ! is_page_template( 'page-scolarite.php' ) || ! ueb_types_quitus_visibles() ) {
+	if ( ! isset( $_GET['pdf'], $_GET['quitus'] ) || 'scolarite' !== ueb_espace_courant() || ! ueb_types_quitus_visibles() ) {
 		return;
 	}
 	$quitus = ueb_quitus_par_id( (int) $_GET['quitus'] );
