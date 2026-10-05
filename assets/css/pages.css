@@ -1766,6 +1766,12 @@
 /* Sélecteur d'établissement dans la barre latérale (portée « plusieurs » ou « tous ») */
 .bo-perimetre--choix { display: grid; gap: .4rem; }
 .bo-perimetre--choix label b { color: var(--blanc); }
+/* Changer de profil (super-administrateur) : liseré doré quand une vue simulée est active. */
+.bo-profil { margin-bottom: .85rem; }
+.bo-profil.est-simule { padding: .7rem; border-radius: 12px; background: rgba(250, 178, 25, .14); box-shadow: inset 0 0 0 1px rgba(250, 178, 25, .55); }
+.bo-profil.est-simule label b { color: var(--or); }
+.bo-profil__retour { display: inline-flex; align-items: center; gap: .35rem; justify-self: start; min-height: 32px; padding: 0 .7rem; border: 1px solid rgba(255, 255, 255, .35); border-radius: 999px; background: transparent; color: var(--blanc); font: inherit; font-size: .8rem; font-weight: 600; cursor: pointer; }
+.bo-profil__retour:hover, .bo-profil__retour:focus-visible { background: rgba(255, 255, 255, .12); }
 .bo-perimetre--choix .champ__select { position: relative; }
 .bo-perimetre--choix select { width: 100%; min-height: 40px; padding: .4rem 2rem .4rem .7rem; border: 1px solid var(--bo-nav-filet); border-radius: 10px; background: rgba(255, 255, 255, .08); color: var(--blanc); font: inherit; font-size: .84rem; appearance: none; }
 .bo-perimetre--choix select option { color: var(--encre); }

@@ -255,12 +255,15 @@ function ueb_role_du_compte( $user_id = 0 ) {
 	if ( ! $user ) {
 		return '';
 	}
+	$trouve = '';
 	foreach ( (array) $user->roles as $slug ) {
 		if ( ueb_role( $slug ) ) {
-			return $slug;
+			$trouve = $slug;
+			break;
 		}
 	}
-	return '';
+	/* Profil choisi par un super-administrateur : inc/profil-simule.php. */
+	return (string) apply_filters( 'ueb_role_du_compte', $trouve, (int) $user->ID );
 }
 
 /** Nom affiché du rôle d'un compte. */

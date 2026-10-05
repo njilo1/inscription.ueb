@@ -865,6 +865,7 @@ function ueb_bo_barre( $espace, array $liens, array $pied = array(), array $marq
 			<?php elseif ( ! empty( $pied['titre'] ) ) : ?>
 				<p class="bo-perimetre"><b><?php echo esc_html( $pied['titre'] ); ?></b><?php echo esc_html( $pied['note'] ?? '' ); ?></p>
 			<?php endif; ?>
+			<?php ueb_selecteur_profil(); ?>
 			<div class="bo-compte">
 				<span class="bo-compte__avatar" aria-hidden="true"><?php echo esc_html( mb_substr( $nom, 0, 1 ) ); ?></span>
 				<span class="bo-compte__meta">

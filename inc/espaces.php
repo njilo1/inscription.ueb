@@ -106,6 +106,8 @@ function ueb_navigation_administration() {
 	$groupes = array();
 
 	if ( $admin ) {
+		/* Super-administrateur : tous les onglets de tous les espaces (« Changer de
+		   profil », en bas de la barre, filtre la barre comme pour un rôle). */
 		$groupes['Pilotage'] = array(
 			$lien( 'admin', 'bord', 'Tableau de bord', 'tableau' ),
 			$lien( 'admin', 'paiements', 'Paiements', 'banque' ),
@@ -114,7 +116,15 @@ function ueb_navigation_administration() {
 			$lien( 'admin', 'filieres', 'Filières', 'fichier' ),
 			$lien( 'admin', 'ipes', 'IPES', 'ecole' ),
 		);
-		$groupes['Vérification'] = array( $lien( 'scolarite', 'quitus', 'Quitus et reçus', 'recu' ) );
+		$groupes['Scolarité'] = array(
+			$lien( 'scolarite', 'bord', 'Tableau de bord', 'tampon' ),
+			$lien( 'scolarite', 'quitus', 'Quitus et reçus', 'recu' ),
+			$lien( 'scolarite', 'paiements', 'Paiements', 'banque' ),
+			$lien( 'scolarite', 'etudiants', 'Étudiants UEB', 'diplome' ),
+			$lien( 'scolarite', 'ipes', 'IPES sous tutelle', 'ecole' ),
+			$lien( 'scolarite', 'cellule', 'Comptes du personnel', 'cle' ),
+			$lien( 'scolarite', 'securite', 'Sécurité', 'cadenas' ),
+		);
 	} elseif ( in_array( 'scolarite', $permis, true ) ) {
 		$groupes['Scolarité'] = array(
 			ueb_peut( UEB_CAP_GESTION ) ? $lien( 'scolarite', 'bord', 'Tableau de bord', 'tampon' ) : null,
@@ -128,12 +138,16 @@ function ueb_navigation_administration() {
 	if ( in_array( 'direction', $permis, true ) ) {
 		$groupes['Direction'] = array(
 			$lien( 'direction', 'roles', 'Rôles et accès', 'bouclier' ),
-			$admin ? null : $lien( 'direction', 'personnel', 'Comptes', 'groupe' ),
-			! $admin && ! in_array( 'scolarite', $permis, true ) && ueb_peut( 'ueb_voir_etudiants' ) ? $lien( 'direction', 'etudiants', 'Étudiants UEB', 'diplome' ) : null,
+			$lien( 'direction', 'personnel', 'Comptes', 'groupe' ),
+			$admin || ( ! in_array( 'scolarite', $permis, true ) && ueb_peut( 'ueb_voir_etudiants' ) ) ? $lien( 'direction', 'etudiants', 'Étudiants UEB', 'diplome' ) : null,
+			$admin ? $lien( 'direction', 'securite', 'Sécurité', 'cadenas' ) : null,
 		);
 	}
 	if ( in_array( 'cellule', $permis, true ) ) {
-		$groupes['Comptes étudiants'] = array( $lien( 'cellule', 'comptes', 'Comptes étudiants', 'utilisateur' ) );
+		$groupes['Comptes étudiants'] = array(
+			$lien( 'cellule', 'comptes', 'Comptes étudiants', 'utilisateur' ),
+			$admin ? $lien( 'cellule', 'securite', 'Sécurité', 'cadenas' ) : null,
+		);
 	}
 	if ( in_array( 'ipes', $permis, true ) ) {
 		$groupes['IPES'] = array(
