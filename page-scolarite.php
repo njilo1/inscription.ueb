@@ -187,14 +187,14 @@ ueb_page_debut( array(
 			);
 			?>
 
-			<div class="bo-contenu<?php echo $tableau ? ' adm adm-dashboard' : ''; ?>">
+			<div class="bo-contenu<?php echo $tableau ? ' adm adm-dashboard' : ( 'cellule' === $vue ? ' sco-personnel' : '' ); ?>">
 				<?php
 				$titres = array(
 					'bord'     => array( 'Tableau de bord', sprintf( 'Bonjour %s. Voici où en sont les inscriptions %s.', wp_get_current_user()->display_name ?: wp_get_current_user()->user_login, $etab ? 'de ' . $etab['fr'] : 'de tous les établissements' ) ),
 					'quitus'   => array( 'Quitus', 'Retrouve un dossier, examine ses reçus et rends ta décision après la vérification des originaux.' ),
 					'etudiants' => array( 'Étudiants UEB', 'Les étudiants inscrits de ta portée et l’état de leurs droits de l’année, en lecture seule.' ),
 					'paiements' => array( 'Suivi des paiements', 'Droits universitaires attendus et encaissés, filière par filière. Seuls les reçus vérifiés comptent comme encaissés.' ),
-					'cellule'  => array( 'Comptes du personnel', 'Les comptes que tu crées pour ton établissement, avec un rôle aux droits inférieurs aux tiens.' ),
+					'cellule'  => array( 'Comptes du personnel', 'Retrouve les accès de ton équipe et crée un compte pour ton établissement.' ),
 					'ipes'     => array( 'IPES sous tutelle', 'Les établissements privés placés sous la tutelle de ton établissement : leurs étudiants et leurs reversements.' ),
 					'securite' => array( 'Sécurité', 'Le mot de passe de ton accès à l’espace scolarité.' ),
 				);
@@ -215,7 +215,7 @@ ueb_page_debut( array(
 							. ( $peut_paiements ? ueb_adm_action( add_query_arg( 'vue', 'paiements', ueb_url_scolarite() ), $etab ? 'Paiements de ' . $etab['sigle'] : 'Suivi des paiements', 'banque', true ) : '' ),
 					) );
 					?>
-				<?php elseif ( ! $fiche && ! ( 'ipes' === $vue && isset( $_GET['ipes'] ) ) ) : /* la fiche d'un IPES a son propre en-tête */ ?>
+				<?php elseif ( ! $fiche && ! ( 'ipes' === $vue && isset( $_GET['ipes'] ) ) && 'cellule' !== $vue ) : /* la fiche d'un IPES et les comptes du personnel ont leur propre en-tête */ ?>
 					<header class="bo-entete">
 						<div class="bo-entete__texte">
 							<p class="bo-entete__contexte">
@@ -372,47 +372,7 @@ ueb_page_debut( array(
 
 				<?php elseif ( 'cellule' === $vue ) : ?>
 
-					<?php if ( $prov_cellule ) : ?>
-						<div class="provisoire carte" role="status"><?php echo ueb_icone( 'cle', 26 ); ?><div><p>Mot de passe provisoire pour <b><?php echo esc_html( $prov_cellule['compte'] ); ?></b> :</p><p class="provisoire__mdp"><?php echo esc_html( $prov_cellule['mdp'] ); ?></p><button type="button" class="btn btn--fantome btn--petit provisoire__copier" data-copier-mot-de-passe="<?php echo esc_attr( $prov_cellule['mdp'] ); ?>"><?php echo ueb_icone( 'fichier', 16 ); ?><span>Copier le mot de passe</span></button><p class="champ__aide">Communique-le à la cellule informatique de ton établissement.</p></div></div>
-					<?php endif; ?>
-					<div class="bo-deux-colonnes bo-deux-colonnes--egal">
-						<section class="carte bo-panneau" aria-labelledby="titre-cellule">
-							<header class="bo-panneau__entete">
-								<span class="bo-panneau__icone"><?php echo ueb_icone( 'plus', 20 ); ?></span>
-								<div><h2 id="titre-cellule">Nouveau compte</h2><p>Rattaché à <?php echo esc_html( $etab['fr'] ?? 'ton établissement' ); ?>, avec l’un des rôles que tu peux attribuer.</p></div>
-							</header>
-							<form class="formulaire bo-formulaire" method="post" action="<?php echo esc_url( ueb_url_scolarite() ); ?>" data-formulaire novalidate>
-								<?php ueb_champ_csrf(); ?>
-								<input type="hidden" name="ueb_action" value="gestion_creer_cellule">
-								<?php ueb_champ( array( 'nom' => 'role', 'libelle' => 'Rôle', 'type' => 'select', 'icone' => 'cle', 'options' => array_map( static fn( $r ) => $r['nom'], $roles_creables ), 'valeur' => ueb_role_par_defaut( UEB_CAP_COMPTES ) ) ); ?>
-								<?php ueb_champ( array( 'nom' => 'login', 'libelle' => 'Identifiant de connexion', 'icone' => 'utilisateur', 'aide' => 'Minuscules, sans espace : par exemple cellule.' . strtolower( $etab['sigle'] ?? 'fs' ) . '.', 'attrs' => array( 'placeholder' => 'cellule.' . strtolower( $etab['sigle'] ?? 'fs' ), 'autocapitalize' => 'none', 'spellcheck' => 'false', 'autocomplete' => 'off' ) ) ); ?>
-								<?php ueb_champ( array( 'nom' => 'nom', 'libelle' => 'Nom du responsable', 'icone' => 'utilisateur', 'requis' => false ) ); ?>
-								<?php ueb_champ( array( 'nom' => 'email', 'libelle' => 'Adresse e-mail', 'type' => 'email', 'icone' => 'courriel', 'requis' => false, 'attrs' => array( 'autocomplete' => 'off' ) ) ); ?>
-								<div class="bo-formulaire__actions">
-									<button class="btn btn--primaire" type="submit"><?php echo ueb_icone( 'plus', 18 ); ?>Créer le compte</button>
-								</div>
-							</form>
-						</section>
-						<section class="carte bo-panneau" aria-labelledby="titre-cellules">
-							<header class="bo-panneau__entete">
-								<span class="bo-panneau__icone"><?php echo ueb_icone( 'cle', 20 ); ?></span>
-								<div><h2 id="titre-cellules">Comptes rattachés <span class="bo-compte-nb"><?php echo count( $cellules ); ?></span></h2><p>Limités à ton établissement. Un mot de passe provisoire s’affiche une seule fois à la création.</p></div>
-							</header>
-							<?php if ( ! $cellules ) : ?>
-								<div class="bo-vide"><span><?php echo ueb_icone( 'utilisateur', 22 ); ?></span><p>Aucun compte pour l’instant. Crée le premier avec le formulaire.</p></div>
-							<?php else : ?>
-								<ul class="bo-personnes">
-									<?php foreach ( $cellules as $cellule ) : $suspendu = ueb_agent_suspendu( $cellule->ID ); ?>
-										<li>
-											<span class="bo-avatar" aria-hidden="true"><?php echo esc_html( ueb_initiales( $cellule->display_name ?: $cellule->user_login, '' ) ); ?></span>
-											<span class="bo-personnes__qui"><b><?php echo esc_html( $cellule->display_name ?: $cellule->user_login ); ?></b><small><?php echo esc_html( $cellule->user_login ); ?><?php echo $cellule->user_email ? ' · ' . esc_html( $cellule->user_email ) : ''; ?></small></span>
-											<?php echo $suspendu ? '<span class="badge badge--rejete"><i></i>Suspendu</span>' : '<span class="badge badge--verifie"><i></i>Actif</span>'; ?>
-										</li>
-									<?php endforeach; ?>
-								</ul>
-							<?php endif; ?>
-						</section>
-					</div>
+					<?php require UEB_INSC_DIR . '/templates/composants/scolarite-personnel.php'; ?>
 
 				<?php elseif ( 'comptes' === $vue ) : ?>
 

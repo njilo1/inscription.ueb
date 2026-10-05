@@ -52,25 +52,26 @@ function ueb_action_gestion_creer_cellule() {
 	ueb_exiger_scolarite();
 	$retour = add_query_arg( 'vue', 'cellule', ueb_url_scolarite() );
 	/* Rôle choisi parmi ceux que ce compte peut attribuer pour son établissement. */
-	$role = sanitize_key( wp_unslash( $_POST['role'] ?? '' ) );
+	$role   = sanitize_key( wp_unslash( $_POST['role'] ?? '' ) );
+	$saisie = array(
+		'role'  => $role,
+		'login' => sanitize_text_field( wp_unslash( $_POST['login'] ?? '' ) ),
+		'nom'   => sanitize_text_field( wp_unslash( $_POST['nom'] ?? '' ) ),
+		'email' => sanitize_email( wp_unslash( $_POST['email'] ?? '' ) ),
+	);
+	/* En cas d'échec, le formulaire est rendu rempli, avec l'erreur à côté. */
 	if ( $role && ! isset( ueb_roles_attribuables( true )[ $role ] ) ) {
-		ueb_flash( 'erreur', 'Ce rôle ne peut pas être attribué depuis ton espace.' );
+		$_SESSION['ueb_cellule_saisie'] = array( 'erreur' => 'Ce rôle ne peut pas être attribué depuis ton espace.', 'role' => '' ) + $saisie;
 		ueb_rediriger( $retour );
 	}
-	$cellule = ueb_creer_cellule(
-		sanitize_text_field( wp_unslash( $_POST['login'] ?? '' ) ),
-		sanitize_text_field( wp_unslash( $_POST['nom'] ?? '' ) ),
-		sanitize_email( wp_unslash( $_POST['email'] ?? '' ) ),
-		ueb_etab_agent(),
-		$role
-	);
+	$cellule = ueb_creer_cellule( $saisie['login'], $saisie['nom'], $saisie['email'], ueb_etab_agent(), $role );
 	if ( is_wp_error( $cellule ) ) {
-		ueb_flash( 'erreur', $cellule->get_error_message() );
+		$_SESSION['ueb_cellule_saisie'] = array( 'erreur' => $cellule->get_error_message() ) + $saisie;
 		ueb_rediriger( $retour );
 	}
 	list( $id, $provisoire ) = $cellule;
+	/* La carte de remise du mot de passe tient lieu de confirmation. */
 	$_SESSION['ueb_mdp_cellule'] = array( 'compte' => get_userdata( $id )->user_login, 'mdp' => $provisoire );
-	ueb_flash( 'succes', 'Compte créé.' );
 	ueb_rediriger( $retour );
 }
 

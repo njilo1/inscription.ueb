@@ -54,6 +54,10 @@ add_action( 'wp_enqueue_scripts', function () {
 	   et tableau de bord + suivi des paiements de l'administration, qui partagent
 	   le même rendu : graphiques, infobulles, jauge, anneau et suivi animés. */
 	$vue_bo         = sanitize_key( $_GET['vue'] ?? 'bord' ); // phpcs:ignore -- lecture seule
+	if ( is_page_template( 'page-scolarite.php' ) && 'cellule' === $vue_bo && is_user_logged_in() && function_exists( 'ueb_est_scolarite' ) && ueb_est_scolarite() && ueb_peut( 'ueb_creer_agents' ) && ! isset( $_GET['quitus'] ) ) {
+		ueb_style( 'ueb-scolarite-personnel', 'assets/css/scolarite-personnel.css', array( 'ueb-pages' ) );
+		ueb_script( 'ueb-scolarite-personnel', 'assets/js/scolarite-personnel.js', array( 'ueb-app' ) );
+	}
 	$bord_scolarite = ( is_page_template( 'page-scolarite.php' ) && is_user_logged_in() && function_exists( 'ueb_est_scolarite' ) && ueb_est_scolarite()
 			&& ( in_array( $vue_bo, array( 'bord', 'quitus', 'paiements' ), true ) || isset( $_GET['quitus'] ) ) ) // phpcs:ignore
 		|| ( $admin && in_array( $vue_bo, array( 'bord', 'paiements' ), true ) );
