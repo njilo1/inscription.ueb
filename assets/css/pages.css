@@ -1770,6 +1770,12 @@
 .bo-perimetre--choix select { width: 100%; min-height: 40px; padding: .4rem 2rem .4rem .7rem; border: 1px solid var(--bo-nav-filet); border-radius: 10px; background: rgba(255, 255, 255, .08); color: var(--blanc); font: inherit; font-size: .84rem; appearance: none; }
 .bo-perimetre--choix select option { color: var(--encre); }
 .bo-perimetre--choix .icone { position: absolute; right: .6rem; top: 50%; translate: 0 -50%; pointer-events: none; }
+/* Bandeau (sous 960 px) : le sélecteur reste utile, il prend toute la ligne et
+   le compte passe dessous, au lieu de pousser la page hors de l'écran. */
+@media (max-width: 960px) {
+	.bo-sidebar__pied:has(.bo-perimetre--choix) { flex: 1 1 100%; grid-auto-flow: row; grid-template-columns: auto auto 1fr; }
+	.bo-perimetre--choix { grid-column: 1 / -1; min-width: 0; }
+}
 
 /* ---------- Composants communs aux espaces IPES ----------
    Le reste des pages IPES vit dans assets/css/ipes.css. */

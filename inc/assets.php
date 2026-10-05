@@ -49,6 +49,7 @@ add_action( 'wp_enqueue_scripts', function () {
 	$connexion_scolarite = ( is_page_template( 'page-scolarite.php' ) && ! ( is_user_logged_in() && function_exists( 'ueb_est_scolarite' ) && ueb_est_scolarite() ) )
 		|| ( is_page_template( 'page-direction.php' ) && ! ( function_exists( 'ueb_peut' ) && ueb_peut( UEB_CAP_DIRECTION ) ) )
 		|| ( is_page_template( 'page-ipes.php' ) && ! ( function_exists( 'ueb_ipes_du_compte' ) && ueb_ipes_du_compte() ) )
+		|| ( is_page_template( 'page-cms.php' ) && ! ( function_exists( 'ueb_peut' ) && ueb_peut( UEB_CAP_MEDICAUX ) ) )
 		|| ( $page_admin && ! $admin );
 	/* Vues de travail de la scolarité (tableau de bord, quitus, dossier, paiements)
 	   et tableau de bord + suivi des paiements de l'administration, qui partagent
@@ -151,7 +152,36 @@ add_action( 'wp_enqueue_scripts', function () {
 		ueb_style( 'ueb-direction', 'assets/css/direction.css', array( $direction ? 'ueb-administration' : 'ueb-pages' ) );
 		ueb_script( 'ueb-direction', 'assets/js/direction.js', array( 'ueb-app' ) );
 	}
-	if ( ( is_front_page() && ! $page ) || in_array( $page, array( 'connexion', 'creer-compte', 'mdp-oublie' ), true ) || $connexion_scolarite || $bord_scolarite || $ipes_heros ) {
+	/* Centre médico-social (page-cms.php) : le poste de travail de la scolarité.
+	   Tableau de bord : composants de l'administration ; liste et fiche : registre
+	   et fiche des quitus ; Sécurité : couche de l'administration. cms.css porte
+	   la page Sécurité. */
+	$cms = is_page_template( 'page-cms.php' ) && function_exists( 'ueb_peut' ) && ueb_peut( UEB_CAP_MEDICAUX );
+	if ( $cms ) {
+		$fiche_cms = ctype_digit( (string) ( $_GET['quitus'] ?? '' ) ); // phpcs:ignore -- lecture seule
+		$vue_cms   = $fiche_cms ? 'fiche' : ( in_array( $vue_bo, array( 'quitus', 'securite' ), true ) ? $vue_bo : 'bord' );
+		ueb_style( 'ueb-bord', 'assets/css/bord.css', array( 'ueb-pages' ) );
+		ueb_style( 'ueb-bord-graphes', 'assets/css/bord-graphes.css', array( 'ueb-bord' ) );
+		ueb_script( 'ueb-bord', 'assets/js/bord.js' );
+		ueb_style( 'ueb-administration', 'assets/css/administration.css', array( 'ueb-pages', 'ueb-bord-graphes' ) );
+		if ( 'bord' === $vue_cms ) {
+			ueb_style( 'ueb-administration-dashboard', 'assets/css/administration-dashboard.css', array( 'ueb-administration' ) );
+			ueb_style( 'ueb-administration-analytics', 'assets/css/administration-analytics.css', array( 'ueb-administration-dashboard' ) );
+			ueb_script( 'ueb-administration-sparklines', 'assets/js/administration-sparklines.js' );
+		} elseif ( 'quitus' === $vue_cms ) {
+			ueb_style( 'ueb-quitus-registre', 'assets/css/quitus-registre.css', array( 'ueb-bord' ) );
+			ueb_script( 'ueb-quitus-registre', 'assets/js/quitus-registre.js', array( 'ueb-app', 'ueb-remotion' ) );
+		} elseif ( 'fiche' === $vue_cms ) {
+			ueb_style( 'ueb-ipes', 'assets/css/ipes.css', array( 'ueb-administration' ) );
+			ueb_style( 'ueb-quitus-fiche', 'assets/css/quitus-fiche.css', array( 'ueb-ipes' ) );
+			ueb_script( 'ueb-quitus-fiche', 'assets/js/quitus-fiche.js' );
+		}
+		ueb_style( 'ueb-cms', 'assets/css/cms.css', array( 'ueb-administration' ) );
+		if ( 'securite' === $vue_cms ) {
+			ueb_script( 'ueb-cms', 'assets/js/cms.js', array( 'ueb-app' ) );
+		}
+	}
+	if ( ( is_front_page() && ! $page ) || in_array( $page, array( 'connexion', 'creer-compte', 'mdp-oublie' ), true ) || $connexion_scolarite || $bord_scolarite || $ipes_heros || $cms ) {
 		ueb_script( 'ueb-remotion', 'assets/js/remotion-ueb.js' );
 	}
 	/* Étudiants UEB : registre de l'administration, de l'espace de gestion et de

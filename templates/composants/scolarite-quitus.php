@@ -10,21 +10,29 @@
  * renvoyer fait frapper le tampon de la scolarité (Remotion) sur le reçu
  * concerné avant l'enregistrement ; une décision déjà prise garde son tampon,
  * figé. Sans JavaScript, tout reste lisible et les formulaires s'envoient tels quels.
- * Attend $fiche (contrôlé par page-scolarite.php) et $ici.
+ *
+ * Partagée par la scolarité et le Centre médico-social : chacun ne voit dans
+ * le dossier que les paiements de son type (droits universitaires ou frais
+ * médicaux) et décide avec ses propres droits.
+ * Attend $fiche (contrôlé par la page de l'espace), $ici et $espace
+ * (ueb_espace_verification()).
  */
 defined( 'ABSPATH' ) || exit;
 
-$paiements    = ueb_gestion_dossier( $fiche );
+$paiements    = array_values( array_filter( ueb_gestion_dossier( $fiche ), static fn( $q ) => $espace['type'] === ( $q->type ?? 'droits' ) ) ) ?: array( $fiche );
 $fiche        = $paiements[0]; /* les droits d'abord, même ouverts depuis le quitus médical */
 $double       = count( $paiements ) > 1;
 $etab_fiche   = ueb_etablissement( $fiche->etablissement );
 $sigle        = $etab_fiche['sigle'] ?? $fiche->etablissement;
 $compte       = ueb_compte_par_id( $fiche->compte_id );
-$peut_decider = ueb_peut( 'ueb_decider_quitus', $fiche->etablissement );
+$peut_decider = ueb_peut( $espace['decider'], $fiche->etablissement );
 $nom_complet  = $fiche->nom . ' ' . $fiche->prenom;
 /* « L1 — Licence 1 » : seul le libellé complet est affiché. */
 $niveau       = preg_replace( '/^.*—\s*/u', '', UEB_NIVEAUX_INSCRIPTION[ $fiche->parcours ] ?? $fiche->parcours );
-$suivant      = ueb_gestion_quitus_suivant( $fiche );
+/* Dossier suivant : du même type ; au CMS, dans toute sa portée, à la scolarité dans l'établissement du dossier. */
+$suivant      = ueb_gestion_quitus_suivant( $fiche, array( 'type' => $espace['type'] ) + ( 'cms' === $espace['cle'] ? array( 'etab' => ueb_etab_agent() ) : array() ) );
+$refus        = $espace['refus'];
+$rejete_mot   = 'cms' === $espace['cle'] ? 'Refusé' : 'Rejeté';
 $adresse      = $ici( array( 'quitus' => $fiche->id ) );
 $date_heure   = static fn( $date ) => mysql2date( 'j F Y', $date ) . ' à ' . mysql2date( 'H:i', $date );
 $aujourdhui   = wp_date( 'd.m.Y' );
@@ -34,7 +42,7 @@ $etats = array(
 	'genere'      => array( 'horloge', 'À payer' ),
 	'recu_envoye' => array( 'recu', 'À valider' ),
 	'verifie'     => array( 'check', 'Validé' ),
-	'rejete'      => array( 'alerte', 'Rejeté' ),
+	'rejete'      => array( 'alerte', $rejete_mot ),
 );
 
 /* Un volet par paiement : son reçu, les valeurs attendues, sa décision. */
@@ -109,9 +117,9 @@ $etapes = array(
 	array( 'Quitus généré', mysql2date( 'j F', $fiche->date_creation ) ),
 	array(
 		$un_rejete ? 'Nouveau reçu attendu' : 'Payé et reçu envoyé',
-		$un_rejete ? 'Reçu renvoyé à l’étudiant' : ( $tous_envoyes && $envois ? mysql2date( 'j F', max( $envois ) ) : ( $double && $nb_envoyes ? $nb_envoyes . ' reçu sur 2' : 'En attente de l’étudiant' ) ),
+		$un_rejete ? ( 'cms' === $espace['cle'] ? 'Paiement refusé, motif envoyé' : 'Reçu renvoyé à l’étudiant' ) : ( $tous_envoyes && $envois ? mysql2date( 'j F', max( $envois ) ) : ( $double && $nb_envoyes ? $nb_envoyes . ' reçu sur 2' : 'En attente de l’étudiant' ) ),
 	),
-	array( 'Reçu tamponné', $tous_verifies && $verifs ? mysql2date( 'j F', max( $verifs ) ) : 'À la scolarité' ),
+	array( 'Reçu tamponné', $tous_verifies && $verifs ? mysql2date( 'j F', max( $verifs ) ) : ( 'cms' === $espace['cle'] ? 'Au Centre médico-social' : 'À la scolarité' ) ),
 	array( 'Vérifié', $tous_verifies ? 'Dossier complet' : ( $double && $nb_verifies ? $nb_verifies . ' paiement sur 2' : 'Décision finale' ) ),
 );
 
@@ -125,7 +133,7 @@ foreach ( $volets as $v ) {
 		$historique[] = array(
 			'date'   => $v->q->date_verification,
 			'icone'  => $v->verifie ? 'check' : 'alerte',
-			'texte'  => ( $v->verifie ? 'Paiement vérifié' : 'Renvoyé à l’étudiant' ) . ( $v->decideur ? ' par ' . $v->decideur->display_name : '' ),
+			'texte'  => ( $v->verifie ? 'Paiement vérifié' : $refus['verdict'] ) . ( $v->decideur ? ' par ' . $v->decideur->display_name : '' ),
 			'detail' => $double ? $v->libelle : '',
 			'classe' => $v->statut,
 		);
@@ -137,26 +145,28 @@ if ( ! empty( $fiche->corrige_le ) ) {
 usort( $historique, static fn( $a, $b ) => strcmp( $b['date'], $a['date'] ) );
 
 /* Champs communs aux formulaires de décision d'un paiement. */
-$champs_decision = static function ( $q, $nouveau ) {
+$champs_decision = static function ( $q, $nouveau ) use ( $espace ) {
 	ueb_champ_csrf();
-	printf( '<input type="hidden" name="ueb_action" value="gestion_statut"><input type="hidden" name="quitus_id" value="%d"><input type="hidden" name="statut" value="%s">', (int) $q->id, esc_attr( $nouveau ) );
+	printf( '<input type="hidden" name="ueb_action" value="%s"><input type="hidden" name="quitus_id" value="%d"><input type="hidden" name="statut" value="%s">', esc_attr( $espace['statut'] ), (int) $q->id, esc_attr( $nouveau ) );
 };
 
 /* Tampon dessiné en SVG : repli affiché avant le montage du lecteur Remotion
    (ou sans JavaScript), à la géométrie de la dernière image. */
-$tampon_repli = static function ( $etat, $date ) use ( $sigle ) {
+$tampon_repli = static function ( $etat, $date ) use ( $sigle, $espace ) {
+	$cms = 'cms' === $espace['cle'];
 	$encre = 'verifie' === $etat ? '#1d6b3a' : '#b3261e';
 	return sprintf(
-		'<svg class="qf-tampon__repli" viewBox="0 0 360 360" aria-hidden="true"><g transform="rotate(-9 180 180)" fill="none" stroke="%1$s" opacity=".9"><circle cx="180" cy="180" r="150" stroke-width="7"/><circle cx="180" cy="180" r="139" stroke-width="2"/><circle cx="180" cy="180" r="96" stroke-width="2.6"/><path d="M94 154H266M94 211H266" stroke-width="2.6"/><g fill="%1$s" stroke="none" font-family="Source Sans 3, Arial, sans-serif" font-weight="700" text-anchor="middle"><text x="180" y="142" font-size="16" letter-spacing="3">%2$s</text><text x="180" y="197" font-size="%3$d" font-weight="800" textLength="176" lengthAdjust="spacingAndGlyphs">%4$s</text><text x="180" y="238" font-size="20" letter-spacing="1.5">%5$s</text><text x="180" y="62" font-size="19" letter-spacing="2.4">SCOLARITÉ %6$s</text></g></g></svg>',
+		'<svg class="qf-tampon__repli" viewBox="0 0 360 360" aria-hidden="true"><g transform="rotate(-9 180 180)" fill="none" stroke="%1$s" opacity=".9"><circle cx="180" cy="180" r="150" stroke-width="7"/><circle cx="180" cy="180" r="139" stroke-width="2"/><circle cx="180" cy="180" r="96" stroke-width="2.6"/><path d="M94 154H266M94 211H266" stroke-width="2.6"/><g fill="%1$s" stroke="none" font-family="Source Sans 3, Arial, sans-serif" font-weight="700" text-anchor="middle"><text x="180" y="142" font-size="16" letter-spacing="3">%2$s</text><text x="180" y="197" font-size="%3$d" font-weight="800" textLength="176" lengthAdjust="spacingAndGlyphs">%4$s</text><text x="180" y="238" font-size="20" letter-spacing="1.5">%5$s</text><text x="180" y="62" font-size="19" letter-spacing="2.4">%6$s</text></g></g></svg>',
 		$encre,
-		'verifie' === $etat ? 'PAIEMENT' : 'DOSSIER',
-		'verifie' === $etat ? 40 : 31,
-		'verifie' === $etat ? 'VÉRIFIÉ' : 'À CORRIGER',
+		'verifie' === $etat || $cms ? 'PAIEMENT' : 'DOSSIER',
+		'verifie' === $etat || $cms ? 40 : 31,
+		'verifie' === $etat ? 'VÉRIFIÉ' : ( $cms ? 'REFUSÉ' : 'À CORRIGER' ),
 		esc_html( $date ),
-		esc_html( $sigle )
+		esc_html( $espace['tampon'] ?: 'SCOLARITÉ ' . $sigle )
 	);
 };
-$tampon_props = static fn( $etat, $date ) => array( 'etat' => $etat, 'sigle' => $sigle, 'date' => $date );
+$tampon_props = static fn( $etat, $date ) => array_filter( array( 'etat' => $etat, 'sigle' => $sigle, 'date' => $date, 'service' => $espace['tampon'], 'refus' => 'cms' === $espace['cle'] ? 'REFUSÉ' : '' ) );
+$tampon_de    = 'cms' === $espace['cle'] ? 'Tampon du Centre médico-social' : 'Tampon de la scolarité';
 
 $motifs = array(
 	'Montant différent' => 'Le montant du reçu ne correspond pas à celui du quitus.',
@@ -275,13 +285,13 @@ $motifs = array(
 										<?php if ( 0 === $i ) : ?>
 											<?php if ( $v->decide ) : $date_tampon = mysql2date( 'd.m.Y', $v->q->date_verification ); ?>
 												<div class="qf-tampon" data-qf-tampon-pose>
-													<?php ueb_animation( 'tampon', $tampon_props( $v->statut, $date_tampon ), 'qf-tampon__animation animation--fige', ( $v->verifie ? 'Tampon de la scolarité : paiement vérifié le ' : 'Tampon de la scolarité : dossier à corriger depuis le ' ) . mysql2date( 'd/m/Y', $v->q->date_verification ), $tampon_repli( $v->statut, $date_tampon ) ); ?>
+													<?php ueb_animation( 'tampon', $tampon_props( $v->statut, $date_tampon ), 'qf-tampon__animation animation--fige', ( $v->verifie ? $tampon_de . ' : paiement vérifié le ' : $tampon_de . ( 'cms' === $espace['cle'] ? ' : paiement refusé le ' : ' : dossier à corriger depuis le ' ) ) . mysql2date( 'd/m/Y', $v->q->date_verification ), $tampon_repli( $v->statut, $date_tampon ) ); ?>
 												</div>
 											<?php endif; ?>
 											<?php if ( $peut_decider && $v->a_controler ) : /* tampons prêts à frapper, montés à la décision */ ?>
 												<?php foreach ( array( 'verifie', 'rejete' ) as $etat ) : ?>
 													<div class="qf-tampon" data-qf-tampon="<?php echo esc_attr( $etat ); ?>" hidden>
-														<div class="animation qf-tampon__animation" data-remotion-differe="tampon" data-props="<?php echo esc_attr( wp_json_encode( $tampon_props( $etat, $aujourdhui ) ) ); ?>" role="img" aria-label="<?php echo esc_attr( 'verifie' === $etat ? 'Tampon : paiement vérifié' : 'Tampon : dossier à corriger' ); ?>"><div class="animation__scene" data-remotion-scene></div></div>
+														<div class="animation qf-tampon__animation" data-remotion-differe="tampon" data-props="<?php echo esc_attr( wp_json_encode( $tampon_props( $etat, $aujourdhui ) ) ); ?>" role="img" aria-label="<?php echo esc_attr( 'verifie' === $etat ? 'Tampon : paiement vérifié' : ( 'cms' === $espace['cle'] ? 'Tampon : paiement refusé' : 'Tampon : dossier à corriger' ) ); ?>"><div class="animation__scene" data-remotion-scene></div></div>
 													</div>
 												<?php endforeach; ?>
 											<?php endif; ?>
@@ -328,7 +338,7 @@ $motifs = array(
 						<?php elseif ( $v->rejete ) : ?>
 							<div class="qf-verdict qf-verdict--rejete">
 								<span class="qf-verdict__icone" aria-hidden="true"><?php echo ueb_icone( 'alerte', 20 ); ?></span>
-								<div><p class="qf-verdict__titre">Renvoyé à l’étudiant</p><p><?php echo $v->decideur ? 'Par ' . esc_html( $v->decideur->display_name ) . ', l' : 'L'; ?>e <?php echo esc_html( $date_heure( $v->q->date_verification ) ); ?>.</p><blockquote><?php echo esc_html( $v->q->motif_rejet ); ?></blockquote></div>
+								<div><p class="qf-verdict__titre"><?php echo esc_html( $refus['verdict'] ); ?></p><p><?php echo $v->decideur ? 'Par ' . esc_html( $v->decideur->display_name ) . ', l' : 'L'; ?>e <?php echo esc_html( $date_heure( $v->q->date_verification ) ); ?>.</p><blockquote><?php echo esc_html( $v->q->motif_rejet ); ?></blockquote></div>
 							</div>
 						<?php elseif ( ! $v->recus ) : ?>
 							<div class="qf-verdict">
@@ -380,8 +390,8 @@ $motifs = array(
 
 								<?php if ( ! $v->verifie ) : ?>
 									<details class="qf-renvoi">
-										<summary><?php echo ueb_icone( $v->rejete ? 'crayon' : 'alerte', 17 ); ?><?php echo $v->rejete ? 'Modifier le motif du renvoi' : 'Signaler un problème'; ?><?php echo ueb_icone( 'chevron', 16, 'qf-renvoi__chevron' ); ?></summary>
-										<form method="post" action="<?php echo $adresse; ?>" class="qf-renvoi__formulaire"<?php if ( ! $v->rejete ) : ?><?php echo $v->recus ? ' data-qf-tamponner="rejete"' : ''; ?> data-confirmer="L’étudiant verra ton motif dans son espace et devra envoyer un nouveau reçu." data-confirmer-titre="<?php echo $double ? esc_attr( 'Renvoyer le reçu des ' . mb_strtolower( $v->libelle ) . ' ?' ) : 'Renvoyer le dossier à l’étudiant ?'; ?>" data-confirmer-bouton="Renvoyer à l’étudiant"<?php endif; ?>>
+										<summary><?php echo ueb_icone( $v->rejete ? 'crayon' : 'alerte', 17 ); ?><?php echo esc_html( $v->rejete ? 'Modifier le motif' : $refus['ouvrir'] ); ?><?php echo ueb_icone( 'chevron', 16, 'qf-renvoi__chevron' ); ?></summary>
+										<form method="post" action="<?php echo $adresse; ?>" class="qf-renvoi__formulaire"<?php if ( ! $v->rejete ) : ?><?php echo $v->recus ? ' data-qf-tamponner="rejete"' : ''; ?> data-confirmer="L’étudiant verra ton motif dans son espace et devra envoyer un nouveau reçu." data-confirmer-titre="<?php echo esc_attr( $double ? 'Renvoyer le reçu des ' . mb_strtolower( $v->libelle ) . ' ?' : $refus['titre'] ); ?>" data-confirmer-bouton="<?php echo esc_attr( $refus['bouton'] ); ?>"<?php endif; ?>>
 											<?php $champs_decision( $v->q, 'rejete' ); ?>
 											<div class="qf-motifs" data-qf-motifs hidden>
 												<?php foreach ( $motifs as $court => $phrase ) : ?>
@@ -389,11 +399,11 @@ $motifs = array(
 												<?php endforeach; ?>
 											</div>
 											<label class="qf-champ">
-												<span class="qf-champ__libelle">Motif du renvoi</span>
+												<span class="qf-champ__libelle"><?php echo 'cms' === $espace['cle'] ? 'Motif du refus' : 'Motif du renvoi'; ?></span>
 												<textarea name="motif" rows="3" required minlength="5" maxlength="255" placeholder="Explique ce que l’étudiant doit corriger." aria-describedby="qf-motif-aide-<?php echo $id; ?>"><?php echo esc_textarea( $v->q->motif_rejet ?? '' ); ?></textarea>
 											</label>
 											<p class="qf-aide" id="qf-motif-aide-<?php echo $id; ?>">L’étudiant lira ce message dans son espace (5 à 255 caractères).</p>
-											<button class="qf-bouton qf-bouton--danger" type="submit"><?php echo ueb_icone( 'envoyer', 18 ); ?><?php echo $v->rejete ? 'Mettre à jour le motif' : 'Renvoyer à l’étudiant'; ?></button>
+											<button class="qf-bouton qf-bouton--danger" type="submit"><?php echo ueb_icone( 'envoyer', 18 ); ?><?php echo esc_html( $v->rejete ? 'Mettre à jour le motif' : $refus['bouton'] ); ?></button>
 										</form>
 									</details>
 								<?php endif; ?>

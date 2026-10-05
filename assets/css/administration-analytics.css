@@ -177,3 +177,41 @@
 }
 @media (prefers-reduced-motion:reduce) { .adm-barre i,.adm-spark__ligne { animation:none; } .adm-periodes a,.adm-spark__lecture { transition:none; } }
 @media print { .adm-pilotage,.adm-periodes,.adm-solde a { display:none; } .adm-kpi,.adm-solde { print-color-adjust:exact; -webkit-print-color-adjust:exact; } .adm-analyse,.adm-secondaire { break-inside:avoid; } .adm-barre i,.adm-spark__ligne { animation:none; } .adm-spark__lecture { display:none; } }
+
+/* ---------- Carte « Quitus en attente de vérification » (ueb_adm_carte_attente) ----------
+   Première carte des tableaux de bord de la scolarité et du Centre médico-social :
+   rouge encre du tampon « à corriger » tant que des reçus attendent, lien vers la
+   liste déjà filtrée. Les reçus s'y posent (Remotion « attente ») ; le repère du
+   coin bat doucement. Sans reçu en attente, elle reprend le vert des autres cartes. */
+.adm-attente { background:#a3241c; color:#fff; text-decoration:none; isolation:isolate; overflow:hidden; box-shadow:0 12px 24px -15px rgba(92,14,8,.85); transition:translate .25s var(--ease-sortie), box-shadow .25s var(--ease-sortie); }
+.adm-attente:hover { color:#fff; translate:0 -2px; box-shadow:0 18px 30px -16px rgba(92,14,8,.9); }
+.adm-attente:active { translate:0 0; }
+.adm-attente:focus-visible { outline:3px solid var(--or); outline-offset:3px; }
+.adm-attente .adm-kpi__entete h2 { max-width:15ch; }
+.adm-attente .adm-kpi__valeur { font-family:var(--f-titre); font-weight:700; letter-spacing:-.02em; }
+.adm-attente .adm-kpi__note { color:rgba(255,255,255,.88); text-wrap:pretty; }
+.adm-attente__balise { position:relative; flex:none; width:10px; height:10px; margin:.3rem .15rem 0 0; border-radius:50%; background:#fff; }
+.adm-attente__balise i { position:absolute; inset:0; border-radius:50%; background:#fff; animation:adm-attente-onde 2.4s var(--ease-sortie) infinite; }
+@keyframes adm-attente-onde { from { scale:1; opacity:.75; } 70%, to { scale:3.4; opacity:0; } }
+.adm-attente__scene { aspect-ratio:240 / 96; margin:.7rem -.25rem .1rem; pointer-events:none; }
+.adm-attente__repli { display:block; width:100%; height:100%; overflow:visible; }
+.adm-attente__action { display:inline-flex; align-items:center; gap:.25rem; margin-top:auto; padding-top:.45rem; font-size:.84rem; font-weight:700; }
+.adm-attente__action .icone { transition:translate .25s var(--ease-sortie); }
+.adm-attente:hover .adm-attente__action .icone { translate:3px 0; }
+.adm-attente--a-jour { background:var(--vert-bandeau); box-shadow:0 8px 18px -13px rgba(10,31,22,.6); }
+.adm-attente--a-jour:hover { box-shadow:0 14px 24px -15px rgba(10,31,22,.7); }
+.adm-attente--a-jour .adm-kpi__entete .icone { opacity:.8; }
+.adm-attente--a-jour .adm-attente__action { color:#cde5d0; }
+/* Tablette : cinq colonnes laisseraient la scène illisible ; la carte rouge
+   tient deux rangées à gauche, les quatre autres en carré à droite. */
+@media (min-width:761px) and (max-width:960px) {
+ .adm-kpis:has(.adm-attente) { grid-template-columns:repeat(3,minmax(0,1fr)); }
+ .adm-attente { grid-row:span 2; }
+ .adm-attente__scene { margin-block:auto; }
+}
+@media (max-width:760px) {
+ .adm-attente { grid-column:1 / -1; }
+ .adm-kpis:has(.adm-attente) .adm-kpi:last-child { grid-column:auto; }
+ .adm-attente__scene { width:min(100%,300px); }
+}
+@media (prefers-reduced-motion:reduce) { .adm-attente, .adm-attente__action .icone { transition:none; } .adm-attente__balise i { animation:none; opacity:0; } }

@@ -51,7 +51,7 @@ $formation = array_filter( array(
 	<details class="ligne-quitus__details"<?php echo 'rejete' === $dossier['statut'] ? ' open' : ''; ?>>
 		<summary>Détails du dossier<?php echo ueb_icone( 'chevron', 16 ); ?></summary>
 		<div class="ligne-quitus__deplie">
-			<p class="ligne-quitus__aide"><?php echo esc_html( UEB_STATUTS_QUITUS[ $dossier['statut'] ]['aide'] ); ?></p>
+			<p class="ligne-quitus__aide"><?php echo esc_html( ueb_aide_statut( $dossier['statut'], array_map( static fn( $p ) => $p->type, array_filter( $dossier['paiements'], static fn( $p ) => $p->statut === $dossier['statut'] ) ) ) ); ?></p>
 			<ul class="ligne-quitus__paiements" aria-label="Détail des paiements">
 				<?php foreach ( $dossier['paiements'] as $paiement ) : ?>
 					<li>

@@ -30,7 +30,10 @@ defined( 'ABSPATH' ) || exit;
 const UEB_CAP_GESTION   = 'ueb_gerer_quitus';
 const UEB_CAP_COMPTES   = 'ueb_gerer_comptes';
 const UEB_CAP_DIRECTION = 'ueb_diriger';
-const UEB_ROLES_VERSION = '4';
+/* Frais médicaux : examinés et décidés par le Centre médico-social (inc/cms.php). */
+const UEB_CAP_MEDICAUX         = 'ueb_gerer_medicaux';
+const UEB_CAP_DECIDER_MEDICAUX = 'ueb_decider_medicaux';
+const UEB_ROLES_VERSION = '5';
 /* Identifiants des deux rôles historiques. Ils ne servent plus qu'à la
    compatibilité : le code ne teste plus jamais un rôle par son nom. */
 const UEB_ROLE_SCOLARITE = 'ueb_scolarite';
@@ -45,8 +48,10 @@ const UEB_AUCUN_ETAB = '-';
  */
 function ueb_permissions() {
 	return array(
-		'ueb_gerer_quitus'    => array( 'groupe' => 'Quitus et paiements', 'libelle' => 'Consulter les quitus', 'phrase' => 'consulter les quitus, leurs reçus et leurs PDF', 'aide' => 'Tableau de bord, liste des quitus, fiche d’un dossier, reçus envoyés.', 'icone' => 'recu' ),
+		'ueb_gerer_quitus'    => array( 'groupe' => 'Quitus et paiements', 'libelle' => 'Consulter les quitus', 'phrase' => 'consulter les quitus des droits universitaires, leurs reçus et leurs PDF', 'aide' => 'Tableau de bord, liste des quitus, fiche d’un dossier, reçus envoyés. Les frais médicaux relèvent du Centre médico-social.', 'icone' => 'recu' ),
 		'ueb_decider_quitus'  => array( 'groupe' => 'Quitus et paiements', 'libelle' => 'Rendre les décisions', 'phrase' => 'valider un paiement ou renvoyer un reçu à l’étudiant', 'aide' => 'Boutons « Paiement vérifié », « Renvoyer à l’étudiant », « Annuler la décision ».', 'icone' => 'tampon', 'requiert' => 'ueb_gerer_quitus' ),
+		UEB_CAP_MEDICAUX      => array( 'groupe' => 'Visite médicale', 'libelle' => 'Consulter les frais médicaux', 'phrase' => 'consulter les quitus des frais médicaux, leurs reçus et leurs PDF', 'aide' => 'Espace du Centre médico-social : tableau de bord, liste des quitus de frais médicaux, fiche d’un dossier.', 'icone' => 'stethoscope' ),
+		UEB_CAP_DECIDER_MEDICAUX => array( 'groupe' => 'Visite médicale', 'libelle' => 'Valider les frais médicaux', 'phrase' => 'valider un paiement de frais médicaux ou le refuser avec un motif', 'aide' => 'Boutons « Valider le paiement » et « Refuser » des quitus de frais médicaux.', 'icone' => 'tampon', 'requiert' => UEB_CAP_MEDICAUX ),
 		'ueb_voir_paiements'  => array( 'groupe' => 'Quitus et paiements', 'libelle' => 'Suivre les paiements', 'phrase' => 'suivre le recouvrement des droits par établissement et filière', 'aide' => 'Vue « Paiements » : montants attendus, encaissés, taux.', 'icone' => 'banque' ),
 		'ueb_voir_etudiants'  => array( 'groupe' => 'Étudiants', 'libelle' => 'Voir la liste des étudiants', 'phrase' => 'consulter la liste des étudiants inscrits de sa portée', 'aide' => 'Vue « Étudiants UEB » : les étudiants inscrits, filtrables par établissement, filière, niveau et paiement, en lecture seule. Une portée « un établissement » ne voit que les siens.', 'icone' => 'diplome' ),
 		'ueb_gerer_comptes'   => array( 'groupe' => 'Comptes étudiants', 'libelle' => 'Gérer les comptes étudiants', 'phrase' => 'créer, réinitialiser ou suspendre les comptes étudiants', 'aide' => 'Espace « Comptes étudiants » : recherche, mot de passe provisoire, suspension.', 'icone' => 'utilisateur' ),
@@ -147,6 +152,7 @@ add_action( 'init', function () {
 	if ( ueb_insc_option_en_base( 'ueb_insc_roles_version' ) !== UEB_ROLES_VERSION ) {
 		ueb_migrer_roles_historiques();
 		ueb_migrer_roles_etudiants();
+		ueb_migrer_roles_cms();
 		update_option( 'ueb_insc_roles_version', UEB_ROLES_VERSION );
 	}
 	ueb_insc_deverrouiller( 'roles' );
@@ -165,6 +171,31 @@ function ueb_migrer_roles_etudiants() {
 			ueb_enregistrer_role( $slug, $def );
 		}
 	}
+}
+
+/**
+ * Version 5 (additive) : les frais médicaux passent au Centre médico-social.
+ * Un rôle du registre est proposé pour ses comptes, à portée « tous » (le CMS
+ * sert toute l'université), avec la consultation et la décision. Créé une
+ * seule fois, s'il n'existe aucun rôle portant déjà la consultation des frais
+ * médicaux ; son nom reste modifiable dans l'espace Direction.
+ */
+function ueb_migrer_roles_cms() {
+	foreach ( ueb_roles() as $def ) {
+		if ( in_array( UEB_CAP_MEDICAUX, (array) ( $def['permissions'] ?? array() ), true ) ) {
+			return;
+		}
+	}
+	ueb_enregistrer_role( ueb_nouveau_slug_role(), array(
+		'nom'            => 'Centre médico-social',
+		'portee'         => 'tous',
+		'etablissements' => array(),
+		'permissions'    => array( UEB_CAP_MEDICAUX, UEB_CAP_DECIDER_MEDICAUX ),
+		'historique'     => false,
+		'cree_le'        => current_time( 'mysql' ),
+		'modifie_le'     => current_time( 'mysql' ),
+		'modifie_par'    => 0,
+	) );
 }
 
 /**
@@ -599,6 +630,9 @@ function ueb_url_espace_du_compte( $user_id ) {
 	}
 	if ( user_can( $user_id, UEB_CAP_GESTION ) || user_can( $user_id, 'ueb_voir_paiements' ) || user_can( $user_id, 'ueb_voir_ipes' ) ) {
 		return ueb_url_scolarite();
+	}
+	if ( user_can( $user_id, UEB_CAP_MEDICAUX ) ) {
+		return ueb_url_cms();
 	}
 	if ( user_can( $user_id, UEB_CAP_COMPTES ) ) {
 		return ueb_url_cellule();

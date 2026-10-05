@@ -172,6 +172,10 @@ function ueb_traiter_action( $action ) {
 		'supprimer_recu'      => 'ueb_action_supprimer_recu',
 		'gestion_statut'      => 'ueb_action_gestion_statut',
 		'gestion_valider'     => 'ueb_action_gestion_valider',
+		/* Centre médico-social (inc/cms.php) : mêmes décisions, sur les frais médicaux. */
+		'cms_statut'          => 'ueb_action_cms_statut',
+		'cms_valider'         => 'ueb_action_cms_valider',
+		'personnel_fermer_sessions' => 'ueb_action_personnel_fermer_sessions',
 		'gestion_reinit_mdp'  => 'ueb_action_gestion_reinit_mdp',
 		'gestion_bloquer'     => 'ueb_action_gestion_bloquer',
 		'gestion_creer_etudiant' => 'ueb_action_gestion_creer_etudiant',

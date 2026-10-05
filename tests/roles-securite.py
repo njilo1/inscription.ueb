@@ -130,7 +130,8 @@ try:
     st, html = get(s9, '/scolarite/?quitus=3')
     verifier('scolarité FS : fiche d’un quitus FSJP refusée (portée)', 'FSJP-2627-000001' not in html and 'data-quitus-fiche' not in html)
     st, html = get(s9, '/scolarite/?quitus=19')
-    verifier('scolarité FS : dossier ouvert depuis son quitus médical, droits compris', 'data-quitus-fiche' in html and 'FS-M-2627-000002' in html and 'FS-2627-000009' in html)
+    # Les frais médicaux relèvent du Centre médico-social (inc/cms.php) : la scolarité ne voit que les droits du dossier.
+    verifier('scolarité FS : dossier ouvert depuis son quitus médical, droits seuls', 'data-quitus-fiche' in html and 'FS-2627-000009' in html and 'FS-M-2627-000002' not in html)
     st, html = get(s9, '/scolarite/?quitus=3&pdf=1')
     verifier('scolarité FS : PDF d’un quitus FSJP refusé', not html.startswith('%PDF'))
     st, html = get(s9, '/scolarite/?vue=quitus')
