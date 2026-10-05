@@ -565,6 +565,13 @@
 .champ-somme.est-fixe .champ-somme__pas, .champ-somme.est-libre .champ-somme__pas { display: none; }
 .champ-somme.est-fixe .champ-somme__verrou { display: grid; }
 .champ-somme.est-fixe .champ-somme__boite input { cursor: not-allowed; color: var(--encre); }
+/* Ni niveau ni filière : tout le montant est bloqué, la consigne s'affiche en rouge au-dessus. */
+.champ-somme__attente { margin: 0 0 .1rem; }
+.champ-somme__attente[hidden] { display: none; }
+.champ-somme.est-attente .champ-somme__boite { background: var(--papier); border-style: dashed; }
+.champ-somme.est-attente .champ-somme__boite input, .champ-somme.est-attente .champ-somme__pas { cursor: not-allowed; }
+.champ-somme.est-attente .champ-somme__boite input { color: var(--gris); }
+.champ-somme.est-attente .champ-somme__pas { pointer-events: none; }
 .champ-somme__devise { flex: none; padding: .32rem .65rem; border-radius: 999px; background: rgba(19, 53, 26, .07); color: var(--vert-bandeau); font-size: .85rem; font-weight: 700; transition: background-color .2s, color .2s; }
 .champ-somme:not(.est-fixe) .champ-somme__boite:focus-within .champ-somme__devise { background: var(--vert-bandeau); color: var(--blanc); }
 .champ-somme.champ--invalide .champ-somme__devise { background: var(--danger-fond); color: var(--danger); }

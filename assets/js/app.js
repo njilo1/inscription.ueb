@@ -551,8 +551,17 @@
 			const formation = config.formations.find((f) => String(f.id) === filiere.value);
 			const classique = formation?.type_formation === "classique";
 			const regle = config.regleDroits;
-			const tranche = trancheCochee();
-			const t = tranche?.value || "";
+			let tranche = trancheCochee();
+			let t = tranche?.value || "";
+			/* 50 000 saisis en première tranche : c'est l'année entière, « Les deux tranches » se coche. */
+			const deuxTranches = $("input[name=tranche][value='3']", formQuitus);
+			const basculeTotalite = classique && !medicalSeul && t === "1" && derniereTranche === "1" && lireMontant() === regle.total && deuxTranches && !deuxTranches.disabled;
+			if (basculeTotalite) {
+				deuxTranches.checked = true;
+				tranche = deuxTranches;
+				t = "3";
+				montantPremiere = "";
+			}
 			/* Formation classique : deuxième tranche = le reste, les deux = 50 000 (verrouillés) ;
 			   la première se saisit, par pas de 5 000. */
 			const fixe = classique && !medicalSeul ? (t === "2" ? regle.reste : t === "3" ? regle.total : null) : null;
@@ -566,7 +575,17 @@
 				champMontant.value = montantPremiere || formater(regle.min);
 			}
 			derniereTranche = t;
-			champMontant.readOnly = !formation || medicalSeul || fixe !== null;
+			/* Ni niveau ni filière : montant entièrement bloqué, champ et boutons, avec la consigne en rouge. */
+			const attente = !medicalSeul && (!niveau || !formation);
+			champMontant.readOnly = attente || medicalSeul || fixe !== null;
+			champMontant.toggleAttribute("aria-disabled", attente);
+			somme?.classList.toggle("est-attente", attente);
+			const consigne = $("[data-montant-attente]", somme || formQuitus);
+			if (consigne) consigne.hidden = !attente;
+			const decritAttente = new Set((champMontant.getAttribute("aria-describedby") || "").split(" ").filter(Boolean));
+			decritAttente[attente ? "add" : "delete"]("champ-montant-attente");
+			champMontant.setAttribute("aria-describedby", [...decritAttente].join(" "));
+			if (attente) $$("[data-pas]", somme).forEach((b) => { b.disabled = true; });
 			somme?.classList.toggle("est-fixe", fixe !== null);
 			somme?.classList.toggle("est-libre", Boolean(formation) && !classique);
 			tranchesChoix?.classList.toggle("est-libre", Boolean(formation) && !classique);
@@ -575,12 +594,13 @@
 				const n = lireMontant();
 				montantPremiere = champMontant.value;
 				erreurMontant = messageMontantClassique(n, regle);
-				$$("[data-pas]", somme).forEach((b) => { b.disabled = Number(b.dataset.pas) < 0 ? n <= regle.min : n >= regle.max; });
+				if (!attente) $$("[data-pas]", somme).forEach((b) => { b.disabled = Number(b.dataset.pas) < 0 ? n <= regle.min : n >= regle.max; });
 			} else if (formation && !classique) montantProfessionnel.set(filiere.value, champMontant.value);
 			signalerMontant(erreurMontant);
 			const deja = regle.total - regle.reste;
 			texte("#champ-montant-aide", classique
 				? (t === "2" ? `Calculé pour toi : 50 000 − ${formater(deja)} FCFA de première tranche.`
+					: basculeTotalite ? "50 000 FCFA, c’est l’année entière : « Les deux tranches » est cochée pour toi."
 					: t === "3" ? "Les droits de l’année, en une seule fois."
 					: "25 000 FCFA au moins, par multiples de 5 000, jusqu’à 45 000. Pour 50 000 FCFA, choisis « Les deux tranches ».")
 				: formation ? "Pour une formation professionnelle, indique le montant communiqué par ton établissement." : "Choisis une filière pour connaître les modalités de paiement.");
@@ -640,6 +660,7 @@
 		formQuitus.addEventListener("change", maj);
 		/* Boutons − et + : la première tranche avance par pas de 5 000, entre 25 000 et 45 000. */
 		$$("[data-pas]", formQuitus).forEach((bouton) => bouton.addEventListener("click", () => {
+			if (bouton.disabled || champMontant.closest("[data-somme]")?.classList.contains("est-attente")) return;
 			const regle = config.regleDroits;
 			const n = lireMontant() || regle.min;
 			const arrondi = Math.round(n / regle.pas) * regle.pas;
