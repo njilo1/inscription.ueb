@@ -307,13 +307,41 @@ const UEB_UFD_DOCTORALES = array(
 );
 
 /**
+ * Fait accepter le cycle « doctorat » par la colonne « cycle » de ueb_filieres.
+ * Si cette colonne est une liste fermée (ENUM) qui ne le contient pas, on ajoute
+ * « doctorat » à la fin de la liste : les cycles existants ne bougent pas, et
+ * rien n'est réécrit dans la table. Une colonne de texte n'a rien à changer.
+ *
+ * @return bool Vrai si la colonne accepte « doctorat ».
+ */
+function ueb_catalogue_accepter_doctorat() {
+	global $wpdb;
+	$colonne = $wpdb->get_row( "SHOW COLUMNS FROM ueb_filieres LIKE 'cycle'" );
+	if ( ! $colonne ) {
+		return false;
+	}
+	if ( 0 !== stripos( $colonne->Type, 'enum(' ) || false !== stripos( $colonne->Type, "'doctorat'" ) ) {
+		return true;
+	}
+	$sql = 'ALTER TABLE ueb_filieres MODIFY cycle ' . substr( $colonne->Type, 0, -1 ) . ",'doctorat') "
+		. ( 'NO' === $colonne->Null ? 'NOT NULL' : 'NULL' )
+		. ( null !== $colonne->Default ? $wpdb->prepare( ' DEFAULT %s', $colonne->Default ) : '' );
+	if ( false === $wpdb->query( $sql ) ) {
+		error_log( '[inscriptions-ueb] Le cycle « doctorat » n’a pas pu être ajouté à ueb_filieres.cycle : ' . $wpdb->last_error );
+		return false;
+	}
+	return true;
+}
+
+/**
  * Ajoute au catalogue les unités doctorales qui n'y figurent pas encore (filière
  * classique, cycle « doctorat »), par les mêmes contrôles que l'onglet Filières.
  * Une unité déjà présente (même code, même établissement) est laissée telle
  * quelle, ouverte ou fermée : on ne la recrée ni ne la rouvre.
  *
  * Sans effet si le catalogue n'est pas importé ou s'il n'a pas encore les
- * colonnes « cycle » et « actif ». Un échec est consigné, jamais bloquant.
+ * colonnes « cycle » et « actif ». Si la colonne « cycle » est une liste fermée,
+ * « doctorat » y est d'abord ajouté. Un échec est consigné, jamais bloquant.
  *
  * @return int Nombre d'unités ajoutées.
  */
@@ -324,6 +352,9 @@ function ueb_catalogue_semer_ufd() {
 	}
 	if ( array_diff( array( 'cycle', 'actif' ), $wpdb->get_col( 'SHOW COLUMNS FROM ueb_filieres' ) ) ) {
 		error_log( '[inscriptions-ueb] Unités doctorales non ajoutées : ueb_filieres n’a pas les colonnes « cycle » et « actif ».' );
+		return 0;
+	}
+	if ( ! ueb_catalogue_accepter_doctorat() ) {
 		return 0;
 	}
 	$ajoutees = 0;
