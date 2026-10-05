@@ -612,6 +612,10 @@ function ueb_gestion_portee_sql( array $filtres ) {
 	$where  = array( 'q.annee_academique = %s' );
 	$params = array( $filtres['annee'] );
 	$types  = ueb_types_quitus_visibles();
+	/* Filtre « type » (onglet Reçus CMS) : un seul type, parmi ceux que le compte voit. */
+	if ( ! empty( $filtres['type'] ) && in_array( $filtres['type'], $types, true ) ) {
+		$types = array( $filtres['type'] );
+	}
 	if ( ! $types ) {
 		$where[] = '1 = 0';
 	} elseif ( count( $types ) < count( UEB_PERMISSIONS_TYPE_QUITUS ) ) {

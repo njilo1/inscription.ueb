@@ -431,7 +431,7 @@ ueb_page_debut( array(
 								</div>
 							<?php endif; ?>
 
-							<form method="get" action="<?php echo esc_url( ueb_url_direction() ); ?>" class="gestion-filtres">
+							<form method="get" action="<?php echo esc_url( ueb_url_direction() ); ?>" class="gestion-filtres"><?php ueb_champ_espace(); ?>
 								<input type="hidden" name="vue" value="personnel">
 								<label class="gestion-champ gestion-champ--large">
 									<span>Rechercher</span>

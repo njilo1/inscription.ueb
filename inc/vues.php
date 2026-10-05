@@ -850,7 +850,7 @@ function ueb_bo_barre( $espace, array $liens, array $pied = array(), array $marq
 			if ( count( $autorises ) > 1 ) :
 				$courant = ueb_etab_agent();
 				?>
-				<form class="bo-perimetre bo-perimetre--choix" method="get" action="">
+				<form class="bo-perimetre bo-perimetre--choix" method="get" action=""><?php ueb_champ_espace(); ?>
 					<label for="bo-etab"><b>Établissement consulté</b></label>
 					<div class="champ__select">
 						<select id="bo-etab" name="ueb_etab" onchange="this.form.submit()">

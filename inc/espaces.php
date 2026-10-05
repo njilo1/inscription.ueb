@@ -69,6 +69,18 @@ function ueb_espace_courant() {
 	return $espace;
 }
 
+/**
+ * Champ caché « espace » d'un formulaire GET : un navigateur ignore les
+ * paramètres écrits dans l'adresse (action) d'un formulaire GET, il faut
+ * donc renvoyer l'espace affiché avec les champs du formulaire.
+ */
+function ueb_champ_espace() {
+	$espace = ueb_espace_courant();
+	if ( $espace && 'admin' !== $espace ) {
+		echo '<input type="hidden" name="espace" value="' . esc_attr( $espace ) . '">';
+	}
+}
+
 /** Adresse d'un espace de l'Administration (l'espace « admin » n'a pas de paramètre). */
 function ueb_url_espace_admin( $espace, array $args = array() ) {
 	$base = ueb_url_administration();
@@ -99,7 +111,8 @@ function ueb_navigation_administration() {
 		'url'     => ueb_url_espace_admin( $e, ( in_array( $v, array( 'bord', 'roles', 'comptes' ), true ) ? array() : array( 'vue' => $v ) ) + $args ),
 		'libelle' => $libelle,
 		'icone'   => $icone,
-		'actif'   => $e === $espace && $v === $vue,
+		/* Actif : même espace, même vue et mêmes paramètres (« type » sépare les deux onglets des quitus). */
+		'actif'   => $e === $espace && $v === $vue && sanitize_key( $_GET['type'] ?? '' ) === (string) ( $args['type'] ?? '' ), // phpcs:ignore
 	);
 	$permis = ueb_espaces_du_compte();
 	$admin  = in_array( 'admin', $permis, true );
@@ -119,6 +132,7 @@ function ueb_navigation_administration() {
 		$groupes['Scolarité'] = array(
 			$lien( 'scolarite', 'bord', 'Tableau de bord', 'tampon' ),
 			$lien( 'scolarite', 'quitus', 'Quitus et reçus', 'recu' ),
+			$lien( 'scolarite', 'quitus', 'Reçus CMS', 'recu', array( 'type' => 'medicaux' ) ),
 			$lien( 'scolarite', 'paiements', 'Paiements', 'banque' ),
 			$lien( 'scolarite', 'etudiants', 'Étudiants UEB', 'diplome' ),
 			$lien( 'scolarite', 'ipes', 'IPES sous tutelle', 'ecole' ),
@@ -129,6 +143,8 @@ function ueb_navigation_administration() {
 		$groupes['Scolarité'] = array(
 			ueb_peut( UEB_CAP_GESTION ) ? $lien( 'scolarite', 'bord', 'Tableau de bord', 'tampon' ) : null,
 			ueb_types_quitus_visibles() ? $lien( 'scolarite', 'quitus', ueb_peut( UEB_CAP_GESTION ) ? 'Quitus' : 'Reçus CMS', 'recu' ) : null,
+			/* Les deux sortes de reçus : un onglet de plus pour ceux du CMS seuls. */
+			count( ueb_types_quitus_visibles() ) > 1 ? $lien( 'scolarite', 'quitus', 'Reçus CMS', 'recu', array( 'type' => 'medicaux' ) ) : null,
 			ueb_peut( 'ueb_voir_paiements' ) ? $lien( 'scolarite', 'paiements', 'Paiements', 'banque' ) : null,
 			ueb_peut( 'ueb_voir_etudiants' ) ? $lien( 'scolarite', 'etudiants', 'Étudiants UEB', 'diplome' ) : null,
 			ueb_peut( 'ueb_voir_ipes' ) ? $lien( 'scolarite', 'ipes', 'IPES', 'ecole' ) : null,
