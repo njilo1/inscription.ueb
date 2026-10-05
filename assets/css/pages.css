@@ -679,7 +679,16 @@
 .bo-marque__note { font-size: .78rem; color: var(--bo-nav-texte); }
 
 .bo-sidebar__titre { margin: 0; padding: .3rem 1.3rem .35rem; font-size: .78rem; font-weight: 700; color: var(--bo-nav-texte); }
-.bo-sidebar__nav { display: grid; gap: .2rem; padding: 0 .75rem; }
+.bo-sidebar__nav { display: grid; align-content: start; gap: .2rem; padding: 0 .75rem; }
+/* Barre de la hauteur de l'écran : la liste des onglets défile (marque en haut,
+   compte et déconnexion en bas restent visibles). Écran très bas : toute la barre défile. */
+@media (min-width: 961px) {
+	.bo-sidebar { overflow-y: auto; overscroll-behavior: contain; }
+	.bo-sidebar__nav { flex: 1 1 auto; min-height: 9rem; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, .28) transparent; }
+	.bo-sidebar__nav::-webkit-scrollbar { width: 6px; }
+	.bo-sidebar__nav::-webkit-scrollbar-thumb { border-radius: 6px; background: rgba(255, 255, 255, .28); }
+	.bo-sidebar__pied { flex: none; margin-top: .8rem; }
+}
 /* Intertitre d'un second groupe de liens : aligné sur le titre de l'espace. */
 .bo-sidebar__nav .bo-sidebar__titre--groupe { margin-top: .9rem; padding-inline: .55rem; }
 .bo-sidebar__nav a { position: relative; display: flex; align-items: center; gap: .7rem; min-height: 44px; padding: 0 .85rem; border-radius: 10px; color: var(--bo-nav-texte); font-weight: 600; font-size: .92rem; text-decoration: none; transition: background-color .15s var(--ease-sortie), color .15s var(--ease-sortie); }
