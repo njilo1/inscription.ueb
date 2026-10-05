@@ -16,7 +16,8 @@ defined( 'ABSPATH' ) || exit;
 
 /* Les paiements que ce compte consulte : droits universitaires (scolarité),
    frais médicaux (CMS), ou les deux (administrateur). */
-$paiements    = array_values( array_filter( ueb_gestion_dossier( $fiche ), 'ueb_peut_voir_quitus' ) ) ?: array( $fiche );
+$type_onglet  = ueb_type_recus_courant(); // Reçus (droits) ou Reçus CMS (frais médicaux)
+$paiements    = array_values( array_filter( ueb_gestion_dossier( $fiche ), static fn( $q ) => ueb_peut_voir_quitus( $q ) && ueb_type_du_quitus( $q ) === $type_onglet ) ) ?: array( $fiche );
 $fiche        = $paiements[0]; /* les droits d'abord, même ouverts depuis le quitus médical */
 $double       = count( $paiements ) > 1;
 $etab_fiche   = ueb_etablissement( $fiche->etablissement );
@@ -26,7 +27,7 @@ $nom_complet  = $fiche->nom . ' ' . $fiche->prenom;
 /* « L1 — Licence 1 » : seul le libellé complet est affiché. */
 $niveau       = preg_replace( '/^.*—\s*/u', '', UEB_NIVEAUX_INSCRIPTION[ $fiche->parcours ] ?? $fiche->parcours );
 $suivant      = ueb_gestion_quitus_suivant( $fiche );
-$adresse      = $ici( array( 'quitus' => $fiche->id ) );
+$adresse      = $ici( array( 'quitus' => $fiche->id, 'type' => $type_onglet ) );
 $date_heure   = static fn( $date ) => mysql2date( 'j F Y', $date ) . ' à ' . mysql2date( 'H:i', $date );
 $aujourdhui   = wp_date( 'd.m.Y' );
 
@@ -170,9 +171,9 @@ $motifs = array(
 <div class="qf<?php echo $double ? ' qf--double' : ''; ?>" data-quitus-fiche>
 
 	<nav class="qf-barre" aria-label="Navigation entre les dossiers">
-		<a class="qf-lien" href="<?php echo $ici( array( 'vue' => 'quitus' ) ); ?>"><?php echo ueb_icone( 'fleche-g', 18 ); ?>Tous les quitus</a>
+		<a class="qf-lien" href="<?php echo $ici( array( 'vue' => 'quitus', 'type' => $type_onglet ) ); ?>"><?php echo ueb_icone( 'fleche-g', 18 ); ?><?php echo 'medicaux' === $type_onglet ? 'Tous les reçus CMS' : 'Tous les reçus'; ?></a>
 		<?php if ( $suivant ) : ?>
-			<a class="qf-lien qf-lien--suivant" href="<?php echo $ici( array( 'quitus' => $suivant['id'] ) ); ?>">
+			<a class="qf-lien qf-lien--suivant" href="<?php echo $ici( array( 'quitus' => $suivant['id'], 'type' => $type_onglet ) ); ?>">
 				Dossier suivant à valider
 				<span class="qf-lien__nombre"><?php echo (int) $suivant['reste']; ?><span class="sr"> en attente</span></span>
 				<?php echo ueb_icone( 'chevron-d', 18 ); ?>

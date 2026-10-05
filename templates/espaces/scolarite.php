@@ -193,7 +193,7 @@ ueb_page_debut( array(
 				<?php
 				$titres = array(
 					'bord'     => array( 'Tableau de bord', sprintf( 'Bonjour %s. Voici où en sont les inscriptions %s.', wp_get_current_user()->display_name ?: wp_get_current_user()->user_login, $etab ? 'de ' . $etab['fr'] : 'de tous les établissements' ) ),
-					'quitus'   => ( ueb_peut( UEB_CAP_GESTION ) || ! ueb_types_quitus_visibles() ) && 'medicaux' !== sanitize_key( $_GET['type'] ?? '' ) ? array( 'Reçus', 'Les reçus envoyés par les étudiants : retrouve un dossier, compare ses reçus aux originaux et rends ta décision.' ) : array( 'Reçus CMS', 'Les reçus des frais médicaux envoyés par les étudiants : compare-les aux originaux, puis valide-les ou renvoie-les.' ),
+					'quitus'   => 'medicaux' !== ueb_type_recus_courant() ? array( 'Reçus', 'Les reçus envoyés par les étudiants : retrouve un dossier, compare ses reçus aux originaux et rends ta décision.' ) : array( 'Reçus CMS', 'Les reçus des frais médicaux envoyés par les étudiants : compare-les aux originaux, puis valide-les ou renvoie-les.' ),
 					'etudiants' => array( 'Étudiants UEB', 'Les étudiants inscrits de ta portée et l’état de leurs droits de l’année, en lecture seule.' ),
 					'paiements' => array( 'Suivi des paiements', 'Droits universitaires attendus et encaissés, filière par filière. Seuls les reçus vérifiés comptent comme encaissés.' ),
 					'cellule'  => array( 'Comptes du personnel', 'Les comptes que tu crées pour ton établissement, avec un rôle aux droits inférieurs aux tiens.' ),
@@ -201,7 +201,7 @@ ueb_page_debut( array(
 					'securite' => array( 'Sécurité', 'Le mot de passe de ton accès à l’espace scolarité.' ),
 				);
 				list( $titre_vue, $sous_titre_vue ) = $titres[ $vue ] ?? $titres['bord'];
-				$stats_entete = ueb_gestion_stats( $annee['code'], $etab_agent );
+				$stats_entete = ueb_gestion_stats( $annee['code'], $etab_agent, 'droits' ); // tableau de bord : droits universitaires
 				$a_verifier   = (int) ( $stats_entete['statuts']['recu_envoye'] ?? 0 );
 				?>
 				<?php if ( $tableau ) : ?>
@@ -292,7 +292,7 @@ ueb_page_debut( array(
 					$activite      = ueb_gestion_activite( $annee['code'], $etab_agent, $periode );
 					$url_espace    = static fn( array $args = array() ) => add_query_arg( $args, ueb_url_scolarite() );
 					$url_paiements = $peut_paiements ? $url_espace( array( 'vue' => 'paiements' ) ) : '';
-					$file          = ueb_gestion_liste_quitus( array( 'annee' => $annee['code'], 'etab' => $etab_agent, 'statut' => 'recu_envoye' ), 100 )['lignes'];
+					$file          = ueb_gestion_liste_quitus( array( 'annee' => $annee['code'], 'etab' => $etab_agent, 'statut' => 'recu_envoye', 'type' => 'droits' ), 100 )['lignes'];
 					usort( $file, static fn( $a, $b ) => strcmp( $a->date_modification, $b->date_modification ) );
 					$maintenant    = current_time( 'timestamp' );
 
@@ -562,8 +562,9 @@ ueb_page_debut( array(
 						'annee'     => $annee['code'],
 						'etab'      => $etab_agent,
 						'statut'    => sanitize_key( $_GET['statut'] ?? '' ),
-						'paiements' => sanitize_key( $_GET['paiements'] ?? '' ),
-						'type'      => in_array( sanitize_key( $_GET['type'] ?? '' ), ueb_types_quitus_visibles(), true ) ? sanitize_key( $_GET['type'] ) : '',
+						'paiements' => '', // un seul type de reçus par onglet : pas de filtre DU / FM
+						/* Un seul type de reçus par onglet : Reçus (droits) ou Reçus CMS (frais médicaux). */
+						'type'      => ueb_type_recus_courant(),
 						'q'         => sanitize_text_field( wp_unslash( $_GET['q'] ?? '' ) ),
 						'filiere'   => sanitize_text_field( wp_unslash( $_GET['filiere'] ?? '' ) ),
 						'niveau'    => sanitize_text_field( wp_unslash( $_GET['niveau'] ?? '' ) ),
@@ -607,7 +608,6 @@ ueb_page_debut( array(
 						return $code;
 					};
 					$selects = array(
-						'paiements' => array( 'Tous les paiements', array_map( static fn( $f ) => $f[0], UEB_FILTRES_PAIEMENTS ) ),
 						'filiere'   => array( 'Toutes les filières', array_combine( $options['filiere'], $options['filiere'] ) ),
 						'niveau'    => array( 'Tous les niveaux', array_combine( $options['niveau'], array_map( $niveau_lu, $options['niveau'] ) ) ),
 						'moyen'     => array( 'Tous les moyens de paiement', array_combine( $options['moyen'], $options['moyen'] ) ),
@@ -727,9 +727,8 @@ ueb_page_debut( array(
 								<?php endforeach; ?>
 								<button class="btn btn--fantome btn--petit registre__filtrer" type="submit">Filtrer</button>
 								<?php if ( $actifs ) : ?>
-									<a class="registre__effacer" href="<?php echo $ici( array( 'vue' => 'quitus', 'statut' => $filtres['statut'] ?: null ) ); ?>"><?php echo ueb_icone( 'croix', 15 ); ?>Effacer les filtres</a>
+									<a class="registre__effacer" href="<?php echo $ici( array( 'vue' => 'quitus', 'type' => $filtres['type'], 'statut' => $filtres['statut'] ?: null ) ); ?>"><?php echo ueb_icone( 'croix', 15 ); ?>Effacer les filtres</a>
 								<?php endif; ?>
-								<p class="registre__legende"><abbr class="registre__abr registre__abr--droits" title="Droits universitaires">DU</abbr>droits universitaires<abbr class="registre__abr registre__abr--medicaux" title="Frais médicaux">FM</abbr>frais médicaux</p>
 							</form>
 
 							<?php if ( ! $liste['lignes'] ) : ?>
@@ -762,7 +761,7 @@ ueb_page_debut( array(
 										<?php foreach ( $liste['lignes'] as $rang => $d ) :
 											$p0        = $d->principal;
 											$nom       = trim( $p0->nom . ' ' . $p0->prenom );
-											$url       = $ici( array( 'quitus' => $p0->id ) );
+											$url       = $ici( array( 'quitus' => $p0->id, 'type' => $filtres['type'] ) );
 											$total     = array_sum( array_map( static fn( $q ) => (int) $q->montant, $d->paiements ) );
 											$nb_recus  = array_sum( array_map( static fn( $q ) => (int) $q->nb_recus, $d->paiements ) );
 											$abr       = static fn( $q ) => $abreviations[ 'medicaux' === $q->type ? 'medicaux' : 'droits' ][0];
@@ -790,7 +789,7 @@ ueb_page_debut( array(
 														<?php foreach ( $d->paiements as $q ) :
 															$type_q   = 'medicaux' === ( $q->type ?? 'droits' ) ? 'medicaux' : 'droits';
 															$modalite = 'medicaux' === $type_q ? 'Paiement unique' : ueb_libelle_tranche( $q->tranche ); ?>
-															<li><abbr class="registre__abr registre__abr--<?php echo esc_attr( $type_q ); ?>" title="<?php echo esc_attr( $abreviations[ $type_q ][1] ); ?>"><?php echo esc_html( $abreviations[ $type_q ][0] ); ?></abbr><span class="registre__numero"><?php echo esc_html( $q->numero ); ?></span><?php if ( $modalite ) : ?><small><?php echo esc_html( $modalite ); ?></small><?php endif; ?></li>
+															<li><span class="registre__numero"><?php echo esc_html( $q->numero ); ?></span><?php if ( $modalite ) : ?><small><?php echo esc_html( $modalite ); ?></small><?php endif; ?></li>
 														<?php endforeach; ?>
 													</ul>
 												</td>

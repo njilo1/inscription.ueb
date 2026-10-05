@@ -124,8 +124,8 @@ function ueb_url_espace_admin( $espace, array $args = array() ) {
 function ueb_navigation_administration() {
 	$espace = ueb_espace_courant();
 	$vue    = ueb_vue_courante();
-	/* Fiche d'un quitus : l'onglet des reçus de son type reste surligné. */
-	$type   = sanitize_key( $_GET['type'] ?? '' ); // phpcs:ignore -- lecture seule
+	/* Reçus : l'onglet du type affiché (droits ou frais médicaux) reste surligné, fiche comprise. */
+	$type   = 'scolarite' === $espace && 'quitus' === $vue ? ueb_type_recus_courant() : '';
 	$lien = static fn( $e, $v, $libelle, $icone, array $args = array() ) => array(
 		'url'     => ueb_url_espace_admin( $e, ( in_array( $v, array( 'bord', 'roles', 'comptes' ), true ) ? array() : array( 'vue' => $v ) ) + $args ),
 		'libelle' => $libelle,
@@ -150,7 +150,7 @@ function ueb_navigation_administration() {
 		);
 		$groupes['Scolarité'] = array(
 			$lien( 'scolarite', 'bord', 'Tableau de bord', 'tampon' ),
-			$lien( 'scolarite', 'quitus', 'Reçus', 'recu' ),
+			$lien( 'scolarite', 'quitus', 'Reçus', 'recu', array( 'type' => 'droits' ) ),
 			$lien( 'scolarite', 'paiements', 'Paiements', 'banque' ),
 			$lien( 'scolarite', 'etudiants', 'Étudiants UEB', 'diplome' ),
 			$lien( 'scolarite', 'ipes', 'IPES sous tutelle', 'ecole' ),
@@ -161,7 +161,7 @@ function ueb_navigation_administration() {
 	} elseif ( in_array( 'scolarite', $permis, true ) ) {
 		$groupes['Scolarité'] = array(
 			ueb_peut( UEB_CAP_GESTION ) ? $lien( 'scolarite', 'bord', 'Tableau de bord', 'tampon' ) : null,
-			ueb_types_quitus_visibles() ? $lien( 'scolarite', 'quitus', ueb_peut( UEB_CAP_GESTION ) ? 'Reçus' : 'Reçus CMS', 'recu' ) : null,
+			ueb_types_quitus_visibles() ? ( ueb_peut( UEB_CAP_GESTION ) ? $lien( 'scolarite', 'quitus', 'Reçus', 'recu', array( 'type' => 'droits' ) ) : $lien( 'scolarite', 'quitus', 'Reçus CMS', 'recu', array( 'type' => 'medicaux' ) ) ) : null,
 			ueb_peut( 'ueb_voir_paiements' ) ? $lien( 'scolarite', 'paiements', 'Paiements', 'banque' ) : null,
 			ueb_peut( 'ueb_voir_etudiants' ) ? $lien( 'scolarite', 'etudiants', 'Étudiants UEB', 'diplome' ) : null,
 			ueb_peut( 'ueb_voir_ipes' ) ? $lien( 'scolarite', 'ipes', 'IPES', 'ecole' ) : null,

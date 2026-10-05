@@ -32,6 +32,21 @@ const UEB_PERMISSIONS_TYPE_QUITUS = array(
 	'medicaux' => array( 'ueb_voir_cms', 'ueb_decider_cms' ),
 );
 
+/**
+ * Type de reçus affiché par l'onglet ouvert : « droits » (Scolarité → Reçus)
+ * ou « medicaux » (CMS → Reçus CMS), jamais les deux mélangés. Celui de
+ * l'adresse (?type=) s'il est visible, sinon le seul type que le compte voit,
+ * sinon les droits universitaires.
+ */
+function ueb_type_recus_courant() {
+	$visibles = ueb_types_quitus_visibles();
+	$demande  = sanitize_key( $_GET['type'] ?? '' ); // phpcs:ignore -- lecture seule
+	if ( in_array( $demande, $visibles, true ) ) {
+		return $demande;
+	}
+	return 1 === count( $visibles ) ? $visibles[0] : 'droits';
+}
+
 /** Types de quitus que le compte consulte (« droits », « medicaux »). */
 function ueb_types_quitus_visibles( $etab = null ) {
 	return array_keys( array_filter( UEB_PERMISSIONS_TYPE_QUITUS, static fn( $p ) => ueb_peut( $p[0], $etab ) ) );
@@ -132,9 +147,13 @@ function ueb_exiger_etab( $sigle ) {
  * Nombre de quitus de l'année par statut et par établissement.
  * $etab limite le calcul à un établissement (agent de scolarité).
  */
-function ueb_gestion_stats( $annee_code, $etab = '' ) {
+function ueb_gestion_stats( $annee_code, $etab = '', $type = '' ) {
 	global $wpdb;
 	$types  = ueb_types_quitus_visibles();
+	/* $type : un seul type de reçus (le tableau de bord de la scolarité compte les droits). */
+	if ( $type && in_array( $type, $types, true ) ) {
+		$types = array( $type );
+	}
 	$sql    = 'SELECT etablissement, statut, COUNT(*) AS n, SUM(montant) AS total
 		   FROM ueb_insc_quitus WHERE annee_academique = %s AND type IN (' . ( $types ? implode( ',', array_fill( 0, count( $types ), '%s' ) ) : "''" ) . ')';
 	$params = array_merge( array( $annee_code ), $types );
@@ -861,7 +880,7 @@ function ueb_gestion_quitus_suivant( $quitus ) {
 		$quitus->etablissement,
 		$quitus->id
 	);
-	$types = ueb_types_quitus_visibles( $quitus->etablissement );
+	$types = array_values( array_intersect( ueb_types_quitus_visibles( $quitus->etablissement ), array( ueb_type_recus_courant() ) ) );
 	if ( ! $types ) {
 		return null;
 	}
@@ -1013,6 +1032,7 @@ function ueb_action_gestion_valider() {
 		'vue'       => 'quitus',
 		'statut'    => isset( UEB_STATUTS_QUITUS[ $filtre ] ) ? $filtre : null,
 		'paiements' => isset( UEB_FILTRES_PAIEMENTS[ $paiements ] ) ? $paiements : null,
+		'type'      => in_array( sanitize_key( $retour_post['type'] ?? '' ), array_keys( UEB_PERMISSIONS_TYPE_QUITUS ), true ) ? sanitize_key( $retour_post['type'] ) : null,
 		'q'         => $texte( 'q' ),
 		'filiere'   => $texte( 'filiere' ),
 		'niveau'    => $texte( 'niveau' ),
