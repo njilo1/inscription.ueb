@@ -402,3 +402,29 @@
 	@view-transition { navigation: none; }
 	.qf-feuille, .qf-progression__piste i, .qf-point__case, .qf-renvoi__chevron { transition: none; }
 }
+
+/* ---------- Thème sombre (Administration, bascule de la barre latérale) ----------
+   Les jetons de la fiche suivent la palette sombre de administration.css. */
+:root[data-theme="sombre"] .espace-admin .qf {
+	--qf-sous-main: #0f2a15;
+	--qf-sous-main-bord: #0a1f10;
+	--qf-papier: #161f19;
+	--qf-encre: #e4ebe6;
+	--qf-gris: #b1beb6;
+	--qf-gris-doux: #87958c;
+	--qf-filet: #26322b;
+	--qf-filet-doux: #1e2922;
+	--qf-fond-doux: #1b261f;
+	--qf-vert: #3f8f5c;
+	--qf-vert-fond: #13291b;
+	--qf-or-fonce: #f0c05a;
+	--qf-rouge: #f2837b;
+	--qf-rouge-fond: #2b1614;
+	--qf-ciel: #7cc0e6;
+}
+:root[data-theme="sombre"] .espace-admin .qf-statut--verifie { color: #6fd08a; }
+:root[data-theme="sombre"] .espace-admin .qf-point:hover { border-color: #36463c; }
+:root[data-theme="sombre"] .espace-admin .qf-point__case { border-color: #4d5d53; }
+:root[data-theme="sombre"] .espace-admin .qf-bouton--danger { border-color: #5a2b27; }
+:root[data-theme="sombre"] .espace-admin .qf-verdict blockquote { border-color: #5a2b27; }
+:root[data-theme="sombre"] .espace-admin .qf-correction { color: #f0c05a; }

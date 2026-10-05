@@ -31,7 +31,7 @@ require_once __DIR__ . '/administration-exports.php';
  *                 à l'administration.
  */
 function ueb_adm_tete( array $a ) {
-	$a     = array_merge( array( 'titre' => '', 'sous_titre' => '', 'fil' => array(), 'actions' => '', 'visuel' => '', 'apres' => '', 'theme' => true ), $a );
+	$a     = array_merge( array( 'titre' => '', 'sous_titre' => '', 'fil' => array(), 'actions' => '', 'visuel' => '', 'apres' => '', 'theme' => false ), $a ); // bascule clair / sombre : barre latérale
 	$annee = ueb_annee_academique();
 	$n     = count( $a['fil'] );
 	?>

@@ -239,3 +239,19 @@
 	.registre__dossier.est-retrouve td { animation: none; box-shadow: inset 0 0 0 100vmax rgba(46, 125, 50, .1); }
 	.registre__bouton-valider:active { scale: none; }
 }
+
+/* ---------- Thème sombre (Administration, bascule de la barre latérale) ---------- */
+:root[data-theme="sombre"] .espace-admin .registre-quitus { --rq-survol: #1b261f; --rq-attente: #10232d; --rq-attente-survol: #14303d; }
+:root[data-theme="sombre"] .espace-admin .attente { border-color: #5c4a1c; color: #f0c05a; }
+:root[data-theme="sombre"] .espace-admin .attente:hover { border-color: #8a6d24; background: #332a12; }
+:root[data-theme="sombre"] .espace-admin .attente__titre, :root[data-theme="sombre"] .espace-admin .attente__voir { color: #f3d58a; }
+:root[data-theme="sombre"] .espace-admin .attente__texte p:not(.attente__titre), :root[data-theme="sombre"] .espace-admin .attente__second { color: #d9bd75; }
+:root[data-theme="sombre"] .espace-admin .attente__second:hover { color: #f3d58a; }
+:root[data-theme="sombre"] .espace-admin .attente--filtre { border-color: #24485c; color: #9fd2ee; }
+:root[data-theme="sombre"] .espace-admin .attente--filtre .attente__titre { color: #bfe3f6; }
+:root[data-theme="sombre"] .espace-admin .attente--filtre .attente__texte p:not(.attente__titre) { color: #9fd2ee; }
+:root[data-theme="sombre"] .espace-admin .attente__action { border-color: #2f5b72; }
+:root[data-theme="sombre"] .espace-admin .registre__tableau th { background: #1b261f; box-shadow: inset 0 -1px 0 var(--filet); }
+:root[data-theme="sombre"] .espace-admin .registre__dossier.est-tamponne td { background: #13291b; }
+:root[data-theme="sombre"] .espace-admin .registre__select.est-actif select { background: #13291b; color: #8fcca3; }
+:root[data-theme="sombre"] .espace-admin .registre__abr--medicaux { color: #f0b183; box-shadow: inset 0 0 0 1px #6b4123; }

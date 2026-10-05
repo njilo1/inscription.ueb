@@ -85,6 +85,12 @@ function ueb_icone( $nom, $taille = 20, $classe = '' ) {
  */
 function ueb_page_debut( array $args = array() ) {
 	$args = wp_parse_args( $args, array( 'titre' => '', 'variante' => 'simple', 'classe' => '', 'theme' => false ) );
+	/* Administration : tous les espaces suivent le thème clair / sombre choisi
+	   (jetons de administration.css, sous « .espace-admin »). */
+	if ( 'bo' === $args['variante'] && ueb_espace_courant() ) {
+		$args['theme']  = true;
+		$args['classe'] = trim( $args['classe'] . ( str_contains( $args['classe'], 'espace-admin' ) ? '' : ' espace-admin' ) );
+	}
 	$GLOBALS['ueb_titre_page'] = $args['titre'];
 	?><!doctype html>
 <html <?php language_attributes(); ?>>
@@ -881,6 +887,9 @@ function ueb_bo_barre( $espace, array $liens, array $pied = array(), array $marq
 				<p class="bo-perimetre"><b><?php echo esc_html( $pied['titre'] ); ?></b><?php echo esc_html( $pied['note'] ?? '' ); ?></p>
 			<?php endif; ?>
 			<?php ueb_selecteur_profil(); ?>
+			<?php if ( ueb_espace_courant() ) : ?>
+				<button type="button" class="bo-theme" data-bascule-theme aria-pressed="false"><?php echo ueb_icone( 'lune', 16, 'adm-theme__lune' ) . ueb_icone( 'soleil', 16, 'adm-theme__soleil' ); // phpcs:ignore -- SVG interne ?><span class="bo-theme__clair">Mode sombre</span><span class="bo-theme__sombre">Mode clair</span></button>
+			<?php endif; ?>
 			<div class="bo-compte">
 				<span class="bo-compte__avatar" aria-hidden="true"><?php echo esc_html( mb_substr( $nom, 0, 1 ) ); ?></span>
 				<span class="bo-compte__meta">

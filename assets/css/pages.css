@@ -1781,6 +1781,12 @@
 /* Sélecteur d'établissement dans la barre latérale (portée « plusieurs » ou « tous ») */
 .bo-perimetre--choix { display: grid; gap: .4rem; }
 .bo-perimetre--choix label b { color: var(--blanc); }
+/* Bascule clair / sombre, en bas de la barre latérale (administration.js). */
+.bo-theme { display: inline-flex; align-items: center; gap: .5rem; justify-self: start; min-height: 36px; padding: 0 .8rem; border: 1px solid var(--bo-nav-filet); border-radius: 999px; background: transparent; color: var(--bo-nav-texte); font: inherit; font-size: .82rem; font-weight: 600; cursor: pointer; transition: background-color .15s, color .15s; }
+.bo-theme:hover, .bo-theme:focus-visible { background: var(--bo-nav-survol); color: var(--blanc); }
+.bo-theme .adm-theme__soleil, .bo-theme__sombre { display: none; }
+:root[data-theme="sombre"] .bo-theme .adm-theme__lune, :root[data-theme="sombre"] .bo-theme__clair { display: none; }
+:root[data-theme="sombre"] .bo-theme .adm-theme__soleil, :root[data-theme="sombre"] .bo-theme__sombre { display: inline; }
 /* Changer de profil (super-administrateur) : liseré doré quand une vue simulée est active. */
 .bo-profil { margin-bottom: .85rem; }
 .bo-profil.est-simule { padding: .7rem; border-radius: 12px; background: rgba(250, 178, 25, .14); box-shadow: inset 0 0 0 1px rgba(250, 178, 25, .55); }
