@@ -80,7 +80,7 @@ ueb_page_debut( array( 'titre' => 'Cellule informatique', 'variante' => $autoris
 					</div>
 				<?php endif; ?>
 				<?php if ( $prov ) : ?><div class="provisoire carte" role="status"><?php echo ueb_icone( 'cle', 26 ); ?><div><p>Mot de passe provisoire pour <b><?php echo esc_html( $prov['compte'] ); ?></b> :</p><p class="provisoire__mdp"><?php echo esc_html( $prov['mdp'] ); ?></p><button type="button" class="btn btn--fantome btn--petit provisoire__copier" data-copier-mot-de-passe="<?php echo esc_attr( $prov['mdp'] ); ?>"><?php echo ueb_icone( 'fichier', 16 ); ?><span>Copier le mot de passe</span></button></div></div><?php endif; ?>
-				<form class="filtres carte" method="get" action="<?php echo esc_url( ueb_url_cellule() ); ?>" role="search">
+				<form class="filtres carte" method="get" action="<?php echo esc_url( ueb_url_cellule() ); ?>" role="search"><?php ueb_champ_espace(); ?>
 					<div class="champ"><label for="cellule-q">Rechercher un étudiant</label><input id="cellule-q" type="search" name="qc" value="<?php echo esc_attr( $filtres['q'] ); ?>" placeholder="Nom, matricule ou téléphone"></div>
 					<button class="btn btn--primaire" type="submit"><?php echo ueb_icone( 'loupe', 18 ); ?>Rechercher</button>
 				</form>

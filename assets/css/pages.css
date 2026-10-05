@@ -680,6 +680,12 @@
 
 .bo-sidebar__titre { margin: 0; padding: .3rem 1.3rem .35rem; font-size: .78rem; font-weight: 700; color: var(--bo-nav-texte); }
 .bo-sidebar__nav { display: grid; align-content: start; gap: .2rem; padding: 0 .75rem; }
+/* D'un onglet à l'autre (navigateurs récents) : fondu de la page, la barre ne bouge pas. */
+@view-transition { navigation: auto; }
+.bo-sidebar { view-transition-name: bo-barre; }
+@media (prefers-reduced-motion: reduce) {
+	@view-transition { navigation: none; }
+}
 /* Barre de la hauteur de l'écran : la liste des onglets défile (marque en haut,
    compte et déconnexion en bas restent visibles). Écran très bas : toute la barre défile. */
 @media (min-width: 961px) {

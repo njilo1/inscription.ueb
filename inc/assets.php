@@ -46,16 +46,15 @@ add_action( 'wp_enqueue_scripts', function () {
 	/* Administration : l'espace « admin », ou l'écran de connexion (aucun espace). */
 	$page_admin = is_page_template( 'page-administration.php' ) && in_array( ueb_espace_courant(), array( 'admin', '' ), true );
 	$admin      = $page_admin && function_exists( 'ueb_est_admin_ueb' ) && ueb_est_admin_ueb();
-	/* Emblème animé aussi sur les écrans de connexion des espaces scolarité, Direction et Administration. */
-	$connexion_scolarite = ( ( 'scolarite' === ueb_espace_courant() ) && ! ( is_user_logged_in() && function_exists( 'ueb_est_scolarite' ) && ueb_est_scolarite() ) )
-		|| ( ( 'direction' === ueb_espace_courant() ) && ! ( function_exists( 'ueb_peut' ) && ueb_peut( UEB_CAP_DIRECTION ) ) )
-		|| ( ( 'ipes' === ueb_espace_courant() ) && ! ( function_exists( 'ueb_ipes_du_compte' ) && ueb_ipes_du_compte() ) )
-		|| ( $page_admin && ! $admin );
+	/* Emblème animé sur l'écran de connexion de l'Administration (le seul du back-office). */
+	$connexion_scolarite = $page_admin && ! $admin;
 	/* Vues de travail de la scolarité (tableau de bord, quitus, dossier, paiements)
 	   et tableau de bord + suivi des paiements de l'administration, qui partagent
 	   le même rendu : graphiques, infobulles, jauge, anneau et suivi animés. */
-	$vue_bo         = sanitize_key( $_GET['vue'] ?? 'bord' ); // phpcs:ignore -- lecture seule
-	$bord_scolarite = ( ( 'scolarite' === ueb_espace_courant() ) && is_user_logged_in() && function_exists( 'ueb_est_scolarite' ) && ueb_est_scolarite()
+	/* Vue affichée : celle de l'adresse, sinon la vue par défaut de l'espace (inc/espaces.php).
+	   L'espace affiché n'est jamais donné à un compte qui n'y a pas droit : pas d'autre contrôle. */
+	$vue_bo         = ueb_espace_courant() ? ueb_vue_courante() : sanitize_key( $_GET['vue'] ?? 'bord' ); // phpcs:ignore -- lecture seule
+	$bord_scolarite = ( ( 'scolarite' === ueb_espace_courant() )
 			&& ( in_array( $vue_bo, array( 'bord', 'quitus', 'paiements' ), true ) || isset( $_GET['quitus'] ) ) ) // phpcs:ignore
 		|| ( $admin && in_array( $vue_bo, array( 'bord', 'paiements' ), true ) );
 	if ( $bord_scolarite ) {
@@ -78,7 +77,7 @@ add_action( 'wp_enqueue_scripts', function () {
 	/* Tableau de bord de la scolarité : le même que celui de l'administration
 	   (cartes à mini-courbes, anneau, évolution, mouvement), sans la bascule de thème. */
 	$tableau_scolarite = ( 'scolarite' === ueb_espace_courant() ) && 'bord' === $vue_bo && ! isset( $_GET['quitus'] ) // phpcs:ignore -- lecture seule
-		&& is_user_logged_in() && function_exists( 'ueb_est_scolarite' ) && ueb_est_scolarite() && ueb_peut( UEB_CAP_GESTION );
+		&& ueb_peut( UEB_CAP_GESTION );
 	if ( $tableau_scolarite ) {
 		ueb_style( 'ueb-administration', 'assets/css/administration.css', array( 'ueb-pages', 'ueb-bord-graphes' ) );
 		ueb_style( 'ueb-administration-dashboard', 'assets/css/administration-dashboard.css', array( 'ueb-administration' ) );
@@ -120,11 +119,11 @@ add_action( 'wp_enqueue_scripts', function () {
 	   thème clair / sombre hors scolarité), plus ipes.css. La jauge Remotion ne
 	   sert qu'aux écrans qui portent le héros des reversements. */
 	$ipes_espace    = ( 'ipes' === ueb_espace_courant() ) && function_exists( 'ueb_ipes_du_compte' ) && ueb_ipes_du_compte();
-	$ipes_scolarite = ( 'scolarite' === ueb_espace_courant() ) && 'ipes' === $vue_bo && is_user_logged_in() && function_exists( 'ueb_est_scolarite' ) && ueb_est_scolarite();
+	$ipes_scolarite = ( 'scolarite' === ueb_espace_courant() ) && 'ipes' === $vue_bo;
 	/* L'onglet Filières de l'administration reprend les composants de l'onglet IPES. */
 	$ipes_admin     = $admin && in_array( $vue_bo, array( 'ipes', 'filieres' ), true );
 	/* Fiche d’\un quitus de la scolarité : mêmes panneaux que la fiche d’\un IPES. */
-	$quitus_scolarite = ( 'scolarite' === ueb_espace_courant() ) && ctype_digit( (string) ( $_GET['quitus'] ?? '' ) ) && is_user_logged_in() && function_exists( 'ueb_est_scolarite' ) && ueb_est_scolarite(); // phpcs:ignore -- lecture seule
+	$quitus_scolarite = ( 'scolarite' === ueb_espace_courant() ) && ctype_digit( (string) ( $_GET['quitus'] ?? '' ) ); // phpcs:ignore -- lecture seule
 	if ( $ipes_espace || $ipes_scolarite || $ipes_admin || $quitus_scolarite ) {
 		if ( ! $admin ) {
 			ueb_style( 'ueb-administration', 'assets/css/administration.css', array( 'ueb-pages' ) );
@@ -160,7 +159,7 @@ add_action( 'wp_enqueue_scripts', function () {
 	$vue_etudiants = 'etudiants' === $vue_bo && is_user_logged_in() && (
 		$admin
 		|| ( 'direction' === ueb_espace_courant() )
-		|| ( ( 'scolarite' === ueb_espace_courant() ) && function_exists( 'ueb_est_scolarite' ) && ueb_est_scolarite() )
+		|| ( 'scolarite' === ueb_espace_courant() )
 	);
 	if ( $vue_etudiants ) {
 		ueb_style( 'ueb-administration', 'assets/css/administration.css', array( 'ueb-pages' ) );

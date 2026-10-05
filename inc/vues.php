@@ -842,6 +842,21 @@ function ueb_bo_barre( $espace, array $liens, array $pied = array(), array $marq
 				<?php endif; ?>
 			<?php endforeach; ?>
 		</nav>
+		<script>
+		/* Chaque onglet charge une page : la liste reprend la position où on l'a laissée,
+		   et l'onglet actif reste visible. */
+		( function () {
+			try {
+				var nav = document.currentScript.previousElementSibling, y = sessionStorage.getItem( 'ueb-barre' );
+				if ( y !== null ) { nav.scrollTop = +y; }
+				var actif = nav.querySelector( '[aria-current="page"]' );
+				if ( actif && ( actif.offsetTop < nav.scrollTop || actif.offsetTop + actif.offsetHeight > nav.scrollTop + nav.clientHeight ) ) {
+					nav.scrollTop = actif.offsetTop - nav.clientHeight / 3;
+				}
+				addEventListener( 'pagehide', function () { sessionStorage.setItem( 'ueb-barre', nav.scrollTop ); } );
+			} catch ( e ) {}
+		} )();
+		</script>
 
 		<div class="bo-sidebar__pied">
 			<?php
@@ -850,7 +865,7 @@ function ueb_bo_barre( $espace, array $liens, array $pied = array(), array $marq
 			if ( count( $autorises ) > 1 ) :
 				$courant = ueb_etab_agent();
 				?>
-				<form class="bo-perimetre bo-perimetre--choix" method="get" action="">
+				<form class="bo-perimetre bo-perimetre--choix" method="get" action=""><?php ueb_champ_espace(); ?>
 					<label for="bo-etab"><b>Établissement consulté</b></label>
 					<div class="champ__select">
 						<select id="bo-etab" name="ueb_etab" onchange="this.form.submit()">

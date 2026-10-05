@@ -193,7 +193,7 @@ ueb_page_debut( array(
 				<?php
 				$titres = array(
 					'bord'     => array( 'Tableau de bord', sprintf( 'Bonjour %s. Voici où en sont les inscriptions %s.', wp_get_current_user()->display_name ?: wp_get_current_user()->user_login, $etab ? 'de ' . $etab['fr'] : 'de tous les établissements' ) ),
-					'quitus'   => ueb_peut( UEB_CAP_GESTION ) || ! ueb_types_quitus_visibles() ? array( 'Quitus', 'Retrouve un dossier, examine ses reçus et rends ta décision après la vérification des originaux.' ) : array( 'Reçus CMS', 'Les reçus des frais médicaux envoyés par les étudiants : compare-les aux originaux, puis valide-les ou renvoie-les.' ),
+					'quitus'   => ( ueb_peut( UEB_CAP_GESTION ) || ! ueb_types_quitus_visibles() ) && 'medicaux' !== sanitize_key( $_GET['type'] ?? '' ) ? array( 'Reçus', 'Les reçus envoyés par les étudiants : retrouve un dossier, compare ses reçus aux originaux et rends ta décision.' ) : array( 'Reçus CMS', 'Les reçus des frais médicaux envoyés par les étudiants : compare-les aux originaux, puis valide-les ou renvoie-les.' ),
 					'etudiants' => array( 'Étudiants UEB', 'Les étudiants inscrits de ta portée et l’état de leurs droits de l’année, en lecture seule.' ),
 					'paiements' => array( 'Suivi des paiements', 'Droits universitaires attendus et encaissés, filière par filière. Seuls les reçus vérifiés comptent comme encaissés.' ),
 					'cellule'  => array( 'Comptes du personnel', 'Les comptes que tu crées pour ton établissement, avec un rôle aux droits inférieurs aux tiens.' ),
@@ -448,7 +448,7 @@ ueb_page_debut( array(
 						</div>
 					<?php endif; ?>
 
-					<form class="filtres carte" method="get" action="<?php echo esc_url( ueb_url_scolarite() ); ?>" role="search">
+					<form class="filtres carte" method="get" action="<?php echo esc_url( ueb_url_scolarite() ); ?>" role="search"><?php ueb_champ_espace(); ?>
 						<input type="hidden" name="vue" value="comptes">
 						<div class="champ">
 							<label for="e-q">Rechercher un étudiant</label>
@@ -563,6 +563,7 @@ ueb_page_debut( array(
 						'etab'      => $etab_agent,
 						'statut'    => sanitize_key( $_GET['statut'] ?? '' ),
 						'paiements' => sanitize_key( $_GET['paiements'] ?? '' ),
+						'type'      => in_array( sanitize_key( $_GET['type'] ?? '' ), ueb_types_quitus_visibles(), true ) ? sanitize_key( $_GET['type'] ) : '',
 						'q'         => sanitize_text_field( wp_unslash( $_GET['q'] ?? '' ) ),
 						'filiere'   => sanitize_text_field( wp_unslash( $_GET['filiere'] ?? '' ) ),
 						'niveau'    => sanitize_text_field( wp_unslash( $_GET['niveau'] ?? '' ) ),
@@ -595,7 +596,7 @@ ueb_page_debut( array(
 					$abreviations   = array( 'droits' => array( 'DU', 'Droits universitaires' ), 'medicaux' => array( 'FM', 'Frais médicaux' ) );
 					$libelle_statut = $filtres['statut'] ? $etats[ $filtres['statut'] ]['compteur'] : '';
 					/* Filtres en cours (hors statut) : gardés par les compteurs, l'alerte et les pages. */
-					$actifs    = array_filter( array_intersect_key( $filtres, array_flip( array( 'paiements', 'q', 'filiere', 'niveau', 'moyen' ) ) ), 'strlen' );
+					$actifs    = array_filter( array_intersect_key( $filtres, array_flip( array( 'paiements', 'type', 'q', 'filiere', 'niveau', 'moyen' ) ) ), 'strlen' );
 					$url_liste = static fn( array $args = array() ) => $ici( array_merge( array( 'vue' => 'quitus', 'statut' => $filtres['statut'] ?: null ), $actifs, $args ) );
 					$niveau_lu = static function ( $code ) {
 						foreach ( UEB_NIVEAUX_INSCRIPTION as $cle_niveau => $libelle ) {
@@ -703,8 +704,9 @@ ueb_page_debut( array(
 						</script>
 
 						<section class="carte registre registre--quitus" aria-label="<?php echo esc_attr( $libelle_statut ? 'Dossiers ' . mb_strtolower( $libelle_statut ) : 'Dossiers de l’année' ); ?>">
-							<form class="registre__filtres" method="get" action="<?php echo esc_url( ueb_url_scolarite() ); ?>" role="search" data-filtres-registre>
+							<form class="registre__filtres" method="get" action="<?php echo esc_url( ueb_url_scolarite() ); ?>" role="search" data-filtres-registre><?php ueb_champ_espace(); ?>
 								<input type="hidden" name="vue" value="quitus">
+								<?php if ( $filtres['type'] ) : ?><input type="hidden" name="type" value="<?php echo esc_attr( $filtres['type'] ); ?>"><?php endif; ?>
 								<?php if ( $filtres['statut'] ) : ?><input type="hidden" name="statut" value="<?php echo esc_attr( $filtres['statut'] ); ?>"><?php endif; ?>
 								<label class="sr" for="f-q">Rechercher un dossier</label>
 								<span class="registre__champ">
