@@ -311,7 +311,7 @@
 
 /* Étudiants par niveau : chiffre au-dessus, colonne, niveau dessous ; les
    colonnes montent à l'ouverture du tiroir. */
-.adm-niveaux { display: inline-grid; grid-template-columns: repeat(5, 36px); gap: 8px; }
+.adm-niveaux { display: inline-grid; grid-auto-flow: column; grid-auto-columns: 36px; gap: 8px; }
 .adm-niveaux__col { display: grid; grid-template-rows: 18px 64px 18px; justify-items: center; }
 .adm-niveaux__col b { font-size: .84rem; font-weight: 700; line-height: 18px; color: var(--encre); font-variant-numeric: tabular-nums; }
 .adm-niveaux__col i { align-self: end; width: 24px; height: max(3px, var(--h)); border-radius: 4px 4px 0 0; background: var(--viz-pas-2); transform-origin: center bottom; }
