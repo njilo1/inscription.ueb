@@ -1,6 +1,5 @@
 <?php
 /**
- * Template Name: Espace Direction
  *
  * Espace de gestion : rôles dynamiques et comptes du personnel. Même rendu
  * que l'espace de gestion de la préinscription (templates/access-portal.php),

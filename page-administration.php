@@ -16,8 +16,11 @@
  * Thème clair par défaut, sombre au choix (bascule mémorisée, voir
  * inc/administration.php et assets/js/administration.js).
  *
- * Accès : capacité « manage_options ». La connexion se fait ici ou par la
- * page de connexion WordPress.
+ * Interface unique du back-office (inc/espaces.php) : tout compte du
+ * personnel s'y connecte — super-administrateur, scolarité, Régisseur CMS,
+ * Direction, comptes étudiants, administrateur d'un IPES — et n'y voit que
+ * les onglets de ses permissions. Les écrans autres que le pilotage
+ * (espace « admin », ci-dessous) sont dans templates/espaces/.
  *
  * @package Inscription_UEB
  */
@@ -31,6 +34,10 @@ if ( isset( $_POST['ueb_connexion_admin'] ) ) {
 		$erreur_connexion = 'Ta session a expiré. Recommence.';
 	} else {
 		$identifiant = sanitize_text_field( wp_unslash( $_POST['identifiant'] ?? '' ) );
+		/* L'adresse e-mail du compte est acceptée à la place de l'identifiant. */
+		if ( is_email( $identifiant ) && ( $par_email = get_user_by( 'email', $identifiant ) ) ) {
+			$identifiant = $par_email->user_login;
+		}
 		$utilisateur = ueb_connexion_gestion_bloquee( $identifiant ) ? new WP_Error( 'ueb_rate_limited' ) : wp_signon( array(
 			'user_login'    => $identifiant,
 			'user_password' => (string) wp_unslash( $_POST['mot_de_passe'] ?? '' ),
@@ -38,19 +45,28 @@ if ( isset( $_POST['ueb_connexion_admin'] ) ) {
 		), is_ssl() );
 		if ( is_wp_error( $utilisateur ) ) {
 			ueb_noter_echec_gestion( $identifiant );
-			$erreur_connexion = 'Identifiant ou mot de passe incorrect.';
-		} elseif ( ! user_can( $utilisateur, 'manage_options' ) ) {
+			$erreur_connexion = ueb_message_echec_connexion( $utilisateur, 'Identifiant ou mot de passe incorrect.' );
+		} elseif ( ! ueb_espaces_du_compte( $utilisateur->ID ) ) {
 			wp_logout();
-			$erreur_connexion = "Ce compte n'est pas administrateur.";
+			$erreur_connexion = "Ce compte n'a accès à aucun espace de gestion.";
 		} else {
 			ueb_reinitialiser_echecs_gestion( $identifiant );
+			wp_set_current_user( $utilisateur->ID );
+			wp_set_auth_cookie( $utilisateur->ID, false, is_ssl() );
 			wp_safe_redirect( get_permalink() );
 			exit;
 		}
 	}
 }
 
-$autorise = ueb_est_admin_ueb();
+/* Compte connecté avec un espace autre que le pilotage : son écran. */
+$espace = ueb_espace_courant();
+if ( $espace && 'admin' !== $espace ) {
+	require UEB_INSC_DIR . '/templates/espaces/' . $espace . '.php';
+	return;
+}
+
+$autorise = 'admin' === $espace;
 $annee    = ueb_annee_academique();
 
 if ( $autorise ) {
@@ -97,18 +113,18 @@ ueb_page_debut( array(
 					<?php ueb_animation( 'embleme', ueb_props_embleme(), 'animation--embleme bo-connexion__embleme', 'Sceau de l’Université d’Ebolowa' ); ?>
 					<p class="bo-connexion__marque">Université d’Ebolowa</p>
 					<h1 id="titre-connexion">Administration</h1>
-					<p class="bo-connexion__intro">Le pilotage des inscriptions dans les neuf établissements.</p>
+					<p class="bo-connexion__intro">L’espace de travail du personnel des inscriptions : chacun y retrouve ses outils.</p>
 					<ul class="bo-connexion__points">
-						<li><?php echo ueb_icone( 'banque', 17 ); ?>Suivre le recouvrement des droits</li>
-						<li><?php echo ueb_icone( 'ecole', 17 ); ?>Comparer les établissements</li>
-						<li><?php echo ueb_icone( 'utilisateur', 17 ); ?>Gérer les comptes du personnel</li>
+						<li><?php echo ueb_icone( 'recu', 17 ); ?>Vérifier les reçus de paiement</li>
+						<li><?php echo ueb_icone( 'ecole', 17 ); ?>Suivre les IPES et leurs reversements</li>
+						<li><?php echo ueb_icone( 'utilisateur', 17 ); ?>Gérer les rôles et les comptes</li>
 					</ul>
 				</aside>
 				<section class="bo-connexion__formulaire" aria-labelledby="titre-connexion">
 					<h2>Connexion</h2>
-					<p class="bo-connexion__aide">Réservé aux administrateurs de la plateforme.</p>
+					<p class="bo-connexion__aide">Avec l’identifiant communiqué par l’administration de la plateforme.</p>
 					<?php if ( is_user_logged_in() ) : ?>
-						<?php ueb_alerte( 'erreur', "Ce compte n'est pas administrateur." ); ?>
+						<?php ueb_alerte( 'erreur', "Ce compte n'a accès à aucun espace de gestion." ); ?>
 					<?php endif; ?>
 					<?php if ( $erreur_connexion ) : ?>
 						<?php ueb_alerte( 'erreur', $erreur_connexion ); ?>

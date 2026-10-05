@@ -1,6 +1,5 @@
 <?php
 /**
- * Template Name: Espace IPES
  *
  * Espace de l'administrateur d'un IPES (établissement privé sous tutelle).
  * Accès : rôle « ueb_admin_ipes », compte non suspendu, IPES actif

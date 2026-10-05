@@ -3,7 +3,7 @@
  * Rôles du back-office, dynamiques.
  *
  * Aucun nom de rôle n'est écrit dans le code : la Direction crée, nomme et
- * modifie les rôles depuis son interface (page-direction.php). Chaque rôle
+ * modifie les rôles depuis son espace (templates/espaces/direction.php). Chaque rôle
  * du registre (option « ueb_roles_registre ») est un vrai rôle WordPress
  * dont les capacités sont prises dans une liste blanche (ueb_permissions()),
  * avec une portée : un établissement (fixé sur chaque compte), plusieurs
@@ -569,13 +569,12 @@ function ueb_page_par_gabarit( $gabarit ) {
 
 /** Adresse de l'espace scolarité. */
 function ueb_url_scolarite() {
-	$id = ueb_page_par_gabarit( 'page-scolarite.php' );
-	return $id ? get_permalink( $id ) : home_url( '/scolarite/' );
+	return ueb_url_espace_admin( 'scolarite' );
 }
 
 /** Adresse de l'espace cellule informatique. */
 function ueb_url_cellule() {
-	return ueb_url( 'cellule-informatique' );
+	return ueb_url_espace_admin( 'cellule' );
 }
 
 /** Adresse de l'espace administration. */
@@ -586,8 +585,7 @@ function ueb_url_administration() {
 
 /** Adresse de l'espace Direction (même mécanisme : une Page portant le gabarit). */
 function ueb_url_direction() {
-	$id = ueb_page_par_gabarit( 'page-direction.php' );
-	return $id ? get_permalink( $id ) : home_url( '/direction/' );
+	return ueb_url_espace_admin( 'direction' );
 }
 
 /**
@@ -596,22 +594,8 @@ function ueb_url_direction() {
  * Direction seule → Direction.
  */
 function ueb_url_espace_du_compte( $user_id ) {
-	if ( user_can( $user_id, 'manage_options' ) ) {
-		return ueb_url_administration();
-	}
-	if ( user_can( $user_id, UEB_CAP_GESTION ) || user_can( $user_id, 'ueb_voir_cms' ) || user_can( $user_id, 'ueb_voir_paiements' ) || user_can( $user_id, 'ueb_voir_ipes' ) ) {
-		return ueb_url_scolarite();
-	}
-	if ( user_can( $user_id, UEB_CAP_COMPTES ) ) {
-		return ueb_url_cellule();
-	}
-	if ( user_can( $user_id, UEB_CAP_DIRECTION ) ) {
-		return ueb_url_direction();
-	}
-	if ( user_can( $user_id, UEB_CAP_IPES ) ) {
-		return ueb_url_espace_ipes();
-	}
-	return home_url( '/' );
+	/* Une seule interface : l'Administration, qui ouvre les onglets du compte. */
+	return ueb_espaces_du_compte( $user_id ) ? ueb_url_administration() : home_url( '/' );
 }
 
 /** L'espace qui correspond au compte connecté. */

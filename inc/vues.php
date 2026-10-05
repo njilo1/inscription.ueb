@@ -536,8 +536,7 @@ function ueb_entete_site( $variante ) {
 			<?php /* Sur l'écran de connexion, personne n'est connecté : ni pastille de compte vide, ni bouton « Déconnexion » — la navigation publique suffit. */ ?>
 			<?php if ( 'gestion' === $variante && is_user_logged_in() ) : ?>
 				<nav class="site-nav" aria-label="Administration">
-					<?php if ( ! ueb_est_admin_ueb() ) : ?><a href="<?php echo esc_url( ueb_url_scolarite() ); ?>" <?php echo is_page_template( 'page-scolarite.php' ) ? 'aria-current="page"' : ''; ?>>Espace scolarité</a><?php endif; ?>
-					<?php if ( ueb_est_admin_ueb() ) : ?>
+					<?php if ( ueb_espaces_du_compte() ) : ?>
 						<a href="<?php echo esc_url( ueb_url_administration() ); ?>" <?php echo is_page_template( 'page-administration.php' ) ? 'aria-current="page"' : ''; ?>>Administration</a>
 					<?php endif; ?>
 				</nav>
@@ -811,6 +810,11 @@ function ueb_bo_barre( $espace, array $liens, array $pied = array(), array $marq
 	$utilisateur = wp_get_current_user();
 	$nom         = $utilisateur->display_name ? $utilisateur->display_name : $utilisateur->user_login;
 	$role        = ueb_nom_role_du_compte(); // nom saisi par la Direction, jamais écrit dans le code
+	/* Administration : la même barre partout, avec tous les onglets du compte. */
+	if ( ueb_espace_courant() ) {
+		$liens  = ueb_navigation_administration();
+		$espace = 'ipes' === ueb_espace_courant() ? $espace : 'Administration';
+	}
 	$liens       = array_values( array_filter( $liens ) ); // entrées retirées faute de permission
 	$role_classe = sanitize_html_class( strtolower( str_replace( ' ', '-', remove_accents( $role ) ) ) );
 	$marque      = $marque + array( 'nom' => 'Inscriptions', 'note' => UEB_UNIVERSITE['fr'], 'url' => home_url( '/' ), 'logo' => ueb_logo_url( 'UEB' ) );

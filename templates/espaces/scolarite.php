@@ -1,6 +1,5 @@
 <?php
 /**
- * Template Name: Espace scolarité
  *
  * Espace de la scolarité d'un établissement, avec barre latérale :
  *   - Tableau de bord : bilan des droits et quatre graphiques ;
@@ -69,7 +68,7 @@ $peut_quitus    = (bool) ueb_types_quitus_visibles();
 $peut_paiements = ueb_peut( 'ueb_voir_paiements' );
 $peut_ipes      = ueb_peut( 'ueb_voir_ipes' );
 $peut_etudiants = ueb_peut( 'ueb_voir_etudiants' );
-$autorise       = ueb_est_scolarite() && ( $peut_quitus || $peut_paiements || $peut_ipes || $peut_etudiants );
+$autorise       = ( ueb_est_scolarite() || ueb_est_admin_ueb() ) && ( $peut_quitus || $peut_paiements || $peut_ipes || $peut_etudiants );
 /* Première vue permise : tableau de bord, sinon paiements, sinon IPES, sinon étudiants. */
 $vue_defaut     = $peut_bord ? 'bord' : ( $peut_quitus ? 'quitus' : ( $peut_paiements ? 'paiements' : ( $peut_ipes ? 'ipes' : 'etudiants' ) ) );
 $annee    = ueb_annee_academique();
@@ -194,7 +193,7 @@ ueb_page_debut( array(
 				<?php
 				$titres = array(
 					'bord'     => array( 'Tableau de bord', sprintf( 'Bonjour %s. Voici où en sont les inscriptions %s.', wp_get_current_user()->display_name ?: wp_get_current_user()->user_login, $etab ? 'de ' . $etab['fr'] : 'de tous les établissements' ) ),
-					'quitus'   => array( 'Quitus', 'Retrouve un dossier, examine ses reçus et rends ta décision après la vérification des originaux.' ),
+					'quitus'   => ueb_peut( UEB_CAP_GESTION ) || ! ueb_types_quitus_visibles() ? array( 'Quitus', 'Retrouve un dossier, examine ses reçus et rends ta décision après la vérification des originaux.' ) : array( 'Reçus CMS', 'Les reçus des frais médicaux envoyés par les étudiants : compare-les aux originaux, puis valide-les ou renvoie-les.' ),
 					'etudiants' => array( 'Étudiants UEB', 'Les étudiants inscrits de ta portée et l’état de leurs droits de l’année, en lecture seule.' ),
 					'paiements' => array( 'Suivi des paiements', 'Droits universitaires attendus et encaissés, filière par filière. Seuls les reçus vérifiés comptent comme encaissés.' ),
 					'cellule'  => array( 'Comptes du personnel', 'Les comptes que tu crées pour ton établissement, avec un rôle aux droits inférieurs aux tiens.' ),

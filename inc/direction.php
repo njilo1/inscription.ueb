@@ -18,31 +18,6 @@
 
 defined( 'ABSPATH' ) || exit;
 
-/* ---------- Page de l'espace, créée une fois si elle manque ---------- */
-
-add_action( 'init', function () {
-	if ( get_option( 'ueb_page_direction_creee' ) || ueb_page_par_gabarit( 'page-direction.php' ) || ! ueb_insc_verrouiller( 'page_direction' ) ) {
-		return;
-	}
-	/* Une autre requête a pu créer la Page pendant qu'on attendait. */
-	if ( ueb_insc_option_en_base( 'ueb_page_direction_creee' ) ) {
-		ueb_insc_deverrouiller( 'page_direction' );
-		return;
-	}
-	$id = wp_insert_post( array(
-		'post_title'  => 'Direction',
-		'post_name'   => 'direction',
-		'post_status' => 'publish',
-		'post_type'   => 'page',
-		'meta_input'  => array( '_wp_page_template' => 'page-direction.php' ),
-	) );
-	if ( $id && ! is_wp_error( $id ) ) {
-		update_option( 'ueb_page_direction_creee', (int) $id );
-		delete_option( 'ueb_page_page-direction' ); // recalcul de ueb_page_par_gabarit()
-	}
-	ueb_insc_deverrouiller( 'page_direction' );
-}, 30 );
-
 /* ---------- Modèles de l'assistant ----------
    Des suggestions pour aller vite : le nom proposé est modifiable et
    n'est jamais utilisé par le code pour décider d'un accès. */
