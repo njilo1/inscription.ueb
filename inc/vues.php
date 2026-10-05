@@ -498,7 +498,7 @@ function ueb_nuages() {
 }
 
 function ueb_page_fin( $variante = 'simple' ) {
-	if ( ! in_array( $variante, array( 'auth', 'gestion', 'bo', 'espace' ), true ) ) {
+	if ( ! in_array( $variante, array( 'auth', 'gestion', 'bo' ), true ) ) {
 		ueb_pied_site();
 	}
 	ueb_fenetre_confirmation();

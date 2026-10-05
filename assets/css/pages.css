@@ -953,15 +953,15 @@
 .ticket-quitus > .badge { grid-area: badge; justify-self: end; }
 .ticket-quitus__numero { white-space: nowrap; }
 
-/* Choix du paiement (droits / frais médicaux) */
-.choix-paiement > p { margin: 0 0 .6rem; font-size: .95rem; color: var(--gris); }
-.choix-paiement__options { display: flex; flex-wrap: wrap; gap: .6rem; padding: .35rem; border: 1px solid var(--filet); border-radius: 16px; background: var(--blanc); }
-.choix-paiement a { position: relative; display: grid; flex: 1 1 220px; gap: .15rem; padding: .8rem 1rem .8rem 2.6rem; border-radius: 12px; color: var(--encre); text-decoration: none; transition: background-color .2s; }
-.choix-paiement a::before { content: ""; position: absolute; left: 1rem; top: 1.05rem; width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--filet-fort); background: var(--blanc); transition: border-color .2s, box-shadow .2s; }
-.choix-paiement a:hover { background: var(--papier); }
-.choix-paiement a[aria-current] { background: var(--succes-fond); }
-.choix-paiement a[aria-current]::before { border-color: var(--vert-bandeau); box-shadow: inset 0 0 0 3px var(--blanc), inset 0 0 0 8px var(--vert-bandeau); }
-.choix-paiement span { font-size: .88rem; color: var(--gris); }
+/* Choix du paiement (droits / frais médicaux) : deux boutons à cocher, sans carte autour */
+.choix-paiement > p { margin: 0 0 .65rem; font-size: .95rem; color: var(--gris); }
+.choix-paiement__options { display: flex; flex-wrap: wrap; gap: .5rem; }
+.choix-paiement__bouton { display: inline-flex; align-items: center; gap: .6rem; min-height: 44px; padding: .5rem 1.15rem .5rem .8rem; border: 1.5px solid var(--filet-fort); border-radius: 999px; background: var(--blanc); color: var(--encre); font-size: .95rem; font-weight: 600; text-decoration: none; transition: border-color .2s, background-color .2s; }
+.choix-paiement__bouton:hover { border-color: var(--vert-bandeau); }
+.choix-paiement__bouton:focus-visible { outline: 3px solid var(--or); outline-offset: 2px; }
+.choix-paiement__rond { flex: none; width: 18px; height: 18px; border: 2px solid var(--filet-fort); border-radius: 50%; background: var(--blanc); transition: border-color .2s, box-shadow .25s var(--ease-sortie); }
+.choix-paiement__bouton[aria-current] { border-color: var(--vert-bandeau); background: var(--succes-fond); color: var(--foret-900); }
+.choix-paiement__bouton[aria-current] .choix-paiement__rond { border-color: var(--vert-bandeau); box-shadow: inset 0 0 0 3px var(--blanc), inset 0 0 0 9px var(--vert-bandeau); }
 
 .recus-grille { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 1.25rem; align-items: start; }
 .recus-grille--seule { grid-template-columns: minmax(0, 1fr); }
@@ -985,8 +985,6 @@
 .depot.est-verrouille { opacity: .55; cursor: not-allowed; background-image: none; }
 .depot.est-verrouille input, .depot-camera__natif.est-verrouille, .depot-camera__natif.est-verrouille input { cursor: not-allowed; pointer-events: none; }
 .depot-camera__natif.est-verrouille, .depot-camera [data-camera-ouvrir]:disabled { opacity: .5; }
-.objet-recu__option.est-couvert { opacity: .6; }
-.objet-recu__option.est-couvert input, .objet-recu__option.est-couvert .objet-recu__carte { cursor: not-allowed; }
 .depot:focus-within { outline: 3px solid var(--or); outline-offset: 3px; }
 .depot__icone { display: grid; place-items: center; width: 64px; height: 64px; margin-bottom: .25rem; border-radius: 50%; background: var(--blanc); color: var(--vert-bandeau); box-shadow: var(--ombre-1); transition: transform .35s var(--ease-sortie); }
 .depot:hover .depot__icone, .depot.est-survole .depot__icone { transform: translateY(-4px) rotate(-6deg); }
@@ -1014,24 +1012,27 @@
 .conseils-photo span { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 10px; background: rgba(19, 53, 26, .07); color: var(--vert-bandeau); }
 
 
-/* Ce que paie le reçu : cartes à choix unique au-dessus du dépôt */
-.objet-recu { margin: 0 0 1.1rem; padding: 0; border: 0; }
-.objet-recu legend { margin-bottom: .6rem; padding: 0; font-weight: 700; color: var(--encre); }
-.objet-recu__options { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr)); gap: .6rem; }
-.objet-recu__option { position: relative; display: flex; }
-.objet-recu__option input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
-.objet-recu__carte { position: relative; display: flex; flex: 1; align-items: flex-start; gap: .65rem; padding: .8rem .9rem; border: 1.5px solid var(--filet-fort); border-radius: 14px; background: var(--blanc); transition: border-color .2s, background-color .2s, box-shadow .2s; }
-.objet-recu__option:hover .objet-recu__carte { border-color: var(--vert-bandeau); }
-.objet-recu__option input:checked + .objet-recu__carte { border-color: var(--vert-bandeau); background: var(--succes-fond); box-shadow: inset 0 0 0 1px var(--vert-bandeau); }
-.objet-recu__option input:focus-visible + .objet-recu__carte { outline: 3px solid var(--or); outline-offset: 2px; }
-.objet-recu__marque { flex: none; display: grid; place-items: center; min-width: 34px; height: 34px; padding: 0 .4rem; border-radius: 10px; background: var(--papier); font-weight: 800; font-size: .85rem; color: var(--vert-bandeau); font-variant-numeric: tabular-nums; transition: background-color .2s, color .2s; }
-.objet-recu__option input:checked + .objet-recu__carte .objet-recu__marque { background: var(--vert-bandeau); color: var(--blanc); }
-.objet-recu__texte { display: grid; gap: .1rem; min-width: 0; padding-right: 1rem; }
-.objet-recu__texte b { font-size: .95rem; }
-.objet-recu__texte small { font-size: .8rem; line-height: 1.35; color: var(--gris); }
-.objet-recu__texte .objet-recu__deja { color: var(--foret-800); font-weight: 600; }
-.objet-recu__coche { position: absolute; top: .6rem; right: .6rem; color: var(--vert-bandeau); opacity: 0; transform: scale(.6); transition: opacity .2s, transform .25s var(--ease-sortie); }
-.objet-recu__option input:checked + .objet-recu__carte .objet-recu__coche { opacity: 1; transform: none; }
+/* Reçu de l'étudiant : dépôt compact en une rangée, grisé dès qu'un fichier est chargé ou le reçu envoyé */
+.envoi-recus .depot { grid-template-columns: 48px minmax(0, 1fr); justify-items: start; align-items: center; gap: .9rem; padding: .85rem 1.1rem .85rem .85rem; border-radius: 14px; text-align: left; }
+.envoi-recus .depot__icone { width: 48px; height: 48px; margin: 0; border-radius: 12px; transition: background-color .2s, color .2s; }
+.envoi-recus .depot__texte { display: grid; gap: .1rem; min-width: 0; }
+.envoi-recus .depot__titre { max-width: none; font-size: .98rem; line-height: 1.35; }
+.envoi-recus .depot__aide { max-width: none; font-size: .86rem; }
+.envoi-recus .depot:hover .depot__icone, .envoi-recus .depot.est-survole .depot__icone { transform: none; background: var(--vert-bandeau); color: var(--blanc); }
+.depot__icone-verrou, .depot.est-verrouille .depot__icone-libre { display: none; }
+.depot.est-verrouille .depot__icone-verrou { display: block; }
+.envoi-recus .depot.est-verrouille { opacity: 1; background-color: #eceeec; box-shadow: inset 0 0 0 1.5px var(--filet); }
+.envoi-recus .depot.est-verrouille .depot__icone { background: #dfe3df; color: var(--gris); box-shadow: none; }
+.envoi-recus .depot.est-verrouille .depot__titre { color: var(--gris); }
+/* Le fichier choisi : une ligne, vignette, nom, poids et retrait */
+.envoi-recus .depot__apercus { grid-template-columns: minmax(0, 1fr); margin: .75rem 0 0; }
+.envoi-recus .depot__apercus li { grid-template-columns: 44px minmax(0, 1fr) 44px; grid-template-areas: "vignette nom retirer" "vignette infos retirer"; align-items: center; gap: 0 .8rem; padding: .45rem .45rem .45rem .5rem; border: 1px solid var(--filet); border-radius: 14px; background: var(--blanc); }
+.envoi-recus .depot__vignette { grid-area: vignette; width: 44px; border-radius: 8px; font-size: .7rem; }
+.envoi-recus .depot__nom { grid-area: nom; align-self: end; }
+.envoi-recus .depot__apercus small { grid-area: infos; align-self: start; }
+.envoi-recus .depot__retirer { grid-area: retirer; position: static; width: 44px; height: 44px; border-radius: 10px; background: transparent; color: var(--gris); }
+.envoi-recus .depot__retirer:hover, .envoi-recus .depot__retirer:focus-visible { background: var(--danger-fond); color: var(--danger); transform: none; }
+.envoi-recus .depot__retirer::after { content: none; }
 
 /* Caméra et retrait d'un fichier */
 .depot-camera { display: flex; align-items: center; justify-content: center; gap: .75rem; margin-top: .85rem; font-size: .88rem; color: var(--gris); }
@@ -1085,7 +1086,7 @@
 }
 @media (prefers-reduced-motion: reduce) {
 	.camera[open] { animation: none; }
-	.objet-recu__coche, .depot__retirer { transition: none; }
+	.depot__retirer { transition: none; }
 }
 /* Reçus déjà envoyés */
 .recus-liste { list-style: none; display: grid; gap: .65rem; margin: 0; padding: 0; }
@@ -1113,6 +1114,7 @@
 	.ticket-quitus { width: 100%; }
 }
 @media (max-width: 480px) {
+	.choix-paiement__bouton { flex: 1 1 100%; }
 	.conseils-photo { grid-template-columns: 1fr; }
 	.conseils-photo li { grid-template-columns: 36px 1fr; align-items: center; }
 }

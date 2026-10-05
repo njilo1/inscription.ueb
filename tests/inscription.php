@@ -90,8 +90,11 @@ verifier( isset( $e['numero_urgence'] ), 'numéro d’urgence invalide toujours 
 $objets_de = static fn( $type, $tranche ) => array_keys( ueb_objets_recu( (object) array( 'type' => $type, 'tranche' => $tranche ) ) );
 verifier( $objets_de( 'droits', 1 ) === array( 'tranche1' ), 'reçu d’un quitus tranche 1 : première tranche seulement' );
 verifier( $objets_de( 'droits', 2 ) === array( 'tranche2' ), 'reçu d’un quitus tranche 2 : deuxième tranche seulement' );
-verifier( $objets_de( 'droits', 3 ) === array( 'tranche1', 'tranche2', 'totalite' ), 'reçu d’un quitus deux tranches : trois choix' );
+verifier( $objets_de( 'droits', 3 ) === array( 'totalite' ), 'reçu d’un quitus deux tranches : la totalité, en un seul reçu' );
 verifier( $objets_de( 'medicaux', 0 ) === array( 'medicaux' ), 'reçu médical : frais médicaux' );
+$quitus_deux = (object) array( 'type' => 'droits', 'tranche' => 3 );
+verifier( array( 'totalite' ) === array_keys( ueb_objets_recu_libres( $quitus_deux, array() ) ) && array() === ueb_objets_recu_libres( $quitus_deux, array( (object) array( 'objet' => 'totalite' ) ) ), 'un seul reçu par paiement : fermé dès le premier envoi' );
+verifier( 1 === UEB_RECUS_MAX_FICHIERS, 'un reçu au plus par quitus' );
 verifier( 'Totalité' === ueb_libelle_objet_recu( (object) array( 'objet' => 'totalite' ) ) && 'Frais médicaux' === ueb_libelle_objet_recu( (object) array( 'objet' => '' ), 'medicaux' ), 'libellé de l’objet, repli sur le type pour les anciens reçus' );
 
 // Formation classique : l'étudiant choisit sa tranche. Première : 25 000 à 45 000 par

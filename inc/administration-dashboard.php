@@ -13,13 +13,27 @@ function ueb_adm_montant_court( $montant ) {
 	return ueb_formater_montant( $montant );
 }
 
-/** Cartes, anneau financier, courbes cumulées et comparaison du recouvrement. */
-function ueb_adm_dashboard( array $c, array $suivi, array $activite, $focus, $periode ) {
+/**
+ * Cartes, anneau financier, courbes cumulées et comparaison du recouvrement.
+ *
+ * Repris tel quel par le tableau de bord de la scolarité, limité à son
+ * établissement : $options y change les liens et retire ce qui n'appartient
+ * qu'à l'administration.
+ *
+ * @param array $options url (callable array $args => URL de l'espace, non
+ *                       échappée ; défaut : l'administration filtrée sur $focus),
+ *                       perimetre (bool : choix de l'établissement),
+ *                       paiements (URL du suivi des paiements ; '' = sans lien),
+ *                       ipes (bool : panneau des IPES sous tutelle).
+ */
+function ueb_adm_dashboard( array $c, array $suivi, array $activite, $focus, $periode, array $options = array() ) {
 	$g       = $suivi['global'];
 	$taux    = ueb_suivi_taux( $g );
 	$reste   = max( 0, $g['attendu'] - $g['encaisse'] );
-	$url     = static fn( array $args = array() ) => add_query_arg( $args, ueb_url_administration() );
-	$args    = $focus ? array( 'etab' => $focus ) : array();
+	$propre  = isset( $options['url'] );
+	$url     = $propre ? $options['url'] : static fn( array $args = array() ) => add_query_arg( $args, ueb_url_administration() );
+	$args    = $focus && ! $propre ? array( 'etab' => $focus ) : array();
+	$options = array_merge( array( 'perimetre' => true, 'paiements' => $url( $args + array( 'vue' => 'paiements' ) ), 'ipes' => true ), $options );
 	$parts   = array(
 		'encaisse'     => array( 'Encaissé', 'var(--dash-foret)' ),
 		'verification' => array( 'En vérification', 'var(--dash-bleu)' ),
@@ -38,6 +52,7 @@ function ueb_adm_dashboard( array $c, array $suivi, array $activite, $focus, $pe
 	?>
 	<div class="adm-pilotage">
 		<div class="adm-pilotage__contexte"><span class="adm-pilotage__repere" aria-hidden="true"></span><b>Vue d’ensemble</b><span>Année académique en cours</span></div>
+		<?php if ( $options['perimetre'] ) : ?>
 		<form class="adm-perimetre" method="get" action="<?php echo esc_url( ueb_url_administration() ); ?>">
 			<label for="adm-etablissement">Établissement</label>
 			<input type="hidden" name="periode" value="<?php echo (int) $periode; ?>">
@@ -49,6 +64,7 @@ function ueb_adm_dashboard( array $c, array $suivi, array $activite, $focus, $pe
 			</select>
 			<button type="submit" class="adm-bouton">Afficher</button>
 		</form>
+		<?php endif; ?>
 	</div>
 	<div class="adm-tendances-tete">
 		<p>Évolution sur <b><?php echo (int) $periode; ?> jours</b></p>
@@ -111,10 +127,15 @@ function ueb_adm_dashboard( array $c, array $suivi, array $activite, $focus, $pe
 				<div><dt>Paiement partiel</dt><dd><?php echo esc_html( ueb_suivi_etudiants( $g['partiels'] ) ); ?></dd></div>
 				<div><dt>Aucun paiement vérifié</dt><dd><?php echo esc_html( ueb_suivi_etudiants( $g['aucun'] ) ); ?></dd></div>
 			</dl>
-			<a href="<?php echo esc_url( $url( $args + array( 'vue' => 'paiements' ) ) ); ?>">Consulter les paiements<?php echo ueb_icone( 'fleche', 18 ); ?></a>
+			<?php if ( $options['paiements'] ) : ?>
+				<a href="<?php echo esc_url( $options['paiements'] ); ?>">Consulter les paiements<?php echo ueb_icone( 'fleche', 18 ); ?></a>
+			<?php endif; ?>
 		</section>
 	</div>
 	<?php
+	if ( ! $options['ipes'] ) {
+		return;
+	}
 	/* IPES : tous, ou ceux de l'établissement filtré (et seulement sa part). */
 	ueb_ipes_panneau_synthese(
 		ueb_ipes_synthese( ueb_ipes_liste( $focus ? array( 'etablissement' => $focus ) : array() ), $focus ? array( $focus ) : null ),
@@ -225,12 +246,17 @@ function ueb_adm_statistiques( array $c ) {
 	<?php
 }
 
-/** Barres de taux sur une échelle commune 0–100 %, avec valeurs et liens. */
-function ueb_adm_comparaison( array $suivi, $focus, $periode ) {
+/**
+ * Barres de taux sur une échelle commune 0–100 %, avec valeurs et liens.
+ *
+ * @param string|null $url_filieres Lien des filières (un établissement) ;
+ *                                  null = suivi des paiements de l'administration.
+ */
+function ueb_adm_comparaison( array $suivi, $focus, $periode, $url_filieres = null ) {
 	$lignes = array();
 	if ( $focus ) {
 		foreach ( array_slice( $suivi['filieres'], 0, 6, true ) as $f ) {
-			$lignes[] = array( 'nom' => $f['libelle'], 'titre' => $f['libelle'], 'suivi' => $f, 'url' => add_query_arg( array( 'vue' => 'paiements', 'etab' => $focus ), ueb_url_administration() ) );
+			$lignes[] = array( 'nom' => $f['libelle'], 'titre' => $f['libelle'], 'suivi' => $f, 'url' => $url_filieres ?? add_query_arg( array( 'vue' => 'paiements', 'etab' => $focus ), ueb_url_administration() ) );
 		}
 	} else {
 		foreach ( ueb_etablissements() as $sigle => $etab ) {

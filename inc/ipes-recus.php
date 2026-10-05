@@ -11,7 +11,10 @@
  *   - photos réencodées en JPEG (métadonnées et contenu caché éliminés), PDF
  *     vérifiés puis compressés par Ghostscript s'il est présent ;
  *   - stockage dans le dossier fermé au web (uploads/ueb-recus/ipes/{année}),
- *     sous un nom construit par le serveur (REC-{bordereau}-{horodatage}) ;
+ *     sous un nom construit par le serveur (REC-{bordereau}-{jjmmaahhmm}) ;
+ *   - nom affiché et téléchargé : numéro du bordereau, rang du reçu et
+ *     date d'envoi au format jjmmaahhmm (BRD-SIANTOU-2627-0001-recu-1-0410261435.jpg),
+ *     pour l'historique ; un reçu ajouté au brouillon prend le numéro officiel à l'envoi ;
  *   - lecture uniquement via /recu-ipes/{id}, pour l'IPES propriétaire,
  *     l'administration de l'UEb et la tutelle destinataire (bordereau envoyé).
  *
@@ -88,7 +91,8 @@ function ueb_ipes_recu_ajouter( $ipes_id, $bordereau_id, $source, $nom, $taille 
 	wp_mkdir_p( $dossier );
 	$pdf        = 'application/pdf' === $type;
 	$extension  = $pdf ? 'pdf' : 'jpg';
-	$horodatage = ( new DateTimeImmutable( 'now', new DateTimeZone( 'Africa/Douala' ) ) )->format( 'd-m-Y-H-i-s' );
+	/* Heure du Cameroun, au format jjmmaahhmm (ex. 0410261435 : 4 octobre 2026, 14 h 35). */
+	$horodatage = ( new DateTimeImmutable( 'now', new DateTimeZone( 'Africa/Douala' ) ) )->format( 'dmyHi' );
 	$base       = 'REC-' . (int) $bordereau_id . '-' . $horodatage;
 	$fichier    = $base . '.' . $extension;
 	for ( $n = 2; file_exists( $dossier . '/' . $fichier ); $n++ ) {
@@ -117,8 +121,8 @@ function ueb_ipes_recu_ajouter( $ipes_id, $bordereau_id, $source, $nom, $taille 
 		wp_delete_file( $chemin );
 		return new WP_Error( 'ueb_ipes_recu', $rang > UEB_IPES_RECUS_MAX ? sprintf( '%s : %d reçus au plus par bordereau.', $nom, UEB_IPES_RECUS_MAX ) : 'Ce bordereau a été envoyé : ses reçus ne changent plus.' );
 	}
-	/* Nom affiché : le numéro du bordereau (ou son brouillon) et le rang du reçu. */
-	$affiche = sanitize_file_name( ( str_starts_with( $bordereau->numero, 'BROUILLON-' ) ? 'brouillon-' . (int) $bordereau->id : $bordereau->numero ) . '-recu-' . $rang ) . '.' . $extension;
+	/* Nom affiché : le numéro du bordereau (ou son brouillon), le rang du reçu et sa date d'envoi. */
+	$affiche = sanitize_file_name( ( str_starts_with( $bordereau->numero, 'BROUILLON-' ) ? 'brouillon-' . (int) $bordereau->id : $bordereau->numero ) . '-recu-' . $rang . '-' . $horodatage ) . '.' . $extension;
 	$ok      = $wpdb->insert( 'ueb_insc_ipes_recus', array(
 		'bordereau_id' => (int) $bordereau_id,
 		'ipes_id'      => (int) $ipes_id,
@@ -201,7 +205,8 @@ function ueb_ipes_peut_voir_recu( $recu, $bordereau ) {
 
 /**
  * Chemin réel d'un reçu, seulement s'il a le format attendu
- * (« 2026-2027/REC-12-30-09-2026-10-15-00.jpg ») et reste dans le dossier.
+ * (« 2026-2027/REC-12-0410261435.jpg », ou l'ancien « REC-12-30-09-2026-10-15-00.jpg »)
+ * et reste dans le dossier.
  */
 function ueb_ipes_chemin_recu( $recu ) {
 	$base    = realpath( ueb_ipes_dossier_recus() );

@@ -32,7 +32,7 @@ $rempli   = min( 1, max( 0, ( $en_cours - 1 ) / 3 ) );
 	</ol>
 
 	<div class="parcours__suite parcours__suite--<?php echo esc_attr( $focus->statut ?? 'aucun' ); ?>">
-		<span class="parcours__etat" aria-hidden="true"><?php echo ueb_icone( array( 'genere' => 'tampon', 'rejete' => 'alerte', 'recu_envoye' => 'horloge', 'verifie' => 'check' )[ $focus->statut ?? '' ] ?? 'fichier', 20 ); ?></span>
+		<span class="parcours__etat" aria-hidden="true"><?php echo ueb_icone( array( 'genere' => 'banque', 'rejete' => 'alerte', 'recu_envoye' => 'tampon', 'verifie' => 'check' )[ $focus->statut ?? '' ] ?? 'fichier', 20 ); ?></span>
 		<div class="parcours__texte">
 			<p class="parcours__prochaine"><?php echo esc_html( $parcours['prochaine']['titre'] ); ?></p>
 			<p class="parcours__consigne"><?php echo esc_html( $parcours['prochaine']['texte'] ); ?></p>

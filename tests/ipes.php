@@ -207,7 +207,7 @@ $statut = static fn( $b ) => ueb_ipes_bordereau( $id, $b )->statut;
 $dans   = static fn( $b ) => array_map( static fn( $e ) => (int) $e->id, ueb_ipes_bordereau_etudiants( $id, $b ) );
 /* Reçu bancaire : une ligne suffit ici (le dépôt de fichiers a ses propres essais). */
 $recu = static function ( $b ) use ( $wpdb, $id ) {
-	$wpdb->insert( 'ueb_insc_ipes_recus', array( 'bordereau_id' => $b, 'ipes_id' => $id, 'fichier' => '2026-2027/REC-' . $b . '-01-01-2026-00-00-00.jpg', 'nom_original' => 'recu.jpg', 'type_mime' => 'image/jpeg', 'taille' => 1000 ) );
+	$wpdb->insert( 'ueb_insc_ipes_recus', array( 'bordereau_id' => $b, 'ipes_id' => $id, 'fichier' => '2026-2027/REC-' . $b . '-01-01-2026-00-00-00.jpg', 'nom_original' => 'brouillon-' . $b . '-recu-1-0410261435.jpg', 'type_mime' => 'image/jpeg', 'taille' => 1000 ) );
 };
 
 verifier( is_wp_error( ueb_ipes_bordereau_creer( $id, 'FS' ) ), 'tutelle qui n’est pas celle de l’IPES refusée' );
@@ -240,6 +240,7 @@ verifier( is_wp_error( ueb_ipes_bordereau_envoyer( $autre, $b1 ) ), 'envoi par u
 verifier( true === ueb_ipes_bordereau_envoyer( $id, $b1 ), 'bordereau envoyé' );
 $envoye = ueb_ipes_bordereau( $id, $b1 );
 verifier( 'BRD-IS-' . $courte . '-0001' === $envoye->numero, 'numéro officiel au premier envoi : ' . $envoye->numero );
+verifier( 'BRD-IS-' . $courte . '-0001-recu-1-0410261435.jpg' === ueb_ipes_recus( $id, $b1 )[0]->nom_original, 'reçu du brouillon renommé au numéro officiel, date jjmmaahhmm gardée' );
 verifier( $U === (int) $envoye->montant_unitaire && 2 * $U === (int) $envoye->total && 'envoye' === $envoye->statut && $envoye->date_envoi, 'montant par étudiant et total figés' );
 verifier( is_wp_error( ueb_ipes_bordereau_envoyer( $id, $b1 ) ), 'second envoi refusé' );
 verifier( is_wp_error( ueb_ipes_bordereau_definir_etudiants( $id, $b1, array( $paul ) ) ), 'bordereau envoyé : étudiants figés' );

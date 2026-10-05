@@ -27,8 +27,8 @@ $d = $args;
 				<div class="acc-actions" data-intro><?php ueb_landing_actions( $d['compte'], 'btn--fantome' ); ?></div>
 			</div>
 			<figure class="acc-ecran" data-intro-visuel>
-				<div class="acc-ecran__barre" aria-hidden="true"><i></i><i></i><i></i><span>Le parcours en 13 secondes</span></div>
-				<?php ueb_animation( 'parcours', ueb_props_parcours(), 'acc-ecran__animation', 'Animation : le formulaire se remplit, le quitus sort avec ses quatre coupons, il est tamponné et payé à la banque, puis le reçu est envoyé et vérifié.' ); ?>
+				<div class="acc-ecran__barre" aria-hidden="true"><i></i><i></i><i></i><span>Le parcours en 14 secondes</span></div>
+				<?php ueb_animation( 'parcours', ueb_props_parcours(), 'acc-ecran__animation', 'Animation : le formulaire se remplit, le quitus sort avec ses quatre coupons, il est payé à la banque, puis le reçu est envoyé, tamponné à la scolarité et vérifié.' ); ?>
 			</figure>
 		</div>
 	</section>
@@ -62,7 +62,7 @@ $d = $args;
 		<div class="conteneur">
 			<header class="acc-entete" data-apparition>
 				<h2>La procédure d’inscription</h2>
-				<p>Quatre étapes, dans cet ordre. Garde les originaux de tes reçus jusqu’à la vérification.</p>
+				<p>Quatre étapes, dans cet ordre. Garde l’original de ton reçu : c’est lui que la scolarité tamponne.</p>
 			</header>
 			<ol class="acc-frise" data-frise>
 				<?php foreach ( $d['etapes'] as $i => $e ) : ?>

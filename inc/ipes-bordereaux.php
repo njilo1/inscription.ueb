@@ -267,6 +267,12 @@ function ueb_ipes_bordereau_envoyer( $ipes_id, $id ) {
 		$wpdb->query( 'ROLLBACK' );
 		return new WP_Error( 'ueb_ipes_bordereau', 'Ce bordereau a déjà été envoyé.' );
 	}
+	/* Reçus joints au brouillon : « brouillon-{id} » devient le numéro officiel dans leur nom. */
+	$provisoire = 'brouillon-' . (int) $id . '-';
+	$wpdb->query( $wpdb->prepare(
+		'UPDATE ueb_insc_ipes_recus SET nom_original = CONCAT( %s, SUBSTRING( nom_original, %d ) ) WHERE ipes_id = %d AND bordereau_id = %d AND nom_original LIKE %s',
+		sanitize_file_name( $numero ) . '-', strlen( $provisoire ) + 1, $ipes_id, $id, $wpdb->esc_like( $provisoire ) . '%'
+	) );
 	$wpdb->query( 'COMMIT' );
 	return true;
 }
