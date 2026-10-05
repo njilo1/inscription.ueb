@@ -33,6 +33,7 @@ const UEB_CYCLES_FILIERE = array(
 	'tronc_commun' => 'Tronc commun',
 	'licence_3'    => 'Licence 3',
 	'master'       => 'Master',
+	'doctorat'     => 'Doctorat',
 );
 const UEB_CODE_FILIERE_REGEX = '/^[A-Z0-9][A-Z0-9_-]{1,29}$/';
 
