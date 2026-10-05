@@ -45,8 +45,10 @@ const UEB_AUCUN_ETAB = '-';
  */
 function ueb_permissions() {
 	return array(
-		'ueb_gerer_quitus'    => array( 'groupe' => 'Quitus et paiements', 'libelle' => 'Consulter les quitus', 'phrase' => 'consulter les quitus, leurs reçus et leurs PDF', 'aide' => 'Tableau de bord, liste des quitus, fiche d’un dossier, reçus envoyés.', 'icone' => 'recu' ),
-		'ueb_decider_quitus'  => array( 'groupe' => 'Quitus et paiements', 'libelle' => 'Rendre les décisions', 'phrase' => 'valider un paiement ou renvoyer un reçu à l’étudiant', 'aide' => 'Boutons « Paiement vérifié », « Renvoyer à l’étudiant », « Annuler la décision ».', 'icone' => 'tampon', 'requiert' => 'ueb_gerer_quitus' ),
+		'ueb_gerer_quitus'    => array( 'groupe' => 'Quitus et paiements', 'libelle' => 'Consulter les quitus des droits universitaires', 'phrase' => 'consulter les quitus des droits universitaires, leurs reçus et leurs PDF', 'aide' => 'Tableau de bord, liste des quitus, fiche d’un dossier, reçus des droits universitaires. Les frais médicaux relèvent du CMS.', 'icone' => 'recu' ),
+		'ueb_decider_quitus'  => array( 'groupe' => 'Quitus et paiements', 'libelle' => 'Valider les reçus des droits universitaires', 'phrase' => 'valider un reçu des droits universitaires ou le renvoyer à l’étudiant', 'aide' => 'Boutons « Valider », « Renvoyer à l’étudiant », « Annuler la décision » sur les droits universitaires.', 'icone' => 'tampon', 'requiert' => 'ueb_gerer_quitus' ),
+		'ueb_voir_cms'        => array( 'groupe' => 'Frais médicaux (CMS)', 'libelle' => 'Consulter les reçus CMS', 'phrase' => 'consulter les quitus et les reçus des frais médicaux', 'aide' => 'Liste des quitus et fiche d’un dossier, limitées aux frais médicaux (CMS), pour les établissements de sa portée. Rôle type : Régisseur CMS.', 'icone' => 'recu' ),
+		'ueb_decider_cms'     => array( 'groupe' => 'Frais médicaux (CMS)', 'libelle' => 'Valider les reçus CMS', 'phrase' => 'valider un reçu des frais médicaux ou le renvoyer à l’étudiant', 'aide' => 'Boutons « Valider », « Renvoyer à l’étudiant », « Annuler la décision » sur les frais médicaux.', 'icone' => 'tampon', 'requiert' => 'ueb_voir_cms' ),
 		'ueb_voir_paiements'  => array( 'groupe' => 'Quitus et paiements', 'libelle' => 'Suivre les paiements', 'phrase' => 'suivre le recouvrement des droits par établissement et filière', 'aide' => 'Vue « Paiements » : montants attendus, encaissés, taux.', 'icone' => 'banque' ),
 		'ueb_voir_etudiants'  => array( 'groupe' => 'Étudiants', 'libelle' => 'Voir la liste des étudiants', 'phrase' => 'consulter la liste des étudiants inscrits de sa portée', 'aide' => 'Vue « Étudiants UEB » : les étudiants inscrits, filtrables par établissement, filière, niveau et paiement, en lecture seule. Une portée « un établissement » ne voit que les siens.', 'icone' => 'diplome' ),
 		'ueb_gerer_comptes'   => array( 'groupe' => 'Comptes étudiants', 'libelle' => 'Gérer les comptes étudiants', 'phrase' => 'créer, réinitialiser ou suspendre les comptes étudiants', 'aide' => 'Espace « Comptes étudiants » : recherche, mot de passe provisoire, suspension.', 'icone' => 'utilisateur' ),
@@ -377,7 +379,7 @@ add_action( 'init', function () {
 /** Accès à l'espace scolarité : quitus, paiements, IPES ou liste des étudiants (hors administrateur). */
 function ueb_est_scolarite( $user_id = 0 ) {
 	$user = get_userdata( $user_id ?: get_current_user_id() );
-	return $user && ! user_can( $user, 'manage_options' ) && ( user_can( $user, UEB_CAP_GESTION ) || user_can( $user, 'ueb_voir_paiements' ) || user_can( $user, 'ueb_voir_ipes' ) || user_can( $user, 'ueb_voir_etudiants' ) );
+	return $user && ! user_can( $user, 'manage_options' ) && ( user_can( $user, UEB_CAP_GESTION ) || user_can( $user, 'ueb_voir_cms' ) || user_can( $user, 'ueb_voir_paiements' ) || user_can( $user, 'ueb_voir_ipes' ) || user_can( $user, 'ueb_voir_etudiants' ) );
 }
 
 /** Accès à l'espace « comptes étudiants » (hors administrateur). */
@@ -597,7 +599,7 @@ function ueb_url_espace_du_compte( $user_id ) {
 	if ( user_can( $user_id, 'manage_options' ) ) {
 		return ueb_url_administration();
 	}
-	if ( user_can( $user_id, UEB_CAP_GESTION ) || user_can( $user_id, 'ueb_voir_paiements' ) || user_can( $user_id, 'ueb_voir_ipes' ) ) {
+	if ( user_can( $user_id, UEB_CAP_GESTION ) || user_can( $user_id, 'ueb_voir_cms' ) || user_can( $user_id, 'ueb_voir_paiements' ) || user_can( $user_id, 'ueb_voir_ipes' ) ) {
 		return ueb_url_scolarite();
 	}
 	if ( user_can( $user_id, UEB_CAP_COMPTES ) ) {

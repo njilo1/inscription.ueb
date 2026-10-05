@@ -20,11 +20,46 @@ function ueb_est_gestionnaire() {
 	return ueb_peut( UEB_CAP_GESTION );
 }
 
-/** Décision sur un quitus : consulter ET décider ; l'établissement est contrôlé ensuite. */
+/* ---------- Qui voit et qui valide quel reçu ----------
+   Chaque étudiant envoie deux reçus : celui des droits universitaires va à la
+   scolarité (ueb_gerer_quitus, ueb_decider_quitus), celui des frais médicaux
+   au CMS (ueb_voir_cms, ueb_decider_cms). Chacun ne voit et ne valide que les
+   siens, dans sa portée ; l'administrateur voit tout. */
+
+/** Permissions de consultation et de décision de chaque type de quitus. */
+const UEB_PERMISSIONS_TYPE_QUITUS = array(
+	'droits'   => array( 'ueb_gerer_quitus', 'ueb_decider_quitus' ), // UEB_CAP_GESTION (inc/roles.php)
+	'medicaux' => array( 'ueb_voir_cms', 'ueb_decider_cms' ),
+);
+
+/** Types de quitus que le compte consulte (« droits », « medicaux »). */
+function ueb_types_quitus_visibles( $etab = null ) {
+	return array_keys( array_filter( UEB_PERMISSIONS_TYPE_QUITUS, static fn( $p ) => ueb_peut( $p[0], $etab ) ) );
+}
+
+function ueb_type_du_quitus( $quitus ) {
+	return 'medicaux' === ( $quitus->type ?? 'droits' ) ? 'medicaux' : 'droits';
+}
+
+/** Le compte peut-il consulter ce quitus (son type et son établissement) ? */
+function ueb_peut_voir_quitus( $quitus ) {
+	return $quitus && ueb_peut( UEB_PERMISSIONS_TYPE_QUITUS[ ueb_type_du_quitus( $quitus ) ][0], $quitus->etablissement );
+}
+
+/** Le compte peut-il valider ou renvoyer le reçu de ce quitus ? */
+function ueb_peut_decider_quitus( $quitus ) {
+	$p = UEB_PERMISSIONS_TYPE_QUITUS[ ueb_type_du_quitus( $quitus ) ];
+	return $quitus && ueb_peut( $p[0], $quitus->etablissement ) && ueb_peut( $p[1], $quitus->etablissement );
+}
+
+/** Décision sur un quitus : consulter ET décider au moins un type ; le quitus est contrôlé ensuite. */
 function ueb_exiger_gestionnaire() {
-	if ( ! ueb_peut( UEB_CAP_GESTION ) || ! ueb_peut( 'ueb_decider_quitus' ) ) {
-		wp_die( 'Action réservée aux comptes autorisés à rendre les décisions.', 'Accès refusé', array( 'response' => 403 ) );
+	foreach ( UEB_PERMISSIONS_TYPE_QUITUS as $p ) {
+		if ( ueb_peut( $p[0] ) && ueb_peut( $p[1] ) ) {
+			return;
+		}
 	}
+	wp_die( 'Action réservée aux comptes autorisés à rendre les décisions.', 'Accès refusé', array( 'response' => 403 ) );
 }
 
 function ueb_exiger_admin() {
@@ -99,9 +134,10 @@ function ueb_exiger_etab( $sigle ) {
  */
 function ueb_gestion_stats( $annee_code, $etab = '' ) {
 	global $wpdb;
+	$types  = ueb_types_quitus_visibles();
 	$sql    = 'SELECT etablissement, statut, COUNT(*) AS n, SUM(montant) AS total
-		   FROM ueb_insc_quitus WHERE annee_academique = %s';
-	$params = array( $annee_code );
+		   FROM ueb_insc_quitus WHERE annee_academique = %s AND type IN (' . ( $types ? implode( ',', array_fill( 0, count( $types ), '%s' ) ) : "''" ) . ')';
+	$params = array_merge( array( $annee_code ), $types );
 	if ( $etab ) {
 		$sql     .= ' AND etablissement = %s';
 		$params[] = $etab;
@@ -575,6 +611,13 @@ function ueb_gestion_portee_sql( array $filtres ) {
 	}
 	$where  = array( 'q.annee_academique = %s' );
 	$params = array( $filtres['annee'] );
+	$types  = ueb_types_quitus_visibles();
+	if ( ! $types ) {
+		$where[] = '1 = 0';
+	} elseif ( count( $types ) < count( UEB_PERMISSIONS_TYPE_QUITUS ) ) {
+		$where[]  = 'q.type = %s';
+		$params[] = $types[0];
+	}
 	if ( UEB_AUCUN_ETAB === $limite ) {
 		$where[] = '1 = 0'; // aucune portée : aucune ligne, jamais « tous »
 	}
@@ -814,6 +857,11 @@ function ueb_gestion_quitus_suivant( $quitus ) {
 		$quitus->etablissement,
 		$quitus->id
 	);
+	$types = ueb_types_quitus_visibles( $quitus->etablissement );
+	if ( ! $types ) {
+		return null;
+	}
+	$where .= $wpdb->prepare( ' AND q.type IN (' . implode( ',', array_fill( 0, count( $types ), '%s' ) ) . ')', $types ); // phpcs:ignore -- marqueurs générés
 	$reste = (int) $wpdb->get_var( "SELECT COUNT(DISTINCT $cle) FROM ueb_insc_quitus q WHERE $where" ); // phpcs:ignore -- préparé ci-dessus
 	if ( ! $reste ) {
 		return null;
@@ -911,6 +959,10 @@ function ueb_action_gestion_statut() {
 	}
 	ueb_exiger_etab( $quitus->etablissement );
 	$retour = add_query_arg( 'quitus', $quitus->id, ueb_url_scolarite() );
+	if ( ! ueb_peut_decider_quitus( $quitus ) ) {
+		ueb_flash( 'erreur', 'medicaux' === ueb_type_du_quitus( $quitus ) ? 'Le reçu des frais médicaux est validé par le CMS.' : 'Le reçu des droits universitaires est validé par la scolarité.' );
+		ueb_rediriger( $retour );
+	}
 	/* Rien à vérifier tant que l'étudiant n'a envoyé aucun reçu. */
 	if ( 'verifie' === $statut && ! ueb_recus_du_quitus( $quitus->id ) ) {
 		ueb_flash( 'erreur', "Aucun reçu envoyé pour ce quitus : le paiement ne peut pas encore être vérifié." );
@@ -969,7 +1021,7 @@ function ueb_action_gestion_valider() {
 	$retour   .= '#dossier-' . (int) $paiements[0]->id;
 	$valides   = array();
 	foreach ( $paiements as $q ) {
-		if ( 'recu_envoye' !== $q->statut || ! ueb_peut_gerer_etab( $q->etablissement ) || ! ueb_recus_du_quitus( $q->id ) ) {
+		if ( 'recu_envoye' !== $q->statut || ! ueb_peut_gerer_etab( $q->etablissement ) || ! ueb_peut_decider_quitus( $q ) || ! ueb_recus_du_quitus( $q->id ) ) {
 			continue;
 		}
 		/* La condition sur le statut écarte une décision prise entre-temps sur la fiche. */
@@ -1224,11 +1276,11 @@ add_filter( 'login_redirect', function ( $url, $demande, $utilisateur ) {
 
 /* PDF d'un quitus depuis l'espace scolarité : ?quitus={id}&pdf=1 */
 add_action( 'template_redirect', function () {
-	if ( ! isset( $_GET['pdf'], $_GET['quitus'] ) || ! is_page_template( 'page-scolarite.php' ) || ! ueb_peut( UEB_CAP_GESTION ) ) {
+	if ( ! isset( $_GET['pdf'], $_GET['quitus'] ) || ! is_page_template( 'page-scolarite.php' ) || ! ueb_types_quitus_visibles() ) {
 		return;
 	}
 	$quitus = ueb_quitus_par_id( (int) $_GET['quitus'] );
-	if ( $quitus && ueb_peut( UEB_CAP_GESTION, $quitus->etablissement ) ) {
+	if ( ueb_peut_voir_quitus( $quitus ) ) {
 		ueb_envoyer_pdf_quitus( $quitus );
 	}
 }, 20 );
