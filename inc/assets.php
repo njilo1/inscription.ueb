@@ -151,6 +151,15 @@ add_action( 'wp_enqueue_scripts', function () {
 		ueb_style( 'ueb-direction', 'assets/css/direction.css', array( $direction ? 'ueb-administration' : 'ueb-pages' ) );
 		ueb_script( 'ueb-direction', 'assets/js/direction.js', array( 'ueb-app' ) );
 	}
+	/* Tous les écrans de l'Administration : couche de l'administration (jetons du thème
+	   clair / sombre) et bascule, chargées après les feuilles des composants. */
+	if ( ueb_espace_courant() ) {
+		$apres = array_values( array_filter( array( 'ueb-pages', 'ueb-bord-graphes', 'ueb-paiements', 'ueb-quitus-registre', 'ueb-quitus-fiche', 'ueb-ipes', 'ueb-etudiants', 'ueb-direction' ), static fn( $p ) => wp_style_is( $p, 'enqueued' ) ) );
+		if ( ! wp_style_is( 'ueb-administration', 'enqueued' ) ) {
+			ueb_style( 'ueb-administration', 'assets/css/administration.css', $apres );
+		}
+		ueb_script( 'ueb-administration', 'assets/js/administration.js' );
+	}
 	if ( ( is_front_page() && ! $page ) || in_array( $page, array( 'connexion', 'creer-compte', 'mdp-oublie' ), true ) || $connexion_scolarite || $bord_scolarite || $ipes_heros ) {
 		ueb_script( 'ueb-remotion', 'assets/js/remotion-ueb.js' );
 	}

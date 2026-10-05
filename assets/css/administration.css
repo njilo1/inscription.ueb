@@ -464,6 +464,7 @@
 :root[data-theme="sombre"] .espace-admin .btn--sombre,
 :root[data-theme="sombre"] .espace-admin .btn--danger { --btn-texte: #fff; box-shadow: none; }
 :root[data-theme="sombre"] .espace-admin .btn--clair { --btn-texte: var(--encre); }
+:root[data-theme="sombre"] .espace-admin .btn--lien { --btn-texte: var(--foret-800); } /* liens d'action (« Suspendre »…) lisibles sur fond sombre */
 :root[data-theme="sombre"] .espace-admin .btn--fantome:hover { --btn-fond: rgba(143, 204, 163, .08); }
 :root[data-theme="sombre"] .espace-admin .champ__icone { background: rgba(143, 204, 163, .1); color: var(--foret-800); }
 :root[data-theme="sombre"] .espace-admin .champ__boite:focus-within .champ__icone { background: var(--foret-700); color: #fff; }
