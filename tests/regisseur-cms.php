@@ -65,6 +65,7 @@ $admin = get_users( array( 'role' => 'administrator', 'number' => 1, 'fields' =>
 
 try {
 	verifier( ! empty( $admin ), 'un administrateur existe pour préparer les données' );
+	delete_user_meta( (int) $admin[0], 'ueb_profil_simule' ); // vue complète pour préparer les données
 	wp_set_current_user( (int) $admin[0] );
 	nettoyer(
 		get_users( array( 'search' => 'test-cms.*', 'search_columns' => array( 'user_login' ), 'fields' => 'ID' ) ),
@@ -146,6 +147,19 @@ try {
 	verifier( ! ueb_peut_voir_quitus( $quitus['FS']['medicaux'] ), 'lecteur CMS : portée limitée à son établissement' );
 	verifier( array( 'FALSH:medicaux' ) === $liste(), 'lecteur CMS : registre limité aux frais médicaux de la FALSH' );
 
+	/* ---------- Administrateur « à la place » d'un profil (inc/profil-simule.php) ---------- */
+	wp_set_current_user( (int) $admin[0] );
+	update_user_meta( (int) $admin[0], 'ueb_profil_simule', array( 'type' => 'role', 'role' => 'test-cms-regisseur' ) );
+	verifier( ueb_super_admin_reel() && ! current_user_can( 'manage_options' ) && ! ueb_est_admin_ueb(), 'profil choisi : l’administrateur perd ses droits complets, pas son statut réel' );
+	verifier( array( 'medicaux' ) === ueb_types_quitus_visibles() && ! ueb_peut_voir_quitus( $quitus['FS']['droits'] ), 'vue du Régisseur CMS : les frais médicaux seulement' );
+	verifier( array( 'scolarite' ) === ueb_espaces_du_compte(), 'vue du Régisseur CMS : un seul espace' );
+	update_user_meta( (int) $admin[0], 'ueb_profil_simule', array( 'type' => 'role', 'role' => 'test-cms-scolarite', 'etab' => 'FALSH' ) );
+	verifier( array( 'droits' ) === ueb_types_quitus_visibles() && ueb_peut_voir_quitus( $quitus['FALSH']['droits'] ) && ! ueb_peut_voir_quitus( $quitus['FS']['droits'] ), 'vue de la scolarité de la FALSH : ses droits universitaires seulement' );
+	verifier( 'FALSH' === ueb_etab_agent() && array( 'FALSH' ) === ueb_etabs_autorises(), 'vue de la scolarité de la FALSH : sa portée' );
+	update_user_meta( (int) $admin[0], 'ueb_profil_simule', array( 'type' => 'role', 'role' => 'role-inexistant' ) );
+	verifier( null === ueb_profil_simule() && current_user_can( 'manage_options' ), 'profil devenu invalide : ignoré' );
+	delete_user_meta( (int) $admin[0], 'ueb_profil_simule' );
+
 	/* ---------- Administrateur : tout ---------- */
 	wp_set_current_user( (int) $admin[0] );
 	verifier( array( 'droits', 'medicaux' ) === ueb_types_quitus_visibles(), 'administrateur : les deux types' );
@@ -158,6 +172,7 @@ try {
 
 	echo $GLOBALS['assertions'] . " vérifications réussies.\n";
 } finally {
+	delete_user_meta( (int) ( $admin[0] ?? 0 ), 'ueb_profil_simule' ); // jamais d'administrateur bloqué sur un profil
 	wp_set_current_user( (int) ( $admin[0] ?? 0 ) );
 	nettoyer( $crees['agents'], $crees['roles'] );
 }
