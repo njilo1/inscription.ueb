@@ -81,6 +81,35 @@ function ueb_champ_espace() {
 	}
 }
 
+/**
+ * Vue affichée dans l'espace courant : celle de l'adresse (?vue=), sinon la
+ * vue par défaut de l'espace. Sert à la barre latérale et au chargement des
+ * feuilles de style et des scripts (inc/assets.php).
+ */
+function ueb_vue_courante() {
+	$espace = ueb_espace_courant();
+	$vue    = sanitize_key( $_GET['vue'] ?? '' ); // phpcs:ignore -- lecture seule
+	if ( 'scolarite' === $espace && isset( $_GET['quitus'] ) ) { // phpcs:ignore
+		return 'quitus';
+	}
+	if ( 'direction' === $espace && 'role' === $vue ) {
+		return 'roles';
+	}
+	if ( '' !== $vue ) {
+		return $vue;
+	}
+	switch ( $espace ) {
+		case 'scolarite':
+			return ueb_peut( UEB_CAP_GESTION ) ? 'bord' : ( ueb_types_quitus_visibles() ? 'quitus' : ( ueb_peut( 'ueb_voir_paiements' ) ? 'paiements' : ( ueb_peut( 'ueb_voir_ipes' ) ? 'ipes' : 'etudiants' ) ) );
+		case 'direction':
+			return 'roles';
+		case 'cellule':
+			return 'comptes';
+		default:
+			return 'bord';
+	}
+}
+
 /** Adresse d'un espace de l'Administration (l'espace « admin » n'a pas de paramètre). */
 function ueb_url_espace_admin( $espace, array $args = array() ) {
 	$base = ueb_url_administration();
@@ -94,25 +123,15 @@ function ueb_url_espace_admin( $espace, array $args = array() ) {
  */
 function ueb_navigation_administration() {
 	$espace = ueb_espace_courant();
-	$vue    = sanitize_key( $_GET['vue'] ?? '' ); // phpcs:ignore -- lecture seule
-	/* Vue affichée, avec la vue par défaut de chaque espace. */
-	if ( 'scolarite' === $espace && isset( $_GET['quitus'] ) ) { // phpcs:ignore
-		$vue = 'quitus';
-	} elseif ( 'scolarite' === $espace && '' === $vue ) {
-		$vue = ueb_peut( UEB_CAP_GESTION ) ? 'bord' : ( ueb_types_quitus_visibles() ? 'quitus' : ( ueb_peut( 'ueb_voir_paiements' ) ? 'paiements' : ( ueb_peut( 'ueb_voir_ipes' ) ? 'ipes' : 'etudiants' ) ) );
-	} elseif ( 'direction' === $espace && in_array( $vue, array( '', 'role' ), true ) ) {
-		$vue = 'roles';
-	} elseif ( 'cellule' === $espace && '' === $vue ) {
-		$vue = 'comptes';
-	} elseif ( in_array( $espace, array( 'admin', 'ipes' ), true ) && '' === $vue ) {
-		$vue = 'bord';
-	}
+	$vue    = ueb_vue_courante();
+	/* Fiche d'un quitus : l'onglet des reçus de son type reste surligné. */
+	$type   = sanitize_key( $_GET['type'] ?? '' ); // phpcs:ignore -- lecture seule
 	$lien = static fn( $e, $v, $libelle, $icone, array $args = array() ) => array(
 		'url'     => ueb_url_espace_admin( $e, ( in_array( $v, array( 'bord', 'roles', 'comptes' ), true ) ? array() : array( 'vue' => $v ) ) + $args ),
 		'libelle' => $libelle,
 		'icone'   => $icone,
 		/* Actif : même espace, même vue et mêmes paramètres (« type » sépare les deux onglets des quitus). */
-		'actif'   => $e === $espace && $v === $vue && sanitize_key( $_GET['type'] ?? '' ) === (string) ( $args['type'] ?? '' ), // phpcs:ignore
+		'actif'   => $e === $espace && $v === $vue && $type === (string) ( $args['type'] ?? '' ),
 	);
 	$permis = ueb_espaces_du_compte();
 	$admin  = in_array( 'admin', $permis, true );
@@ -131,25 +150,27 @@ function ueb_navigation_administration() {
 		);
 		$groupes['Scolarité'] = array(
 			$lien( 'scolarite', 'bord', 'Tableau de bord', 'tampon' ),
-			$lien( 'scolarite', 'quitus', 'Quitus et reçus', 'recu' ),
-			$lien( 'scolarite', 'quitus', 'Reçus CMS', 'recu', array( 'type' => 'medicaux' ) ),
+			$lien( 'scolarite', 'quitus', 'Reçus', 'recu' ),
 			$lien( 'scolarite', 'paiements', 'Paiements', 'banque' ),
 			$lien( 'scolarite', 'etudiants', 'Étudiants UEB', 'diplome' ),
 			$lien( 'scolarite', 'ipes', 'IPES sous tutelle', 'ecole' ),
 			$lien( 'scolarite', 'cellule', 'Comptes du personnel', 'cle' ),
 			$lien( 'scolarite', 'securite', 'Sécurité', 'cadenas' ),
 		);
+		$groupes['CMS'] = array( $lien( 'scolarite', 'quitus', 'Reçus CMS', 'recu', array( 'type' => 'medicaux' ) ) );
 	} elseif ( in_array( 'scolarite', $permis, true ) ) {
 		$groupes['Scolarité'] = array(
 			ueb_peut( UEB_CAP_GESTION ) ? $lien( 'scolarite', 'bord', 'Tableau de bord', 'tampon' ) : null,
-			ueb_types_quitus_visibles() ? $lien( 'scolarite', 'quitus', ueb_peut( UEB_CAP_GESTION ) ? 'Quitus' : 'Reçus CMS', 'recu' ) : null,
-			/* Les deux sortes de reçus : un onglet de plus pour ceux du CMS seuls. */
-			count( ueb_types_quitus_visibles() ) > 1 ? $lien( 'scolarite', 'quitus', 'Reçus CMS', 'recu', array( 'type' => 'medicaux' ) ) : null,
+			ueb_types_quitus_visibles() ? $lien( 'scolarite', 'quitus', ueb_peut( UEB_CAP_GESTION ) ? 'Reçus' : 'Reçus CMS', 'recu' ) : null,
 			ueb_peut( 'ueb_voir_paiements' ) ? $lien( 'scolarite', 'paiements', 'Paiements', 'banque' ) : null,
 			ueb_peut( 'ueb_voir_etudiants' ) ? $lien( 'scolarite', 'etudiants', 'Étudiants UEB', 'diplome' ) : null,
 			ueb_peut( 'ueb_voir_ipes' ) ? $lien( 'scolarite', 'ipes', 'IPES', 'ecole' ) : null,
 			ueb_peut( 'ueb_creer_agents' ) ? $lien( 'scolarite', 'cellule', 'Comptes du personnel', 'cle' ) : null,
 		);
+	}
+	/* Rôle qui voit aussi les reçus du CMS : leur onglet dans une section CMS. */
+	if ( ! $admin && in_array( 'scolarite', $permis, true ) && count( ueb_types_quitus_visibles() ) > 1 ) {
+		$groupes['CMS'] = array( $lien( 'scolarite', 'quitus', 'Reçus CMS', 'recu', array( 'type' => 'medicaux' ) ) );
 	}
 	if ( in_array( 'direction', $permis, true ) ) {
 		$groupes['Direction'] = array(

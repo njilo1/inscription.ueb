@@ -193,7 +193,7 @@ ueb_page_debut( array(
 				<?php
 				$titres = array(
 					'bord'     => array( 'Tableau de bord', sprintf( 'Bonjour %s. Voici où en sont les inscriptions %s.', wp_get_current_user()->display_name ?: wp_get_current_user()->user_login, $etab ? 'de ' . $etab['fr'] : 'de tous les établissements' ) ),
-					'quitus'   => ( ueb_peut( UEB_CAP_GESTION ) || ! ueb_types_quitus_visibles() ) && 'medicaux' !== sanitize_key( $_GET['type'] ?? '' ) ? array( 'Quitus', 'Retrouve un dossier, examine ses reçus et rends ta décision après la vérification des originaux.' ) : array( 'Reçus CMS', 'Les reçus des frais médicaux envoyés par les étudiants : compare-les aux originaux, puis valide-les ou renvoie-les.' ),
+					'quitus'   => ( ueb_peut( UEB_CAP_GESTION ) || ! ueb_types_quitus_visibles() ) && 'medicaux' !== sanitize_key( $_GET['type'] ?? '' ) ? array( 'Reçus', 'Les reçus envoyés par les étudiants : retrouve un dossier, compare ses reçus aux originaux et rends ta décision.' ) : array( 'Reçus CMS', 'Les reçus des frais médicaux envoyés par les étudiants : compare-les aux originaux, puis valide-les ou renvoie-les.' ),
 					'etudiants' => array( 'Étudiants UEB', 'Les étudiants inscrits de ta portée et l’état de leurs droits de l’année, en lecture seule.' ),
 					'paiements' => array( 'Suivi des paiements', 'Droits universitaires attendus et encaissés, filière par filière. Seuls les reçus vérifiés comptent comme encaissés.' ),
 					'cellule'  => array( 'Comptes du personnel', 'Les comptes que tu crées pour ton établissement, avec un rôle aux droits inférieurs aux tiens.' ),
