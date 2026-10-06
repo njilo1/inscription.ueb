@@ -1,6 +1,5 @@
 <?php
 /**
- * Template Name: Espace Direction
  *
  * Espace de gestion : rôles dynamiques et comptes du personnel. Même rendu
  * que l'espace de gestion de la préinscription (templates/access-portal.php),
@@ -432,7 +431,7 @@ ueb_page_debut( array(
 								</div>
 							<?php endif; ?>
 
-							<form method="get" action="<?php echo esc_url( ueb_url_direction() ); ?>" class="gestion-filtres">
+							<form method="get" action="<?php echo esc_url( ueb_url_direction() ); ?>" class="gestion-filtres"><?php ueb_champ_espace(); ?>
 								<input type="hidden" name="vue" value="personnel">
 								<label class="gestion-champ gestion-champ--large">
 									<span>Rechercher</span>

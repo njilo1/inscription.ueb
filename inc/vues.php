@@ -55,6 +55,7 @@ function ueb_icone( $nom, $taille = 20, $classe = '' ) {
 		'ecole'       => '<path d="M14 22v-4a2 2 0 1 0-4 0v4M18 10l4 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-8l4-2M18 5v17M4 6l8-4 8 4M6 5v17"/><circle cx="12" cy="9" r="2"/>',
 		'soleil'      => '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>',
 		'lune'        => '<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>',
+		'sante'       => '<path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/><path d="M3.22 12H9.5l.5-1 2 4.5 2-7 1.5 3.5h5.27"/>',
 		'calendrier'  => '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
 		'chevron-d'   => '<path d="m9 18 6-6-6-6"/>',
 		'tableau'     => '<rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/>',
@@ -63,10 +64,6 @@ function ueb_icone( $nom, $taille = 20, $classe = '' ) {
 		'ajout-compte' => '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/>',
 		'pivoter'     => '<path d="M21 12a9 9 0 1 1-2.64-6.36L21 8"/><path d="M21 3v5h-5"/>',
 		'ajuster'     => '<path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>',
-		'stethoscope' => '<path d="M11 2v2M5 2v2M5 3H4a2 2 0 0 0-2 2v4a6 6 0 0 0 12 0V5a2 2 0 0 0-2-2h-1"/><path d="M8 15a6 6 0 0 0 12 0v-3"/><circle cx="20" cy="10" r="2"/>',
-		'ecran'       => '<rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>',
-		'mobile'      => '<rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/>',
-		'historique'  => '<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5M12 7v5l4 2"/>',
 	);
 	if ( ! isset( $traces[ $nom ] ) ) {
 		return '';
@@ -89,6 +86,12 @@ function ueb_icone( $nom, $taille = 20, $classe = '' ) {
  */
 function ueb_page_debut( array $args = array() ) {
 	$args = wp_parse_args( $args, array( 'titre' => '', 'variante' => 'simple', 'classe' => '', 'theme' => false ) );
+	/* Administration : tous les espaces suivent le thème clair / sombre choisi
+	   (jetons de administration.css, sous « .espace-admin »). */
+	if ( 'bo' === $args['variante'] && ueb_espace_courant() ) {
+		$args['theme']  = true;
+		$args['classe'] = trim( $args['classe'] . ( str_contains( $args['classe'], 'espace-admin' ) ? '' : ' espace-admin' ) );
+	}
 	$GLOBALS['ueb_titre_page'] = $args['titre'];
 	?><!doctype html>
 <html <?php language_attributes(); ?>>
@@ -540,8 +543,7 @@ function ueb_entete_site( $variante ) {
 			<?php /* Sur l'écran de connexion, personne n'est connecté : ni pastille de compte vide, ni bouton « Déconnexion » — la navigation publique suffit. */ ?>
 			<?php if ( 'gestion' === $variante && is_user_logged_in() ) : ?>
 				<nav class="site-nav" aria-label="Administration">
-					<?php if ( ! ueb_est_admin_ueb() ) : ?><a href="<?php echo esc_url( ueb_url_scolarite() ); ?>" <?php echo is_page_template( 'page-scolarite.php' ) ? 'aria-current="page"' : ''; ?>>Espace scolarité</a><?php endif; ?>
-					<?php if ( ueb_est_admin_ueb() ) : ?>
+					<?php if ( ueb_espaces_du_compte() ) : ?>
 						<a href="<?php echo esc_url( ueb_url_administration() ); ?>" <?php echo is_page_template( 'page-administration.php' ) ? 'aria-current="page"' : ''; ?>>Administration</a>
 					<?php endif; ?>
 				</nav>
@@ -805,7 +807,11 @@ function ueb_graphe_barres( $titre, $sous_titre, array $parts ) {
  *
  * @param string $espace Nom de l'espace, affiché au-dessus de la navigation.
  * @param array  $liens  array( array( 'url', 'libelle', 'icone', 'actif' ) ) ; une entrée
- *                       array( 'groupe' => 'Autres espaces' ) ouvre un second groupe.
+ *                       array( 'groupe' => 'Scolarité', 'icone' => 'tampon' ) ouvre un groupe,
+ *                       affiché en menu déroulant (ouvert sur la page en cours).
+ *
+ * Dans l'Administration, la barre est suivie de la barre du haut : profil et
+ * page en cours, bascule clair / sombre.
  * @param array  $pied   array( 'titre' => string, 'note' => string )
  * @param array  $marque En-tête propre à l'espace (celui d'un IPES) :
  *                       array( 'nom', 'note', 'url', 'logo' ) ; logo vide = icône.
@@ -815,9 +821,40 @@ function ueb_bo_barre( $espace, array $liens, array $pied = array(), array $marq
 	$utilisateur = wp_get_current_user();
 	$nom         = $utilisateur->display_name ? $utilisateur->display_name : $utilisateur->user_login;
 	$role        = ueb_nom_role_du_compte(); // nom saisi par la Direction, jamais écrit dans le code
+	/* Administration : la même barre partout, avec tous les onglets du compte. */
+	if ( ueb_espace_courant() ) {
+		$liens  = ueb_navigation_administration();
+		$espace = 'ipes' === ueb_espace_courant() ? $espace : 'Administration';
+	}
 	$liens       = array_values( array_filter( $liens ) ); // entrées retirées faute de permission
 	$role_classe = sanitize_html_class( strtolower( str_replace( ' ', '-', remove_accents( $role ) ) ) );
 	$marque      = $marque + array( 'nom' => 'Inscriptions', 'note' => UEB_UNIVERSITE['fr'], 'url' => home_url( '/' ), 'logo' => ueb_logo_url( 'UEB' ) );
+	/* Groupes : chaque intertitre en ouvre un ; les liens d'avant le premier restent à plat. */
+	$groupes = array();
+	foreach ( $liens as $lien ) {
+		if ( isset( $lien['groupe'] ) || ! $groupes ) {
+			$groupes[] = array( 'titre' => $lien['groupe'] ?? '', 'icone' => $lien['icone'] ?? 'tableau', 'liens' => array() );
+		}
+		if ( ! isset( $lien['groupe'] ) ) {
+			$groupes[ count( $groupes ) - 1 ]['liens'][] = $lien;
+		}
+	}
+	$groupes = array_values( array_filter( $groupes, static fn( $g ) => $g['liens'] ) );
+	/* Groupe de la page en cours : ouvert d'office, et repris par la barre du haut. */
+	$groupe_actif = null;
+	$page    = null;
+	foreach ( $groupes as $i => $g ) {
+		foreach ( $g['liens'] as $l ) {
+			if ( ! empty( $l['actif'] ) ) {
+				$groupe_actif = $i;
+				$page    = $l;
+			}
+		}
+	}
+	$ouvert = $groupe_actif ?? 0;
+	$lien_a = static function ( array $l, $icone ) {
+		printf( '<a href="%s"%s>%s%s</a>', esc_url( $l['url'] ), empty( $l['actif'] ) ? '' : ' aria-current="page"', $icone ? ueb_icone( $icone, 18 ) : '', esc_html( $l['libelle'] ) ); // phpcs:ignore -- SVG interne
+	};
 	?>
 	<aside class="bo-sidebar bo-sidebar--<?php echo esc_attr( $role_classe ); ?>">
 		<a class="bo-marque" href="<?php echo esc_url( $marque['url'] ); ?>">
@@ -834,14 +871,34 @@ function ueb_bo_barre( $espace, array $liens, array $pied = array(), array $marq
 
 		<p class="bo-sidebar__titre"><?php echo esc_html( $espace ); ?></p>
 		<nav class="bo-sidebar__nav" aria-label="<?php echo esc_attr( $espace ); ?>">
-			<?php foreach ( $liens as $lien ) : ?>
-				<?php if ( isset( $lien['groupe'] ) ) : /* intertitre d'un second groupe de liens */ ?>
-					<p class="bo-sidebar__titre bo-sidebar__titre--groupe"><?php echo esc_html( $lien['groupe'] ); ?></p>
-				<?php else : ?>
-					<a href="<?php echo esc_url( $lien['url'] ); ?>" <?php echo empty( $lien['actif'] ) ? '' : 'aria-current="page"'; ?>><?php echo ueb_icone( $lien['icone'], 18 ); ?><?php echo esc_html( $lien['libelle'] ); ?></a>
+			<?php foreach ( $groupes as $i => $g ) : ?>
+				<?php if ( '' === $g['titre'] || 1 === count( $g['liens'] ) ) : /* sans titre, ou un seul onglet : lien direct */ ?>
+					<?php foreach ( $g['liens'] as $l ) { $lien_a( $l, '' === $g['titre'] ? $l['icone'] : $g['icone'] ); } ?>
+				<?php else : /* un profil : menu déroulant, un seul ouvert à la fois (name) */ ?>
+					<details class="bo-groupe<?php echo $i === $groupe_actif ? ' est-courant' : ''; ?>" name="bo-groupes"<?php echo $i === $ouvert ? ' open' : ''; ?>>
+						<summary class="bo-groupe__tete"><?php echo ueb_icone( $g['icone'], 18 ); ?><span><?php echo esc_html( $g['titre'] ); ?></span><?php echo ueb_icone( 'chevron', 16, 'bo-groupe__chevron' ); ?></summary>
+						<div class="bo-groupe__liens">
+							<?php foreach ( $g['liens'] as $l ) { $lien_a( $l, '' ); } ?>
+						</div>
+					</details>
 				<?php endif; ?>
 			<?php endforeach; ?>
 		</nav>
+		<script>
+		/* Chaque onglet charge une page : la liste reprend la position où on l'a laissée,
+		   et l'onglet actif reste visible. */
+		( function () {
+			try {
+				var nav = document.currentScript.previousElementSibling, y = sessionStorage.getItem( 'ueb-barre' );
+				if ( y !== null ) { nav.scrollTop = +y; }
+				var actif = nav.querySelector( '[aria-current="page"]' );
+				if ( actif && ( actif.offsetTop < nav.scrollTop || actif.offsetTop + actif.offsetHeight > nav.scrollTop + nav.clientHeight ) ) {
+					nav.scrollTop = actif.offsetTop - nav.clientHeight / 3;
+				}
+				addEventListener( 'pagehide', function () { sessionStorage.setItem( 'ueb-barre', nav.scrollTop ); } );
+			} catch ( e ) {}
+		} )();
+		</script>
 
 		<div class="bo-sidebar__pied">
 			<?php
@@ -850,7 +907,7 @@ function ueb_bo_barre( $espace, array $liens, array $pied = array(), array $marq
 			if ( count( $autorises ) > 1 ) :
 				$courant = ueb_etab_agent();
 				?>
-				<form class="bo-perimetre bo-perimetre--choix" method="get" action="">
+				<form class="bo-perimetre bo-perimetre--choix" method="get" action=""><?php ueb_champ_espace(); ?>
 					<label for="bo-etab"><b>Établissement consulté</b></label>
 					<div class="champ__select">
 						<select id="bo-etab" name="ueb_etab" onchange="this.form.submit()">
@@ -865,6 +922,7 @@ function ueb_bo_barre( $espace, array $liens, array $pied = array(), array $marq
 			<?php elseif ( ! empty( $pied['titre'] ) ) : ?>
 				<p class="bo-perimetre"><b><?php echo esc_html( $pied['titre'] ); ?></b><?php echo esc_html( $pied['note'] ?? '' ); ?></p>
 			<?php endif; ?>
+			<?php ueb_selecteur_profil(); ?>
 			<div class="bo-compte">
 				<span class="bo-compte__avatar" aria-hidden="true"><?php echo esc_html( mb_substr( $nom, 0, 1 ) ); ?></span>
 				<span class="bo-compte__meta">
@@ -875,6 +933,23 @@ function ueb_bo_barre( $espace, array $liens, array $pied = array(), array $marq
 			<a class="bo-sortie" href="<?php echo esc_url( wp_logout_url( home_url( '/' ) ) ); ?>"><?php echo ueb_icone( 'sortie', 16 ); ?>Déconnexion</a>
 		</div>
 	</aside>
+	<?php if ( ueb_espace_courant() ) : /* Barre du haut : où l'on est, et le thème (administration.js). */ ?>
+		<header class="bo-appbar">
+			<p class="bo-appbar__lieu">
+				<?php if ( $page ) : ?>
+					<span class="bo-appbar__icone"><?php echo ueb_icone( $groupes[ $groupe_actif ]['icone'], 16 ); ?></span>
+					<span class="bo-appbar__groupe"><?php echo esc_html( $groupes[ $groupe_actif ]['titre'] ?: $espace ); ?></span>
+					<?php echo ueb_icone( 'chevron-d', 14, 'bo-appbar__sep' ); ?>
+					<b><?php echo esc_html( $page['libelle'] ); ?></b>
+				<?php else : ?>
+					<b><?php echo esc_html( $espace ); ?></b>
+				<?php endif; ?>
+			</p>
+			<button type="button" class="bo-bascule" data-bascule-theme aria-pressed="false" aria-label="Mode sombre" title="Mode clair ou sombre">
+				<span class="bo-bascule__pouce"></span><?php echo ueb_icone( 'soleil', 16, 'bo-bascule__soleil' ) . ueb_icone( 'lune', 16, 'bo-bascule__lune' ); // phpcs:ignore -- SVG interne ?>
+			</button>
+		</header>
+	<?php endif; ?>
 	<?php
 }
 

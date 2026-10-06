@@ -297,14 +297,14 @@ function ueb_etudiants_rapport( array $f, array $etabs ) {
 	);
 }
 
-/* Téléchargement : ?vue=etudiants&export=pdf|docx|xlsx&<filtres>&jeton=… sur la page de
-   l'administration, de l'espace de gestion ou de l'espace scolarité. La portée est celle
+/* Téléchargement : ?vue=etudiants&export=pdf|docx|xlsx&<filtres>&jeton=… dans l'Administration
+   (pilotage, scolarité ou Direction). La portée est celle
    du compte connecté, jamais celle de l'adresse. */
 add_action( 'template_redirect', function () {
 	if ( ! isset( $_GET['export'] ) || 'etudiants' !== sanitize_key( $_GET['vue'] ?? '' ) ) { // phpcs:ignore
 		return;
 	}
-	if ( ! is_page_template( array( 'page-administration.php', 'page-direction.php', 'page-scolarite.php' ) ) ) {
+	if ( ! is_page_template( 'page-administration.php' ) ) { // tous les espaces : /administration/
 		return;
 	}
 	$etabs = ueb_etudiants_portee();

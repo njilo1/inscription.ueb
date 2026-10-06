@@ -8,7 +8,7 @@ puis supprime toutes les données de test, même en cas d'échec.
 
 Usage : python3 tests/roles-securite.py   (XAMPP démarré, site sur http://localhost/inscription-ueb)
 """
-import http.cookiejar, re, subprocess, sys, urllib.parse, urllib.request
+import html as html_lib, http.cookiejar, re, subprocess, sys, urllib.parse, urllib.request
 BASE = 'http://localhost/inscription-ueb'
 WP = "$_SERVER['HTTP_HOST']='localhost';$_SERVER['SERVER_NAME']='localhost';$_SERVER['REQUEST_URI']='/';require '/opt/lampp/htdocs/inscription-ueb/wp-load.php';"
 
@@ -53,7 +53,7 @@ def post(op, chemin, donnees):
         return e.code, e.headers.get('Location', ''), e.read().decode()
 
 def flash(op):
-    _, html = get(op, '/direction/?vue=personnel')
+    _, html = get(op, '/administration/?espace=direction&vue=personnel')
     m = re.findall(r'class="alerte alerte--(\w+)[^>]*>.*?<p>(.*?)</p>', html, re.S)
     return m[-1] if m else ('', '')
 
@@ -68,14 +68,14 @@ try:
     UID = int(php(PREPARER)[0] or 0)
     assert UID, 'préparation impossible'
     d = session(UID)
-    st, html = get(d, '/direction/?vue=role')
+    st, html = get(d, '/administration/?espace=direction&vue=role')
     verifier('la Direction FS ouvre l’assistant', st == 200 and 'Quels accès lui accorder' in html)
     verifier('permission non détenue affichée désactivée', 'value="ueb_gerer_quitus"  disabled' in html or re.search(r'value="ueb_gerer_quitus"[^>]*disabled', html) is not None)
     csrf, nonce = jetons(html, 'direction_role_enregistrer')
     base = {'ueb_action': 'direction_role_enregistrer', 'ueb_csrf': csrf, 'ueb_nonce_direction': nonce, 'role': ''}
 
     def essai_role(nom, portee, perms, etabs=()):
-        st, loc, _ = post(d, '/direction/', dict(base, nom=nom, portee=portee, **{'permissions[]': list(perms), 'etablissements[]': list(etabs)}))
+        st, loc, _ = post(d, '/administration/?espace=direction', dict(base, nom=nom, portee=portee, **{'permissions[]': list(perms), 'etablissements[]': list(etabs)}))
         return flash(d)
 
     t, m = essai_role('Escalade quitus', 'un', ['ueb_gerer_quitus'])
@@ -86,66 +86,77 @@ try:
     verifier('refus : établissement hors portée (FSEG)', t == 'erreur', m)
     t, m = essai_role('Escalade capacité inventée', 'un', ['manage_options', 'edit_users'])
     verifier('refus : capacités système hors liste blanche', t == 'erreur', m)
-    st, loc, _ = post(d, '/direction/', dict(base, ueb_nonce_direction='faux', nom='Sans nonce', portee='un', **{'permissions[]': ['ueb_voir_paiements']}))
+    st, loc, _ = post(d, '/administration/?espace=direction', dict(base, ueb_nonce_direction='faux', nom='Sans nonce', portee='un', **{'permissions[]': ['ueb_voir_paiements']}))
     t, m = flash(d)
     verifier('refus : nonce invalide', 'expiré' in m, m)
     t, m = essai_role('TEST Lecteur paiements FS', 'un', ['ueb_voir_paiements'])
     verifier('accepté : rôle dans ses droits', t == 'succes', m)
 
     # création de comptes
-    st, html = get(d, '/direction/?vue=personnel')
+    st, html = get(d, '/administration/?espace=direction&vue=personnel')
     csrf, nonce = jetons(html, 'direction_compte_creer')
     slug_lecteur = re.search(r'<option value="(ueb_r_[a-z0-9]+)" data-portee="un">TEST Lecteur paiements FS', html)
     slug_lecteur = slug_lecteur.group(1) if slug_lecteur else ''
     verifier('le nouveau rôle est proposé à l’attribution', bool(slug_lecteur))
     verifier('le rôle Scolarité (plus de droits) n’est pas proposé', 'value="ueb_scolarite"' not in html)
     cc = {'ueb_action': 'direction_compte_creer', 'ueb_csrf': csrf, 'ueb_nonce_direction': nonce, 'login': 'test.lecteur.fs', 'nom': 'Lecteur FS', 'email': ''}
-    post(d, '/direction/', dict(cc, role=slug_lecteur, etablissement='FSEG'))
+    post(d, '/administration/?espace=direction', dict(cc, role=slug_lecteur, etablissement='FSEG'))
     t, m = flash(d)
     verifier('refus : compte rattaché à FSEG (hors portée)', t == 'erreur', m)
-    post(d, '/direction/', dict(cc, role='ueb_scolarite', etablissement='FS'))
+    post(d, '/administration/?espace=direction', dict(cc, role='ueb_scolarite', etablissement='FS'))
     t, m = flash(d)
     verifier('refus : attribuer un rôle aux droits supérieurs', t == 'erreur', m)
-    post(d, '/direction/', dict(cc, role='administrator', etablissement='FS'))
+    post(d, '/administration/?espace=direction', dict(cc, role='administrator', etablissement='FS'))
     t, m = flash(d)
     verifier('refus : attribuer « administrator »', t == 'erreur', m)
-    post(d, '/direction/', dict(cc, role=slug_lecteur, etablissement='FS'))
+    post(d, '/administration/?espace=direction', dict(cc, role=slug_lecteur, etablissement='FS'))
     t, m = flash(d)
     verifier('accepté : compte FS avec le rôle autorisé', t == 'succes', m)
 
     # agir sur un compte au-delà de ses droits (agent scolarité FS, id 9)
-    st, html = get(d, '/direction/?vue=personnel')
+    st, html = get(d, '/administration/?espace=direction&vue=personnel')
     csrf, nonce = jetons(html, 'direction_compte_etat')
-    post(d, '/direction/', {'ueb_action': 'direction_compte_etat', 'ueb_csrf': csrf, 'ueb_nonce_direction': nonce, 'agent_id': 9})
-    verifier('refus : suspendre un agent au rôle supérieur', 'Suspendu' not in re.search(r'fs\.fs.*?</tr>', get(d, '/direction/?vue=personnel')[1], re.S).group(0) if re.search(r'fs\.fs.*?</tr>', get(d, '/direction/?vue=personnel')[1], re.S) else True)
+    post(d, '/administration/?espace=direction', {'ueb_action': 'direction_compte_etat', 'ueb_csrf': csrf, 'ueb_nonce_direction': nonce, 'agent_id': 9})
+    verifier('refus : suspendre un agent au rôle supérieur', 'Suspendu' not in re.search(r'fs\.fs.*?</tr>', get(d, '/administration/?espace=direction&vue=personnel')[1], re.S).group(0) if re.search(r'fs\.fs.*?</tr>', get(d, '/administration/?espace=direction&vue=personnel')[1], re.S) else True)
     csrf, nonce = jetons(html, 'direction_compte_mdp')
-    post(d, '/direction/', {'ueb_action': 'direction_compte_mdp', 'ueb_csrf': csrf, 'ueb_nonce_direction': nonce, 'agent_id': 1})
-    _, html2 = get(d, '/direction/?vue=personnel')
+    post(d, '/administration/?espace=direction', {'ueb_action': 'direction_compte_mdp', 'ueb_csrf': csrf, 'ueb_nonce_direction': nonce, 'agent_id': 1})
+    _, html2 = get(d, '/administration/?espace=direction&vue=personnel')
     verifier('refus : réinitialiser le mot de passe de l’administrateur', 'Mot de passe provisoire pour <b>neo' not in html2)
 
     # accès par capacité
     s9 = session(9)
-    st, html = get(s9, '/direction/')
+    st, html = get(s9, '/administration/?espace=direction')
     verifier('un agent sans « diriger » ne voit pas la Direction', 'Ce compte n' in html and 'Rôles et accès' not in html)
-    st, html = get(s9, '/scolarite/?quitus=3')
+    st, html = get(s9, '/administration/?espace=scolarite&quitus=3')
     verifier('scolarité FS : fiche d’un quitus FSJP refusée (portée)', 'FSJP-2627-000001' not in html and 'data-quitus-fiche' not in html)
-    st, html = get(s9, '/scolarite/?quitus=19')
-    # Les frais médicaux relèvent du Centre médico-social (inc/cms.php) : la scolarité ne voit que les droits du dossier.
-    verifier('scolarité FS : dossier ouvert depuis son quitus médical, droits seuls', 'data-quitus-fiche' in html and 'FS-2627-000009' in html and 'FS-M-2627-000002' not in html)
-    st, html = get(s9, '/scolarite/?quitus=3&pdf=1')
+    st, html = get(s9, '/administration/?espace=scolarite&quitus=19')
+    verifier('scolarité FS : dossier ouvert depuis son quitus médical, droits compris', 'data-quitus-fiche' in html and 'FS-M-2627-000002' in html and 'FS-2627-000009' in html)
+    st, html = get(s9, '/administration/?espace=scolarite&quitus=3&pdf=1')
     verifier('scolarité FS : PDF d’un quitus FSJP refusé', not html.startswith('%PDF'))
-    st, html = get(s9, '/scolarite/?vue=quitus')
+    st, html = get(s9, '/administration/?espace=scolarite&vue=quitus')
     verifier('scolarité FS : liste limitée à FS', 'FSJP-2627' not in html and 'FS-2627' in html)
+    st, html = get(s9, '/administration/?espace=cellule')
+    verifier('scolarité FS : pas d’espace « Comptes étudiants » (ni onglet ni adresse directe)', st == 200 and 'espace=cellule' not in html)
+    m = re.search(r'name="ueb_csrf" value="([^"]+)"', get(s9, '/administration/?espace=scolarite&vue=securite')[1])
+    st, _, corps = post(s9, '/administration/?espace=cellule', {'ueb_action': 'gestion_reinit_mdp', 'ueb_csrf': m.group(1) if m else '', 'compte_id': 1})
+    verifier('scolarité FS : réinitialisation d’un compte étudiant refusée par le serveur', m and st == 403 and 'gérer les comptes étudiants' in corps)
+    # carte « Reçus en attente » : compteur en direct limité aux reçus que le compte valide
+    m = re.search(r'data-attente-source="([^"]+)"', get(s9, '/administration/?espace=scolarite')[1])
+    source = html_lib.unescape(m.group(1)).replace('http://localhost/inscription-ueb', '') if m else ''
+    st, corps = get(s9, source) if source else (0, '')
+    verifier('scolarité FS : compteur des reçus en attente (droits) lisible', st == 200 and '"success":true' in corps)
+    st, corps = get(s9, source.replace('type=droits', 'type=medicaux')) if source else (0, '')
+    verifier('scolarité FS : compteur des reçus du CMS refusé', st == 403)
     s12 = session(12)
-    st, html = get(s12, '/cellule-informatique/')
+    st, html = get(s12, '/administration/?espace=cellule')
     verifier('cellule FS historique : espace « Comptes étudiants » toujours ouvert', st == 200 and 'Comptes étudiants' in html and 'Ce compte n' not in html)
-    st, html = get(d, '/scolarite/')
+    st, html = get(d, '/administration/?espace=scolarite')
     verifier('Direction FS avec suivi : espace scolarité en vue Paiements seulement', 'Suivi des paiements' in html and 'À vérifier' not in html)
-    st, html = get(session(0), '/direction/')
+    st, html = get(session(0), '/administration/?espace=direction')
     verifier('visiteur non connecté : écran de connexion', 'gestion-connexion' in html and 'Rôles et accès' not in html)
 
     # suppression d'un rôle utilisé : réaffectation exigée, aucun compte supprimé
-    st, html = get(d, '/direction/')
+    st, html = get(d, '/administration/?espace=direction')
     def dialogue(html, nom):
         m = re.search(r'<dialog class="gestion-dialogue gestion-dialogue--petit" id="suppr-(ueb_r_[a-z0-9]+)"[^>]*>(?:(?!</dialog>).)*?Supprimer « ' + re.escape(nom) + ' » \\?(?:(?!</dialog>).)*</dialog>', html, re.S)
         return m.group(1), m.group(0)
@@ -153,39 +164,39 @@ try:
     csrf = re.search(r'name="ueb_csrf" value="([^"]+)"', bloc).group(1)
     nonce = re.search(r'name="ueb_nonce_direction" value="([^"]+)"', bloc).group(1)
     sup = {'ueb_action': 'direction_role_supprimer', 'ueb_csrf': csrf, 'ueb_nonce_direction': nonce, 'role': slug}
-    post(d, '/direction/', dict(sup, confirmation='SUPPRIMER'))
+    post(d, '/administration/?espace=direction', dict(sup, confirmation='SUPPRIMER'))
     t, m = flash(d)
     verifier('refus : supprimer un rôle utilisé sans réaffectation', t == 'erreur' and 'reprendra' in m, m)
-    post(d, '/direction/', dict(sup, confirmation='non', remplacant=slug))
+    post(d, '/administration/?espace=direction', dict(sup, confirmation='non', remplacant=slug))
     t, m = flash(d)
     verifier('refus : suppression sans saisir SUPPRIMER', t == 'erreur', m)
-    post(d, '/direction/', dict(sup, confirmation='SUPPRIMER', remplacant='ueb_scolarite'))
+    post(d, '/administration/?espace=direction', dict(sup, confirmation='SUPPRIMER', remplacant='ueb_scolarite'))
     t, m = flash(d)
     verifier('refus : réaffecter vers un rôle aux droits supérieurs', t == 'erreur', m)
-    post(d, '/direction/', dict(sup, confirmation='SUPPRIMER', remplacant='ueb_cellule'))
+    post(d, '/administration/?espace=direction', dict(sup, confirmation='SUPPRIMER', remplacant='ueb_cellule'))
     t, m = flash(d)
     verifier('refus : réaffecter vers un rôle non détenu (comptes étudiants)', t == 'erreur', m)
 
     # réaffectation réelle vers un second rôle dans ses droits
-    _, html = get(d, '/direction/?vue=role')
+    _, html = get(d, '/administration/?espace=direction&vue=role')
     csrf2, nonce2 = jetons(html, 'direction_role_enregistrer')
-    post(d, '/direction/', {'ueb_action': 'direction_role_enregistrer', 'ueb_csrf': csrf2, 'ueb_nonce_direction': nonce2, 'role': '', 'nom': 'TEST Lecteur bis FS', 'portee': 'un', 'permissions[]': ['ueb_voir_paiements']})
-    _, html = get(d, '/direction/')
+    post(d, '/administration/?espace=direction', {'ueb_action': 'direction_role_enregistrer', 'ueb_csrf': csrf2, 'ueb_nonce_direction': nonce2, 'role': '', 'nom': 'TEST Lecteur bis FS', 'portee': 'un', 'permissions[]': ['ueb_voir_paiements']})
+    _, html = get(d, '/administration/?espace=direction')
     cible, _ = dialogue(html, 'TEST Lecteur bis FS')
     slug, bloc = dialogue(html, 'TEST Lecteur paiements FS')
     csrf = re.search(r'name="ueb_csrf" value="([^"]+)"', bloc).group(1)
     nonce = re.search(r'name="ueb_nonce_direction" value="([^"]+)"', bloc).group(1)
-    post(d, '/direction/', {'ueb_action': 'direction_role_supprimer', 'ueb_csrf': csrf, 'ueb_nonce_direction': nonce, 'role': slug, 'confirmation': 'supprimer', 'remplacant': cible})
+    post(d, '/administration/?espace=direction', {'ueb_action': 'direction_role_supprimer', 'ueb_csrf': csrf, 'ueb_nonce_direction': nonce, 'role': slug, 'confirmation': 'supprimer', 'remplacant': cible})
     t, m = flash(d)
     verifier('suppression avec réaffectation', t == 'succes' and 'réaffecté' in m, m)
     etat = php("$u=get_user_by('login','test.lecteur.fs');echo $u?implode(',',$u->roles).'|'.get_user_meta($u->ID,'ueb_etablissement',true).'|'.(ueb_role('%s')?'present':'absent'):'absent';" % slug)[0]
     verifier('compte conservé et réaffecté, rôle supprimé', etat == cible + '|FS|absent', etat)
     # suspension
     php("update_user_meta(%d,'ueb_agent_suspendu',1);echo 1;" % UID)
-    st, html = get(session(UID), '/direction/')
+    st, html = get(session(UID), '/administration/?espace=direction')
     verifier('compte suspendu : plus d’accès à la Direction', 'Rôles et accès' not in html)
     php("delete_user_meta(%d,'ueb_agent_suspendu');echo 1;" % UID)
-    st, html = get(session(UID), '/direction/')
+    st, html = get(session(UID), '/administration/?espace=direction')
     verifier('compte rétabli : accès retrouvé', 'Rôles et accès' in html)
     print(sum(1 for c, _ in resultats if c), '/', len(resultats), 'vérifications réussies')
 

@@ -296,7 +296,7 @@ function ueb_action_envoyer_recus() {
 
 	if ( $acceptes ) {
 		$wpdb->update( 'ueb_insc_quitus', array( 'statut' => 'recu_envoye', 'motif_rejet' => null ), array( 'id' => $quitus->id ) );
-		ueb_flash( 'succes', 'medicaux' === $quitus->type
+		ueb_flash( 'succes', 'medicaux' === ( $quitus->type ?? 'droits' )
 			? 'Reçu envoyé. Présente l’original au Centre médico-social pour le faire tamponner.'
 			: 'Reçu envoyé. Présente l’original à la scolarité de ton établissement pour le faire tamponner.' );
 	}
@@ -334,11 +334,10 @@ function ueb_action_supprimer_recu() {
 	ueb_rediriger( $retour );
 }
 
+/** Affiche un reçu à son propriétaire ou à un administrateur. */
 /**
  * Qui peut voir un reçu : l'étudiant qui l'a envoyé, un administrateur, ou
- * l'agent actif de l'espace qui vérifie ce type de quitus et dont la portée
- * couvre son établissement : la scolarité pour les droits universitaires, le
- * Centre médico-social pour les frais médicaux.
+ * un agent de scolarité actif de l'établissement du quitus concerné.
  */
 function ueb_peut_voir_recu( $recu, $compte ) {
 	if ( ! $recu ) {
@@ -350,12 +349,13 @@ function ueb_peut_voir_recu( $recu, $compte ) {
 	if ( current_user_can( 'manage_options' ) ) {
 		return true;
 	}
-	/* Agent : capacité d'examiner ce type de quitus ET portée couvrant l'établissement du quitus. */
+	/* Agent : permission sur le type du quitus (droits : scolarité, frais médicaux : CMS)
+	   ET portée couvrant son établissement. */
 	$quitus = ueb_quitus_par_id( (int) $recu->quitus_id );
-	if ( ! $quitus ) {
-		return false;
+	if ( ueb_peut_voir_quitus( $quitus ) ) {
+		return true;
 	}
-	return ueb_peut( 'medicaux' === $quitus->type ? UEB_CAP_MEDICAUX : UEB_CAP_GESTION, $quitus->etablissement );
+	return false;
 }
 
 /** Adresse d'un reçu : affichage dans le navigateur, ou téléchargement. */

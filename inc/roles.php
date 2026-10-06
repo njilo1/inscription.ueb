@@ -3,7 +3,7 @@
  * Rôles du back-office, dynamiques.
  *
  * Aucun nom de rôle n'est écrit dans le code : la Direction crée, nomme et
- * modifie les rôles depuis son interface (page-direction.php). Chaque rôle
+ * modifie les rôles depuis son espace (templates/espaces/direction.php). Chaque rôle
  * du registre (option « ueb_roles_registre ») est un vrai rôle WordPress
  * dont les capacités sont prises dans une liste blanche (ueb_permissions()),
  * avec une portée : un établissement (fixé sur chaque compte), plusieurs
@@ -30,10 +30,7 @@ defined( 'ABSPATH' ) || exit;
 const UEB_CAP_GESTION   = 'ueb_gerer_quitus';
 const UEB_CAP_COMPTES   = 'ueb_gerer_comptes';
 const UEB_CAP_DIRECTION = 'ueb_diriger';
-/* Frais médicaux : examinés et décidés par le Centre médico-social (inc/cms.php). */
-const UEB_CAP_MEDICAUX         = 'ueb_gerer_medicaux';
-const UEB_CAP_DECIDER_MEDICAUX = 'ueb_decider_medicaux';
-const UEB_ROLES_VERSION = '5';
+const UEB_ROLES_VERSION = '4';
 /* Identifiants des deux rôles historiques. Ils ne servent plus qu'à la
    compatibilité : le code ne teste plus jamais un rôle par son nom. */
 const UEB_ROLE_SCOLARITE = 'ueb_scolarite';
@@ -48,10 +45,10 @@ const UEB_AUCUN_ETAB = '-';
  */
 function ueb_permissions() {
 	return array(
-		'ueb_gerer_quitus'    => array( 'groupe' => 'Quitus et paiements', 'libelle' => 'Consulter les quitus', 'phrase' => 'consulter les quitus des droits universitaires, leurs reçus et leurs PDF', 'aide' => 'Tableau de bord, liste des quitus, fiche d’un dossier, reçus envoyés. Les frais médicaux relèvent du Centre médico-social.', 'icone' => 'recu' ),
-		'ueb_decider_quitus'  => array( 'groupe' => 'Quitus et paiements', 'libelle' => 'Rendre les décisions', 'phrase' => 'valider un paiement ou renvoyer un reçu à l’étudiant', 'aide' => 'Boutons « Paiement vérifié », « Renvoyer à l’étudiant », « Annuler la décision ».', 'icone' => 'tampon', 'requiert' => 'ueb_gerer_quitus' ),
-		UEB_CAP_MEDICAUX      => array( 'groupe' => 'Visite médicale', 'libelle' => 'Consulter les frais médicaux', 'phrase' => 'consulter les quitus des frais médicaux, leurs reçus et leurs PDF', 'aide' => 'Espace du Centre médico-social : tableau de bord, liste des quitus de frais médicaux, fiche d’un dossier.', 'icone' => 'stethoscope' ),
-		UEB_CAP_DECIDER_MEDICAUX => array( 'groupe' => 'Visite médicale', 'libelle' => 'Valider les frais médicaux', 'phrase' => 'valider un paiement de frais médicaux ou le refuser avec un motif', 'aide' => 'Boutons « Valider le paiement » et « Refuser » des quitus de frais médicaux.', 'icone' => 'tampon', 'requiert' => UEB_CAP_MEDICAUX ),
+		'ueb_gerer_quitus'    => array( 'groupe' => 'Quitus et paiements', 'libelle' => 'Consulter les quitus des droits universitaires', 'phrase' => 'consulter les quitus des droits universitaires, leurs reçus et leurs PDF', 'aide' => 'Tableau de bord, liste des quitus, fiche d’un dossier, reçus des droits universitaires. Les frais médicaux relèvent du CMS.', 'icone' => 'recu' ),
+		'ueb_decider_quitus'  => array( 'groupe' => 'Quitus et paiements', 'libelle' => 'Valider les reçus des droits universitaires', 'phrase' => 'valider un reçu des droits universitaires ou le renvoyer à l’étudiant', 'aide' => 'Boutons « Valider », « Renvoyer à l’étudiant », « Annuler la décision » sur les droits universitaires.', 'icone' => 'tampon', 'requiert' => 'ueb_gerer_quitus' ),
+		'ueb_voir_cms'        => array( 'groupe' => 'Frais médicaux (CMS)', 'libelle' => 'Consulter les reçus CMS', 'phrase' => 'consulter les quitus et les reçus des frais médicaux', 'aide' => 'Liste des quitus et fiche d’un dossier, limitées aux frais médicaux (CMS), pour les établissements de sa portée. Rôle type : Régisseur CMS.', 'icone' => 'recu' ),
+		'ueb_decider_cms'     => array( 'groupe' => 'Frais médicaux (CMS)', 'libelle' => 'Valider les reçus CMS', 'phrase' => 'valider un reçu des frais médicaux ou le renvoyer à l’étudiant', 'aide' => 'Boutons « Valider », « Renvoyer à l’étudiant », « Annuler la décision » sur les frais médicaux.', 'icone' => 'tampon', 'requiert' => 'ueb_voir_cms' ),
 		'ueb_voir_paiements'  => array( 'groupe' => 'Quitus et paiements', 'libelle' => 'Suivre les paiements', 'phrase' => 'suivre le recouvrement des droits par établissement et filière', 'aide' => 'Vue « Paiements » : montants attendus, encaissés, taux.', 'icone' => 'banque' ),
 		'ueb_voir_etudiants'  => array( 'groupe' => 'Étudiants', 'libelle' => 'Voir la liste des étudiants', 'phrase' => 'consulter la liste des étudiants inscrits de sa portée', 'aide' => 'Vue « Étudiants UEB » : les étudiants inscrits, filtrables par établissement, filière, niveau et paiement, en lecture seule. Une portée « un établissement » ne voit que les siens.', 'icone' => 'diplome' ),
 		'ueb_gerer_comptes'   => array( 'groupe' => 'Comptes étudiants', 'libelle' => 'Gérer les comptes étudiants', 'phrase' => 'créer, réinitialiser ou suspendre les comptes étudiants', 'aide' => 'Espace « Comptes étudiants » : recherche, mot de passe provisoire, suspension.', 'icone' => 'utilisateur' ),
@@ -152,7 +149,6 @@ add_action( 'init', function () {
 	if ( ueb_insc_option_en_base( 'ueb_insc_roles_version' ) !== UEB_ROLES_VERSION ) {
 		ueb_migrer_roles_historiques();
 		ueb_migrer_roles_etudiants();
-		ueb_migrer_roles_cms();
 		update_option( 'ueb_insc_roles_version', UEB_ROLES_VERSION );
 	}
 	ueb_insc_deverrouiller( 'roles' );
@@ -171,31 +167,6 @@ function ueb_migrer_roles_etudiants() {
 			ueb_enregistrer_role( $slug, $def );
 		}
 	}
-}
-
-/**
- * Version 5 (additive) : les frais médicaux passent au Centre médico-social.
- * Un rôle du registre est proposé pour ses comptes, à portée « tous » (le CMS
- * sert toute l'université), avec la consultation et la décision. Créé une
- * seule fois, s'il n'existe aucun rôle portant déjà la consultation des frais
- * médicaux ; son nom reste modifiable dans l'espace Direction.
- */
-function ueb_migrer_roles_cms() {
-	foreach ( ueb_roles() as $def ) {
-		if ( in_array( UEB_CAP_MEDICAUX, (array) ( $def['permissions'] ?? array() ), true ) ) {
-			return;
-		}
-	}
-	ueb_enregistrer_role( ueb_nouveau_slug_role(), array(
-		'nom'            => 'Centre médico-social',
-		'portee'         => 'tous',
-		'etablissements' => array(),
-		'permissions'    => array( UEB_CAP_MEDICAUX, UEB_CAP_DECIDER_MEDICAUX ),
-		'historique'     => false,
-		'cree_le'        => current_time( 'mysql' ),
-		'modifie_le'     => current_time( 'mysql' ),
-		'modifie_par'    => 0,
-	) );
 }
 
 /**
@@ -284,12 +255,15 @@ function ueb_role_du_compte( $user_id = 0 ) {
 	if ( ! $user ) {
 		return '';
 	}
+	$trouve = '';
 	foreach ( (array) $user->roles as $slug ) {
 		if ( ueb_role( $slug ) ) {
-			return $slug;
+			$trouve = $slug;
+			break;
 		}
 	}
-	return '';
+	/* Profil choisi par un super-administrateur : inc/profil-simule.php. */
+	return (string) apply_filters( 'ueb_role_du_compte', $trouve, (int) $user->ID );
 }
 
 /** Nom affiché du rôle d'un compte. */
@@ -408,7 +382,7 @@ add_action( 'init', function () {
 /** Accès à l'espace scolarité : quitus, paiements, IPES ou liste des étudiants (hors administrateur). */
 function ueb_est_scolarite( $user_id = 0 ) {
 	$user = get_userdata( $user_id ?: get_current_user_id() );
-	return $user && ! user_can( $user, 'manage_options' ) && ( user_can( $user, UEB_CAP_GESTION ) || user_can( $user, 'ueb_voir_paiements' ) || user_can( $user, 'ueb_voir_ipes' ) || user_can( $user, 'ueb_voir_etudiants' ) );
+	return $user && ! user_can( $user, 'manage_options' ) && ( user_can( $user, UEB_CAP_GESTION ) || user_can( $user, 'ueb_voir_cms' ) || user_can( $user, 'ueb_voir_paiements' ) || user_can( $user, 'ueb_voir_ipes' ) || user_can( $user, 'ueb_voir_etudiants' ) );
 }
 
 /** Accès à l'espace « comptes étudiants » (hors administrateur). */
@@ -598,13 +572,12 @@ function ueb_page_par_gabarit( $gabarit ) {
 
 /** Adresse de l'espace scolarité. */
 function ueb_url_scolarite() {
-	$id = ueb_page_par_gabarit( 'page-scolarite.php' );
-	return $id ? get_permalink( $id ) : home_url( '/scolarite/' );
+	return ueb_url_espace_admin( 'scolarite' );
 }
 
 /** Adresse de l'espace cellule informatique. */
 function ueb_url_cellule() {
-	return ueb_url( 'cellule-informatique' );
+	return ueb_url_espace_admin( 'cellule' );
 }
 
 /** Adresse de l'espace administration. */
@@ -615,8 +588,7 @@ function ueb_url_administration() {
 
 /** Adresse de l'espace Direction (même mécanisme : une Page portant le gabarit). */
 function ueb_url_direction() {
-	$id = ueb_page_par_gabarit( 'page-direction.php' );
-	return $id ? get_permalink( $id ) : home_url( '/direction/' );
+	return ueb_url_espace_admin( 'direction' );
 }
 
 /**
@@ -625,25 +597,8 @@ function ueb_url_direction() {
  * Direction seule → Direction.
  */
 function ueb_url_espace_du_compte( $user_id ) {
-	if ( user_can( $user_id, 'manage_options' ) ) {
-		return ueb_url_administration();
-	}
-	if ( user_can( $user_id, UEB_CAP_GESTION ) || user_can( $user_id, 'ueb_voir_paiements' ) || user_can( $user_id, 'ueb_voir_ipes' ) ) {
-		return ueb_url_scolarite();
-	}
-	if ( user_can( $user_id, UEB_CAP_MEDICAUX ) ) {
-		return ueb_url_cms();
-	}
-	if ( user_can( $user_id, UEB_CAP_COMPTES ) ) {
-		return ueb_url_cellule();
-	}
-	if ( user_can( $user_id, UEB_CAP_DIRECTION ) ) {
-		return ueb_url_direction();
-	}
-	if ( user_can( $user_id, UEB_CAP_IPES ) ) {
-		return ueb_url_espace_ipes();
-	}
-	return home_url( '/' );
+	/* Une seule interface : l'Administration, qui ouvre les onglets du compte. */
+	return ueb_espaces_du_compte( $user_id ) ? ueb_url_administration() : home_url( '/' );
 }
 
 /** L'espace qui correspond au compte connecté. */

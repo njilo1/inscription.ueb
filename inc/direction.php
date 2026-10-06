@@ -18,31 +18,6 @@
 
 defined( 'ABSPATH' ) || exit;
 
-/* ---------- Page de l'espace, créée une fois si elle manque ---------- */
-
-add_action( 'init', function () {
-	if ( get_option( 'ueb_page_direction_creee' ) || ueb_page_par_gabarit( 'page-direction.php' ) || ! ueb_insc_verrouiller( 'page_direction' ) ) {
-		return;
-	}
-	/* Une autre requête a pu créer la Page pendant qu'on attendait. */
-	if ( ueb_insc_option_en_base( 'ueb_page_direction_creee' ) ) {
-		ueb_insc_deverrouiller( 'page_direction' );
-		return;
-	}
-	$id = wp_insert_post( array(
-		'post_title'  => 'Direction',
-		'post_name'   => 'direction',
-		'post_status' => 'publish',
-		'post_type'   => 'page',
-		'meta_input'  => array( '_wp_page_template' => 'page-direction.php' ),
-	) );
-	if ( $id && ! is_wp_error( $id ) ) {
-		update_option( 'ueb_page_direction_creee', (int) $id );
-		delete_option( 'ueb_page_page-direction' ); // recalcul de ueb_page_par_gabarit()
-	}
-	ueb_insc_deverrouiller( 'page_direction' );
-}, 30 );
-
 /* ---------- Modèles de l'assistant ----------
    Des suggestions pour aller vite : le nom proposé est modifiable et
    n'est jamais utilisé par le code pour décider d'un accès. */
@@ -50,7 +25,7 @@ add_action( 'init', function () {
 function ueb_modeles_roles() {
 	return array(
 		'verification' => array( 'titre' => 'Vérification des paiements', 'texte' => 'Examine les quitus, rend les décisions, suit les paiements et délègue les comptes étudiants.', 'nom' => 'Scolarité', 'portee' => 'un', 'permissions' => array( 'ueb_gerer_quitus', 'ueb_decider_quitus', 'ueb_voir_paiements', 'ueb_gerer_comptes', 'ueb_creer_agents' ), 'icone' => 'tampon' ),
-		'cms'          => array( 'titre' => 'Frais médicaux', 'texte' => 'Examine les reçus des frais médicaux de toute l’université, les valide ou les refuse avec un motif.', 'nom' => 'Centre médico-social', 'portee' => 'tous', 'permissions' => array( UEB_CAP_MEDICAUX, UEB_CAP_DECIDER_MEDICAUX ), 'icone' => 'stethoscope' ),
+		'cms'          => array( 'titre' => 'Reçus CMS', 'texte' => 'Consulte et valide les reçus des frais médicaux envoyés par les étudiants, et eux seuls.', 'nom' => 'Régisseur CMS', 'portee' => 'tous', 'permissions' => array( 'ueb_voir_cms', 'ueb_decider_cms' ), 'icone' => 'recu' ),
 		'comptes'      => array( 'titre' => 'Comptes étudiants', 'texte' => 'Crée, réinitialise et suspend les comptes étudiants de son établissement.', 'nom' => 'Cellule informatique', 'portee' => 'un', 'permissions' => array( 'ueb_gerer_comptes' ), 'icone' => 'utilisateur' ),
 		'etudiants'    => array( 'titre' => 'Liste des étudiants', 'texte' => 'Consulte les étudiants inscrits de toute l’université, sans rien modifier.', 'nom' => 'Rectorat', 'portee' => 'tous', 'permissions' => array( 'ueb_voir_etudiants' ), 'icone' => 'diplome' ),
 		'finances'     => array( 'titre' => 'Suivi financier', 'texte' => 'Consulte le recouvrement des droits, sans rien modifier.', 'nom' => 'Suivi financier', 'portee' => 'tous', 'permissions' => array( 'ueb_voir_paiements' ), 'icone' => 'banque' ),
@@ -335,8 +310,8 @@ function ueb_action_direction_compte_mdp() {
    cartes de rôles, assistant en fenêtre avec aperçu de la barre latérale. */
 
 /**
- * Barre du haut : titre, plateforme et rôle du compte à gauche ; date et
- * bascule clair / sombre à droite.
+ * Barre du haut : titre, plateforme et rôle du compte à gauche ; date à
+ * droite (la bascule clair / sombre est dans la barre du haut de l'Administration).
  */
 function ueb_gestion_tete( $titre ) {
 	$role = ueb_nom_role_du_compte();
@@ -353,7 +328,6 @@ function ueb_gestion_tete( $titre ) {
 		</div>
 		<div class="gestion-tete__actions">
 			<span class="gestion-date"><?php echo ueb_icone( 'calendrier', 15 ); ?><?php echo esc_html( wp_date( 'j F Y' ) ); ?></span>
-			<?php ueb_adm_bascule_theme(); ?>
 		</div>
 	</header>
 	<?php
@@ -380,6 +354,7 @@ function ueb_gestion_ecrans() {
 	return array(
 		array( UEB_CAP_GESTION, 'Tableau de bord', 'tableau' ),
 		array( UEB_CAP_GESTION, 'Quitus', 'recu' ),
+		array( 'ueb_voir_cms', 'Quitus (frais médicaux)', 'recu' ),
 		array( 'ueb_voir_paiements', 'Paiements', 'banque' ),
 		array( 'ueb_voir_etudiants', 'Étudiants UEB', 'diplome' ),
 		array( UEB_CAP_COMPTES, 'Comptes étudiants', 'utilisateur' ),

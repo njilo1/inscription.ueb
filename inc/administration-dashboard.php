@@ -25,10 +25,9 @@ function ueb_adm_montant_court( $montant ) {
  *                       perimetre (bool : choix de l'établissement),
  *                       paiements (URL du suivi des paiements ; '' = sans lien),
  *                       ipes (bool : panneau des IPES sous tutelle),
- *                       attente (arguments de ueb_adm_carte_attente() : la carte
- *                       rouge des quitus à vérifier passe en tête, à la place
- *                       de « Reçus à vérifier »),
- *                       note_quitus (sous-titre de la carte « Quitus générés »).
+ *                       attente (type de reçus, « droits » : la carte rouge des
+ *                       reçus en attente de validation passe en tête, à la place
+ *                       de « Reçus à vérifier » ; inc/attente-recus.php).
  */
 function ueb_adm_dashboard( array $c, array $suivi, array $activite, $focus, $periode, array $options = array() ) {
 	$g       = $suivi['global'];
@@ -37,7 +36,7 @@ function ueb_adm_dashboard( array $c, array $suivi, array $activite, $focus, $pe
 	$propre  = isset( $options['url'] );
 	$url     = $propre ? $options['url'] : static fn( array $args = array() ) => add_query_arg( $args, ueb_url_administration() );
 	$args    = $focus && ! $propre ? array( 'etab' => $focus ) : array();
-	$options = array_merge( array( 'perimetre' => true, 'paiements' => $url( $args + array( 'vue' => 'paiements' ) ), 'ipes' => true, 'attente' => null, 'note_quitus' => 'Droits et frais médicaux' ), $options );
+	$options = array_merge( array( 'perimetre' => true, 'paiements' => $url( $args + array( 'vue' => 'paiements' ) ), 'ipes' => true, 'attente' => '' ), $options );
 	$parts   = array(
 		'encaisse'     => array( 'Encaissé', 'var(--dash-foret)' ),
 		'verification' => array( 'En vérification', 'var(--dash-bleu)' ),
@@ -47,13 +46,12 @@ function ueb_adm_dashboard( array $c, array $suivi, array $activite, $focus, $pe
 	$cartes = array(
 		array( 'Étudiants', ueb_formater_montant( $c['etudiants'] ), 'Avec au moins un quitus', 'groupe', 'foret' ),
 		array( 'Droits encaissés', ueb_adm_montant_court( $g['encaisse'] ), 'FCFA · paiements vérifiés', 'banque', 'foret' ),
-		array( 'Quitus générés', ueb_formater_montant( $c['quitus'] ), $options['note_quitus'], 'fichier', 'foret' ),
+		array( 'Quitus générés', ueb_formater_montant( $c['quitus'] ), 'Droits et frais médicaux', 'fichier', 'foret' ),
 		array( 'Recouvrement', $g['attendu'] ? ueb_pourcent( $taux ) : '—', 'Des droits universitaires attendus', 'check', 'vert' ),
 		array( 'Reçus à vérifier', ueb_formater_montant( $c['recus_envoyes'] ), 'En attente de la scolarité', 'horloge', 'foret' ),
 	);
 	$hist = $suivi['historique'] ?? array( 'jours' => array() );
 	$cles = array( 'etudiants', 'encaisse', 'quitus', 'taux', 'depots' );
-	/* La carte rouge remplace « Reçus à vérifier » et passe en tête. */
 	if ( $options['attente'] ) {
 		array_pop( $cartes );
 		array_pop( $cles );
@@ -84,7 +82,7 @@ function ueb_adm_dashboard( array $c, array $suivi, array $activite, $focus, $pe
 		</nav>
 	</div>
 	<div class="adm-kpis" aria-label="Indicateurs de l’année académique">
-		<?php if ( $options['attente'] ) { ueb_adm_carte_attente( $options['attente'] ); } ?>
+		<?php if ( $options['attente'] ) { ueb_carte_attente( $options['attente'], null, $periode ); } ?>
 		<?php foreach ( $cartes as $i => $carte ) : ?>
 			<article class="adm-kpi adm-kpi--<?php echo esc_attr( $carte[4] ); ?>">
 				<div class="adm-kpi__entete"><h2><?php echo esc_html( $carte[0] ); ?></h2><?php echo ueb_icone( $carte[3], 18 ); ?></div>
@@ -156,83 +154,6 @@ function ueb_adm_dashboard( array $c, array $suivi, array $activite, $focus, $pe
 	);
 }
 
-/* ---------- Carte « Quitus en attente de vérification » ----------
-   En tête des tableaux de bord de la scolarité et du Centre médico-social. */
-
-/**
- * Image fixe des reçus en attente, identique à la dernière image de la
- * composition Remotion « attente » (_source/remotion/src/AttenteRecus.tsx) :
- * même viewBox 0 0 240 96, mêmes reçus, même éventail.
- */
-function ueb_adm_attente_repli( $nombre ) {
-	$k        = max( 1, min( 5, (int) $nombre ) );
-	$largeur  = 44;
-	$hauteur  = 60;
-	$pas      = 40;
-	$haut     = 18;
-	$inclines = array( -6, 3, -3, 5, -2 );
-	$x0       = ( 240 - ( $largeur + ( $k - 1 ) * $pas ) ) / 2;
-	$contour  = sprintf( 'M0 4Q0 0 4 0H%1$dQ%2$d 0 %2$d 4V%3$d', $largeur - 4, $largeur, $hauteur - 4 );
-	for ( $x = $largeur, $creux = true; $x > 0; $x -= 4, $creux = ! $creux ) {
-		$contour .= sprintf( 'L%d %d', $x - 4, $creux ? $hauteur : $hauteur - 4 );
-	}
-	$contour .= 'Z';
-	$svg = '<svg class="adm-attente__repli" viewBox="0 0 240 96" aria-hidden="true" focusable="false"><rect x="10" y="86" width="220" height="4" rx="2" fill="rgba(255,255,255,0.22)"/>';
-	/* Du plus récent au plus ancien : le plus ancien, dessiné en dernier, passe au-dessus. */
-	for ( $i = $k - 1; $i >= 0; $i-- ) {
-		$x    = $x0 + $i * $pas;
-		$svg .= sprintf(
-			'<g transform="rotate(%1$s %2$s %3$s) translate(%4$s %5$d)"><path d="%6$s" transform="translate(0 2)" fill="#3a0c08" opacity="0.28"/><path d="%6$s" fill="#fffaf3"/><rect x="6" y="7" width="20" height="3" rx="1.5" fill="#b3261e"/><rect x="6" y="16" width="30" height="2.4" rx="1.2" fill="#d6cfc4"/><rect x="6" y="22" width="24" height="2.4" rx="1.2" fill="#d6cfc4"/><rect x="6" y="28" width="28" height="2.4" rx="1.2" fill="#d6cfc4"/><rect x="6" y="39" width="20" height="4" rx="2" fill="#16241c"/>%7$s</g>',
-			$inclines[ $i ],
-			$x + $largeur / 2,
-			$haut + $hauteur / 2,
-			$x,
-			$haut,
-			$contour,
-			0 === $i ? sprintf( '<circle cx="%d" cy="6" r="4.4" fill="#f1c45b" stroke="#a3241c" stroke-width="1.4"/>', $largeur - 5 ) : ''
-		);
-	}
-	return $svg . '</svg>';
-}
-
-/**
- * Première carte du tableau de bord : les quitus dont le reçu attend la
- * vérification de cet espace. Rouge et cliquable tant qu'il y en a : elle
- * ouvre le registre déjà filtré sur eux. Les reçus s'y posent à l'arrivée
- * (Remotion, une lecture) et un repère bat dans le coin. Sans reçu en
- * attente, elle s'apaise : plus rien n'est urgent.
- *
- * @param array $a nombre (quitus en attente), url (registre filtré, non échappée),
- *                 depuis (date du plus ancien en attente, au format MySQL, ou '').
- */
-function ueb_adm_carte_attente( array $a ) {
-	$n      = (int) ( $a['nombre'] ?? 0 );
-	$depuis = empty( $a['depuis'] ) ? '' : human_time_diff( strtotime( $a['depuis'] ), current_time( 'timestamp' ) );
-	if ( ! $n ) :
-		?>
-		<a class="adm-kpi adm-attente adm-attente--a-jour" href="<?php echo esc_url( $a['url'] ); ?>">
-			<div class="adm-kpi__entete"><h2>Quitus en attente de vérification</h2><?php echo ueb_icone( 'check', 18 ); ?></div>
-			<p class="adm-kpi__valeur">0</p>
-			<p class="adm-kpi__note">Aucun reçu ne t’attend. Les prochains arriveront ici.</p>
-			<span class="adm-attente__action">Ouvrir la liste des quitus<?php echo ueb_icone( 'chevron-d', 16 ); ?></span>
-		</a>
-		<?php
-		return;
-	endif;
-	?>
-	<a class="adm-kpi adm-attente" href="<?php echo esc_url( $a['url'] ); ?>">
-		<div class="adm-kpi__entete">
-			<h2>Quitus en attente de vérification</h2>
-			<span class="adm-attente__balise" aria-hidden="true"><i></i></span>
-		</div>
-		<p class="adm-kpi__valeur"><?php echo (int) $n; ?><span class="sr"> <?php echo 1 === $n ? 'quitus attend' : 'quitus attendent'; ?> ta vérification</span></p>
-		<p class="adm-kpi__note"><?php echo esc_html( $depuis ? sprintf( 'Le plus ancien attend depuis %s.', $depuis ) : 'Reçus envoyés, à comparer aux originaux.' ); ?></p>
-		<div class="animation adm-attente__scene" data-remotion="attente" data-props="<?php echo esc_attr( wp_json_encode( array( 'nombre' => $n ) ) ); ?>" aria-hidden="true"><div class="animation__scene" data-remotion-scene><?php echo ueb_adm_attente_repli( $n ); // phpcs:ignore -- SVG construit ci-dessus ?></div></div>
-		<span class="adm-attente__action">Vérifier maintenant<?php echo ueb_icone( 'chevron-d', 16 ); ?></span>
-	</a>
-	<?php
-}
-
 /** Valeur exacte des courbes ; le taux reste indéfini en l'absence de droits. */
 function ueb_adm_valeur_historique( $cle, $valeur ) {
 	if ( null === $valeur ) {
@@ -241,9 +162,16 @@ function ueb_adm_valeur_historique( $cle, $valeur ) {
 	return 'taux' === $cle ? number_format( $valeur, 1, ',', ' ' ) . ' %' : ueb_formater_montant( $valeur ) . ( 'encaisse' === $cle ? ' FCFA' : '' );
 }
 
-/** Mini-courbe à base zéro, lisible sans JS, avec repère au survol et au clavier. */
-function ueb_adm_mini_courbe( $cle, array $jours, array $valeurs ) {
+/**
+ * Mini-courbe à base zéro, lisible sans JS, avec repère au survol et au clavier.
+ *
+ * @param string $libelle Légende propre (tableau du CMS) ; par défaut celle de la clé.
+ */
+function ueb_adm_mini_courbe( $cle, array $jours, array $valeurs, $libelle = '' ) {
 	$libelles = array( 'etudiants' => 'Étudiants · cumul', 'encaisse' => 'Encaissé · cumul', 'quitus' => 'Quitus · cumul', 'taux' => 'Taux de recouvrement', 'depots' => 'Quitus avec reçu déposé / jour' );
+	if ( $libelle ) {
+		$libelles[ $cle ] = $libelle;
+	}
 	$n = min( count( $jours ), count( $valeurs ) );
 	if ( $n < 2 ) {
 		echo '<p class="adm-spark-vide">Historique disponible dès deux jours.</p>';

@@ -666,11 +666,12 @@
 	--bo-nav-filet: rgba(255, 255, 255, .14);
 	display: grid;
 	grid-template-columns: 252px minmax(0, 1fr);
+	grid-template-rows: auto minmax(0, 1fr); /* barre du haut, puis zone de travail */
 	min-height: calc(100dvh - var(--bo-chrome));
 	background: var(--papier);
 }
 
-.bo-sidebar { position: sticky; top: var(--bo-chrome); height: calc(100dvh - var(--bo-chrome)); display: flex; flex-direction: column; padding: 1.4rem 0; background: var(--vert-bandeau); color: var(--blanc); z-index: 20; }
+.bo-sidebar { grid-row: 1 / span 2; position: sticky; top: var(--bo-chrome); height: calc(100dvh - var(--bo-chrome)); display: flex; flex-direction: column; padding: 1.4rem 0; background: var(--vert-bandeau); color: var(--blanc); z-index: 20; }
 
 .bo-marque { display: flex; align-items: center; gap: .7rem; padding: 0 1.3rem 1.25rem; margin-bottom: .8rem; border-bottom: 1px solid var(--bo-nav-filet); color: var(--blanc); text-decoration: none; }
 .bo-marque img { width: 38px; height: 38px; flex: none; padding: 3px; border-radius: 10px; background: var(--blanc); }
@@ -679,7 +680,22 @@
 .bo-marque__note { font-size: .78rem; color: var(--bo-nav-texte); }
 
 .bo-sidebar__titre { margin: 0; padding: .3rem 1.3rem .35rem; font-size: .78rem; font-weight: 700; color: var(--bo-nav-texte); }
-.bo-sidebar__nav { display: grid; gap: .2rem; padding: 0 .75rem; }
+.bo-sidebar__nav { display: grid; align-content: start; gap: .2rem; padding: 0 .75rem; }
+/* D'un onglet à l'autre (navigateurs récents) : fondu de la page, la barre ne bouge pas. */
+@view-transition { navigation: auto; }
+.bo-sidebar { view-transition-name: bo-barre; }
+@media (prefers-reduced-motion: reduce) {
+	@view-transition { navigation: none; }
+}
+/* Barre de la hauteur de l'écran : la liste des onglets défile (marque en haut,
+   compte et déconnexion en bas restent visibles). Écran très bas : toute la barre défile. */
+@media (min-width: 961px) {
+	.bo-sidebar { overflow-y: auto; overscroll-behavior: contain; }
+	.bo-sidebar__nav { position: relative; flex: 1 1 auto; min-height: 9rem; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, .28) transparent; }
+	.bo-sidebar__nav::-webkit-scrollbar { width: 6px; }
+	.bo-sidebar__nav::-webkit-scrollbar-thumb { border-radius: 6px; background: rgba(255, 255, 255, .28); }
+	.bo-sidebar__pied { flex: none; margin-top: .8rem; }
+}
 /* Intertitre d'un second groupe de liens : aligné sur le titre de l'espace. */
 .bo-sidebar__nav .bo-sidebar__titre--groupe { margin-top: .9rem; padding-inline: .55rem; }
 .bo-sidebar__nav a { position: relative; display: flex; align-items: center; gap: .7rem; min-height: 44px; padding: 0 .85rem; border-radius: 10px; color: var(--bo-nav-texte); font-weight: 600; font-size: .92rem; text-decoration: none; transition: background-color .15s var(--ease-sortie), color .15s var(--ease-sortie); }
@@ -687,6 +703,55 @@
 .bo-sidebar__nav a[aria-current="page"] { background: var(--or); color: var(--encre); }
 /* Marqueur latéral : l'onglet actif ne repose pas que sur la couleur. */
 .bo-sidebar__nav a[aria-current="page"]::before { content: ""; position: absolute; left: -.75rem; top: 50%; width: 3px; height: 22px; transform: translateY(-50%); border-radius: 0 3px 3px 0; background: var(--or); }
+
+/* Profils en menus déroulants (<details>, utilisables sans script et au
+   clavier) : un seul ouvert à la fois, celui de la page en cours ouvert
+   d'office. Le dépliage suit la hauteur du contenu là où le navigateur sait
+   l'animer (::details-content) ; ailleurs, il est immédiat. */
+.bo-sidebar__nav { interpolate-size: allow-keywords; }
+.bo-groupe { border-radius: 12px; transition: background-color .2s var(--ease-sortie), box-shadow .2s var(--ease-sortie); }
+.bo-groupe[open] { background: rgba(255, 255, 255, .045); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .07); }
+.bo-groupe__tete { display: flex; align-items: center; gap: .7rem; min-height: 44px; padding: 0 .85rem; border-radius: 10px; color: var(--bo-nav-texte); font-weight: 600; font-size: .92rem; list-style: none; cursor: pointer; user-select: none; transition: background-color .15s var(--ease-sortie), color .15s var(--ease-sortie); }
+.bo-groupe__tete::-webkit-details-marker { display: none; }
+.bo-groupe__tete:hover { background: var(--bo-nav-survol); color: var(--blanc); }
+.bo-groupe__tete:focus-visible { outline: 2px solid var(--or); outline-offset: -2px; }
+.bo-groupe[open] > .bo-groupe__tete { color: var(--blanc); }
+.bo-groupe__chevron { flex: none; margin-left: auto; opacity: .6; transition: rotate .22s var(--ease-sortie); }
+.bo-groupe[open] > .bo-groupe__tete .bo-groupe__chevron { rotate: 180deg; }
+/* Profil de la page en cours, même refermé : son icône reste dorée. */
+.bo-groupe.est-courant > .bo-groupe__tete > .icone:first-child { color: var(--or); }
+.bo-groupe::details-content { block-size: 0; overflow-y: clip; transition: block-size .16s var(--ease-sortie), content-visibility .16s allow-discrete; }
+.bo-groupe[open]::details-content { block-size: auto; transition-duration: .26s; }
+.bo-groupe__liens { display: grid; gap: 2px; padding: .1rem .4rem .45rem; }
+/* Onglets d'un profil : sans icône, alignés sur le nom du profil. */
+.bo-sidebar__nav .bo-groupe__liens a { min-height: 40px; padding-left: 2.3rem; font-size: .9rem; }
+.bo-sidebar__nav .bo-groupe__liens a[aria-current="page"]::before { left: -1.15rem; }
+
+/* Barre du haut de l'Administration : le profil et la page en cours, la
+   bascule clair / sombre. Elle ne bouge pas d'un onglet à l'autre. */
+.bo-appbar { grid-column: 2; grid-row: 1; display: flex; align-items: center; justify-content: space-between; gap: 1rem; min-height: 60px; padding: .55rem clamp(1rem, 2.2vw, 2.4rem); border-bottom: 1px solid var(--filet); background: var(--blanc); view-transition-name: bo-haut; }
+.bo > .bo-contenu { grid-column: 2; grid-row: 2; }
+.bo-appbar__lieu { display: flex; align-items: center; gap: .5rem; min-width: 0; margin: 0; font-size: .9rem; color: var(--gris); }
+.bo-appbar__icone { display: grid; place-items: center; flex: none; width: 30px; height: 30px; border-radius: 9px; background: var(--adm-puce, #eef3ee); color: var(--foret-700); }
+.bo-appbar__groupe { font-weight: 600; white-space: nowrap; }
+.bo-appbar__sep { flex: none; color: var(--gris-clair); }
+.bo-appbar__lieu b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; color: var(--encre); }
+/* Bascule : soleil et lune sur une piste, la pastille glisse sous le thème
+   affiché. Sa place vient de html[data-theme] (posé avant l'affichage) : rien
+   ne glisse au chargement, seulement au clic (administration.js). */
+.bo-bascule { position: relative; display: inline-grid; grid-template-columns: 1fr 1fr; align-items: center; flex: none; width: 76px; height: 40px; padding: 4px; border: 1px solid var(--filet); border-radius: 999px; background: var(--papier); cursor: pointer; transition: border-color .15s var(--ease-sortie); }
+.bo-bascule:hover { border-color: var(--filet-fort); }
+.bo-bascule:focus-visible { outline: 2px solid var(--or); outline-offset: 2px; }
+.bo-bascule .icone { position: relative; z-index: 1; justify-self: center; transition: color .2s var(--ease-sortie); }
+.bo-bascule__pouce { position: absolute; top: 4px; left: 4px; width: calc(50% - 4px); height: calc(100% - 8px); border-radius: 999px; background: var(--blanc); box-shadow: 0 1px 3px rgba(15, 44, 31, .18), 0 0 0 1px rgba(15, 44, 31, .06); transition: translate .32s var(--ease-sortie), background-color .2s; }
+.bo-bascule__soleil { color: var(--or-fonce); }
+.bo-bascule__lune { color: var(--gris-clair); }
+:root[data-theme="sombre"] .bo-bascule__pouce { translate: 100% 0; background: #26332b; box-shadow: 0 0 0 1px rgba(255, 255, 255, .08); }
+:root[data-theme="sombre"] .bo-bascule__soleil { color: var(--gris-clair); }
+:root[data-theme="sombre"] .bo-bascule__lune { color: var(--or); }
+@media (prefers-reduced-motion: reduce) {
+	.bo-groupe::details-content, .bo-groupe__chevron, .bo-bascule__pouce { transition: none; }
+}
 
 /* Pied de barre : périmètre consulté, compte connecté, sortie. */
 .bo-sidebar__pied { margin-top: auto; padding: 1rem 1.3rem 0; border-top: 1px solid var(--bo-nav-filet); display: grid; gap: .7rem; }
@@ -774,13 +839,21 @@
 /* Sous 960 px la barre latérale se couche en bandeau au-dessus du contenu. */
 @media (max-width: 960px) {
 	/* Rangée du bandeau à sa hauteur : sur une vue courte, la place libre va au contenu. */
-	.bo { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr; }
+	.bo { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto 1fr; }
+	.bo-sidebar { grid-row: auto; }
+	.bo-appbar, .bo > .bo-contenu { grid-column: 1; grid-row: auto; }
+	.bo-appbar { min-height: 52px; }
 	.bo-sidebar { position: static; height: auto; flex-direction: row; align-items: center; flex-wrap: wrap; gap: .8rem; padding: .8rem 1rem; }
 	.bo-marque { padding: 0; margin: 0; border: 0; flex: 0 0 auto; }
 	.bo-marque__texte { display: none; }
 	.bo-sidebar__titre { display: none; }
 	.bo-sidebar__nav { display: flex; flex-wrap: wrap; gap: .35rem; padding: 0; flex: 1 1 auto; }
 	.bo-sidebar__nav a[aria-current="page"]::before { display: none; }
+	/* Profils en pastilles ; celui qui est ouvert prend toute la largeur. */
+	.bo-groupe[open] { flex-basis: 100%; }
+	.bo-groupe__tete { min-height: 40px; }
+	.bo-groupe__liens { display: flex; flex-wrap: wrap; gap: .35rem; padding: 0 .5rem .5rem; }
+	.bo-sidebar__nav .bo-groupe__liens a { padding-left: .85rem; }
 	.bo-sidebar__pied { margin: 0; padding: 0; border: 0; grid-auto-flow: column; align-items: center; gap: .8rem; flex: 0 0 auto; }
 	.bo-perimetre, .bo-compte__meta { display: none; }
 	.bo-contenu { padding: 1.2rem 1rem 2.5rem; }
@@ -800,7 +873,8 @@
    ne doivent pas être coupées en deux. */
 @media print {
 	.bo { grid-template-columns: 1fr; }
-	.bo-sidebar, .bo-contenu .page-app__actions { display: none; }
+	.bo-sidebar, .bo-appbar, .bo-contenu .page-app__actions { display: none; }
+	.bo > .bo-contenu { grid-column: 1; grid-row: auto; }
 	.bo-contenu { padding: 0; }
 	.graphe { box-shadow: none; break-inside: avoid; }
 }
@@ -1766,16 +1840,42 @@
 /* Sélecteur d'établissement dans la barre latérale (portée « plusieurs » ou « tous ») */
 .bo-perimetre--choix { display: grid; gap: .4rem; }
 .bo-perimetre--choix label b { color: var(--blanc); }
+/* Changer de profil (super-administrateur, inc/profil-simule.php) : la liste
+   native, invisible, couvre un bouton dessiné. En profil simulé, une carte
+   dorée dit quel profil on voit ; « Revenir » est l'action principale. */
+.bo-profil { display: grid; gap: .65rem; }
+.bo-profil.est-simule { padding: .75rem; border: 1px solid rgba(227, 168, 34, .42); border-radius: 14px; background: rgba(227, 168, 34, .09); }
+.bo-profil__etat { display: flex; align-items: flex-start; gap: .65rem; min-width: 0; }
+.bo-profil__icone { display: grid; place-items: center; flex: none; width: 32px; height: 32px; border-radius: 50%; background: var(--or); color: var(--vert-bandeau); }
+.bo-profil__qui { display: flex; flex-wrap: wrap; align-items: center; gap: .2rem .45rem; min-width: 0; margin: 0; line-height: 1.25; }
+.bo-profil__qui small { flex-basis: 100%; font-size: .75rem; font-weight: 600; color: var(--or); }
+.bo-profil__qui b { font-size: .92rem; color: var(--blanc); overflow-wrap: anywhere; }
+.bo-profil__portee { padding: .1rem .5rem; border-radius: 999px; background: rgba(255, 255, 255, .13); font-size: .74rem; font-weight: 700; color: var(--blanc); }
+.bo-profil__actions { display: flex; gap: .45rem; }
+.bo-profil__changer { position: relative; flex: 1 1 auto; display: flex; align-items: center; gap: .5rem; min-width: 0; min-height: 40px; padding: 0 .7rem; border: 1px solid var(--bo-nav-filet); border-radius: 10px; background: rgba(255, 255, 255, .06); color: var(--blanc); font-size: .85rem; font-weight: 600; cursor: pointer; transition: background-color .15s var(--ease-sortie), border-color .15s var(--ease-sortie); }
+.bo-profil__changer:hover { border-color: rgba(255, 255, 255, .26); background: rgba(255, 255, 255, .11); }
+.bo-profil__changer:focus-within { outline: 2px solid var(--or); outline-offset: 2px; }
+.bo-profil__changer > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bo-profil__chevron { flex: none; margin-left: auto; opacity: .7; }
+.bo-profil__changer select { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; font-size: 16px; color: #15231b; background: #fff; }
+.bo-profil__retour { display: inline-flex; align-items: center; gap: .35rem; flex: none; min-height: 40px; padding: 0 .8rem; border: 0; border-radius: 10px; background: var(--or); color: var(--vert-bandeau); font: inherit; font-size: .85rem; font-weight: 700; cursor: pointer; transition: background-color .15s var(--ease-sortie); }
+.bo-profil__retour:hover { background: #efb52f; }
+.bo-profil__retour:focus-visible { outline: 2px solid var(--blanc); outline-offset: 2px; }
+/* Bandeau des petits écrans : le pied (profil simulé, établissement consulté)
+   prend sa propre ligne, la carte passe à l'horizontale et ses boutons vont
+   dessous quand la place manque. */
+@media (max-width: 960px) {
+	.bo-sidebar__pied:has(.bo-profil, .bo-perimetre--choix) { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem .8rem; flex: 1 1 100%; }
+	.bo-profil { flex: 1 1 auto; min-width: 0; }
+	.bo-sidebar__pied .bo-perimetre--choix { flex: 1 1 100%; } /* sélecteur d'établissement : sa propre ligne */
+	.bo-profil.est-simule { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .6rem; padding: .5rem; }
+	.bo-profil__etat { flex: 1 1 auto; align-items: center; }
+	.bo-profil__qui small { display: none; }
+}
 .bo-perimetre--choix .champ__select { position: relative; }
 .bo-perimetre--choix select { width: 100%; min-height: 40px; padding: .4rem 2rem .4rem .7rem; border: 1px solid var(--bo-nav-filet); border-radius: 10px; background: rgba(255, 255, 255, .08); color: var(--blanc); font: inherit; font-size: .84rem; appearance: none; }
 .bo-perimetre--choix select option { color: var(--encre); }
-.bo-perimetre--choix .icone { position: absolute; right: .6rem; top: 50%; translate: 0 -50%; pointer-events: none; }
-/* Bandeau (sous 960 px) : le sélecteur reste utile, il prend toute la ligne et
-   le compte passe dessous, au lieu de pousser la page hors de l'écran. */
-@media (max-width: 960px) {
-	.bo-sidebar__pied:has(.bo-perimetre--choix) { flex: 1 1 100%; grid-auto-flow: row; grid-template-columns: auto auto 1fr; }
-	.bo-perimetre--choix { grid-column: 1 / -1; min-width: 0; }
-}
+.bo-perimetre--choix .champ__select .icone { position: absolute; right: .6rem; top: 50%; translate: 0 -50%; pointer-events: none; }
 
 /* ---------- Composants communs aux espaces IPES ----------
    Le reste des pages IPES vit dans assets/css/ipes.css. */
