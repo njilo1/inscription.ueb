@@ -56,7 +56,7 @@ function ueb_libelle_profil( array $p ) {
 		return 'IPES ' . ( ueb_ipes( (int) $p['ipes'] )->sigle ?? '?' );
 	}
 	$def = ueb_role( $p['role'] );
-	return $def['nom'] . ( 'un' === $def['portee'] ? ' (' . $p['etab'] . ')' : '' );
+	return 'un' === $def['portee'] ? ueb_intitule_role( $def, $p['etab'] ) . ' — ' . $p['etab'] : $def['nom'];
 }
 
 /* Capacités du profil à la place de celles de l'administrateur. */
@@ -109,10 +109,10 @@ function ueb_profils_proposes() {
 	foreach ( ueb_roles() as $slug => $def ) {
 		if ( 'un' === $def['portee'] ) {
 			foreach ( array_keys( ueb_etablissements() ) as $sigle ) {
-				$groupes['Rôles'][ "role:$slug:$sigle" ] = $def['nom'] . ' (' . $sigle . ')';
+				$groupes['Rôles'][ "role:$slug:$sigle" ] = ueb_intitule_role( $def, $sigle ) . ' — ' . $sigle;
 			}
 		} else {
-			$groupes['Rôles'][ "role:$slug" ] = $def['nom'] . ' (' . ( 'tous' === $def['portee'] ? 'tous les établissements' : implode( ', ', (array) $def['etablissements'] ) ) . ')';
+			$groupes['Rôles'][ "role:$slug" ] = $def['nom'] . ( 'tous' === $def['portee'] ? '' : ' — ' . implode( ', ', (array) $def['etablissements'] ) );
 		}
 	}
 	foreach ( ueb_ipes_liste( array( 'actif' => 1 ) ) as $ipes ) {

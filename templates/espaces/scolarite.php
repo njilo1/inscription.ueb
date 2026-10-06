@@ -64,11 +64,12 @@ if ( isset( $_POST['ueb_connexion_gestion'] ) ) {
 /* Quitus : ceux des droits universitaires (scolarité) ou des frais médicaux (CMS).
    Chacun a son tableau de bord : droits (?type=droits) ou frais médicaux (?type=medicaux). */
 $peut_quitus    = (bool) ueb_types_quitus_visibles();
-$peut_bord      = $peut_quitus;
+$peut_bord      = (bool) ueb_types_stats_visibles(); // reçus consultés, ou statistiques seules (lecture)
+$peut_recus_du  = in_array( 'droits', ueb_types_quitus_visibles(), true );
 $peut_paiements = ueb_peut( 'ueb_voir_paiements' );
 $peut_ipes      = ueb_peut( 'ueb_voir_ipes' );
 $peut_etudiants = ueb_peut( 'ueb_voir_etudiants' );
-$autorise       = ( ueb_est_scolarite() || ueb_est_admin_ueb() ) && ( $peut_quitus || $peut_paiements || $peut_ipes || $peut_etudiants );
+$autorise       = ( ueb_est_scolarite() || ueb_est_admin_ueb() ) && ( $peut_bord || $peut_quitus || $peut_paiements || $peut_ipes || $peut_etudiants );
 /* Première vue permise : tableau de bord, sinon paiements, sinon IPES, sinon étudiants. */
 $vue_defaut     = $peut_bord ? 'bord' : ( $peut_quitus ? 'quitus' : ( $peut_paiements ? 'paiements' : ( $peut_ipes ? 'ipes' : 'etudiants' ) ) );
 $annee    = ueb_annee_academique();
@@ -202,7 +203,7 @@ ueb_page_debut( array(
 					'paiements' => array( 'Suivi des paiements', 'Droits universitaires attendus et encaissés, filière par filière. Seuls les reçus vérifiés comptent comme encaissés.' ),
 					'cellule'  => array( 'Comptes du personnel', 'Les comptes que tu crées pour ton établissement, avec un rôle aux droits inférieurs aux tiens.' ),
 					'ipes'     => array( 'IPES sous tutelle', 'Les établissements privés placés sous la tutelle de ton établissement : leurs étudiants et leurs reversements.' ),
-					'securite' => array( 'Sécurité', 'Le mot de passe de ton accès à l’espace scolarité.' ),
+					'securite' => array( 'Sécurité', 'Le mot de passe de ton accès à l’Administration.' ),
 				);
 				list( $titre_vue, $sous_titre_vue ) = $titres[ $vue ] ?? $titres['bord'];
 				$stats_entete = ueb_gestion_stats( $annee['code'], $etab_agent, 'droits' ); // tableau de bord : droits universitaires
@@ -223,7 +224,7 @@ ueb_page_debut( array(
 							: sprintf( 'Tous les établissements : %d quitus pour %s cette année.', $c['quitus'], ueb_suivi_etudiants( $c['etudiants'] ) ),
 						'theme'      => false,
 						/* Les reçus à vérifier : la carte rouge en tête des indicateurs. */
-						'actions'    => $peut_paiements ? ueb_adm_action( add_query_arg( 'vue', 'paiements', ueb_url_scolarite() ), $etab ? 'Paiements de ' . $etab['sigle'] : 'Suivi des paiements', 'banque', true ) : '',
+						'actions'    => ueb_bouton_imprimer() . ( $peut_paiements ? ueb_adm_action( add_query_arg( 'vue', 'paiements', ueb_url_scolarite() ), $etab ? 'Paiements de ' . $etab['sigle'] : 'Suivi des paiements', 'banque', true ) : '' ),
 					) );
 					?>
 				<?php elseif ( ! $fiche && ! ( 'ipes' === $vue && isset( $_GET['ipes'] ) ) ) : /* la fiche d'un IPES a son propre en-tête */ ?>
@@ -237,7 +238,10 @@ ueb_page_debut( array(
 							<h1><?php echo esc_html( $titre_vue ); ?></h1>
 							<p class="bo-entete__sous-titre"><?php echo esc_html( $sous_titre_vue ); ?></p>
 						</div>
-						<?php if ( 'bord' === $vue && $a_verifier ) : ?>
+						<?php if ( in_array( $vue, array( 'paiements', 'etudiants', 'ipes' ), true ) ) : ?>
+							<div class="bo-entete__action"><?php echo ueb_bouton_imprimer(); // phpcs:ignore -- échappé ?></div>
+						<?php endif; ?>
+						<?php if ( 'bord' === $vue && $a_verifier && $peut_recus_du ) : ?>
 							<a class="btn btn--primaire bo-entete__action" href="<?php echo $ici( array( 'vue' => 'quitus', 'statut' => 'recu_envoye' ) ); ?>"><?php echo ueb_icone( 'recu', 18 ); ?>Reçus à vérifier <span class="bo-entete__pastille"><?php echo (int) $a_verifier; ?></span></a>
 						<?php endif; ?>
 					</header>
@@ -286,9 +290,11 @@ ueb_page_debut( array(
 						'perimetre' => false,
 						'paiements' => $url_paiements,
 						'ipes'      => false,
-						'attente'   => 'droits',
+						'attente'   => $peut_recus_du ? 'droits' : '', // statistiques seules : la carte « Reçus à vérifier » reste un chiffre
 					) );
-					ueb_file_attente( 'droits' );
+					if ( $peut_recus_du ) {
+						ueb_file_attente( 'droits' );
+					}
 					?>
 
 					<?php if ( $peut_ipes ) : ?>

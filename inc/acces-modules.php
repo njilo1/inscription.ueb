@@ -54,7 +54,7 @@ add_filter( 'user_has_cap', function ( $allcaps, $caps, $args, $user ) {
 	}
 	foreach ( UEB_PERMISSIONS_TYPE_QUITUS as $module => $permissions ) {
 		if ( ! in_array( $module, UEB_ACCES_MODULES[ $acces ], true ) ) {
-			foreach ( $permissions as $cap ) {
+			foreach ( array_merge( $permissions, array( UEB_STATS_TYPE_QUITUS[ $module ] ) ) as $cap ) {
 				unset( $allcaps[ $cap ] );
 			}
 		}
