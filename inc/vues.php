@@ -550,7 +550,7 @@ function ueb_entete_site( $variante ) {
 				</nav>
 				<div class="site-actions">
 					<span class="puce-compte"><?php echo ueb_icone( 'bouclier', 16 ); ?><?php echo esc_html( wp_get_current_user()->display_name ); ?></span>
-					<a class="btn btn--fantome btn--petit" href="<?php echo esc_url( wp_logout_url( home_url( '/' ) ) ); ?>">Déconnexion</a>
+					<a class="btn btn--fantome btn--petit" href="<?php echo esc_url( wp_logout_url( ueb_url_administration() ) ); ?>">Déconnexion</a>
 				</div>
 			<?php elseif ( 'gestion' === $variante ) : ?>
 				<?php /* Écran de connexion du personnel : la marque suffit. La navigation
@@ -944,7 +944,7 @@ function ueb_bo_barre( $espace, array $liens, array $pied = array(), array $marq
 					<span class="bo-compte__role"><?php echo esc_html( $role ); ?></span>
 				</span>
 			</div>
-			<a class="bo-sortie" href="<?php echo esc_url( wp_logout_url( home_url( '/' ) ) ); ?>"><?php echo ueb_icone( 'sortie', 16 ); ?>Déconnexion</a>
+			<a class="bo-sortie" href="<?php echo esc_url( wp_logout_url( ueb_url_administration() ) ); ?>"><?php echo ueb_icone( 'sortie', 16 ); ?>Déconnexion</a>
 		</div>
 	</aside>
 	<?php if ( ueb_espace_courant() ) : /* Barre du haut : où l'on est, et le thème (administration.js). */ ?>

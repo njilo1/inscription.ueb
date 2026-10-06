@@ -122,7 +122,7 @@ ueb_page_debut( array(
 					<?php ueb_animation( 'embleme', ueb_props_embleme(), 'animation--embleme bo-connexion__embleme', 'Sceau de l’Université d’Ebolowa' ); ?>
 					<p class="bo-connexion__marque">Université d’Ebolowa</p>
 					<h1 id="titre-connexion">Administration</h1>
-					<p class="bo-connexion__intro">L’espace de travail du personnel des inscriptions : chacun y retrouve ses outils.</p>
+					<p class="bo-connexion__intro">L’espace d’administration de la plateforme d’inscription de l’Université d’Ebolowa.</p>
 					<ul class="bo-connexion__points">
 						<li><?php echo ueb_icone( 'recu', 17 ); ?>Vérifier les reçus de paiement</li>
 						<li><?php echo ueb_icone( 'ecole', 17 ); ?>Suivre les IPES et leurs reversements</li>
