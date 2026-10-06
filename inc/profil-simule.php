@@ -50,13 +50,13 @@ function ueb_profil_simule() {
 	return $valide;
 }
 
-/** Libellé d'un profil : « Scolarité — FS », « IPES — UCAC ». */
+/** Libellé d'un profil : « Scolarité UEb (FS) », « IPES UCAC ». */
 function ueb_libelle_profil( array $p ) {
 	if ( 'ipes' === $p['type'] ) {
-		return 'IPES — ' . ( ueb_ipes( (int) $p['ipes'] )->sigle ?? '?' );
+		return 'IPES ' . ( ueb_ipes( (int) $p['ipes'] )->sigle ?? '?' );
 	}
 	$def = ueb_role( $p['role'] );
-	return $def['nom'] . ( 'un' === $def['portee'] ? ' — ' . $p['etab'] : '' );
+	return $def['nom'] . ( 'un' === $def['portee'] ? ' (' . $p['etab'] . ')' : '' );
 }
 
 /* Capacités du profil à la place de celles de l'administrateur. */
@@ -109,14 +109,14 @@ function ueb_profils_proposes() {
 	foreach ( ueb_roles() as $slug => $def ) {
 		if ( 'un' === $def['portee'] ) {
 			foreach ( array_keys( ueb_etablissements() ) as $sigle ) {
-				$groupes['Rôles'][ "role:$slug:$sigle" ] = $def['nom'] . ' — ' . $sigle;
+				$groupes['Rôles'][ "role:$slug:$sigle" ] = $def['nom'] . ' (' . $sigle . ')';
 			}
 		} else {
-			$groupes['Rôles'][ "role:$slug" ] = $def['nom'] . ( 'tous' === $def['portee'] ? ' — tous les établissements' : ' — ' . implode( ', ', (array) $def['etablissements'] ) );
+			$groupes['Rôles'][ "role:$slug" ] = $def['nom'] . ' (' . ( 'tous' === $def['portee'] ? 'tous les établissements' : implode( ', ', (array) $def['etablissements'] ) ) . ')';
 		}
 	}
 	foreach ( ueb_ipes_liste( array( 'actif' => 1 ) ) as $ipes ) {
-		$groupes['IPES'][ 'ipes:' . (int) $ipes->id ] = 'IPES — ' . $ipes->sigle;
+		$groupes['IPES'][ 'ipes:' . (int) $ipes->id ] = $ipes->sigle;
 	}
 	return $groupes;
 }
@@ -145,37 +145,65 @@ function ueb_action_profil_simuler() {
 	ueb_rediriger( ueb_url_administration() );
 }
 
-/** Sélecteur « Changer de profil » de la barre latérale (super-administrateur seulement). */
+/**
+ * « Changer de profil », en bas de la barre latérale (super-administrateur
+ * seulement). La liste native, invisible, couvre un bouton dessiné : elle
+ * reste utilisable au clavier et au lecteur d'écran. En profil simulé, une
+ * carte dorée dit quel profil on voit et ramène à la vue complète.
+ */
 function ueb_selecteur_profil() {
 	if ( ! ueb_super_admin_reel() ) {
 		return;
 	}
 	$actuel = ueb_profil_simule();
 	$valeur = '';
-	if ( $actuel ) {
-		$valeur = 'ipes' === $actuel['type'] ? 'ipes:' . $actuel['ipes'] : 'role:' . $actuel['role'] . ( 'un' === ueb_role( $actuel['role'] )['portee'] ? ':' . $actuel['etab'] : '' );
+	$nom    = '';
+	$portee = '';
+	if ( $actuel && 'ipes' === $actuel['type'] ) {
+		$valeur = 'ipes:' . $actuel['ipes'];
+		$nom    = 'IPES';
+		$portee = ueb_ipes( (int) $actuel['ipes'] )->sigle ?? '';
+	} elseif ( $actuel ) {
+		$def    = ueb_role( $actuel['role'] );
+		$valeur = 'role:' . $actuel['role'] . ( 'un' === $def['portee'] ? ':' . $actuel['etab'] : '' );
+		$nom    = $def['nom'];
+		$portee = 'un' === $def['portee'] ? $actuel['etab'] : ( 'tous' === $def['portee'] ? 'Tous les établissements' : implode( ', ', (array) $def['etablissements'] ) );
 	}
 	?>
-	<form class="bo-perimetre bo-perimetre--choix bo-profil<?php echo $actuel ? ' est-simule' : ''; ?>" method="post" action="<?php echo esc_url( ueb_url_administration() ); ?>">
+	<form class="bo-profil<?php echo $actuel ? ' est-simule' : ''; ?>" method="post" action="<?php echo esc_url( ueb_url_administration() ); ?>">
 		<?php ueb_champ_csrf(); ?>
 		<input type="hidden" name="ueb_action" value="profil_simuler">
-		<label for="bo-profil"><b><?php echo $actuel ? esc_html( 'Vue de « ' . ueb_libelle_profil( $actuel ) . ' »' ) : 'Changer de profil'; ?></b></label>
-		<div class="champ__select">
-			<select id="bo-profil" name="profil" onchange="this.form.submit()">
-				<option value="" <?php selected( $valeur, '' ); ?>>Ma vue complète (administrateur)</option>
-				<?php foreach ( ueb_profils_proposes() as $groupe => $options ) : ?>
-					<optgroup label="<?php echo esc_attr( $groupe ); ?>">
-						<?php foreach ( $options as $cle => $libelle ) : ?>
-							<option value="<?php echo esc_attr( $cle ); ?>" <?php selected( $valeur, $cle ); ?>><?php echo esc_html( $libelle ); ?></option>
-						<?php endforeach; ?>
-					</optgroup>
-				<?php endforeach; ?>
-			</select><?php echo ueb_icone( 'chevron', 16 ); ?>
+		<?php if ( $actuel ) : ?>
+			<div class="bo-profil__etat">
+				<span class="bo-profil__icone"><?php echo ueb_icone( 'oeil', 16 ); ?></span>
+				<p class="bo-profil__qui">
+					<small>Profil simulé</small>
+					<b><?php echo esc_html( $nom ); ?></b>
+					<?php if ( $portee ) : ?><span class="bo-profil__portee"><?php echo esc_html( $portee ); ?></span><?php endif; ?>
+				</p>
+			</div>
+		<?php endif; ?>
+		<div class="bo-profil__actions">
+			<label class="bo-profil__changer">
+				<?php echo $actuel ? '' : ueb_icone( 'oeil', 16 ); ?>
+				<span><?php echo $actuel ? 'Changer' : 'Changer de profil'; ?></span>
+				<?php echo ueb_icone( 'chevron', 16, 'bo-profil__chevron' ); ?>
+				<select name="profil" onchange="this.form.submit()" aria-label="Changer de profil">
+					<option value="" <?php selected( $valeur, '' ); ?>>Ma vue complète (administrateur)</option>
+					<?php foreach ( ueb_profils_proposes() as $groupe => $options ) : ?>
+						<optgroup label="<?php echo esc_attr( $groupe ); ?>">
+							<?php foreach ( $options as $cle => $libelle ) : ?>
+								<option value="<?php echo esc_attr( $cle ); ?>" <?php selected( $valeur, $cle ); ?>><?php echo esc_html( $libelle ); ?></option>
+							<?php endforeach; ?>
+						</optgroup>
+					<?php endforeach; ?>
+				</select>
+			</label>
+			<?php if ( $actuel ) : /* après la liste : son « profil » vide l'emporte à l'envoi */ ?>
+				<button class="bo-profil__retour" type="submit" name="profil" value="" title="Revenir à ma vue complète"><?php echo ueb_icone( 'fleche-g', 15 ); ?>Revenir</button>
+			<?php endif; ?>
 		</div>
 		<noscript><button class="btn btn--petit btn--clair" type="submit">Afficher</button></noscript>
-		<?php if ( $actuel ) : ?>
-			<button class="bo-profil__retour" type="submit" name="profil" value=""><?php echo ueb_icone( 'fleche-g', 14 ); ?>Revenir à ma vue complète</button>
-		<?php endif; ?>
 	</form>
 	<?php
 }

@@ -85,7 +85,8 @@ function ueb_exiger_admin() {
 
 /** Accès aux opérations réservées à la cellule informatique. */
 function ueb_exiger_comptes() {
-	if ( ! ueb_peut( UEB_CAP_COMPTES ) ) {
+	/* La scolarité garde la permission pour la déléguer à sa cellule, sans s'en servir (inc/espaces.php). */
+	if ( ! ueb_peut( UEB_CAP_COMPTES ) || ( ! ueb_est_admin_ueb() && ueb_peut( UEB_CAP_GESTION ) ) ) {
 		wp_die( 'Action réservée aux comptes autorisés à gérer les comptes étudiants.', 'Accès refusé', array( 'response' => 403 ) );
 	}
 }

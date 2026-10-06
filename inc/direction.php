@@ -310,8 +310,8 @@ function ueb_action_direction_compte_mdp() {
    cartes de rôles, assistant en fenêtre avec aperçu de la barre latérale. */
 
 /**
- * Barre du haut : titre, plateforme et rôle du compte à gauche ; date et
- * bascule clair / sombre à droite.
+ * Barre du haut : titre, plateforme et rôle du compte à gauche ; date à
+ * droite (la bascule clair / sombre est dans la barre du haut de l'Administration).
  */
 function ueb_gestion_tete( $titre ) {
 	$role = ueb_nom_role_du_compte();
@@ -328,7 +328,6 @@ function ueb_gestion_tete( $titre ) {
 		</div>
 		<div class="gestion-tete__actions">
 			<span class="gestion-date"><?php echo ueb_icone( 'calendrier', 15 ); ?><?php echo esc_html( wp_date( 'j F Y' ) ); ?></span>
-			<?php ueb_adm_bascule_theme(); ?>
 		</div>
 	</header>
 	<?php
