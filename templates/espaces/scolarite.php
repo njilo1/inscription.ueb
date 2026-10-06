@@ -62,9 +62,9 @@ if ( isset( $_POST['ueb_connexion_gestion'] ) ) {
 /* Accès par capacité et portée (inc/roles.php) : examiner les quitus, suivre les
    paiements ou suivre les IPES sous tutelle (inc/ipes-tutelle.php). */
 /* Quitus : ceux des droits universitaires (scolarité) ou des frais médicaux (CMS).
-   Le tableau de bord porte sur les droits : réservé à la scolarité. */
-$peut_bord      = ueb_peut( UEB_CAP_GESTION );
+   Chacun a son tableau de bord : droits (?type=droits) ou frais médicaux (?type=medicaux). */
 $peut_quitus    = (bool) ueb_types_quitus_visibles();
+$peut_bord      = $peut_quitus;
 $peut_paiements = ueb_peut( 'ueb_voir_paiements' );
 $peut_ipes      = ueb_peut( 'ueb_voir_ipes' );
 $peut_etudiants = ueb_peut( 'ueb_voir_etudiants' );
@@ -110,8 +110,12 @@ if ( $autorise ) {
 	if ( 'comptes' === $vue ) {
 		ueb_rediriger( ueb_url_cellule() );
 	}
-	/* Tableau de bord : même rendu que celui de l'administration (inc/administration-dashboard.php). */
-	$tableau = 'bord' === $vue && ! $fiche;
+	/* Tableau de bord : même rendu que celui de l'administration (inc/administration-dashboard.php),
+	   sur les droits universitaires, ou celui du CMS sur les frais médicaux (inc/cms-tableau.php). */
+	$tableau     = 'bord' === $vue && ! $fiche;
+	$tableau_cms = $tableau && 'medicaux' === ueb_type_recus_courant();
+	$periode     = (int) ( $_GET['periode'] ?? 30 ); // phpcs:ignore -- lecture seule
+	$periode     = in_array( $periode, array( 7, 30, 90 ), true ) ? $periode : 30;
 }
 
 /* Coque plein écran une fois connecté ; en-tête de site conservé sur l'écran
@@ -204,7 +208,12 @@ ueb_page_debut( array(
 				$stats_entete = ueb_gestion_stats( $annee['code'], $etab_agent, 'droits' ); // tableau de bord : droits universitaires
 				$a_verifier   = (int) ( $stats_entete['statuts']['recu_envoye'] ?? 0 );
 				?>
-				<?php if ( $tableau ) : ?>
+				<?php if ( $tableau_cms ) : ?>
+					<?php
+					$cms = ueb_cms_donnees( $annee['code'], $periode );
+					ueb_cms_tete( $cms['chiffres'] );
+					?>
+				<?php elseif ( $tableau ) : ?>
 					<?php
 					$c = ueb_gestion_chiffres( $annee['code'], $etab_agent );
 					ueb_adm_tete( array(
@@ -213,8 +222,8 @@ ueb_page_debut( array(
 							? sprintf( '%s, à %s : %d quitus pour %s cette année.', $etab['fr'], $etab['ville'], $c['quitus'], ueb_suivi_etudiants( $c['etudiants'] ) )
 							: sprintf( 'Tous les établissements : %d quitus pour %s cette année.', $c['quitus'], ueb_suivi_etudiants( $c['etudiants'] ) ),
 						'theme'      => false,
-						'actions'    => ( $a_verifier ? ueb_adm_action( add_query_arg( array( 'vue' => 'quitus', 'statut' => 'recu_envoye' ), ueb_url_scolarite() ), 'Reçus à vérifier (' . $a_verifier . ')', 'recu' ) : '' )
-							. ( $peut_paiements ? ueb_adm_action( add_query_arg( 'vue', 'paiements', ueb_url_scolarite() ), $etab ? 'Paiements de ' . $etab['sigle'] : 'Suivi des paiements', 'banque', true ) : '' ),
+						/* Les reçus à vérifier : la carte rouge en tête des indicateurs. */
+						'actions'    => $peut_paiements ? ueb_adm_action( add_query_arg( 'vue', 'paiements', ueb_url_scolarite() ), $etab ? 'Paiements de ' . $etab['sigle'] : 'Suivi des paiements', 'banque', true ) : '',
 					) );
 					?>
 				<?php elseif ( ! $fiche && ! ( 'ipes' === $vue && isset( $_GET['ipes'] ) ) ) : /* la fiche d'un IPES a son propre en-tête */ ?>
@@ -281,61 +290,30 @@ ueb_page_debut( array(
 					) );
 					?>
 
+				<?php elseif ( 'bord' === $vue && $tableau_cms ) : ?>
+
+					<?php ueb_cms_tableau( $cms, $periode ); ?>
+
 				<?php elseif ( 'bord' === $vue ) : ?>
 
 					<?php
 					/* Même tableau de bord que l'administration (inc/administration-dashboard.php),
-					   limité à l'établissement de l'agent, avec sa file de reçus à vérifier. */
-					$periode       = (int) ( $_GET['periode'] ?? 30 );
-					$periode       = in_array( $periode, array( 7, 30, 90 ), true ) ? $periode : 30;
+					   limité à l'établissement de l'agent : la carte rouge des reçus en attente
+					   en tête, la file des plus anciens dessous (inc/attente-recus.php). */
 					$suivi         = ueb_suivi_paiements( $annee['code'], $etab_agent, $periode );
 					$activite      = ueb_gestion_activite( $annee['code'], $etab_agent, $periode );
 					$url_espace    = static fn( array $args = array() ) => add_query_arg( $args, ueb_url_scolarite() );
 					$url_paiements = $peut_paiements ? $url_espace( array( 'vue' => 'paiements' ) ) : '';
-					$file          = ueb_gestion_liste_quitus( array( 'annee' => $annee['code'], 'etab' => $etab_agent, 'statut' => 'recu_envoye', 'type' => 'droits' ), 100 )['lignes'];
-					usort( $file, static fn( $a, $b ) => strcmp( $a->date_modification, $b->date_modification ) );
-					$maintenant    = current_time( 'timestamp' );
 
 					ueb_adm_dashboard( $c, $suivi, $activite, $etab_agent, $periode, array(
 						'url'       => $url_espace,
 						'perimetre' => false,
 						'paiements' => $url_paiements,
 						'ipes'      => false,
+						'attente'   => 'droits',
 					) );
+					ueb_file_attente( 'droits' );
 					?>
-
-					<section class="adm-panneau file-verif" aria-labelledby="titre-file">
-						<header class="adm-panneau__tete">
-							<div>
-								<h2 id="titre-file">Reçus à vérifier</h2>
-								<p><?php echo $a_verifier ? esc_html( sprintf( '%d %s ta vérification : compare-les aux originaux, en commençant par les plus anciens.', $a_verifier, $a_verifier > 1 ? 'reçus attendent' : 'reçu attend' ) ) : 'Les reçus envoyés par les étudiants arrivent ici.'; ?></p>
-							</div>
-							<?php echo ueb_icone( 'horloge', 19 ); ?>
-						</header>
-						<?php if ( ! $file ) : ?>
-							<div class="file-verif__vide"><span><?php echo ueb_icone( 'check', 22 ); ?></span><p><b>Aucun reçu en attente.</b> Tout est à jour pour le moment.</p></div>
-						<?php else : ?>
-							<ul class="file-verif__liste">
-								<?php foreach ( array_slice( $file, 0, 5 ) as $rang => $q ) : ?>
-									<li style="--i: <?php echo (int) $rang; ?>">
-										<a class="file-verif__ligne" href="<?php echo $ici( array( 'quitus' => $q->id ) ); ?>">
-											<span class="bo-avatar" aria-hidden="true"><?php echo esc_html( ueb_initiales( $q->prenom, $q->nom ) ); ?></span>
-											<span class="file-verif__qui"><b><?php echo esc_html( trim( $q->nom . ' ' . $q->prenom ) ); ?></b><small><?php echo esc_html( $q->numero ); ?> · <?php echo esc_html( ueb_detail_quitus( $q ) ); ?></small></span>
-											<span class="file-verif__meta">
-												<span class="file-verif__montant"><?php echo esc_html( ueb_formater_montant( $q->montant ) ); ?> <small>FCFA</small></span>
-												<span class="file-verif__attente"><?php echo ueb_icone( 'horloge', 15 ); ?><?php echo esc_html( 'il y a ' . human_time_diff( strtotime( $q->date_modification ), $maintenant ) ); ?></span>
-											</span>
-											<span class="file-verif__aller" aria-hidden="true"><?php echo ueb_icone( 'fleche', 18 ); ?></span>
-										</a>
-									</li>
-								<?php endforeach; ?>
-							</ul>
-							<footer class="file-verif__pied">
-								<p><?php echo ueb_icone( 'horloge', 16 ); ?>Le premier reçu affiché attend depuis <?php echo esc_html( human_time_diff( strtotime( $file[0]->date_modification ), $maintenant ) ); ?>.</p>
-								<a class="bo-lien" href="<?php echo $ici( array( 'vue' => 'quitus', 'statut' => 'recu_envoye' ) ); ?>">Tout voir (<?php echo (int) $a_verifier; ?>)<?php echo ueb_icone( 'fleche', 16 ); ?></a>
-							</footer>
-						<?php endif; ?>
-					</section>
 
 					<?php if ( $peut_ipes ) : ?>
 						<?php
@@ -633,17 +611,7 @@ ueb_page_debut( array(
 					?>
 
 					<div class="registre-quitus" data-registre-quitus>
-						<?php if ( $attente ) : ?>
-							<?php if ( 'recu_envoye' === $filtres['statut'] ) : ?>
-								<div class="attente attente--filtre" role="status">
-									<span class="attente__icone" aria-hidden="true"><?php echo ueb_icone( 'tampon', 20 ); ?></span>
-									<div class="attente__texte">
-										<p class="attente__titre">Seuls les reçus à valider sont affichés</p>
-										<p><?php echo esc_html( sprintf( '%d %s en attente dans %d %s.', $attente, 1 === $attente ? 'validation' : 'validations', (int) $dossiers['attente']->dossiers, 1 === (int) $dossiers['attente']->dossiers ? 'dossier' : 'dossiers' ) ); ?></p>
-									</div>
-									<a class="attente__action" href="<?php echo $url_liste( array( 'statut' => null ) ); ?>"><?php echo ueb_icone( 'croix', 16 ); ?>Tout afficher</a>
-								</div>
-							<?php else : ?>
+						<?php if ( $attente && 'recu_envoye' !== $filtres['statut'] ) : /* liste déjà filtrée sur les reçus à valider : pas de bandeau */ ?>
 								<div class="attente">
 									<span class="attente__icone" aria-hidden="true"><?php echo ueb_icone( 'tampon', 20 ); ?><span class="attente__nombre"><?php echo (int) $attente; ?></span></span>
 									<div class="attente__texte">
@@ -655,7 +623,6 @@ ueb_page_debut( array(
 										<a class="attente__second" href="<?php echo $ici( array( 'quitus' => $plus_ancien->id ) ); ?>">Ouvrir le plus ancien</a>
 									<?php endif; ?>
 								</div>
-							<?php endif; ?>
 						<?php endif; ?>
 
 						<nav class="compteurs" aria-label="Dossiers par statut">
