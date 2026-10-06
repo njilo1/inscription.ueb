@@ -211,11 +211,16 @@ function ueb_navigation_administration() {
 		array_map( static fn( $g ) => array( $g[0], array_values( array_filter( $g[1] ) ) ), $groupes ),
 		static fn( $g ) => $g[1]
 	);
-	/* Mot de passe : à la fin du premier groupe, avec les autres onglets du compte
-	   (le super-administrateur l'a déjà dans chaque espace). */
+	/* Mot de passe : à la fin du groupe s'il n'y en a qu'un, sinon en dernier, à
+	   part (le super-administrateur l'a déjà dans chaque espace). */
 	$e = current( array_intersect( array( 'scolarite', 'direction', 'cellule', 'ipes' ), $permis ) );
 	if ( ! $admin && $groupes && $e ) {
-		$groupes[ array_key_first( $groupes ) ][1][] = $lien( $e, 'securite', 'Sécurité', 'cadenas' );
+		$securite = $lien( $e, 'securite', 'Sécurité', 'cadenas' );
+		if ( 1 === count( $groupes ) ) {
+			$groupes[ array_key_first( $groupes ) ][1][] = $securite;
+		} else {
+			$groupes['Mon compte'] = array( 'cadenas', array( $securite ) );
+		}
 	}
 	$liens = array();
 	foreach ( $groupes as $titre => $groupe ) {

@@ -138,33 +138,14 @@ ueb_page_debut( array(
 					) );
 					ueb_afficher_flash();
 					?>
-					<div class="ipes-securite">
-						<section class="adm-panneau" aria-labelledby="titre-mdp-ipes">
-							<header class="adm-panneau__tete">
-								<div><h2 id="titre-mdp-ipes">Modifier mon mot de passe</h2><p>Tu seras déconnecté ensuite : reconnecte-toi avec le nouveau.</p></div>
-							</header>
-							<form class="formulaire bo-formulaire" method="post" action="<?php echo esc_url( ueb_url_espace_ipes() ); ?>" data-formulaire novalidate>
-								<?php ueb_champ_csrf(); ?>
-								<input type="hidden" name="ueb_action" value="gestion_changer_mdp_personnel">
-								<?php ueb_champ( array( 'nom' => 'mot_de_passe_actuel', 'libelle' => 'Mot de passe actuel', 'type' => 'password', 'icone' => 'cadenas', 'attrs' => array( 'autocomplete' => 'current-password' ) ) ); ?>
-								<div class="formulaire__rangee">
-									<?php ueb_champ( array( 'nom' => 'mot_de_passe_nouveau', 'libelle' => 'Nouveau mot de passe', 'type' => 'password', 'icone' => 'cle', 'attrs' => array( 'autocomplete' => 'new-password', 'minlength' => 8 ) ) ); ?>
-									<?php ueb_champ( array( 'nom' => 'mot_de_passe_confirmation', 'libelle' => 'Confirmation', 'type' => 'password', 'icone' => 'cle', 'attrs' => array( 'autocomplete' => 'new-password', 'minlength' => 8, 'data-confirme' => 'champ-mot_de_passe_nouveau' ) ) ); ?>
-								</div>
-								<div class="force-mdp" data-force-mdp="champ-mot_de_passe_nouveau" data-niveau="0"><div class="force-mdp__jauge" aria-hidden="true"><i></i><i></i><i></i><i></i></div><p class="force-mdp__libelle" aria-live="polite">Solidité : <b data-force-libelle>à saisir</b></p></div>
-								<div><button class="adm-bouton adm-bouton--primaire" type="submit"><?php echo ueb_icone( 'bouclier', 16 ); ?>Changer le mot de passe</button></div>
-							</form>
-						</section>
-						<aside class="adm-panneau ipes-reflexes" aria-labelledby="titre-reflexes-ipes">
-							<header class="adm-panneau__tete"><div><h2 id="titre-reflexes-ipes">Les bons réflexes</h2><p>Ce compte déclare les étudiants et les reversements de <?php echo esc_html( $ipes->sigle ); ?>.</p></div></header>
-							<ul>
-								<li><?php echo ueb_icone( 'cadenas', 17 ); ?><span><b>Un mot de passe à toi seul.</b> Ne le communique pas, même à l’UEb : personne ne te le demandera.</span></li>
-								<li><?php echo ueb_icone( 'cle', 17 ); ?><span><b>Au moins 8 caractères</b>, avec des lettres et des chiffres. Une courte phrase se retient mieux qu’un mot.</span></li>
-								<li><?php echo ueb_icone( 'sortie', 17 ); ?><span><b>Déconnecte-toi</b> à la fin de chaque session sur un ordinateur partagé.</span></li>
-								<li><?php echo ueb_icone( 'info', 17 ); ?><span><b>Mot de passe oublié ?</b> L’administration de l’UEb t’en créera un nouveau, provisoire.</span></li>
-							</ul>
-						</aside>
-					</div>
+					<?php
+					ueb_bloc_mot_de_passe( array(
+						'action'  => ueb_url_espace_ipes(),
+						'titre'   => 'Ton accès engage ' . $ipes->sigle,
+						'conseil' => array( 'ecole', 'Ce compte déclare les étudiants et les reversements', ' de ' . $ipes->sigle . '.' ),
+						'oubli'   => 'L’administration de l’UEb t’en créera un nouveau, provisoire.',
+					) );
+					?>
 
 				<?php else : ?>
 

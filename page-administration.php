@@ -132,6 +132,7 @@ ueb_page_debut( array(
 				<section class="bo-connexion__formulaire" aria-labelledby="titre-connexion">
 					<h2>Connexion</h2>
 					<p class="bo-connexion__aide">Avec l’identifiant communiqué par l’administration de la plateforme.</p>
+					<?php ueb_afficher_flash(); /* ex. « Mot de passe modifié » : le changement déconnecte */ ?>
 					<?php if ( is_user_logged_in() ) : ?>
 						<?php ueb_alerte( 'erreur', "Ce compte n'a accès à aucun espace de gestion." ); ?>
 					<?php endif; ?>

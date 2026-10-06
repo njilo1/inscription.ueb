@@ -1187,8 +1187,9 @@ function ueb_action_gestion_creer_agent() {
 
 /** Permet à un agent connecté de remplacer son mot de passe WordPress. */
 function ueb_action_gestion_changer_mdp_personnel() {
-	/* Personnel et administrateurs d'IPES : même formulaire, même règle. */
-	if ( ! is_user_logged_in() || ! ( ueb_est_agent( get_current_user_id() ) || ueb_est_admin_ipes( get_current_user_id() ) ) || ueb_agent_suspendu() ) {
+	/* Personnel, administrateurs d'IPES et super-administrateur (même en profil
+	   simulé) : même formulaire, même règle. */
+	if ( ! is_user_logged_in() || ! ( ueb_super_admin_reel() || ueb_est_agent( get_current_user_id() ) || ueb_est_admin_ipes( get_current_user_id() ) ) || ueb_agent_suspendu() ) {
 		wp_die( 'Action réservée aux personnels autorisés.', 'Accès refusé', array( 'response' => 403 ) );
 	}
 	/* Retour vers l'espace d'où vient le formulaire (Direction, scolarité ou comptes étudiants). */

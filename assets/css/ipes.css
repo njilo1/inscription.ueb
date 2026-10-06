@@ -394,13 +394,6 @@ body:not(.espace-admin) .ipes-zone {
 .ipes-nouveau > .ipes-doc { background: var(--adm-st-verifie-fond); color: var(--adm-st-verifie); }
 
 /* Sécurité : formulaire et bons réflexes côte à côte. */
-.ipes-securite { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 360px); gap: 1.25rem; align-items: start; }
-.ipes-securite .formulaire { display: grid; gap: 1rem; }
-.ipes-reflexes { display: grid; gap: .9rem; }
-.ipes-reflexes ul { display: grid; gap: .85rem; margin: 0; padding: 0; list-style: none; }
-.ipes-reflexes li { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: .6rem; font-size: .9rem; line-height: 1.5; color: var(--gris); }
-.ipes-reflexes li .icone { margin-top: .2rem; color: var(--foret-700); }
-.ipes-reflexes li b { color: var(--encre); }
 
 /* ---------- 8. Thème sombre ---------- */
 
@@ -418,7 +411,7 @@ body:not(.espace-admin) .ipes-zone {
 /* ---------- 9. Responsive, mouvement réduit, impression ---------- */
 
 @media (max-width: 1180px) {
-	.ipes-grille, .ipes-deux, .ipes-securite, .ipes-duo, .ipes-bord { grid-template-columns: minmax(0, 1fr); }
+	.ipes-grille, .ipes-deux, .ipes-duo, .ipes-bord { grid-template-columns: minmax(0, 1fr); }
 	.ipes-cote { position: static; }
 }
 @media (max-width: 900px) {

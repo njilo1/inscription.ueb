@@ -21,3 +21,5 @@ desktop.ini
 # Mots de passe des comptes créés en lot et sauvegardes (outils/comptes-personnel.php)
 credentials_temp.csv
 sauvegardes/
+.~lock.*#
+identifient + password.pdf
