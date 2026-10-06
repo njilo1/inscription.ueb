@@ -8,7 +8,7 @@ puis supprime toutes les données de test, même en cas d'échec.
 
 Usage : python3 tests/roles-securite.py   (XAMPP démarré, site sur http://localhost/inscription-ueb)
 """
-import http.cookiejar, re, subprocess, sys, urllib.parse, urllib.request
+import html as html_lib, http.cookiejar, re, subprocess, sys, urllib.parse, urllib.request
 BASE = 'http://localhost/inscription-ueb'
 WP = "$_SERVER['HTTP_HOST']='localhost';$_SERVER['SERVER_NAME']='localhost';$_SERVER['REQUEST_URI']='/';require '/opt/lampp/htdocs/inscription-ueb/wp-load.php';"
 
@@ -135,6 +135,18 @@ try:
     verifier('scolarité FS : PDF d’un quitus FSJP refusé', not html.startswith('%PDF'))
     st, html = get(s9, '/administration/?espace=scolarite&vue=quitus')
     verifier('scolarité FS : liste limitée à FS', 'FSJP-2627' not in html and 'FS-2627' in html)
+    st, html = get(s9, '/administration/?espace=cellule')
+    verifier('scolarité FS : pas d’espace « Comptes étudiants » (ni onglet ni adresse directe)', st == 200 and 'espace=cellule' not in html)
+    m = re.search(r'name="ueb_csrf" value="([^"]+)"', get(s9, '/administration/?espace=scolarite&vue=securite')[1])
+    st, _, corps = post(s9, '/administration/?espace=cellule', {'ueb_action': 'gestion_reinit_mdp', 'ueb_csrf': m.group(1) if m else '', 'compte_id': 1})
+    verifier('scolarité FS : réinitialisation d’un compte étudiant refusée par le serveur', m and st == 403 and 'gérer les comptes étudiants' in corps)
+    # carte « Reçus en attente » : compteur en direct limité aux reçus que le compte valide
+    m = re.search(r'data-attente-source="([^"]+)"', get(s9, '/administration/?espace=scolarite')[1])
+    source = html_lib.unescape(m.group(1)).replace('http://localhost/inscription-ueb', '') if m else ''
+    st, corps = get(s9, source) if source else (0, '')
+    verifier('scolarité FS : compteur des reçus en attente (droits) lisible', st == 200 and '"success":true' in corps)
+    st, corps = get(s9, source.replace('type=droits', 'type=medicaux')) if source else (0, '')
+    verifier('scolarité FS : compteur des reçus du CMS refusé', st == 403)
     s12 = session(12)
     st, html = get(s12, '/administration/?espace=cellule')
     verifier('cellule FS historique : espace « Comptes étudiants » toujours ouvert', st == 200 and 'Comptes étudiants' in html and 'Ce compte n' not in html)

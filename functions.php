@@ -15,6 +15,7 @@
  *   inc/quitus-pdf.php    génération du PDF (modèle A, 4 coupons)
  *   inc/recus.php         envoi et consultation des reçus bancaires
  *   inc/gestion.php       espace d'administration
+ *   inc/acces-modules.php modules visibles par compte : droits universitaires (du), visite médicale (vm)
  *   inc/direction.php     rôles dynamiques et personnel (espace Direction)
  *   inc/ipes.php          établissements privés sous tutelle (IPES)
  *   inc/ipes-filieres.php filières des IPES
@@ -26,6 +27,8 @@
  *   inc/ipes-tutelle.php  IPES vus par leur établissement de tutelle (espace scolarité)
  *   inc/filieres-catalogue.php catalogue des filières (onglet Filières de l'administration)
  *   inc/administration.php composants de l'espace Administration
+ *   inc/attente-recus.php reçus en attente de validation : carte rouge, file, actualisation
+ *   inc/cms-tableau.php   tableau de bord du Centre médico-social (frais médicaux)
  *   inc/ipes-vues.php     composants d'affichage des IPES (trois espaces)
  *   inc/assets.php       feuilles de style et scripts
  *
@@ -38,7 +41,7 @@ define( 'UEB_INSC_VERSION', '1.0.0' );
 define( 'UEB_INSC_DIR', get_template_directory() );
 define( 'UEB_INSC_URI', get_template_directory_uri() );
 
-foreach ( array( 'config', 'db-schema', 'session', 'routes', 'roles', 'espaces', 'profil-simule', 'comptes', 'nombres', 'inscription', 'quitus', 'profil', 'etudiants', 'quitus-pdf', 'recus', 'gestion', 'direction', 'ipes', 'ipes-filieres', 'ipes-etudiants', 'ipes-bordereaux', 'ipes-recus', 'ipes-bordereau-pdf', 'ipes-espace', 'ipes-tutelle', 'filieres-catalogue', 'assets', 'vues', 'bord', 'bord-graphes', 'administration', 'ipes-vues', 'landing' ) as $ueb_module ) {
+foreach ( array( 'config', 'db-schema', 'session', 'routes', 'roles', 'acces-modules', 'espaces', 'profil-simule', 'comptes', 'nombres', 'inscription', 'quitus', 'profil', 'etudiants', 'quitus-pdf', 'recus', 'gestion', 'direction', 'ipes', 'ipes-filieres', 'ipes-etudiants', 'ipes-bordereaux', 'ipes-recus', 'ipes-bordereau-pdf', 'ipes-espace', 'ipes-tutelle', 'filieres-catalogue', 'assets', 'vues', 'bord', 'bord-graphes', 'administration', 'attente-recus', 'cms-tableau', 'ipes-vues', 'landing' ) as $ueb_module ) {
 	require_once UEB_INSC_DIR . '/inc/' . $ueb_module . '.php';
 }
 

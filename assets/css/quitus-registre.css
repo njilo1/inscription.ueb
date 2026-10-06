@@ -41,15 +41,6 @@
 .attente__second { position: relative; z-index: 1; padding: .3rem .1rem; color: #6b5310; font-size: .86rem; font-weight: 600; text-decoration: underline; text-underline-offset: .2em; white-space: nowrap; }
 .attente__second:hover { color: #3b2c00; }
 .attente__second:focus-visible { outline: 3px solid var(--or); outline-offset: 2px; border-radius: 4px; }
-/* Filtre actif : l'alerte rappelle ce qui est affiché et permet de tout revoir. */
-.attente--filtre { border-color: #bcd9e8; background: var(--info-fond); color: #134c66; }
-.attente--filtre:hover { border-color: #bcd9e8; background: var(--info-fond); }
-.attente--filtre .attente__icone { color: var(--ciel-fonce); box-shadow: 0 0 0 1px #bcd9e8; }
-.attente--filtre .attente__titre { color: #0f3d52; }
-.attente--filtre .attente__texte p:not(.attente__titre) { color: #2f6380; }
-.attente__action { display: inline-flex; align-items: center; gap: .4rem; min-height: 40px; padding: .4rem .85rem; border: 1px solid #9cc5da; border-radius: 10px; background: var(--blanc); color: #134c66; font-size: .88rem; font-weight: 700; text-decoration: none; }
-.attente__action:hover { border-color: var(--ciel-fonce); color: #0f3d52; }
-.attente__action:focus-visible { outline: 3px solid var(--or); outline-offset: 2px; }
 
 /* ---------- Compteurs : cartes blanches à bordure ---------- */
 .compteurs { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: .6rem; }
@@ -247,10 +238,6 @@
 :root[data-theme="sombre"] .espace-admin .attente__titre, :root[data-theme="sombre"] .espace-admin .attente__voir { color: #f3d58a; }
 :root[data-theme="sombre"] .espace-admin .attente__texte p:not(.attente__titre), :root[data-theme="sombre"] .espace-admin .attente__second { color: #d9bd75; }
 :root[data-theme="sombre"] .espace-admin .attente__second:hover { color: #f3d58a; }
-:root[data-theme="sombre"] .espace-admin .attente--filtre { border-color: #24485c; color: #9fd2ee; }
-:root[data-theme="sombre"] .espace-admin .attente--filtre .attente__titre { color: #bfe3f6; }
-:root[data-theme="sombre"] .espace-admin .attente--filtre .attente__texte p:not(.attente__titre) { color: #9fd2ee; }
-:root[data-theme="sombre"] .espace-admin .attente__action { border-color: #2f5b72; }
 :root[data-theme="sombre"] .espace-admin .registre__tableau th { background: #1b261f; box-shadow: inset 0 -1px 0 var(--filet); }
 :root[data-theme="sombre"] .espace-admin .registre__dossier.est-tamponne td { background: #13291b; }
 :root[data-theme="sombre"] .espace-admin .registre__select.est-actif select { background: #13291b; color: #8fcca3; }

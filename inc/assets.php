@@ -74,11 +74,13 @@ add_action( 'wp_enqueue_scripts', function () {
 			ueb_script( 'ueb-quitus-registre', 'assets/js/quitus-registre.js', array( 'ueb-app', 'ueb-remotion' ) );
 		}
 	}
-	/* Tableau de bord de la scolarité : le même que celui de l'administration
-	   (cartes à mini-courbes, anneau, évolution, mouvement), sans la bascule de thème. */
+	/* Tableau de bord de la scolarité (droits) ou du CMS (frais médicaux) : le même
+	   que celui de l'administration (cartes à mini-courbes, anneau, mouvement), avec
+	   la carte rouge des reçus en attente, actualisée en direct (attente-recus.js). */
 	$tableau_scolarite = ( 'scolarite' === ueb_espace_courant() ) && 'bord' === $vue_bo && ! isset( $_GET['quitus'] ) // phpcs:ignore -- lecture seule
-		&& ueb_peut( UEB_CAP_GESTION );
+		&& ueb_types_quitus_visibles();
 	if ( $tableau_scolarite ) {
+		ueb_script( 'ueb-attente-recus', 'assets/js/attente-recus.js', array( 'ueb-administration-sparklines' ) );
 		ueb_style( 'ueb-administration', 'assets/css/administration.css', array( 'ueb-pages', 'ueb-bord-graphes' ) );
 		ueb_style( 'ueb-administration-dashboard', 'assets/css/administration-dashboard.css', array( 'ueb-administration' ) );
 		ueb_style( 'ueb-administration-analytics', 'assets/css/administration-analytics.css', array( 'ueb-administration-dashboard' ) );
