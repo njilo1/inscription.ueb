@@ -40,8 +40,9 @@ function ueb_espaces_du_compte( $user_id = 0 ) {
 		$espaces[] = 'direction';
 	}
 	/* La scolarité ne gère pas les comptes étudiants : elle garde la permission
-	   (pour la déléguer à sa cellule informatique) mais pas l'espace. */
-	if ( ueb_est_cellule( $user_id ) && ! user_can( $user_id, UEB_CAP_GESTION ) && ueb_etabs_autorises( $user_id ) ) {
+	   pour la déléguer à sa cellule informatique (ueb_creer_agents), mais pas
+	   l'espace. Une cellule qui consulte les droits universitaires le garde. */
+	if ( ueb_est_cellule( $user_id ) && ! user_can( $user_id, 'ueb_creer_agents' ) && ueb_etabs_autorises( $user_id ) ) {
 		$espaces[] = 'cellule';
 	}
 	if ( ueb_ipes_du_compte( $user_id ) ) {
