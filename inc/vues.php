@@ -852,6 +852,10 @@ function ueb_bo_barre( $espace, array $liens, array $pied = array(), array $marq
 		}
 	}
 	$ouvert = $groupe_actif ?? 0;
+	/* Menus déroulants pour le seul super-administrateur, qui a beaucoup d'onglets.
+	   Les autres profils (et sa vue en profil simulé) voient tous leurs onglets,
+	   sans rien à déplier : un menu refermé par mégarde passerait pour disparu. */
+	$repliable = current_user_can( 'manage_options' );
 	$lien_a = static function ( array $l, $icone ) {
 		printf( '<a href="%s"%s>%s%s</a>', esc_url( $l['url'] ), empty( $l['actif'] ) ? '' : ' aria-current="page"', $icone ? ueb_icone( $icone, 18 ) : '', esc_html( $l['libelle'] ) ); // phpcs:ignore -- SVG interne
 	};
@@ -874,6 +878,15 @@ function ueb_bo_barre( $espace, array $liens, array $pied = array(), array $marq
 			<?php foreach ( $groupes as $i => $g ) : ?>
 				<?php if ( '' === $g['titre'] || 1 === count( $g['liens'] ) ) : /* sans titre, ou un seul onglet : lien direct */ ?>
 					<?php foreach ( $g['liens'] as $l ) { $lien_a( $l, '' === $g['titre'] ? $l['icone'] : $g['icone'] ); } ?>
+				<?php elseif ( ! $repliable ) : /* section toujours ouverte, chaque onglet avec son icône ; intitulée s'il y en a plusieurs */ ?>
+					<div class="bo-groupe bo-groupe--fixe"<?php echo count( $groupes ) > 1 ? ' role="group" aria-labelledby="bo-groupe-' . (int) $i . '"' : ''; ?>>
+						<?php if ( count( $groupes ) > 1 ) : /* un seul profil : la barre du haut le nomme déjà */ ?>
+							<p class="bo-groupe__tete" id="bo-groupe-<?php echo (int) $i; ?>"><?php echo esc_html( $g['titre'] ); ?></p>
+						<?php endif; ?>
+						<div class="bo-groupe__liens">
+							<?php foreach ( $g['liens'] as $l ) { $lien_a( $l, $l['icone'] ?? '' ); } ?>
+						</div>
+					</div>
 				<?php else : /* un profil : menu déroulant, un seul ouvert à la fois (name) */ ?>
 					<details class="bo-groupe<?php echo $i === $groupe_actif ? ' est-courant' : ''; ?>" name="bo-groupes"<?php echo $i === $ouvert ? ' open' : ''; ?>>
 						<summary class="bo-groupe__tete"><?php echo ueb_icone( $g['icone'], 18 ); ?><span><?php echo esc_html( $g['titre'] ); ?></span><?php echo ueb_icone( 'chevron', 16, 'bo-groupe__chevron' ); ?></summary>
@@ -1045,6 +1058,64 @@ function ueb_champ( array $a ) {
 		<?php if ( $a['erreur'] ) : ?>
 			<p class="champ__erreur" id="<?php echo esc_attr( $id ); ?>-erreur"><?php echo ueb_icone( 'alerte', 16 ); ?><?php echo esc_html( $a['erreur'] ); ?></p>
 		<?php endif; ?>
+	</div>
+	<?php
+}
+
+/**
+ * Page Sécurité du personnel : la carte « Modifier mon mot de passe », la même
+ * dans les quatre espaces (Scolarité, Direction, Comptes étudiants, IPES), et
+ * l'encadré des bons réflexes. Le formulaire est traité par l'action
+ * gestion_changer_mdp_personnel (inc/gestion.php).
+ *
+ * $a : action (adresse du formulaire) ; titre et conseil de l'encadré, propres
+ *      à l'espace : conseil = array( icône, début en gras, suite ) ; oubli :
+ *      qui attribue un nouveau mot de passe (aucun encadré pour l'administrateur).
+ */
+function ueb_bloc_mot_de_passe( array $a ) {
+	$a = wp_parse_args( $a, array( 'action' => '', 'titre' => 'Ton accès t’engage', 'conseil' => array(), 'oubli' => 'L’administrateur de la plateforme peut t’en attribuer un nouveau.' ) );
+	$conseils = array_filter( array(
+		$a['conseil'],
+		array( 'cadenas', 'Ne partage pas ton accès', ', même avec un collègue : personne ne te le demandera.' ),
+		array( 'sortie', 'Déconnecte-toi', ' en quittant ton poste, surtout sur un ordinateur partagé.' ),
+	) );
+	?>
+	<div class="mdp-espace">
+		<section class="carte bo-panneau mdp-carte" aria-labelledby="titre-mdp">
+			<header class="bo-panneau__entete">
+				<span class="bo-panneau__icone"><?php echo ueb_icone( 'cadenas', 20 ); ?></span>
+				<div><h2 id="titre-mdp">Modifier mon mot de passe</h2><p>Tu seras déconnecté : reconnecte-toi avec le nouveau.</p></div>
+			</header>
+			<form class="formulaire mdp-form" method="post" action="<?php echo esc_url( $a['action'] ); ?>" data-formulaire novalidate>
+				<?php ueb_champ_csrf(); ?>
+				<input type="hidden" name="ueb_action" value="gestion_changer_mdp_personnel">
+				<?php ueb_champ( array( 'nom' => 'mot_de_passe_actuel', 'libelle' => 'Mot de passe actuel', 'type' => 'password', 'icone' => 'cadenas', 'attrs' => array( 'autocomplete' => 'current-password' ) ) ); ?>
+				<div class="mdp-form__nouveau">
+					<?php ueb_champ( array( 'nom' => 'mot_de_passe_nouveau', 'libelle' => 'Nouveau mot de passe', 'type' => 'password', 'icone' => 'cle', 'attrs' => array( 'autocomplete' => 'new-password', 'minlength' => 8, 'aria-describedby' => 'mdp-regle' ) ) ); ?>
+					<div class="force-mdp" data-force-mdp="champ-mot_de_passe_nouveau" data-niveau="0">
+						<div class="force-mdp__jauge" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+						<p class="force-mdp__libelle" aria-live="polite">Solidité : <b data-force-libelle>à saisir</b></p>
+					</div>
+					<p class="mdp-form__regle" id="mdp-regle">Au moins 8 caractères, avec une lettre et un chiffre.</p>
+				</div>
+				<?php ueb_champ( array( 'nom' => 'mot_de_passe_confirmation', 'libelle' => 'Confirmer le nouveau mot de passe', 'type' => 'password', 'icone' => 'cle', 'attrs' => array( 'autocomplete' => 'new-password', 'minlength' => 8, 'data-confirme' => 'champ-mot_de_passe_nouveau' ) ) ); ?>
+				<div class="mdp-form__actions">
+					<button class="btn btn--primaire" type="submit"><?php echo ueb_icone( 'bouclier', 18 ); ?>Changer le mot de passe</button>
+				</div>
+			</form>
+		</section>
+		<aside class="carte reflexes" aria-labelledby="titre-reflexes">
+			<span class="reflexes__icone" aria-hidden="true"><?php echo ueb_icone( 'bouclier', 22 ); ?></span>
+			<h2 id="titre-reflexes"><?php echo esc_html( $a['titre'] ); ?></h2>
+			<ul class="reflexes__liste">
+				<?php foreach ( $conseils as $c ) : ?>
+					<li><?php echo ueb_icone( $c[0], 17 ); ?><span><b><?php echo esc_html( $c[1] ); ?></b><?php echo esc_html( $c[2] ); ?></span></li>
+				<?php endforeach; ?>
+			</ul>
+			<?php if ( $a['oubli'] && ! ueb_super_admin_reel() ) : ?>
+				<div class="reflexes__oubli"><p><b>Mot de passe oublié ?</b> <?php echo esc_html( $a['oubli'] ); ?></p></div>
+			<?php endif; ?>
+		</aside>
 	</div>
 	<?php
 }

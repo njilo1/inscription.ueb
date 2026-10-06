@@ -483,6 +483,13 @@
 :root[data-theme="sombre"] .espace-admin .adm-etat { color: #a9dcb8; }
 :root[data-theme="sombre"] .espace-admin .adm-etat--suspendu { color: #f0d48a; }
 :root[data-theme="sombre"] .espace-admin .provisoire { border-color: #54451b; }
+/* Page Sécurité (ueb_bloc_mot_de_passe) : icônes et encadré « Mot de passe oublié » lisibles. */
+:root[data-theme="sombre"] .espace-admin .bo-panneau__icone,
+:root[data-theme="sombre"] .espace-admin .reflexes__icone { background: rgba(143, 204, 163, .1); color: var(--foret-800); }
+:root[data-theme="sombre"] .espace-admin .reflexes__liste .icone { color: var(--foret-800); }
+:root[data-theme="sombre"] .espace-admin .reflexes__oubli { box-shadow: inset 0 0 0 1px #54451b; }
+:root[data-theme="sombre"] .espace-admin .reflexes__oubli p { color: #e2cf9a; }
+:root[data-theme="sombre"] .espace-admin .reflexes__oubli b { color: #f0d48a; }
 :root[data-theme="sombre"] .espace-admin .provisoire__mdp { color: #f0d48a; }
 :root[data-theme="sombre"] .espace-admin .suivi-table__trop { color: #f0d48a; }
 :root[data-theme="sombre"] .espace-admin .suivi-table__pro { background: transparent; }

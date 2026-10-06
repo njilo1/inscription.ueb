@@ -726,6 +726,14 @@
 /* Onglets d'un profil : sans icône, alignés sur le nom du profil. */
 .bo-sidebar__nav .bo-groupe__liens a { min-height: 40px; padding-left: 2.3rem; font-size: .9rem; }
 .bo-sidebar__nav .bo-groupe__liens a[aria-current="page"]::before { left: -1.15rem; }
+/* Autres profils que le super-administrateur : sections toujours ouvertes. Un
+   intitulé (comme le titre de la barre), pas un bouton ; chaque onglet garde son icône. */
+.bo-groupe--fixe + .bo-groupe--fixe, .bo-groupe--fixe + a { margin-top: .55rem; } /* un onglet seul après une section : visiblement à part */
+.bo-groupe--fixe > .bo-groupe__tete { min-height: 0; margin: 0; padding: .35rem .55rem .3rem; font-size: .78rem; font-weight: 700; cursor: default; user-select: text; }
+.bo-groupe--fixe > .bo-groupe__tete:hover { background: none; color: var(--bo-nav-texte); }
+.bo-groupe--fixe > .bo-groupe__liens { padding: 0; }
+.bo-sidebar__nav .bo-groupe--fixe .bo-groupe__liens a { min-height: 44px; padding-left: .85rem; font-size: .92rem; }
+.bo-sidebar__nav .bo-groupe--fixe .bo-groupe__liens a[aria-current="page"]::before { left: -.75rem; }
 
 /* Barre du haut de l'Administration : le profil et la page en cours, la
    bascule clair / sombre. Elle ne bouge pas d'un onglet à l'autre. */
@@ -854,6 +862,12 @@
 	.bo-groupe__tete { min-height: 40px; }
 	.bo-groupe__liens { display: flex; flex-wrap: wrap; gap: .35rem; padding: 0 .5rem .5rem; }
 	.bo-sidebar__nav .bo-groupe__liens a { padding-left: .85rem; }
+	/* Sections toujours ouvertes : chacune sur sa ligne, intitulé compris. */
+	.bo-groupe--fixe { flex-basis: 100%; }
+	.bo-groupe--fixe + .bo-groupe--fixe { margin-top: .2rem; }
+	.bo-groupe--fixe + a { margin-top: 0; } /* en ligne : l'écart des pastilles suffit */
+	.bo-groupe--fixe > .bo-groupe__tete { padding-inline: .2rem; }
+	.bo-groupe--fixe > .bo-groupe__liens { padding: 0; }
 	.bo-sidebar__pied { margin: 0; padding: 0; border: 0; grid-auto-flow: column; align-items: center; gap: .8rem; flex: 0 0 auto; }
 	.bo-perimetre, .bo-compte__meta { display: none; }
 	.bo-contenu { padding: 1.2rem 1rem 2.5rem; }
@@ -995,6 +1009,23 @@
 .reflexes__oubli { padding: .85rem .95rem; border-radius: 12px; background: var(--alerte-fond); }
 .reflexes__oubli p { margin: 0; font-size: .88rem; line-height: 1.5; color: #5c4300; }
 .reflexes__oubli b { color: #3d2d00; }
+
+/* Sécurité du personnel (ueb_bloc_mot_de_passe) : la même carte dans les quatre
+   espaces. Trois champs de même largeur, l'un sous l'autre ; la jauge et la
+   règle accompagnent le nouveau mot de passe. L'encadré des réflexes passe
+   dessous quand la place manque. */
+.mdp-espace { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 1.25rem; }
+.mdp-carte { flex: 0 1 34rem; min-width: min(100%, 20rem); }
+.mdp-espace > .reflexes { flex: 0 1 22rem; min-width: min(100%, 16rem); }
+/* Mêmes titres partout, y compris dans la Direction (direction.css met ses titres en police de texte). */
+.mdp-espace h2 { font-family: var(--f-titre); line-height: 1.2; letter-spacing: -.01em; }
+.mdp-form { display: grid; gap: 1.15rem; }
+.mdp-form .champ input { min-height: 48px; }
+.mdp-form__nouveau { display: grid; gap: .6rem; }
+.mdp-form__nouveau .force-mdp { gap: .75rem; }
+.mdp-form__regle { margin: -.15rem 0 0; font-size: .84rem; line-height: 1.45; color: var(--gris); }
+.mdp-form__actions { padding-top: .3rem; }
+.mdp-form__actions .btn { min-height: 48px; border-radius: 12px; }
 
 @media (max-width: 860px) {
 	.securite-grille { grid-template-columns: minmax(0, 1fr); }

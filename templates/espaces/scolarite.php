@@ -246,40 +246,16 @@ ueb_page_debut( array(
 
 				<?php if ( 'securite' === $vue ) : ?>
 
-					<div class="bo-deux-colonnes">
-						<section class="carte bo-panneau" aria-labelledby="titre-securite-personnel">
-							<header class="bo-panneau__entete">
-								<span class="bo-panneau__icone"><?php echo ueb_icone( 'cadenas', 20 ); ?></span>
-								<div><h2 id="titre-securite-personnel">Modifier mon mot de passe</h2><p>Remplace le mot de passe initial communiqué par l’administration.</p></div>
-							</header>
-							<form class="formulaire bo-formulaire" method="post" action="<?php echo esc_url( ueb_url_scolarite() ); ?>" data-formulaire novalidate>
-								<?php ueb_champ_csrf(); ?>
-								<input type="hidden" name="ueb_action" value="gestion_changer_mdp_personnel">
-								<?php ueb_champ( array( 'nom' => 'mot_de_passe_actuel', 'libelle' => 'Mot de passe actuel', 'type' => 'password', 'icone' => 'cadenas', 'attrs' => array( 'autocomplete' => 'current-password' ) ) ); ?>
-								<div class="formulaire__rangee">
-									<?php ueb_champ( array( 'nom' => 'mot_de_passe_nouveau', 'libelle' => 'Nouveau mot de passe', 'type' => 'password', 'icone' => 'cle', 'attrs' => array( 'autocomplete' => 'new-password', 'minlength' => 8 ) ) ); ?>
-									<?php ueb_champ( array( 'nom' => 'mot_de_passe_confirmation', 'libelle' => 'Confirmation', 'type' => 'password', 'icone' => 'cle', 'attrs' => array( 'autocomplete' => 'new-password', 'minlength' => 8, 'data-confirme' => 'champ-mot_de_passe_nouveau' ) ) ); ?>
-								</div>
-								<div class="force-mdp" data-force-mdp="champ-mot_de_passe_nouveau" data-niveau="0">
-									<div class="force-mdp__jauge" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
-									<p class="force-mdp__libelle" aria-live="polite">Solidité : <b data-force-libelle>à saisir</b></p>
-								</div>
-								<div class="bo-formulaire__actions">
-									<button class="btn btn--primaire" type="submit"><?php echo ueb_icone( 'bouclier', 18 ); ?>Changer le mot de passe</button>
-								</div>
-							</form>
-						</section>
-						<aside class="carte reflexes" aria-labelledby="titre-reflexes-agent">
-							<span class="reflexes__icone" aria-hidden="true"><?php echo ueb_icone( 'bouclier', 22 ); ?></span>
-							<h2 id="titre-reflexes-agent">Ton accès engage l’établissement</h2>
-							<ul class="reflexes__liste">
-								<li><?php echo ueb_icone( 'tampon', 17 ); ?><span><b>Chaque décision est enregistrée à ton nom</b> : paiement vérifié ou reçu renvoyé.</span></li>
-								<li><?php echo ueb_icone( 'cadenas', 17 ); ?><span><b>Ne partage pas ton accès</b>, même avec un collègue de la scolarité.</span></li>
-								<li><?php echo ueb_icone( 'sortie', 17 ); ?><span><b>Déconnecte-toi</b> en quittant ton poste, surtout sur un ordinateur partagé.</span></li>
-							</ul>
-							<div class="reflexes__oubli"><p><b>Mot de passe oublié ?</b> L’administrateur de la plateforme peut t’en attribuer un nouveau.</p></div>
-						</aside>
-					</div>
+					<?php
+					/* Qui valide des reçus voit ses décisions signées ; qui consulte, la discrétion attendue. */
+					ueb_bloc_mot_de_passe( array(
+						'action'  => ueb_url_scolarite(),
+						'titre'   => 'Ton accès engage l’université',
+						'conseil' => ueb_peut( 'ueb_decider_quitus' ) || ueb_peut( 'ueb_decider_cms' )
+							? array( 'tampon', 'Chaque décision est enregistrée à ton nom', ' : paiement vérifié ou reçu renvoyé.' )
+							: array( 'oeil', 'Tu consultes les dossiers des étudiants', ' : ces informations ne sortent pas de l’université.' ),
+					) );
+					?>
 
 				<?php elseif ( 'paiements' === $vue ) : ?>
 
