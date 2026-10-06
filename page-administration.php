@@ -200,6 +200,45 @@ ueb_page_debut( array(
 						</div>
 					<?php endif; ?>
 
+					<?php $installation = $_SESSION['ueb_installation'] ?? null; unset( $_SESSION['ueb_installation'] ); ?>
+					<section class="adm-panneau adm-plateforme" aria-labelledby="adm-plateforme-titre">
+						<header class="adm-panneau__tete">
+							<div>
+								<h2 id="adm-plateforme-titre">Comptes de la plateforme</h2>
+								<p>Crée les rôles et les comptes de la liste des utilisateurs (Scolarité, Celinfo, Doyen / Directeur, Régie CMS, Chef CMS, Recteur, CF, DAAF). Rien n’est supprimé : un compte déjà présent est laissé tel quel.</p>
+							</div>
+							<?php echo ueb_icone( 'ajout-compte', 19 ); ?>
+						</header>
+						<form class="formulaire adm-plateforme__form" method="post" action="<?php echo esc_url( add_query_arg( 'vue', 'scolarites', ueb_url_administration() ) ); ?>" enctype="multipart/form-data">
+							<?php ueb_champ_csrf(); ?>
+							<input type="hidden" name="ueb_action" value="comptes_plateforme_installer">
+							<div class="champ">
+								<label for="adm-plateforme-mdp">Mots de passe déjà distribués (facultatif)</label>
+								<input id="adm-plateforme-mdp" type="file" name="mots_de_passe" accept=".csv,text/csv">
+								<p class="champ__aide">Le fichier credentials_temp.csv envoyé au chef : chaque compte reçoit le mot de passe qui y figure. Il est lu, jamais enregistré. Sans fichier, chaque nouveau compte reçoit un mot de passe aléatoire, affiché une seule fois.</p>
+							</div>
+							<label class="adm-plateforme__simulation"><input type="checkbox" name="simulation" value="1" checked> Simulation : montrer ce qui serait fait, sans rien écrire</label>
+							<button class="btn btn--primaire" type="submit"><?php echo ueb_icone( 'ajout-compte', 18 ); ?>Installer les comptes de la plateforme</button>
+						</form>
+						<?php if ( $installation ) : ?>
+							<div class="adm-plateforme__journal" role="status">
+								<p><b><?php echo $installation['simulation'] ? 'Simulation' : 'Installation'; ?></b> · <?php echo (int) $installation['repris']; ?> mot(s) de passe repris du fichier.</p>
+								<ul>
+									<?php foreach ( $installation['journal'] as $ligne ) : ?>
+										<li><?php echo esc_html( $ligne ); ?></li>
+									<?php endforeach; ?>
+								</ul>
+								<?php if ( $installation['nouveaux'] ) : ?>
+									<p><b>Nouveaux mots de passe, à noter maintenant :</b> ils ne seront plus affichés.</p>
+									<table class="tableau"><thead><tr><th>Identifiant</th><th>Mot de passe</th></tr></thead><tbody>
+										<?php foreach ( $installation['nouveaux'] as $n ) : ?>
+											<tr><td><?php echo esc_html( $n[0] ); ?></td><td><code><?php echo esc_html( $n[1] ); ?></code></td></tr>
+										<?php endforeach; ?>
+									</tbody></table>
+								<?php endif; ?>
+							</div>
+						<?php endif; ?>
+					</section>
 					<div class="adm-personnel">
 						<section class="adm-panneau adm-comptes" aria-labelledby="adm-comptes-titre">
 							<header class="adm-panneau__tete">

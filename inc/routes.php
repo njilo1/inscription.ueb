@@ -180,6 +180,7 @@ function ueb_traiter_action( $action ) {
 		'gestion_agent_etat'  => 'ueb_action_gestion_agent_etat',
 		'gestion_agent_modifier'  => 'ueb_action_gestion_agent_modifier',
 		'gestion_agent_supprimer' => 'ueb_action_gestion_agent_supprimer',
+		'comptes_plateforme_installer' => 'ueb_action_comptes_plateforme_installer',
 		'direction_role_enregistrer' => 'ueb_action_direction_role_enregistrer',
 		'profil_simuler'      => 'ueb_action_profil_simuler',
 		'direction_role_dupliquer'   => 'ueb_action_direction_role_dupliquer',

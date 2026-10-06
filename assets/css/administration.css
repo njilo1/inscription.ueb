@@ -362,6 +362,13 @@
 .adm-creer { position: sticky; top: calc(var(--bo-chrome, 0px) + 1.25rem); }
 .adm-creer__form { display: grid; gap: .95rem; }
 .adm-creer__form .champ label { font-size: .9rem; }
+/* Comptes de la plateforme (installation en lot) */
+.adm-plateforme { margin-bottom: 1.25rem; }
+.adm-plateforme__form { display: grid; gap: .85rem; justify-items: start; }
+.adm-plateforme__form .champ { width: 100%; }
+.adm-plateforme__simulation { display: flex; align-items: center; gap: .5rem; font-size: .92rem; }
+.adm-plateforme__journal { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--filet); font-size: .9rem; }
+.adm-plateforme__journal ul { margin: .5rem 0 1rem; padding-left: 1.1rem; max-height: 18rem; overflow: auto; }
 .adm-creer__form .champ input, .adm-creer__form .champ select { min-height: 46px; font-size: .95rem; }
 .adm-creer__form .btn { margin-top: .25rem; }
 
