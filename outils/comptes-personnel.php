@@ -63,9 +63,9 @@ $roles   = array(
 	/* Statistiques et étudiants de son établissement, IPES sous tutelle et validation de leurs bordereaux. */
 	'Doyen/Directeur' => array( 'un', array( 'ueb_voir_stats', 'ueb_voir_paiements', 'ueb_voir_etudiants', 'ueb_voir_ipes', 'ueb_verifier_ipes' ), array( 'FS' => 'Doyen', 'FSJP' => 'Doyen', 'FSEG' => 'Doyen', 'FALSH' => 'Doyen', 'defaut' => 'Directeur' ) ),
 	/* Régie CMS : reçus des frais médicaux (consulter, accepter, refuser) et leurs statistiques, tous établissements. */
-	'Régie'           => array( 'tous', array( 'ueb_voir_cms', 'ueb_decider_cms', 'ueb_voir_stats_cms' ) ),
+	'Régie CMS'       => array( 'tous', array( 'ueb_voir_cms', 'ueb_decider_cms', 'ueb_voir_stats_cms' ) ),
 	/* Chef CMS : les seules statistiques des frais médicaux. */
-	'CMS'             => array( 'tous', array( 'ueb_voir_stats_cms' ) ),
+	'Chef CMS'        => array( 'tous', array( 'ueb_voir_stats_cms' ) ),
 	/* Recteur : tout voir dans l'UEb, en lecture seule, sans les reçus. */
 	'Recteur'         => array( 'tous', array_merge( $stats, array( 'ueb_voir_etudiants', 'ueb_voir_ipes' ) ) ),
 	/* Contrôle financier : toutes les statistiques, en lecture seule. */
