@@ -17,6 +17,7 @@
  *   inc/gestion.php       espace d'administration
  *   inc/acces-modules.php modules visibles par compte : droits universitaires (du), visite médicale (vm)
  *   inc/direction.php     rôles dynamiques et personnel (espace Direction)
+ *   inc/comptes-plateforme.php rôles et comptes de la liste des utilisateurs (bouton du Personnel, outils/)
  *   inc/ipes.php          établissements privés sous tutelle (IPES)
  *   inc/ipes-filieres.php filières des IPES
  *   inc/ipes-etudiants.php étudiants des IPES et leurs versements de pension
@@ -41,7 +42,7 @@ define( 'UEB_INSC_VERSION', '1.0.0' );
 define( 'UEB_INSC_DIR', get_template_directory() );
 define( 'UEB_INSC_URI', get_template_directory_uri() );
 
-foreach ( array( 'config', 'db-schema', 'session', 'routes', 'roles', 'acces-modules', 'espaces', 'profil-simule', 'comptes', 'nombres', 'inscription', 'quitus', 'profil', 'etudiants', 'quitus-pdf', 'recus', 'gestion', 'direction', 'ipes', 'ipes-filieres', 'ipes-etudiants', 'ipes-bordereaux', 'ipes-recus', 'ipes-bordereau-pdf', 'ipes-espace', 'ipes-tutelle', 'filieres-catalogue', 'assets', 'vues', 'bord', 'bord-graphes', 'administration', 'attente-recus', 'cms-tableau', 'ipes-vues', 'landing' ) as $ueb_module ) {
+foreach ( array( 'config', 'db-schema', 'session', 'routes', 'roles', 'acces-modules', 'espaces', 'profil-simule', 'comptes', 'nombres', 'inscription', 'quitus', 'profil', 'etudiants', 'quitus-pdf', 'recus', 'gestion', 'direction', 'comptes-plateforme', 'ipes', 'ipes-filieres', 'ipes-etudiants', 'ipes-bordereaux', 'ipes-recus', 'ipes-bordereau-pdf', 'ipes-espace', 'ipes-tutelle', 'filieres-catalogue', 'assets', 'vues', 'bord', 'bord-graphes', 'administration', 'attente-recus', 'cms-tableau', 'ipes-vues', 'landing' ) as $ueb_module ) {
 	require_once UEB_INSC_DIR . '/inc/' . $ueb_module . '.php';
 }
 
