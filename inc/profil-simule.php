@@ -170,6 +170,14 @@ function ueb_selecteur_profil() {
 		$portee = 'un' === $def['portee'] ? $actuel['etab'] : ( 'tous' === $def['portee'] ? 'Tous les établissements' : implode( ', ', (array) $def['etablissements'] ) );
 	}
 	?>
+	<?php
+	/* Rôles du registre et IPES actifs : un rôle « un établissement » propose
+	   ses établissements en pastilles, au lieu d'une ligne par établissement. */
+	$sigles   = array_keys( ueb_etablissements() );
+	$ipes_l   = ueb_ipes_liste( array( 'actif' => 1 ) );
+	$cherche  = static fn( ...$t ) => esc_attr( remove_accents( mb_strtolower( implode( ' ', array_filter( $t ) ) ) ) );
+	$courant  = static fn( $v ) => $v === $valeur ? ' aria-current="true"' : '';
+	?>
 	<form class="bo-profil<?php echo $actuel ? ' est-simule' : ''; ?>" method="post" action="<?php echo esc_url( ueb_url_administration() ); ?>">
 		<?php ueb_champ_csrf(); ?>
 		<input type="hidden" name="ueb_action" value="profil_simuler">
@@ -184,26 +192,99 @@ function ueb_selecteur_profil() {
 			</div>
 		<?php endif; ?>
 		<div class="bo-profil__actions">
-			<label class="bo-profil__changer">
+			<button class="bo-profil__changer" type="button" data-ouvrir-profil="bo-profil-fenetre" aria-haspopup="dialog" aria-controls="bo-profil-fenetre">
 				<?php echo $actuel ? '' : ueb_icone( 'oeil', 16 ); ?>
 				<span><?php echo $actuel ? 'Changer' : 'Changer de profil'; ?></span>
 				<?php echo ueb_icone( 'chevron', 16, 'bo-profil__chevron' ); ?>
-				<select name="profil" onchange="this.form.submit()" aria-label="Changer de profil">
-					<option value="" <?php selected( $valeur, '' ); ?>>Ma vue complète (administrateur)</option>
-					<?php foreach ( ueb_profils_proposes() as $groupe => $options ) : ?>
-						<optgroup label="<?php echo esc_attr( $groupe ); ?>">
-							<?php foreach ( $options as $cle => $libelle ) : ?>
-								<option value="<?php echo esc_attr( $cle ); ?>" <?php selected( $valeur, $cle ); ?>><?php echo esc_html( $libelle ); ?></option>
-							<?php endforeach; ?>
-						</optgroup>
-					<?php endforeach; ?>
-				</select>
-			</label>
-			<?php if ( $actuel ) : /* après la liste : son « profil » vide l'emporte à l'envoi */ ?>
+			</button>
+			<?php if ( $actuel ) : ?>
 				<button class="bo-profil__retour" type="submit" name="profil" value="" title="Revenir à ma vue complète"><?php echo ueb_icone( 'fleche-g', 15 ); ?>Revenir</button>
 			<?php endif; ?>
 		</div>
-		<noscript><button class="btn btn--petit btn--clair" type="submit">Afficher</button></noscript>
+
+		<dialog class="bo-profil-fenetre" id="bo-profil-fenetre" aria-labelledby="bo-profil-titre">
+			<header class="bo-profil-fenetre__tete">
+				<span class="bo-profil-fenetre__icone" aria-hidden="true"><?php echo ueb_icone( 'oeil', 20 ); ?></span>
+				<div>
+					<h2 id="bo-profil-titre">Voir la plateforme comme…</h2>
+					<p>La barre latérale et les écrans deviennent ceux du profil choisi. Aucun compte n’est modifié.</p>
+				</div>
+				<button class="bo-profil-fenetre__fermer" type="button" data-fermer-profil aria-label="Fermer"><?php echo ueb_icone( 'croix', 18 ); ?></button>
+			</header>
+			<div class="bo-profil-fenetre__recherche">
+				<?php echo ueb_icone( 'loupe', 18 ); ?>
+				<input type="search" placeholder="Rôle, établissement ou IPES" aria-label="Rechercher un profil" autocomplete="off" spellcheck="false" data-profil-recherche>
+			</div>
+			<div class="bo-profil-fenetre__corps">
+				<button class="bo-profil-complet" type="submit" name="profil" value=""<?php echo $courant( '' ); ?> data-profil-cherche="<?php echo $cherche( 'ma vue complete administrateur' ); ?>">
+					<?php echo ueb_icone( 'bouclier', 18 ); ?>
+					<span><b>Ma vue complète</b><small>Administrateur : tous les onglets</small></span>
+					<?php if ( ! $actuel ) : ?><em>Actuelle</em><?php endif; ?>
+				</button>
+
+				<section class="bo-profil-groupe" data-profil-groupe aria-labelledby="bo-profil-roles">
+					<h3 id="bo-profil-roles">Rôles</h3>
+					<ul class="bo-profil-roles">
+						<?php foreach ( ueb_roles() as $slug => $def ) :
+							$un = 'un' === $def['portee'];
+							$intitules = $un ? implode( ' ', array_unique( array_map( static fn( $s ) => ueb_intitule_role( $def, $s ), $sigles ) ) ) : '';
+							?>
+							<li class="bo-profil-role" data-profil-role data-profil-cherche="<?php echo $cherche( $def['nom'], $intitules ); ?>">
+								<?php if ( $un ) : ?>
+									<p class="bo-profil-role__nom"><b><?php echo esc_html( $def['nom'] ); ?></b><small>Choisis l’établissement</small></p>
+									<div class="bo-profil-role__etabs" role="group" aria-label="<?php echo esc_attr( $def['nom'] . ' : établissement' ); ?>">
+										<?php foreach ( $sigles as $sigle ) :
+											$v = "role:$slug:$sigle";
+											$titre = ueb_intitule_role( $def, $sigle ) . ' — ' . $sigle;
+											?>
+											<button class="bo-profil-puce" type="submit" name="profil" value="<?php echo esc_attr( $v ); ?>" title="<?php echo esc_attr( $titre ); ?>" aria-label="<?php echo esc_attr( $titre ); ?>"<?php echo $courant( $v ); ?> data-profil-cherche="<?php echo $cherche( $sigle, ueb_etablissement( $sigle )['fr'] ?? '' ); ?>"><?php echo esc_html( $sigle ); ?></button>
+										<?php endforeach; ?>
+									</div>
+								<?php else :
+									$v = "role:$slug";
+									?>
+									<button class="bo-profil-role__seul" type="submit" name="profil" value="<?php echo esc_attr( $v ); ?>"<?php echo $courant( $v ); ?>>
+										<span><b><?php echo esc_html( $def['nom'] ); ?></b><small><?php echo esc_html( 'tous' === $def['portee'] ? 'Tous les établissements' : implode( ', ', (array) $def['etablissements'] ) ); ?></small></span>
+										<?php echo ueb_icone( 'fleche', 16 ); ?>
+									</button>
+								<?php endif; ?>
+							</li>
+						<?php endforeach; ?>
+					</ul>
+				</section>
+
+				<?php if ( $ipes_l ) : ?>
+					<section class="bo-profil-groupe" data-profil-groupe aria-labelledby="bo-profil-ipes">
+						<h3 id="bo-profil-ipes">IPES <small><?php echo count( $ipes_l ); ?></small></h3>
+						<ul class="bo-profil-ipes">
+							<?php foreach ( $ipes_l as $i ) :
+								$v = 'ipes:' . (int) $i->id;
+								?>
+								<li data-profil-cherche="<?php echo $cherche( $i->sigle, $i->nom_fr, $i->ville ?? '' ); ?>">
+									<button type="submit" name="profil" value="<?php echo esc_attr( $v ); ?>"<?php echo $courant( $v ); ?>>
+										<b><?php echo esc_html( $i->sigle ); ?></b><small><?php echo esc_html( $i->nom_fr ); ?></small>
+									</button>
+								</li>
+							<?php endforeach; ?>
+						</ul>
+					</section>
+				<?php endif; ?>
+				<p class="bo-profil-fenetre__vide" data-profil-vide hidden>Aucun profil ne correspond à cette recherche.</p>
+			</div>
+		</dialog>
+		<noscript>
+			<select name="profil" aria-label="Changer de profil">
+				<option value="">Ma vue complète (administrateur)</option>
+				<?php foreach ( ueb_profils_proposes() as $groupe => $options ) : ?>
+					<optgroup label="<?php echo esc_attr( $groupe ); ?>">
+						<?php foreach ( $options as $cle => $libelle ) : ?>
+							<option value="<?php echo esc_attr( $cle ); ?>" <?php selected( $valeur, $cle ); ?>><?php echo esc_html( $libelle ); ?></option>
+						<?php endforeach; ?>
+					</optgroup>
+				<?php endforeach; ?>
+			</select>
+			<button class="btn btn--petit btn--clair" type="submit">Afficher</button>
+		</noscript>
 	</form>
 	<?php
 }

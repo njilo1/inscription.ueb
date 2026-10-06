@@ -51,6 +51,67 @@
 			}
 		});
 	});
+	/* Changer de profil (super-administrateur) : fenêtre avec recherche. Un
+	   rôle « un établissement » reste visible si son nom ou l'un de ses
+	   établissements correspond ; Entrée choisit le seul profil restant. */
+	$$("[data-ouvrir-profil]").forEach((bouton) => {
+		const fenetre = document.getElementById(bouton.getAttribute("data-ouvrir-profil"));
+		if (!fenetre || typeof fenetre.showModal !== "function") return;
+		const recherche = $("[data-profil-recherche]", fenetre);
+		const vide = $("[data-profil-vide]", fenetre);
+		const plier = (t) => String(t || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+		const choix = () => $$("button[type='submit']", fenetre).filter((b) => !b.closest("[hidden]"));
+		const filtrer = () => {
+			const q = plier(recherche ? recherche.value : "").trim();
+			let total = 0;
+			$$("[data-profil-groupe]", fenetre).forEach((groupe) => {
+				let visibles = 0;
+				$$(":scope > ul > li", groupe).forEach((li) => {
+					const puces = $$(".bo-profil-puce", li);
+					const nom = plier(li.dataset.profilCherche).includes(q);
+					let ok = !q || nom;
+					puces.forEach((p) => {
+						const garde = !q || nom || plier(p.dataset.profilCherche).includes(q);
+						p.hidden = !garde;
+						ok = ok || garde;
+					});
+					li.hidden = !ok;
+					visibles += ok ? 1 : 0;
+				});
+				groupe.hidden = !visibles;
+				total += visibles;
+			});
+			const complet = $(".bo-profil-complet", fenetre);
+			if (complet) complet.hidden = !!q && !plier(complet.dataset.profilCherche).includes(q);
+			if (vide) vide.hidden = total > 0 || (complet && !complet.hidden);
+		};
+		const fermer = () => {
+			fenetre.close();
+			bouton.setAttribute("aria-expanded", "false");
+		};
+		bouton.setAttribute("aria-expanded", "false");
+		bouton.addEventListener("click", () => {
+			if (recherche) recherche.value = "";
+			filtrer();
+			fenetre.showModal();
+			bouton.setAttribute("aria-expanded", "true");
+			/* Le profil actuel en vue, puis la recherche prête à la saisie. */
+			$("[aria-current='true']", fenetre)?.scrollIntoView({ block: "nearest" });
+			recherche?.focus();
+		});
+		fenetre.addEventListener("close", () => bouton.setAttribute("aria-expanded", "false"));
+		$("[data-fermer-profil]", fenetre)?.addEventListener("click", fermer);
+		fenetre.addEventListener("click", (event) => {
+			if (event.target === fenetre) fermer(); // clic sur le fond
+		});
+		recherche?.addEventListener("input", filtrer);
+		recherche?.addEventListener("keydown", (event) => {
+			if (event.key !== "Enter") return;
+			event.preventDefault(); // jamais d'envoi par défaut (le premier bouton serait « vue complète »)
+			const restants = choix();
+			if (restants.length === 1) restants[0].click();
+		});
+	});
 	$$("[data-ouvrir-agent-mdp]").forEach((bouton) => {
 		const dialog = document.getElementById(bouton.getAttribute("data-ouvrir-agent-mdp"));
 		if (!dialog) return;

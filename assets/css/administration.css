@@ -465,6 +465,9 @@
 
 /* La barre latérale garde ses jetons clairs sur fond sombre. */
 :root[data-theme="sombre"] .espace-admin .bo-sidebar { --blanc: #fff; --encre: #15231b; --papier: #f4f7f3; background: #0a140d; box-shadow: inset -1px 0 0 rgba(255, 255, 255, .06); }
+/* Fenêtre « Changer de profil » : ouverte depuis la barre (qui repasse en clair), elle reprend les couleurs sombres. */
+:root[data-theme="sombre"] .espace-admin .bo-profil-fenetre { --blanc: #161f19; --encre: #e4ebe6; --papier: #0e1511; --vert: #8fcca3; box-shadow: 0 0 0 1px var(--filet-fort), var(--ombre-3); }
+:root[data-theme="sombre"] .espace-admin .bo-profil-fenetre__icone { background: #0f2a15; }
 
 /* Textes posés sur une couleur : ils restent blancs. */
 :root[data-theme="sombre"] .espace-admin .btn--primaire,
