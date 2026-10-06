@@ -569,7 +569,7 @@
 	.adm-theme.est-bascule .icone { animation: none; }
 }
 @media print {
-	.adm-tete__actions, .adm-registre__bouton { display: none; }
+	.adm-tete__actions, .adm-registre__bouton, .adm-imprimer, .bo-entete__action { display: none; }
 	.adm-hero { box-shadow: none; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
 	.adm-panneau, .adm .graphe { break-inside: avoid; box-shadow: none; }
 }

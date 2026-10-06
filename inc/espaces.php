@@ -104,7 +104,7 @@ function ueb_vue_courante() {
 	switch ( $espace ) {
 		case 'scolarite':
 			/* Tableau de bord des droits (scolarité) ou des frais médicaux (CMS). */
-			return ueb_types_quitus_visibles() ? 'bord' : ( ueb_peut( 'ueb_voir_paiements' ) ? 'paiements' : ( ueb_peut( 'ueb_voir_ipes' ) ? 'ipes' : 'etudiants' ) );
+			return ueb_types_stats_visibles() ? 'bord' : ( ueb_peut( 'ueb_voir_paiements' ) ? 'paiements' : ( ueb_peut( 'ueb_voir_ipes' ) ? 'ipes' : 'etudiants' ) );
 		case 'direction':
 			return 'roles';
 		case 'cellule':
@@ -169,12 +169,15 @@ function ueb_navigation_administration() {
 		) );
 		$groupes['CMS'] = array( 'sante', $cms );
 	} elseif ( in_array( 'scolarite', $permis, true ) ) {
-		$droits = ueb_peut( UEB_CAP_GESTION );
-		/* Sans les droits universitaires, l'espace ne montre que les reçus du CMS : il en prend le nom. */
-		$seul_cms = ! $droits && in_array( 'medicaux', ueb_types_quitus_visibles(), true );
+		/* Tableau de bord : reçus consultés ou statistiques seules ; onglet Reçus : la seule consultation des reçus. */
+		$stats  = ueb_types_stats_visibles();
+		$recus  = ueb_types_quitus_visibles();
+		$droits = in_array( 'droits', $stats, true );
+		/* Sans les droits universitaires, l'espace ne montre que le CMS : il en prend le nom. */
+		$seul_cms = ! $droits && in_array( 'medicaux', $stats, true );
 		$groupes[ $seul_cms ? 'CMS' : 'Scolarité' ] = array( $seul_cms ? 'sante' : 'tampon', array(
 			$droits ? $lien( 'scolarite', 'bord', 'Tableau de bord', 'tampon', array( 'type' => 'droits' ) ) : ( $seul_cms ? $cms[0] : null ),
-			$droits ? $lien( 'scolarite', 'quitus', 'Reçus', 'recu', array( 'type' => 'droits' ) ) : ( $seul_cms ? $cms[1] : null ),
+			in_array( 'droits', $recus, true ) ? $lien( 'scolarite', 'quitus', 'Reçus', 'recu', array( 'type' => 'droits' ) ) : ( $seul_cms && in_array( 'medicaux', $recus, true ) ? $cms[1] : null ),
 			ueb_peut( 'ueb_voir_paiements' ) ? $lien( 'scolarite', 'paiements', 'Paiements', 'banque' ) : null,
 			ueb_peut( 'ueb_voir_etudiants' ) ? $lien( 'scolarite', 'etudiants', 'Étudiants UEB', 'diplome' ) : null,
 			ueb_peut( 'ueb_voir_ipes' ) ? $lien( 'scolarite', 'ipes', 'IPES', 'ecole' ) : null,
@@ -182,8 +185,8 @@ function ueb_navigation_administration() {
 		) );
 	}
 	/* Rôle qui voit aussi les reçus du CMS : son tableau de bord et ses reçus dans un groupe CMS. */
-	if ( ! $admin && in_array( 'scolarite', $permis, true ) && count( ueb_types_quitus_visibles() ) > 1 ) {
-		$groupes['CMS'] = array( 'sante', $cms );
+	if ( ! $admin && in_array( 'scolarite', $permis, true ) && count( ueb_types_stats_visibles() ) > 1 ) {
+		$groupes['CMS'] = array( 'sante', array( $cms[0], in_array( 'medicaux', ueb_types_quitus_visibles(), true ) ? $cms[1] : null ) );
 	}
 	if ( in_array( 'direction', $permis, true ) ) {
 		$groupes['Direction'] = array( 'bouclier', array(

@@ -83,6 +83,11 @@ function ueb_adm_bascule_theme() {
 }
 
 /** Bouton-lien de la barre du haut. */
+/** Bouton « Imprimer » des écrans de consultation (assets/js/administration.js). */
+function ueb_bouton_imprimer() {
+	return '<button type="button" class="adm-bouton adm-imprimer" data-imprimer>' . ueb_icone( 'imprimer', 17 ) . 'Imprimer</button>';
+}
+
 function ueb_adm_action( $url, $libelle, $icone, $primaire = false ) {
 	return sprintf(
 		'<a class="adm-bouton%s" href="%s">%s%s</a>',

@@ -95,6 +95,10 @@ function ueb_attente_depots( $type, $periode ) {
  * @param int        $periode Fenêtre de la mini-courbe (7, 30 ou 90 jours).
  */
 function ueb_carte_attente( $type, $attente = null, $periode = 30 ) {
+	/* Statistiques seules (Recteur, Chef CMS…) : pas de file ni de lien vers des reçus fermés. */
+	if ( ! in_array( $type, ueb_types_quitus_visibles(), true ) ) {
+		return;
+	}
 	$a      = $attente ?? ueb_attente_recus( $type );
 	$n      = $a['nombre'];
 	$h      = ueb_attente_depots( $type, $periode );
@@ -120,6 +124,10 @@ function ueb_carte_attente( $type, $attente = null, $periode = 30 ) {
  * @param string $type « droits » ou « medicaux ».
  */
 function ueb_file_attente( $type ) {
+	/* Statistiques seules (Recteur, Chef CMS…) : pas de file ni de lien vers des reçus fermés. */
+	if ( ! in_array( $type, ueb_types_quitus_visibles(), true ) ) {
+		return;
+	}
 	$a          = ueb_attente_recus( $type );
 	$n          = $a['nombre'];
 	$file       = ueb_gestion_liste_quitus( array( 'annee' => ueb_annee_academique()['code'], 'etab' => ueb_etab_agent(), 'statut' => 'recu_envoye', 'type' => $type ), 100 )['lignes'];

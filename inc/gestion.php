@@ -39,12 +39,27 @@ const UEB_PERMISSIONS_TYPE_QUITUS = array(
  * sinon les droits universitaires.
  */
 function ueb_type_recus_courant() {
-	$visibles = ueb_types_quitus_visibles();
+	$recus    = isset( $_GET['quitus'] ) || 'quitus' === sanitize_key( $_GET['vue'] ?? '' ); // phpcs:ignore -- lecture seule
+	$visibles = $recus ? ueb_types_quitus_visibles() : ueb_types_stats_visibles();
 	$demande  = sanitize_key( $_GET['type'] ?? '' ); // phpcs:ignore -- lecture seule
 	if ( in_array( $demande, $visibles, true ) ) {
 		return $demande;
 	}
 	return 1 === count( $visibles ) ? $visibles[0] : 'droits';
+}
+
+/* Statistiques de chaque type de quitus, en lecture seule (sans les reçus). */
+const UEB_STATS_TYPE_QUITUS = array(
+	'droits'   => 'ueb_voir_stats',
+	'medicaux' => 'ueb_voir_stats_cms',
+);
+
+/**
+ * Types dont le compte voit les statistiques (tableau de bord) : ceux dont il
+ * consulte les reçus, plus ceux de ses permissions de statistiques.
+ */
+function ueb_types_stats_visibles( $etab = null ) {
+	return array_keys( array_filter( UEB_PERMISSIONS_TYPE_QUITUS, static fn( $p, $type ) => ueb_peut( $p[0], $etab ) || ueb_peut( UEB_STATS_TYPE_QUITUS[ $type ], $etab ), ARRAY_FILTER_USE_BOTH ) );
 }
 
 /** Types de quitus que le compte consulte (« droits », « medicaux »). */
@@ -84,6 +99,13 @@ function ueb_exiger_admin() {
 }
 
 /** Accès aux opérations réservées à la cellule informatique. */
+/** Réinitialisation d'un mot de passe étudiant : gestion des comptes, ou la seule réinitialisation (cellule). */
+function ueb_exiger_reinit() {
+	if ( ! ( ueb_peut( UEB_CAP_COMPTES ) || ueb_peut( 'ueb_reinit_mdp' ) ) || ( ! ueb_est_admin_ueb() && ueb_peut( 'ueb_creer_agents' ) ) ) {
+		wp_die( 'Action réservée aux comptes autorisés à réinitialiser les mots de passe des étudiants.', 'Accès refusé', array( 'response' => 403 ) );
+	}
+}
+
 function ueb_exiger_comptes() {
 	/* La scolarité garde la permission pour la déléguer à sa cellule, sans s'en servir (inc/espaces.php). */
 	if ( ! ueb_peut( UEB_CAP_COMPTES ) || ( ! ueb_est_admin_ueb() && ueb_peut( 'ueb_creer_agents' ) ) ) {
@@ -150,7 +172,7 @@ function ueb_exiger_etab( $sigle ) {
  */
 function ueb_gestion_stats( $annee_code, $etab = '', $type = '' ) {
 	global $wpdb;
-	$types  = ueb_types_quitus_visibles();
+	$types  = ueb_types_stats_visibles();
 	/* $type : un seul type de reçus (le tableau de bord de la scolarité compte les droits). */
 	if ( $type && in_array( $type, $types, true ) ) {
 		$types = array( $type );
@@ -631,7 +653,8 @@ function ueb_gestion_portee_sql( array $filtres ) {
 	}
 	$where  = array( 'q.annee_academique = %s' );
 	$params = array( $filtres['annee'] );
-	$types  = ueb_types_quitus_visibles();
+	/* « stats » : comptages des tableaux de bord, ouverts aussi aux permissions de statistiques. */
+	$types  = empty( $filtres['stats'] ) ? ueb_types_quitus_visibles() : ueb_types_stats_visibles();
 	/* Filtre « type » (onglet Reçus CMS) : un seul type, parmi ceux que le compte voit. */
 	if ( ! empty( $filtres['type'] ) && in_array( $filtres['type'], $types, true ) ) {
 		$types = array( $filtres['type'] );
@@ -1085,7 +1108,7 @@ function ueb_mot_de_passe_provisoire() {
 
 function ueb_action_gestion_reinit_mdp() {
 	global $wpdb;
-	ueb_exiger_comptes();
+	ueb_exiger_reinit();
 	$compte = ueb_compte_par_id( (int) ( $_POST['compte_id'] ?? 0 ) );
 	$retour = add_query_arg( array( 'vue' => 'comptes', 'qc' => sanitize_text_field( wp_unslash( $_POST['q'] ?? '' ) ) ), ueb_url_comptes() );
 	if ( ! $compte || ! ueb_compte_dans_etab( $compte->id, ueb_etab_agent() ) ) {

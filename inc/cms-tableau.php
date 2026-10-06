@@ -19,7 +19,7 @@ defined( 'ABSPATH' ) || exit;
  */
 function ueb_cms_donnees( $annee_code, $periode ) {
 	global $wpdb;
-	list( $portee, $params ) = ueb_gestion_portee_sql( array( 'annee' => $annee_code, 'type' => 'medicaux' ) );
+	list( $portee, $params ) = ueb_gestion_portee_sql( array( 'annee' => $annee_code, 'type' => 'medicaux', 'stats' => true ) );
 	$aujourdhui = current_time( 'Y-m-d' );
 	$debut      = gmdate( 'Y-m-d', strtotime( $aujourdhui . ' -' . ( max( 2, (int) $periode ) - 1 ) . ' days' ) );
 	$lignes     = (array) $wpdb->get_results( $wpdb->prepare(
@@ -79,7 +79,8 @@ function ueb_cms_tete( array $c ) {
 	ueb_adm_tete( array(
 		'titre'      => 'Tableau de bord',
 		'sous_titre' => sprintf( 'Frais médicaux, %s : %d quitus pour %s cette année.', $etab ? $etab['fr'] : 'tous les établissements', $c['quitus'], ueb_suivi_etudiants( $c['etudiants'] ) ),
-		'actions'    => ueb_adm_action( ueb_url_recus_attente( 'medicaux', false ), 'Tous les reçus', 'recu', true ),
+		/* Statistiques seules (Chef CMS…) : pas de lien vers des reçus qu'il ne peut pas ouvrir. */
+		'actions'    => ueb_bouton_imprimer() . ( in_array( 'medicaux', ueb_types_quitus_visibles(), true ) ? ueb_adm_action( ueb_url_recus_attente( 'medicaux', false ), 'Tous les reçus', 'recu', true ) : '' ),
 	) );
 }
 
@@ -175,7 +176,7 @@ function ueb_cms_tableau( array $d, $periode ) {
 				<div><dt>Reçu pas encore envoyé</dt><dd><?php echo esc_html( ueb_formater_montant( $c['a_payer'] ) . ' quitus' ); ?></dd></div>
 				<div><dt>Reçus renvoyés à l’étudiant</dt><dd><?php echo esc_html( ueb_formater_montant( $c['recus_rejetes'] ) . ' quitus' ); ?></dd></div>
 			</dl>
-			<a href="<?php echo esc_url( ueb_url_recus_attente( 'medicaux', false ) ); ?>">Ouvrir les reçus<?php echo ueb_icone( 'fleche', 18 ); ?></a>
+			<?php if ( in_array( 'medicaux', ueb_types_quitus_visibles(), true ) ) : ?><a href="<?php echo esc_url( ueb_url_recus_attente( 'medicaux', false ) ); ?>">Ouvrir les reçus<?php echo ueb_icone( 'fleche', 18 ); ?></a><?php endif; ?>
 		</section>
 	</div>
 	<?php

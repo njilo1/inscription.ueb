@@ -160,6 +160,7 @@ function ueb_action_direction_role_enregistrer() {
 	$ancien = $slug ? ueb_role( $slug ) : array();
 	$def   += array(
 		'historique'  => ! empty( $ancien['historique'] ),
+		'intitules'   => $ancien['intitules'] ?? array(), // Doyen / Directeur selon l'établissement
 		'cree_le'     => $ancien['cree_le'] ?? current_time( 'mysql' ),
 		'modifie_le'  => current_time( 'mysql' ),
 		'modifie_par' => get_current_user_id(),
@@ -352,12 +353,15 @@ function ueb_gestion_portee_courte( array $def ) {
  */
 function ueb_gestion_ecrans() {
 	return array(
+		array( 'ueb_voir_stats', 'Tableau de bord (lecture)', 'tableau' ),
 		array( UEB_CAP_GESTION, 'Tableau de bord', 'tableau' ),
 		array( UEB_CAP_GESTION, 'Quitus', 'recu' ),
 		array( 'ueb_voir_cms', 'Quitus (frais médicaux)', 'recu' ),
+		array( 'ueb_voir_stats_cms', 'Tableau de bord du CMS', 'sante' ),
 		array( 'ueb_voir_paiements', 'Paiements', 'banque' ),
 		array( 'ueb_voir_etudiants', 'Étudiants UEB', 'diplome' ),
 		array( UEB_CAP_COMPTES, 'Comptes étudiants', 'utilisateur' ),
+		array( 'ueb_reinit_mdp', 'Comptes étudiants (mot de passe)', 'cle' ),
 		array( 'ueb_creer_agents', 'Comptes du personnel', 'cle' ),
 		array( UEB_CAP_DIRECTION, 'Rôles et accès', 'bouclier' ),
 		array( UEB_CAP_DIRECTION, 'Comptes', 'groupe' ),
