@@ -79,14 +79,30 @@ function ueb_plateforme_comptes( $liste = '' ) {
 	return $comptes;
 }
 
-/** Mots de passe d'une liste déjà distribuée : identifiant => mot de passe. */
+/**
+ * Mots de passe d'une liste déjà distribuée : identifiant => mot de passe.
+ * Le fichier doit commencer par « identifiant;mot_de_passe » (credentials_temp.csv
+ * tel qu'il a été produit) ; un autre fichier (la liste des comptes, un CSV
+ * réenregistré par un tableur…) est refusé, avec la raison.
+ *
+ * @return array|WP_Error
+ */
 function ueb_plateforme_mots_de_passe( $fichier ) {
+	$lignes = (array) file( $fichier, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES );
+	$entete = array_map( static fn( $c ) => strtolower( trim( $c, " 	\"﻿" ) ), explode( ';', (string) ( $lignes[0] ?? '' ) ) );
+	if ( 'identifiant' !== ( $entete[0] ?? '' ) || 'mot_de_passe' !== ( $entete[1] ?? '' ) ) {
+		return new WP_Error( 'ueb_mdp', 'Ce fichier n’est pas la liste des mots de passe : sa première ligne doit être « identifiant;mot_de_passe;… ». Choisis le fichier credentials_temp.csv d’origine, sans l’ouvrir ni le réenregistrer dans Excel.' );
+	}
 	$connus = array();
-	foreach ( array_slice( (array) file( $fichier, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES ), 1 ) as $ligne ) {
-		list( $login, $mdp ) = array_map( 'trim', array_pad( explode( ';', (string) $ligne ), 2, '' ) );
-		if ( '' !== $login && '' !== $mdp ) {
-			$connus[ $login ] = $mdp;
+	foreach ( array_slice( $lignes, 1 ) as $n => $ligne ) {
+		list( $login, $mdp ) = array_map( static fn( $c ) => trim( $c, " 	\"" ), array_pad( explode( ';', (string) $ligne ), 2, '' ) );
+		if ( '' === $login ) {
+			continue;
 		}
+		if ( strlen( $mdp ) < 8 || ! preg_match( '/[A-Za-z]/', $mdp ) || ! preg_match( '/[0-9]/', $mdp ) ) {
+			return new WP_Error( 'ueb_mdp', sprintf( 'Ligne %d du fichier (%s) : le mot de passe ne compte pas 8 caractères avec une lettre et un chiffre. Rien n’a été fait.', $n + 2, $login ) );
+		}
+		$connus[ $login ] = $mdp;
 	}
 	return $connus;
 }
@@ -195,6 +211,10 @@ function ueb_action_comptes_plateforme_installer() {
 	$fichier    = $_FILES['mots_de_passe'] ?? null; // phpcs:ignore -- lu ligne à ligne, jamais enregistré
 	if ( $fichier && UPLOAD_ERR_OK === (int) $fichier['error'] && is_uploaded_file( $fichier['tmp_name'] ) ) {
 		$connus = ueb_plateforme_mots_de_passe( $fichier['tmp_name'] );
+		if ( is_wp_error( $connus ) ) {
+			ueb_flash( 'erreur', $connus->get_error_message() );
+			ueb_rediriger( $retour );
+		}
 	}
 	$resultat = ueb_plateforme_installer( $connus, $simulation );
 	if ( is_wp_error( $resultat ) ) {

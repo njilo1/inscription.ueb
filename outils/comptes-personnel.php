@@ -39,6 +39,11 @@ if ( isset( $options['mots-de-passe'] ) ) {
 		exit( 1 );
 	}
 	$connus = ueb_plateforme_mots_de_passe( $options['mots-de-passe'] );
+	if ( is_wp_error( $connus ) ) {
+		fwrite( STDERR, 'Arrêt : ' . $connus->get_error_message() . "
+" );
+		exit( 1 );
+	}
 	echo count( $connus ) . " mot(s) de passe repris de la liste distribuée.\n";
 }
 
