@@ -261,11 +261,13 @@ function ueb_parcours_inscription( $compte, ?array $quitus = null ) {
 		}
 	}
 
+	/* Le reçu des frais médicaux passe au Centre médico-social, celui des droits à la scolarité. */
+	$service = ueb_service_du_quitus( $paiement_focus ?: $focus );
 	$etapes = array(
 		array( 'titre' => 'Quitus généré', 'texte' => 'Remplis le formulaire : ton quitus et ses coupons sont réunis dans un PDF.' ),
 		array( 'titre' => 'Payé et reçu envoyé', 'texte' => 'Paie ' . ueb_moyens_paiement() . ', puis envoie ici la photo de ton reçu.' ),
-		array( 'titre' => 'Reçu tamponné', 'texte' => 'Présente l’original de ton reçu à la scolarité pour le faire tamponner.' ),
-		array( 'titre' => 'Vérifié', 'texte' => 'La scolarité valide ton paiement.' ),
+		array( 'titre' => 'Reçu tamponné', 'texte' => 'Présente l’original de ton reçu ' . $service['a'] . ' pour le faire tamponner.' ),
+		array( 'titre' => 'Vérifié', 'texte' => ucfirst( $service['nom'] ) . ' valide ton paiement.' ),
 	);
 	/* On tamponne le reçu, pas le quitus : il s'envoie d'abord en ligne, puis passe à la scolarité. */
 	$en_cours = $focus ? array( 'genere' => 2, 'rejete' => 2, 'recu_envoye' => 3, 'verifie' => 5 )[ $focus->statut ] : 1;
@@ -278,13 +280,13 @@ function ueb_parcours_inscription( $compte, ?array $quitus = null ) {
 		$prochaine = array( 'titre' => 'Quitus à payer', 'texte' => 'Imprime-le, paie ' . ueb_moyens_paiement() . ', puis envoie la photo de ton reçu.' );
 		$action = array( 'libelle' => 'Envoyer mon reçu', 'url' => $url_recus, 'icone' => 'envoyer', 'principal' => true );
 	} elseif ( 'rejete' === $focus->statut ) {
-		$prochaine = array( 'titre' => 'Reçu à corriger', 'texte' => 'La scolarité a signalé un problème : renvoie une photo lisible depuis Mes quitus.' );
+		$prochaine = array( 'titre' => 'Reçu à corriger', 'texte' => ucfirst( $service['nom'] ) . ' a signalé un problème : renvoie une photo lisible depuis Mes quitus.' );
 		$action = array( 'libelle' => 'Renvoyer mon reçu', 'url' => $url_recus, 'icone' => 'envoyer', 'principal' => true );
 	} elseif ( 'recu_envoye' === $focus->statut ) {
-		$prochaine = array( 'titre' => 'Reçu à faire tamponner', 'texte' => 'Présente l’original de ton reçu à la scolarité de ton établissement pour le faire tamponner.' );
+		$prochaine = array( 'titre' => 'Reçu à faire tamponner', 'texte' => 'medicaux' === ( ( $paiement_focus ?: $focus )->type ?? 'droits' ) ? 'Présente l’original de ton reçu au Centre médico-social pour le faire tamponner.' : 'Présente l’original de ton reçu à la scolarité de ton établissement pour le faire tamponner.' );
 		$action = array( 'libelle' => 'Voir mes reçus', 'url' => $url_recus, 'icone' => 'recu', 'principal' => false );
 	} else {
-		$prochaine = array( 'titre' => 'Paiement vérifié', 'texte' => sprintf( 'Validé par la scolarité (%s). Garde ton quitus et ton reçu tamponné.', mb_strtolower( ueb_detail_quitus( $focus ) ) ) );
+		$prochaine = array( 'titre' => 'Paiement vérifié', 'texte' => sprintf( 'Validé par ' . $service['nom'] . ' (%s). Garde ton quitus et ton reçu tamponné.', mb_strtolower( ueb_detail_quitus( $focus ) ) ) );
 	}
 
 	$deuxieme = ueb_deuxieme_tranche_a_payer( $quitus );

@@ -114,7 +114,7 @@ $etapes = array(
 		$un_rejete ? 'Nouveau reçu attendu' : 'Payé et reçu envoyé',
 		$un_rejete ? 'Reçu renvoyé à l’étudiant' : ( $tous_envoyes && $envois ? mysql2date( 'j F', max( $envois ) ) : ( $double && $nb_envoyes ? $nb_envoyes . ' reçu sur 2' : 'En attente de l’étudiant' ) ),
 	),
-	array( 'Reçu tamponné', $tous_verifies && $verifs ? mysql2date( 'j F', max( $verifs ) ) : 'À la scolarité' ),
+	array( 'Reçu tamponné', $tous_verifies && $verifs ? mysql2date( 'j F', max( $verifs ) ) : ( 'medicaux' === $type_onglet ? 'Au Centre médico-social' : 'À la scolarité' ) ),
 	array( 'Vérifié', $tous_verifies ? 'Dossier complet' : ( $double && $nb_verifies ? $nb_verifies . ' paiement sur 2' : 'Décision finale' ) ),
 );
 
@@ -145,21 +145,27 @@ $champs_decision = static function ( $q, $nouveau ) {
 	printf( '<input type="hidden" name="ueb_action" value="gestion_statut"><input type="hidden" name="quitus_id" value="%d"><input type="hidden" name="statut" value="%s">', (int) $q->id, esc_attr( $nouveau ) );
 };
 
+/* Tampon du service qui décide : la scolarité pour les droits, le Centre
+   médico-social pour les frais médicaux (son nom remplace « SCOLARITÉ FS »). */
+$cms_tampon   = 'medicaux' === $type_onglet;
+$tampon_de    = $cms_tampon ? 'Tampon du Centre médico-social' : 'Tampon de la scolarité';
 /* Tampon dessiné en SVG : repli affiché avant le montage du lecteur Remotion
    (ou sans JavaScript), à la géométrie de la dernière image. */
-$tampon_repli = static function ( $etat, $date ) use ( $sigle ) {
+$tampon_repli = static function ( $etat, $date ) use ( $sigle, $cms_tampon ) {
 	$encre = 'verifie' === $etat ? '#1d6b3a' : '#b3261e';
 	return sprintf(
-		'<svg class="qf-tampon__repli" viewBox="0 0 360 360" aria-hidden="true"><g transform="rotate(-9 180 180)" fill="none" stroke="%1$s" opacity=".9"><circle cx="180" cy="180" r="150" stroke-width="7"/><circle cx="180" cy="180" r="139" stroke-width="2"/><circle cx="180" cy="180" r="96" stroke-width="2.6"/><path d="M94 154H266M94 211H266" stroke-width="2.6"/><g fill="%1$s" stroke="none" font-family="Source Sans 3, Arial, sans-serif" font-weight="700" text-anchor="middle"><text x="180" y="142" font-size="16" letter-spacing="3">%2$s</text><text x="180" y="197" font-size="%3$d" font-weight="800" textLength="176" lengthAdjust="spacingAndGlyphs">%4$s</text><text x="180" y="238" font-size="20" letter-spacing="1.5">%5$s</text><text x="180" y="62" font-size="19" letter-spacing="2.4">SCOLARITÉ %6$s</text></g></g></svg>',
+		'<svg class="qf-tampon__repli" viewBox="0 0 360 360" aria-hidden="true"><g transform="rotate(-9 180 180)" fill="none" stroke="%1$s" opacity=".9"><circle cx="180" cy="180" r="150" stroke-width="7"/><circle cx="180" cy="180" r="139" stroke-width="2"/><circle cx="180" cy="180" r="96" stroke-width="2.6"/><path d="M94 154H266M94 211H266" stroke-width="2.6"/><g fill="%1$s" stroke="none" font-family="Source Sans 3, Arial, sans-serif" font-weight="700" text-anchor="middle"><text x="180" y="142" font-size="16" letter-spacing="3">%2$s</text><text x="180" y="197" font-size="%3$d" font-weight="800" textLength="176" lengthAdjust="spacingAndGlyphs">%4$s</text><text x="180" y="238" font-size="20" letter-spacing="1.5">%5$s</text><text x="180" y="62" %7$s>%6$s</text></g></g></svg>',
 		$encre,
 		'verifie' === $etat ? 'PAIEMENT' : 'DOSSIER',
 		'verifie' === $etat ? 40 : 31,
 		'verifie' === $etat ? 'VÉRIFIÉ' : 'À CORRIGER',
 		esc_html( $date ),
-		esc_html( $sigle )
+		esc_html( $cms_tampon ? 'CENTRE MÉDICO-SOCIAL' : 'SCOLARITÉ ' . $sigle ),
+		/* Texte droit dans le repli : le nom long du CMS est resserré (l'animation le pose sur l'arc). */
+		$cms_tampon ? 'font-size="15" letter-spacing="1" textLength="180" lengthAdjust="spacingAndGlyphs"' : 'font-size="19" letter-spacing="2.4"'
 	);
 };
-$tampon_props = static fn( $etat, $date ) => array( 'etat' => $etat, 'sigle' => $sigle, 'date' => $date );
+$tampon_props = static fn( $etat, $date ) => array( 'etat' => $etat, 'sigle' => $sigle, 'date' => $date ) + ( $cms_tampon ? array( 'service' => 'CENTRE MÉDICO-SOCIAL' ) : array() );
 
 $motifs = array(
 	'Montant différent' => 'Le montant du reçu ne correspond pas à celui du quitus.',
@@ -278,7 +284,7 @@ $motifs = array(
 										<?php if ( 0 === $i ) : ?>
 											<?php if ( $v->decide ) : $date_tampon = mysql2date( 'd.m.Y', $v->q->date_verification ); ?>
 												<div class="qf-tampon" data-qf-tampon-pose>
-													<?php ueb_animation( 'tampon', $tampon_props( $v->statut, $date_tampon ), 'qf-tampon__animation animation--fige', ( $v->verifie ? 'Tampon de la scolarité : paiement vérifié le ' : 'Tampon de la scolarité : dossier à corriger depuis le ' ) . mysql2date( 'd/m/Y', $v->q->date_verification ), $tampon_repli( $v->statut, $date_tampon ) ); ?>
+													<?php ueb_animation( 'tampon', $tampon_props( $v->statut, $date_tampon ), 'qf-tampon__animation animation--fige', ( $tampon_de . ( $v->verifie ? ' : paiement vérifié le ' : ' : dossier à corriger depuis le ' ) ) . mysql2date( 'd/m/Y', $v->q->date_verification ), $tampon_repli( $v->statut, $date_tampon ) ); ?>
 												</div>
 											<?php endif; ?>
 											<?php if ( $v->peut_decider && $v->a_controler ) : /* tampons prêts à frapper, montés à la décision */ ?>
