@@ -61,6 +61,15 @@ if ( isset( $_POST['ueb_connexion_admin'] ) ) {
 
 /* Compte connecté avec un espace autre que le pilotage : son écran. */
 $espace = ueb_espace_courant();
+
+/* Profil simulé qui n'ouvre aucun espace (rôle dont les permissions ne sont
+   plus reconnues) : le super-administrateur retomberait sur l'écran de
+   connexion à chaque essai. On le ramène à sa vue complète. */
+if ( ! $espace && ( $simule = ueb_profil_simule() ) ) {
+	delete_user_meta( get_current_user_id(), 'ueb_profil_simule' );
+	ueb_flash( 'alerte', 'Le profil « ' . ueb_libelle_profil( $simule ) . ' » n’ouvre aucun espace : ses permissions ne sont plus reconnues. Retour à ta vue complète d’administrateur.' );
+	ueb_rediriger( ueb_url_administration() );
+}
 if ( $espace && 'admin' !== $espace ) {
 	require UEB_INSC_DIR . '/templates/espaces/' . $espace . '.php';
 	return;
