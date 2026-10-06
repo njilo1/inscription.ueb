@@ -78,7 +78,7 @@ add_action( 'wp_enqueue_scripts', function () {
 	   que celui de l'administration (cartes à mini-courbes, anneau, mouvement), avec
 	   la carte rouge des reçus en attente, actualisée en direct (attente-recus.js). */
 	$tableau_scolarite = ( 'scolarite' === ueb_espace_courant() ) && 'bord' === $vue_bo && ! isset( $_GET['quitus'] ) // phpcs:ignore -- lecture seule
-		&& ueb_types_quitus_visibles();
+		&& ueb_types_stats_visibles(); // reçus consultés, ou statistiques seules (doyen, recteur…)
 	if ( $tableau_scolarite ) {
 		ueb_script( 'ueb-attente-recus', 'assets/js/attente-recus.js', array( 'ueb-administration-sparklines' ) );
 		ueb_style( 'ueb-administration', 'assets/css/administration.css', array( 'ueb-pages', 'ueb-bord-graphes' ) );
