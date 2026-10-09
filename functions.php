@@ -3,7 +3,8 @@
  * Point d'entrée du thème Inscription UEb.
  *
  * Organisation :
- *   inc/config.php        établissements, année académique, constantes
+ *   inc/config.php        établissements, constantes
+ *   inc/exercices.php     exercices : année en cours, clôture, exercice consulté
  *   inc/db-schema.php     tables ueb_insc_* (création versionnée)
  *   inc/session.php       session PHP, jeton CSRF, messages flash
  *   inc/routes.php        adresses propres (/connexion, /mon-espace…)
@@ -42,7 +43,7 @@ define( 'UEB_INSC_VERSION', '1.0.0' );
 define( 'UEB_INSC_DIR', get_template_directory() );
 define( 'UEB_INSC_URI', get_template_directory_uri() );
 
-foreach ( array( 'config', 'db-schema', 'session', 'routes', 'roles', 'acces-modules', 'espaces', 'profil-simule', 'comptes', 'nombres', 'inscription', 'quitus', 'profil', 'etudiants', 'quitus-pdf', 'recus', 'gestion', 'direction', 'comptes-plateforme', 'ipes', 'ipes-filieres', 'ipes-etudiants', 'ipes-bordereaux', 'ipes-recus', 'ipes-bordereau-pdf', 'ipes-espace', 'ipes-tutelle', 'filieres-catalogue', 'assets', 'vues', 'bord', 'bord-graphes', 'administration', 'attente-recus', 'cms-tableau', 'ipes-vues', 'landing' ) as $ueb_module ) {
+foreach ( array( 'config', 'exercices', 'db-schema', 'session', 'routes', 'roles', 'acces-modules', 'espaces', 'profil-simule', 'comptes', 'nombres', 'inscription', 'quitus', 'profil', 'etudiants', 'quitus-pdf', 'recus', 'gestion', 'direction', 'comptes-plateforme', 'ipes', 'ipes-filieres', 'ipes-etudiants', 'ipes-bordereaux', 'ipes-recus', 'ipes-bordereau-pdf', 'ipes-espace', 'ipes-tutelle', 'filieres-catalogue', 'assets', 'vues', 'bord', 'bord-graphes', 'administration', 'attente-recus', 'cms-tableau', 'ipes-vues', 'landing' ) as $ueb_module ) {
 	require_once UEB_INSC_DIR . '/inc/' . $ueb_module . '.php';
 }
 

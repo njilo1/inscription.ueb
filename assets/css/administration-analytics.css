@@ -15,9 +15,6 @@
 .adm-perimetre { display:flex; align-items:center; gap:.55rem; max-width:100%; }
 .adm-perimetre label { font-size:.84rem; color:var(--gris); }
 .adm-perimetre select { width:15rem; max-width:100%; min-width:0; min-height:44px; padding:.45rem 1.6rem .45rem .65rem; border:1px solid var(--filet); border-radius:7px; background:var(--blanc); color:var(--encre); font:600 .86rem var(--f-texte); text-overflow:ellipsis; }
-.adm-tendances-tete { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:.5rem; margin-bottom:-.6rem; }
-.adm-tendances-tete > p { margin:0; font-size:.82rem; color:var(--gris); }
-.adm-tendances-tete b { color:var(--encre); font-weight:600; }
 .adm-kpis { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:.9rem; }
 .adm-kpi { position:relative; display:flex; flex-direction:column; min-width:0; padding:1.05rem 1.1rem .85rem; border-radius:18px; background:var(--vert-bandeau); color:#fff; box-shadow:0 8px 18px -13px rgba(10,31,22,.6); }
 .adm-kpi--vert { background:#1d5a38; }
@@ -75,10 +72,6 @@
 .adm-finances__total { display:flex; justify-content:space-between; gap:.5rem; padding-top:.8rem; margin:.8rem 0 0; border-top:1px solid var(--filet); font-size:.82rem; }
 .adm-finances__total > span { color:var(--gris); }
 .adm-evolution { position:relative; display:flex; flex-direction:column; }
-.adm-periodes { display:flex; gap:.15rem; padding:2px; border:1px solid var(--filet); border-radius:7px; background:var(--papier); }
-.adm-periodes a { display:grid; place-items:center; padding:0 .6rem; min-height:40px; color:var(--gris); font-size:.8rem; text-decoration:none; border-radius:5px; transition:background-color .18s; }
-.adm-periodes a:hover { color:var(--encre); background:var(--adm-puce); }
-.adm-periodes a[aria-current] { background:var(--blanc); color:var(--encre); font-weight:700; box-shadow:0 1px 4px rgba(15,44,31,.12); }
 .adm-dashboard .adm-evolution .graphe { flex:1; border:0; padding:0; background:none; box-shadow:none; }
 .adm-evolution .graphe__entete { min-height:62px; }
 .adm-evolution .courbes__resume { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); }
@@ -175,8 +168,8 @@
  .adm-evolution__bilan { grid-template-columns:repeat(2,minmax(0,1fr)); gap:.85rem 0; } .adm-evolution__bilan > div:nth-child(3) { border-left:0; }
  .adm-donut b { font-size:1.8rem; } .adm-finances { column-gap:.4rem; } .adm-finances__legende li { font-size:.78rem; }
 }
-@media (prefers-reduced-motion:reduce) { .adm-barre i,.adm-spark__ligne { animation:none; } .adm-periodes a,.adm-spark__lecture { transition:none; } }
-@media print { .adm-pilotage,.adm-periodes,.adm-solde a { display:none; } .adm-kpi,.adm-solde { print-color-adjust:exact; -webkit-print-color-adjust:exact; } .adm-analyse,.adm-secondaire { break-inside:avoid; } .adm-barre i,.adm-spark__ligne { animation:none; } .adm-spark__lecture { display:none; } }
+@media (prefers-reduced-motion:reduce) { .adm-barre i,.adm-spark__ligne { animation:none; } .adm-spark__lecture { transition:none; } }
+@media print { .adm-pilotage,.adm-solde a { display:none; } .adm-kpi,.adm-solde { print-color-adjust:exact; -webkit-print-color-adjust:exact; } .adm-analyse,.adm-secondaire { break-inside:avoid; } .adm-barre i,.adm-spark__ligne { animation:none; } .adm-spark__lecture { display:none; } }
 
 /* ---------- Carte « Reçus en attente de validation » (inc/attente-recus.php) ----------
    Première carte des tableaux de bord de la scolarité et du CMS : la même forme

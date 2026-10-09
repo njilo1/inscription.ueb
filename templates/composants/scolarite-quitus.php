@@ -372,7 +372,7 @@ $motifs = array(
 						<?php endif; ?>
 
 						<?php if ( ! $v->peut_decider ) : ?>
-							<p class="qf-note"><?php echo ueb_icone( 'cadenas', 16 ); ?>Consultation seule : ton rôle ne permet pas de rendre une décision.</p>
+							<p class="qf-note"><?php echo ueb_icone( 'cadenas', 16 ); ?><?php echo ueb_exercice_cloture( $v->q->annee_academique ) ? esc_html( 'Consultation seule : l’exercice ' . ueb_exercice( $v->q->annee_academique )['libelle'] . ' est clôturé.' ) : 'Consultation seule : ton rôle ne permet pas de rendre une décision.'; ?></p>
 						<?php else : ?>
 							<div class="qf-decision">
 								<?php if ( $v->a_controler ) : ?>

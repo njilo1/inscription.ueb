@@ -10,7 +10,7 @@ if ( PHP_SAPI !== 'cli' ) {
 define( 'SHORTINIT', true );
 require dirname( __DIR__, 4 ) . '/wp-load.php';
 define( 'UEB_INSC_DIR', dirname( __DIR__ ) );
-foreach ( array( 'config', 'db-schema', 'ipes', 'ipes-filieres', 'ipes-etudiants', 'ipes-bordereaux', 'ipes-recus' ) as $module ) {
+foreach ( array( 'config', 'exercices', 'db-schema', 'ipes', 'ipes-filieres', 'ipes-etudiants', 'ipes-bordereaux', 'ipes-recus' ) as $module ) {
 	require UEB_INSC_DIR . '/inc/' . $module . '.php';
 }
 /* SHORTINIT ne charge pas les utilisateurs : personne n'est connecté. */

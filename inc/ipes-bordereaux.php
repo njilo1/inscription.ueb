@@ -70,7 +70,7 @@ function ueb_ipes_bordereau( $ipes_id, $id ) {
 function ueb_ipes_bordereaux( $ipes_id, array $filtres = array() ) {
 	global $wpdb;
 	$where  = array( 'b.ipes_id = %d', 'b.annee_academique = %s' );
-	$params = array( $ipes_id, (string) ( $filtres['annee'] ?? ueb_annee_academique()['code'] ) );
+	$params = array( $ipes_id, (string) ( $filtres['annee'] ?? ueb_exercice_consulte()['code'] ) );
 	if ( isset( UEB_IPES_STATUTS_BORDEREAU[ $filtres['statut'] ?? '' ] ) ) {
 		$where[]  = 'b.statut = %s';
 		$params[] = $filtres['statut'];
@@ -315,6 +315,10 @@ function ueb_ipes_bordereau_decider( $id, $verifie, $motif = '' ) {
 	if ( ! $verifie && ( mb_strlen( $motif ) < 5 || mb_strlen( $motif ) > 255 ) ) {
 		return new WP_Error( 'ueb_ipes_bordereau', 'Explique en quelques mots pourquoi le bordereau est rejeté (5 à 255 caractères).' );
 	}
+	$annee = $wpdb->get_var( $wpdb->prepare( 'SELECT annee_academique FROM ueb_insc_ipes_bordereaux WHERE id = %d', (int) $id ) );
+	if ( $annee && ueb_exercice_cloture( $annee ) ) {
+		return new WP_Error( 'ueb_ipes_bordereau', 'L’exercice ' . ueb_exercice( $annee )['libelle'] . ' est clôturé : ce bordereau se consulte, sans nouvelle décision.' );
+	}
 	/* Condition sur le statut : une seule décision, même si deux arrivent ensemble. */
 	$ok = $wpdb->update(
 		'ueb_insc_ipes_bordereaux',
@@ -345,7 +349,7 @@ function ueb_ipes_bordereau_decider( $id, $verifie, $motif = '' ) {
  */
 function ueb_ipes_jauge( $ipes_id, $annee = null, $tutelles = null ) {
 	global $wpdb;
-	$annee = $annee ?? ueb_annee_academique()['code'];
+	$annee = $annee ?? ueb_exercice_consulte()['code'];
 	$ipes  = ueb_ipes( $ipes_id );
 	$vide  = array( 'etudiants' => 0, 'libres' => 0, 'du' => 0, 'envoye' => 0, 'verifie' => 0, 'reste' => 0 );
 	$par   = array_fill_keys( $ipes ? $ipes->tutelles : array(), $vide );

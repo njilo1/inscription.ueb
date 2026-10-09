@@ -32,7 +32,7 @@ require_once __DIR__ . '/administration-exports.php';
  */
 function ueb_adm_tete( array $a ) {
 	$a     = array_merge( array( 'titre' => '', 'sous_titre' => '', 'fil' => array(), 'actions' => '', 'visuel' => '', 'apres' => '', 'theme' => false ), $a ); // bascule clair / sombre : barre du haut (ueb_bo_barre)
-	$annee = ueb_annee_academique();
+	$annee = ueb_exercice_consulte(); // l'exercice choisi par le super-administrateur, l'exercice en cours sinon
 	$n     = count( $a['fil'] );
 	?>
 	<header class="adm-tete">
@@ -61,7 +61,8 @@ function ueb_adm_tete( array $a ) {
 			<?php if ( $a['visuel'] ) : ?></div></div><?php endif; ?>
 		</div>
 		<div class="adm-tete__actions">
-			<span class="adm-annee"><?php echo ueb_icone( 'calendrier', 16 ); ?>Année <?php echo esc_html( $annee['libelle'] ); ?></span>
+			<?php /* Super-administrateur : l'exercice consulté est déjà dans la barre du haut ; l'année reste à l'impression. */ ?>
+			<span class="adm-annee<?php echo ueb_est_admin_ueb() && ueb_espace_courant() ? ' adm-annee--barre' : ''; ?>"><?php echo ueb_icone( ueb_exercice_cloture( $annee['code'] ) ? 'cadenas' : 'calendrier', 16 ); ?>Année <?php echo esc_html( $annee['libelle'] ); ?><?php echo ueb_exercice_cloture( $annee['code'] ) ? ', clôturée' : ''; ?></span>
 			<?php if ( $a['theme'] ) { ueb_adm_bascule_theme(); } ?>
 			<?php echo $a['actions']; // phpcs:ignore -- construit et échappé par l'appelant ?>
 		</div>

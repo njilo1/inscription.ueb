@@ -72,7 +72,7 @@ $peut_etudiants = ueb_peut( 'ueb_voir_etudiants' );
 $autorise       = ( ueb_est_scolarite() || ueb_est_admin_ueb() ) && ( $peut_bord || $peut_quitus || $peut_paiements || $peut_ipes || $peut_etudiants );
 /* Première vue permise : tableau de bord, sinon paiements, sinon IPES, sinon étudiants. */
 $vue_defaut     = $peut_bord ? 'bord' : ( $peut_quitus ? 'quitus' : ( $peut_paiements ? 'paiements' : ( $peut_ipes ? 'ipes' : 'etudiants' ) ) );
-$annee    = ueb_annee_academique();
+$annee    = ueb_exercice_consulte();
 
 if ( $autorise ) {
 	$etab_agent = ueb_etab_agent();
@@ -115,8 +115,6 @@ if ( $autorise ) {
 	   sur les droits universitaires, ou celui du CMS sur les frais médicaux (inc/cms-tableau.php). */
 	$tableau     = 'bord' === $vue && ! $fiche;
 	$tableau_cms = $tableau && 'medicaux' === ueb_type_recus_courant();
-	$periode     = (int) ( $_GET['periode'] ?? 30 ); // phpcs:ignore -- lecture seule
-	$periode     = in_array( $periode, array( 7, 30, 90 ), true ) ? $periode : 30;
 }
 
 /* Coque plein écran une fois connecté ; en-tête de site conservé sur l'écran
@@ -211,7 +209,7 @@ ueb_page_debut( array(
 				?>
 				<?php if ( $tableau_cms ) : ?>
 					<?php
-					$cms = ueb_cms_donnees( $annee['code'], $periode );
+					$cms = ueb_cms_donnees( $annee['code'] );
 					ueb_cms_tete( $cms['chiffres'] );
 					?>
 				<?php elseif ( $tableau ) : ?>
@@ -272,7 +270,7 @@ ueb_page_debut( array(
 
 				<?php elseif ( 'bord' === $vue && $tableau_cms ) : ?>
 
-					<?php ueb_cms_tableau( $cms, $periode ); ?>
+					<?php ueb_cms_tableau( $cms ); ?>
 
 				<?php elseif ( 'bord' === $vue ) : ?>
 
@@ -280,12 +278,12 @@ ueb_page_debut( array(
 					/* Même tableau de bord que l'administration (inc/administration-dashboard.php),
 					   limité à l'établissement de l'agent : la carte rouge des reçus en attente
 					   en tête, la file des plus anciens dessous (inc/attente-recus.php). */
-					$suivi         = ueb_suivi_paiements( $annee['code'], $etab_agent, $periode );
-					$activite      = ueb_gestion_activite( $annee['code'], $etab_agent, $periode );
+					$suivi         = ueb_suivi_paiements( $annee['code'], $etab_agent, true );
+					$activite      = ueb_gestion_activite( $annee['code'], $etab_agent );
 					$url_espace    = static fn( array $args = array() ) => add_query_arg( $args, ueb_url_scolarite() );
 					$url_paiements = $peut_paiements ? $url_espace( array( 'vue' => 'paiements' ) ) : '';
 
-					ueb_adm_dashboard( $c, $suivi, $activite, $etab_agent, $periode, array(
+					ueb_adm_dashboard( $c, $suivi, $activite, $etab_agent, array(
 						'url'       => $url_espace,
 						'perimetre' => false,
 						'paiements' => $url_paiements,
@@ -310,7 +308,7 @@ ueb_page_debut( array(
 					<div class="adm-grille adm-grille--graphes adm-complements">
 						<?php
 						ueb_adm_statistiques( $c );
-						ueb_adm_comparaison( $suivi, $etab_agent, $periode, $url_paiements ?: $url_espace( array( 'vue' => 'quitus' ) ) );
+						ueb_adm_comparaison( $suivi, $etab_agent, $url_paiements ?: $url_espace( array( 'vue' => 'quitus' ) ) );
 						ueb_graphe_anneau( 'Répartition par sexe', 'Étudiants ayant au moins un quitus', array(
 							'Masculin' => array( 'valeur' => $c['sexe']['M'], 'couleur' => 'var(--viz-id-1)' ),
 							'Féminin'  => array( 'valeur' => $c['sexe']['F'], 'couleur' => 'var(--viz-id-2)' ),

@@ -103,6 +103,13 @@ add_action( 'wp_enqueue_scripts', function () {
 			ueb_style( 'ueb-administration-paiements', 'assets/css/administration-paiements.css', array( 'ueb-administration' ) );
 			ueb_script( 'ueb-administration-paiements', 'assets/js/administration-paiements.js' );
 		}
+		if ( 'exercices' === $vue_bo ) {
+			/* Onglet Exercice : frise et sceau Remotion, entrée et sélection animées (GSAP). */
+			ueb_style( 'ueb-exercices', 'assets/css/exercices.css', array( 'ueb-administration' ) );
+			ueb_script( 'ueb-remotion', 'assets/js/remotion-ueb.js' );
+			ueb_script( 'gsap', 'assets/js/vendor/gsap.min.js' );
+			ueb_script( 'ueb-exercices', 'assets/js/exercices.js', array( 'ueb-app', 'gsap', 'ueb-remotion' ) );
+		}
 		if ( 'bord' === $vue_bo ) {
 			ueb_style( 'ueb-administration-dashboard', 'assets/css/administration-dashboard.css', array( 'ueb-administration' ) );
 			ueb_style( 'ueb-administration-analytics', 'assets/css/administration-analytics.css', array( 'ueb-administration-dashboard' ) );

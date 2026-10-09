@@ -39,7 +39,7 @@ const UEB_ETUDIANTS_SITUATIONS = array(
 function ueb_etudiants_annees() {
 	global $wpdb;
 	$annees = $wpdb->get_col( "SELECT DISTINCT annee_academique FROM ueb_insc_quitus WHERE type = 'droits' ORDER BY annee_academique DESC" );
-	$courante = ueb_annee_academique()['code'];
+	$courante = ueb_exercice_consulte()['code'];
 	if ( ! in_array( $courante, $annees, true ) ) {
 		array_unshift( $annees, $courante );
 	}
@@ -56,7 +56,7 @@ function ueb_etudiants_filtres( array $etabs ) {
 	$annee = $get( 'annee' );
 	$etab  = strtoupper( $get( 'etab' ) );
 	return array(
-		'annee'     => in_array( $annee, ueb_etudiants_annees(), true ) ? $annee : ueb_annee_academique()['code'],
+		'annee'     => in_array( $annee, ueb_etudiants_annees(), true ) ? $annee : ueb_exercice_consulte()['code'],
 		'etab'      => in_array( $etab, $etabs, true ) ? $etab : '',
 		'filiere'   => max( 0, (int) $get( 'filiere' ) ),
 		'niveau'    => isset( UEB_NIVEAUX_INSCRIPTION[ $get( 'niveau' ) ] ) ? $get( 'niveau' ) : '',

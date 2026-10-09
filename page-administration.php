@@ -4,14 +4,18 @@
  *
  * Espace de l'administration, avec barre latérale :
  *   - Tableau de bord : cinq indicateurs, anneau du recouvrement, évolution
- *     cumulée sur 7, 30 ou 90 jours, statuts et comparaison des établissements ;
+ *     cumulée sur tout l’exercice, statuts et comparaison des établissements ;
  *   - Vue d'un établissement (?etab=FS) : mêmes indicateurs filtrés, avec
  *     ses niveaux et ses filières ;
  *   - Paiements (?vue=paiements[&etab=FS]) : suivi complet du recouvrement ;
  *   - Personnel (?vue=scolarites) : créer, rattacher, réinitialiser,
  *     suspendre, supprimer ;
  *   - IPES (?vue=ipes) : établissements privés sous tutelle
- *     (templates/composants/ipes-admin.php).
+ *     (templates/composants/ipes-admin.php) ;
+ *   - Exercice (?vue=exercices) : les années académiques, l'exercice
+ *     consulté, activer, clôturer, rouvrir (templates/composants/exercices-admin.php).
+ *
+ * Toutes les vues lisent l'exercice consulté (inc/exercices.php).
  *
  * Thème clair par défaut, sombre au choix (bascule mémorisée, voir
  * inc/administration.php et assets/js/administration.js).
@@ -76,11 +80,11 @@ if ( $espace && 'admin' !== $espace ) {
 }
 
 $autorise = 'admin' === $espace;
-$annee    = ueb_annee_academique();
+$annee    = ueb_exercice_consulte();
 
 if ( $autorise ) {
 	$vue   = sanitize_key( $_GET['vue'] ?? 'bord' );
-	$vue   = in_array( $vue, array( 'bord', 'paiements', 'etudiants', 'scolarites', 'ipes', 'filieres' ), true ) ? $vue : 'bord';
+	$vue   = in_array( $vue, array( 'bord', 'paiements', 'etudiants', 'scolarites', 'ipes', 'filieres', 'exercices' ), true ) ? $vue : 'bord';
 	$focus = strtoupper( sanitize_text_field( wp_unslash( $_GET['etab'] ?? '' ) ) );
 	$focus = ueb_etablissement( $focus ) ? $focus : '';
 	$ici   = static fn( array $args = array() ) => esc_url( add_query_arg( $args, ueb_url_administration() ) );
@@ -89,15 +93,14 @@ if ( $autorise ) {
 	unset( $_SESSION['ueb_mdp_agent'] );
 
 	if ( 'bord' === $vue ) {
-		$periode  = (int) ( $_GET['periode'] ?? 30 );
-		$periode  = in_array( $periode, array( 7, 30, 90 ), true ) ? $periode : 30;
+		/* Tout l'exercice consulté : plus de fenêtre de 7, 30 ou 90 jours. */
 		$chiffres = ueb_gestion_chiffres( $annee['code'], $focus );
-		$suivi    = ueb_suivi_paiements( $annee['code'], $focus, $periode );
-		$activite = ueb_gestion_activite( $annee['code'], $focus, $periode );
+		$suivi    = ueb_suivi_paiements( $annee['code'], $focus, true );
+		$activite = ueb_gestion_activite( $annee['code'], $focus );
 		$niveaux  = ueb_gestion_niveaux_par_etab( $annee['code'] );
 		$vide_niv = array_fill_keys( array_keys( UEB_NIVEAUX_INSCRIPTION ), 0 );
 	} elseif ( 'paiements' === $vue ) {
-		$suivi = ueb_suivi_paiements( $annee['code'], $focus, 366 );
+		$suivi = ueb_suivi_paiements( $annee['code'], $focus, true );
 	} elseif ( 'scolarites' === $vue ) {
 		$agents = ueb_agents(); // tous les comptes du personnel, quel que soit leur rôle
 	}
@@ -165,6 +168,7 @@ ueb_page_debut( array(
 					array( 'url' => $ici( array( 'vue' => 'scolarites' ) ), 'libelle' => 'Personnel', 'icone' => 'groupe', 'actif' => 'scolarites' === $vue ),
 					array( 'url' => $ici( array( 'vue' => 'filieres' ) ), 'libelle' => 'Filières', 'icone' => 'fichier', 'actif' => 'filieres' === $vue ),
 					array( 'url' => $ici( array( 'vue' => 'ipes' ) ), 'libelle' => 'IPES', 'icone' => 'ecole', 'actif' => 'ipes' === $vue ),
+					array( 'url' => $ici( array( 'vue' => 'exercices' ) ), 'libelle' => 'Exercice', 'icone' => 'calendrier', 'actif' => 'exercices' === $vue ),
 					array( 'url' => ueb_url_direction(), 'libelle' => 'Rôles (Direction)', 'icone' => 'bouclier', 'actif' => false ),
 				),
 				array(
@@ -174,7 +178,7 @@ ueb_page_debut( array(
 			);
 			?>
 
-			<div class="bo-contenu adm<?php echo 'bord' === $vue ? ' adm-dashboard' : ( 'paiements' === $vue ? ' adm-paiements' : '' ); ?>">
+			<div class="bo-contenu adm<?php echo 'bord' === $vue ? ' adm-dashboard' : ( 'paiements' === $vue ? ' adm-paiements' : ( 'exercices' === $vue ? ' adm-exercices' : '' ) ); ?>">
 
 				<?php if ( 'scolarites' === $vue ) : ?>
 
@@ -363,6 +367,10 @@ ueb_page_debut( array(
 
 					<?php include UEB_INSC_DIR . '/templates/composants/filieres-admin.php'; ?>
 
+				<?php elseif ( 'exercices' === $vue ) : ?>
+
+					<?php include UEB_INSC_DIR . '/templates/composants/exercices-admin.php'; ?>
+
 				<?php elseif ( 'paiements' === $vue ) : ?>
 
 					<?php
@@ -396,13 +404,13 @@ ueb_page_debut( array(
 					);
 					ueb_afficher_flash();
 
-					ueb_adm_dashboard( $chiffres, $suivi, $activite, $focus, $periode );
+					ueb_adm_dashboard( $chiffres, $suivi, $activite, $focus );
 					?>
 
 					<div class="adm-grille adm-grille--graphes adm-complements">
 						<?php
 						ueb_adm_statistiques( $chiffres );
-						ueb_adm_comparaison( $suivi, $focus, $periode );
+						ueb_adm_comparaison( $suivi, $focus );
 						ueb_graphe_anneau( 'Répartition par sexe', 'Étudiants ayant au moins un quitus', array(
 							'Masculin' => array( 'valeur' => $chiffres['sexe']['M'], 'couleur' => 'var(--viz-id-1)' ),
 							'Féminin' => array( 'valeur' => $chiffres['sexe']['F'], 'couleur' => 'var(--viz-id-2)' ),
@@ -437,7 +445,7 @@ ueb_page_debut( array(
 								'statuts'   => $statuts,
 								'quitus'    => (int) array_sum( $statuts ),
 								'suivi'     => $suivi['etabs'][ $sigle ] ?? null,
-								'url'       => $url( array( 'etab' => $sigle, 'periode' => $periode ) ),
+								'url'       => $url( array( 'etab' => $sigle ) ),
 								'rang'      => $rang++,
 							);
 						}

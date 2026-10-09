@@ -71,8 +71,8 @@ add_action( 'template_redirect', function () {
 	}
 	$focus = strtoupper( sanitize_text_field( wp_unslash( $_GET['etab'] ?? '' ) ) );
 	$focus = ueb_etablissement( $focus ) ? $focus : '';
-	$annee = ueb_annee_academique();
-	$d     = ueb_adm_rapport_donnees( ueb_suivi_paiements( $annee['code'], $focus, 366 ), $focus, $annee );
+	$annee = ueb_exercice_consulte();
+	$d     = ueb_adm_rapport_donnees( ueb_suivi_paiements( $annee['code'], $focus, true ), $focus, $annee );
 
 	nocache_headers();
 	if ( 'pdf' === $format ) {

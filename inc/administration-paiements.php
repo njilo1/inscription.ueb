@@ -167,7 +167,7 @@ function ueb_adm_paiement_situation( array $a ) {
 
 function ueb_adm_paiements( array $suivi, $focus ) {
  $g = $suivi['global']; $m = $suivi['medicaux'];
- $annee = ueb_annee_academique();
+ $annee = ueb_exercice_consulte();
  $verification = $g['verification'] + $m['verification'];
  $attendu = $g['attendu'] + $m['attendu'];
  $encaisse = $g['encaisse'] + $m['encaisse'];

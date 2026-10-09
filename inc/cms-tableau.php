@@ -11,17 +11,15 @@
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Chiffres des frais médicaux de l'année et séries des mini-courbes sur la
- * fenêtre affichée (cumuls ; ce qui précède la fenêtre est reporté au départ).
+ * Chiffres des frais médicaux de l'exercice et séries des mini-courbes, du
+ * premier quitus au dernier jour de l'historique (ueb_exercice_bornes).
  * Les reçus déposés par jour sont ceux de la carte rouge (ueb_attente_depots()).
  *
  * @return array{chiffres: array, finances: array, historique: array}
  */
-function ueb_cms_donnees( $annee_code, $periode ) {
+function ueb_cms_donnees( $annee_code ) {
 	global $wpdb;
 	list( $portee, $params ) = ueb_gestion_portee_sql( array( 'annee' => $annee_code, 'type' => 'medicaux', 'stats' => true ) );
-	$aujourdhui = current_time( 'Y-m-d' );
-	$debut      = gmdate( 'Y-m-d', strtotime( $aujourdhui . ' -' . ( max( 2, (int) $periode ) - 1 ) . ' days' ) );
 	$lignes     = (array) $wpdb->get_results( $wpdb->prepare(
 		"SELECT q.compte_id, q.statut, q.montant, q.date_creation, q.date_verification, q.date_modification FROM ueb_insc_quitus q WHERE $portee", // phpcs:ignore -- portée préparée
 		$params
@@ -32,6 +30,12 @@ function ueb_cms_donnees( $annee_code, $periode ) {
 	$statuts  = array( 'genere' => 'a_payer', 'recu_envoye' => 'recus_envoyes', 'verifie' => 'recus_verifies', 'rejete' => 'recus_rejetes' );
 	$premiers = array();
 	$evts     = array();
+	$premier  = $dernier = '';
+	foreach ( $lignes as $l ) {
+		$premier = $premier ? min( $premier, $l->date_creation ) : $l->date_creation;
+		$dernier = max( $dernier, $l->date_creation, (string) $l->date_verification );
+	}
+	list( $debut, $fin ) = ueb_exercice_bornes( $annee_code, $premier, $dernier ) ?? array_fill( 0, 2, ueb_exercice_fin_historique( $annee_code ) );
 	foreach ( $lignes as $l ) {
 		$m        = (int) $l->montant;
 		$creation = substr( $l->date_creation, 0, 10 );
@@ -40,19 +44,19 @@ function ueb_cms_donnees( $annee_code, $periode ) {
 		$f['attendu'] += $m;
 		$f[ array( 'verifie' => 'encaisse', 'recu_envoye' => 'verification' )[ $l->statut ] ?? 'declare' ] += $m;
 		$premiers[ $l->compte_id ] = min( $premiers[ $l->compte_id ] ?? $creation, $creation );
-		$evts[ max( $debut, $creation ) ][] = array( 'quitus', $m );
+		$evts[ min( $fin, max( $debut, $creation ) ) ][] = array( 'quitus', $m );
 		if ( 'verifie' === $l->statut ) {
-			$evts[ max( $debut, $creation, substr( $l->date_verification ?: $l->date_modification, 0, 10 ) ) ][] = array( 'encaisse', $m );
+			$evts[ min( $fin, max( $debut, $creation, substr( $l->date_verification ?: $l->date_modification, 0, 10 ) ) ) ][] = array( 'encaisse', $m );
 		}
 	}
 	$c['etudiants'] = count( $premiers );
 	foreach ( $premiers as $jour ) {
-		$evts[ max( $debut, $jour ) ][] = array( 'etudiant', 0 );
+		$evts[ min( $fin, max( $debut, $jour ) ) ][] = array( 'etudiant', 0 );
 	}
 	$h = array_fill_keys( array( 'etudiants', 'encaisse', 'quitus', 'taux' ), array() );
 	$h['jours'] = array();
 	$cumul      = array( 'etudiant' => 0, 'quitus' => 0, 'encaisse' => 0, 'attendu' => 0 );
-	for ( $t = strtotime( $debut ); $t <= strtotime( $aujourdhui ); $t += DAY_IN_SECONDS ) {
+	for ( $t = strtotime( $debut ); $t <= strtotime( $fin ); $t += DAY_IN_SECONDS ) {
 		$jour = gmdate( 'Y-m-d', $t );
 		foreach ( $evts[ $jour ] ?? array() as list( $evenement, $montant ) ) {
 			if ( 'quitus' === $evenement ) {
@@ -89,10 +93,9 @@ function ueb_cms_tete( array $c ) {
  * l'encaissement et la file des reçus, puis la situation des quitus et le
  * reste à encaisser.
  *
- * @param array $d       Résultat de ueb_cms_donnees().
- * @param int   $periode Fenêtre des mini-courbes (7, 30 ou 90 jours).
+ * @param array $d Résultat de ueb_cms_donnees().
  */
-function ueb_cms_tableau( array $d, $periode ) {
+function ueb_cms_tableau( array $d ) {
 	$c     = $d['chiffres'];
 	$f     = $d['finances'];
 	$hist  = $d['historique'];
@@ -112,18 +115,10 @@ function ueb_cms_tableau( array $d, $periode ) {
 	);
 	?>
 	<div class="adm-pilotage">
-		<div class="adm-pilotage__contexte"><span class="adm-pilotage__repere" aria-hidden="true"></span><b>Vue d’ensemble</b><span>Frais médicaux de l’année en cours</span></div>
+		<div class="adm-pilotage__contexte"><span class="adm-pilotage__repere" aria-hidden="true"></span><b>Frais médicaux</b><span><?php echo esc_html( ueb_adm_contexte_exercice( $hist['jours'] ) ); ?></span></div>
 	</div>
-	<div class="adm-tendances-tete">
-		<p>Évolution sur <b><?php echo (int) $periode; ?> jours</b></p>
-		<nav class="adm-periodes" aria-label="Période des graphiques">
-			<?php foreach ( array( 7, 30, 90 ) as $jours ) : ?>
-				<a href="<?php echo esc_url( $url( array( 'periode' => $jours ) ) ); ?>" <?php echo $jours === (int) $periode ? 'aria-current="true"' : ''; ?>><?php echo (int) $jours; ?> jours</a>
-			<?php endforeach; ?>
-		</nav>
-	</div>
-	<div class="adm-kpis" aria-label="Indicateurs des frais médicaux de l’année">
-		<?php ueb_carte_attente( 'medicaux', null, $periode ); ?>
+	<div class="adm-kpis" aria-label="Indicateurs des frais médicaux de l’exercice">
+		<?php ueb_carte_attente( 'medicaux' ); ?>
 		<?php foreach ( $cartes as $carte ) : ?>
 			<article class="adm-kpi adm-kpi--<?php echo esc_attr( $carte[4] ); ?>">
 				<div class="adm-kpi__entete"><h2><?php echo esc_html( $carte[0] ); ?></h2><?php echo ueb_icone( $carte[3], 18 ); ?></div>
