@@ -45,7 +45,7 @@ $adresse = static fn( array $args = array() ) => add_query_arg( array_merge( arr
 			<?php if ( count( $tous ) > 1 || '' !== $recherche ) : ?>
 				<form class="ipes-outils" method="get" action="<?php echo esc_url( ueb_url_scolarite() ); ?>" role="search" aria-label="Filtrer les IPES" data-filtres-direct="scolarite-ipes-resultats"><?php ueb_champ_espace(); ?>
 					<input type="hidden" name="vue" value="ipes">
-					<label class="ipes-recherche"><span class="sr">Rechercher un IPES</span><?php echo ueb_icone( 'loupe', 17 ); ?><input type="search" name="q" value="<?php echo esc_attr( $recherche ); ?>" placeholder="Sigle ou nom" enterkeyhint="search" autocomplete="off"></label>
+					<label class="ipes-recherche"><span class="sr">Rechercher un IPES</span><?php echo ueb_icone( 'loupe', 17 ); ?><input type="search" name="q" value="<?php echo esc_attr( $recherche ); ?>" placeholder="Sigle ou nom" enterkeyhint="search" autocomplete="off"<?php echo ueb_attr_suggestions_liste( array_map( static fn( $i ) => array( $i->nom_fr, $i->sigle . ( $i->ville ? ', ' . $i->ville : '' ), $i->sigle ), $tous ) ); // phpcs:ignore -- échappé ?>></label>
 					<button class="adm-bouton" type="submit" data-filtres-bouton><?php echo ueb_icone( 'loupe', 16 ); ?>Rechercher</button>
 				</form>
 			<?php endif; ?>
@@ -189,7 +189,7 @@ $adresse = static fn( array $args = array() ) => add_query_arg( array_merge( arr
 					<form class="ipes-outils" method="get" action="<?php echo esc_url( ueb_url_scolarite() ); ?>" role="search" aria-label="Rechercher un étudiant" data-filtres-direct="sco-ipes-etudiants"><?php ueb_champ_espace(); ?>
 						<input type="hidden" name="vue" value="ipes">
 						<input type="hidden" name="ipes" value="<?php echo (int) $ipes->id; ?>">
-						<label class="ipes-recherche"><span class="sr">Rechercher un étudiant</span><?php echo ueb_icone( 'loupe', 17 ); ?><input type="search" name="q" value="<?php echo esc_attr( $recherche ); ?>" placeholder="Matricule, nom ou prénom" enterkeyhint="search" autocomplete="off"></label>
+						<label class="ipes-recherche"><span class="sr">Rechercher un étudiant</span><?php echo ueb_icone( 'loupe', 17 ); ?><input type="search" name="q" value="<?php echo esc_attr( $recherche ); ?>" placeholder="Matricule, nom ou prénom" enterkeyhint="search" autocomplete="off"<?php echo ueb_attr_suggestions_liste( array_map( static fn( $e ) => array( trim( $e->nom . ' ' . $e->prenom ), $e->matricule, $e->matricule ?: trim( $e->nom ) ), '' === $recherche ? $etudiants : ueb_ipes_etudiants( $ipes->id, array( 'tutelle' => $vues ) ) ) ); // phpcs:ignore -- échappé ?>></label>
 						<button class="adm-bouton" type="submit" data-filtres-bouton><?php echo ueb_icone( 'loupe', 16 ); ?>Rechercher</button>
 					</form>
 				</header>

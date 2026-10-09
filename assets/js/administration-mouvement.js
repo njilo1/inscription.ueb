@@ -119,10 +119,12 @@
 		$$(".adm-kpi", tableau).forEach((carte, i) => {
 			const t = i * 0.09;
 			apparaitre(ouverture, $(".adm-kpi__valeur", carte), t, 1.6);
+			/* Carte à deux types : chaque chiffre compte de son côté. */
+			$$(".adm-kpi__type dd", carte).forEach((dd) => apparaitre(ouverture, dd, t, 1.6));
 			const trace = $(".adm-spark__zone svg", carte);
 			if (trace) ouverture.to(trace, { clipPath: "inset(-8px 0% -8px -8px)", duration: 1.35, ease: "power2.inOut" }, t + 0.08);
-			const fin = $(".adm-spark__fin", carte);
-			if (fin) ouverture.fromTo(fin, { scale: 0, transformOrigin: "50% 50%" }, { scale: 1, duration: 0.55, ease: "back.out(2.4)" }, t + 1.3);
+			const fins = $$(".adm-spark__fin", carte);
+			if (fins.length) ouverture.fromTo(fins, { scale: 0, transformOrigin: "50% 50%" }, { scale: 1, duration: 0.55, ease: "back.out(2.4)" }, t + 1.3);
 			apparaitre(ouverture, $(".adm-spark figcaption b", carte), t + 1.1, 1);
 		});
 
@@ -157,21 +159,34 @@
 			apparaitre(tl, $(".adm-finances__total b", finances), 0.9, 1.4);
 		});
 
-		/* ---------- 3. Évolution : les courbes se tracent ---------- */
+		/* ---------- 3. Évolution des quitus : l'anneau des statuts se balaie
+		   (Remotion), celui de la semaine par-dessus ; chaque chiffre de la
+		   légende s'allume quand le balayage atteint son statut ---------- */
 		const evolution = $(".adm-evolution", tableau);
 		quandVisible(evolution, () => {
-			const tl = gsap.timeline();
-			const trace = $(".courbes__trace", evolution);
-			if (trace) tl.to(trace, { clipPath: "inset(0px 0% 0px 0px)", duration: 1.5, ease: "power2.inOut" }, 0);
-			tl.fromTo($$(".courbes__point--fin", evolution), { scale: 0 }, { scale: 1, opacity: 1, duration: 0.5, ease: "back.out(2.2)", stagger: 0.1 }, 1.35);
-			tl.fromTo($$(".courbes__fin", evolution), { x: -8 }, { x: 0, opacity: 1, duration: 0.5, ease: "power2.out", stagger: 0.1 }, 1.4);
-			$$(".adm-evolution__bilan b", evolution).forEach((b, i) => apparaitre(tl, b, 0.35 + i * 0.1, 1.3));
+			const anneau = $(".adm-anneau-double--entree", evolution);
+			if (!anneau) return;
+			const lire = (cle) => { try { return JSON.parse(anneau.dataset[cle] || "null"); } catch (e) { return null; } };
+			const interieur = lire("interieur");
+			const exterieur = lire("exterieur");
+			const monte = interieur && exterieur && monterDonut(anneau, exterieur) && monterDonut(anneau, interieur);
+			if (!monte) gsap.to($$("svg .donut-part", anneau), { opacity: 1, duration: 0.8, stagger: 0.08 });
+			const tl = gsap.timeline({ delay: 0.13 });
+			apparaitre(tl, $(".adm-anneau-double__centre b", anneau), 0, 1.8, "power2.inOut");
+			apparaitre(tl, $(".adm-anneau-double__centre em", anneau), 1.3, 1);
+			/* Début de chaque statut sur le tour (le balayage Remotion dure 1,8 s). */
+			const departs = {};
+			let debut = 0;
+			(interieur?.parts || []).forEach((p) => { if (p.cle !== "ecart" && !(p.cle in departs)) departs[p.cle] = debut; debut += p.valeur; });
+			$$(".adm-anneau-double__legende li", anneau.closest(".adm-evolution__corps")).forEach((li) => {
+				apparaitre(tl, $("b", li), 1.8 * ((departs[li.dataset.cle] ?? 0) / 100), 1.1);
+			});
 		});
 
 		/* ---------- 4. Situation des quitus et comparaison : barres en cascade ---------- */
 		const barres = (panneau, pas, delai = 0) => {
 			const tl = gsap.timeline({ delay: delai });
-			apparaitre(tl, $(".adm-statistiques__total b", panneau), 0, 1.3);
+			$$(".adm-statistiques__total b", panneau).forEach((b) => apparaitre(tl, b, 0, 1.3)); // un total par type de quitus
 			$$(".adm-barre", panneau).forEach((barre, i) => {
 				const t = 0.15 + i * pas;
 				tl.to($("i", barre), { scaleX: 1, duration: 1.05, ease: SORTIE }, t);
@@ -195,7 +210,7 @@
 			quandVisible(ligne, (rang) => {
 				const tl = gsap.timeline({ delay: rang * 0.06 });
 				apparaitre(tl, $(".adm-registre__effectif b", ligne), 0, 1.1);
-				apparaitre(tl, $(".adm-registre__total b", ligne), 0.05, 1.1);
+				$$(".adm-registre__total b", ligne).forEach((b) => apparaitre(tl, b, 0.05, 1.1)); // un total par type de quitus
 				const mesure = $(".adm-registre__mesure .suivi-barre", ligne);
 				if (mesure) tl.to(mesure, { clipPath: "inset(0px 0% 0px 0px)", duration: 1.1, ease: "power3.inOut" }, 0.1);
 				apparaitre(tl, $(".adm-registre__mesure > b", ligne), 0.1, 1.1);
@@ -259,19 +274,24 @@
 				});
 			});
 		}
-		const recouvrement = $(".graphe--filieres");
-		if (recouvrement) {
-			const lignes = $$(".filieres__ligne", recouvrement);
-			gsap.set($$(".suivi-barre", recouvrement), { clipPath: "inset(0px 100% 0px 0px)" });
-			gsap.set($$(".filieres__taux", recouvrement), { opacity: 0 });
-			quandVisible(recouvrement, () => {
-				const tl = gsap.timeline();
-				lignes.forEach((li, i) => {
-					tl.to($(".suivi-barre", li), { clipPath: "inset(0px 0% 0px 0px)", duration: 1.1, ease: "power3.inOut" }, i * 0.08);
-					apparaitre(tl, $(".filieres__taux", li), i * 0.08, 1.1);
+		/* Recouvrement par filière : pour chaque filière, la colonne de l'attendu
+		   puis celle de l'encaissé montent (barres en largeur sur téléphone), leurs
+		   montants comptent avec elles ; le constat suit. */
+		const recouvrement = $(".adm-recouvrement", tableau);
+		quandVisible(recouvrement, () => {
+			const tl = gsap.timeline({ delay: 0.1 });
+			const sens = window.matchMedia("(max-width: 640px)").matches ? "scaleX" : "scaleY";
+			apparaitre(tl, $(".adm-recouvrement__montant b", recouvrement), 0, 1.5);
+			$$(".adm-recouvrement__filiere", recouvrement).forEach((li, i) => {
+				const t = 0.15 + i * 0.1;
+				$$(".adm-recouvrement__col", li).forEach((col, k) => {
+					tl.to($("i", col), { [sens]: 1, duration: 0.95, ease: SORTIE }, t + k * 0.12);
+					apparaitre(tl, $("b", col), t + k * 0.12, 1.1);
 				});
+				apparaitre(tl, $(".adm-recouvrement__taux b", li), t + 0.25, 1);
 			});
-		}
+			$$(".adm-recouvrement__constat b", recouvrement).forEach((b) => apparaitre(tl, b, 0.9, 1.1));
+		});
 	}
 
 	if (!paiements) return;

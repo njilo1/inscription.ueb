@@ -80,7 +80,7 @@ function ueb_cms_tete( array $c ) {
 		'titre'      => 'Tableau de bord',
 		'sous_titre' => sprintf( 'Frais médicaux, %s : %d quitus pour %s cette année.', $etab ? $etab['fr'] : 'tous les établissements', $c['quitus'], ueb_suivi_etudiants( $c['etudiants'] ) ),
 		/* Statistiques seules (Chef CMS…) : pas de lien vers des reçus qu'il ne peut pas ouvrir. */
-		'actions'    => ueb_bouton_imprimer() . ( in_array( 'medicaux', ueb_types_quitus_visibles(), true ) ? ueb_adm_action( ueb_url_recus_attente( 'medicaux', false ), 'Tous les reçus', 'recu', true ) : '' ),
+		'actions'    => in_array( 'medicaux', ueb_types_quitus_visibles(), true ) ? ueb_adm_action( ueb_url_recus_attente( 'medicaux', false ), 'Tous les reçus', 'recu', true ) : '',
 	) );
 }
 

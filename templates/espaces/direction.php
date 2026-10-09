@@ -435,7 +435,7 @@ ueb_page_debut( array(
 								<input type="hidden" name="vue" value="personnel">
 								<label class="gestion-champ gestion-champ--large">
 									<span>Rechercher</span>
-									<span class="gestion-recherche"><?php echo ueb_icone( 'loupe', 16 ); ?><input type="search" name="q" value="<?php echo esc_attr( $recherche ); ?>" placeholder="Nom, identifiant ou e-mail"></span>
+									<span class="gestion-recherche"><?php echo ueb_icone( 'loupe', 16 ); ?><input type="search" name="q" value="<?php echo esc_attr( $recherche ); ?>" placeholder="Nom, identifiant ou e-mail" autocomplete="off"<?php echo ueb_attr_suggestions_liste( array_map( static fn( $u ) => array( $u->display_name ?: $u->user_login, $u->user_login, $u->user_login ), array_filter( ueb_agents(), static fn( $u ) => $totale || array_intersect( ueb_etabs_autorises( $u->ID ), $mes_etabs ) ) ) ); // phpcs:ignore -- échappé ?>></span>
 								</label>
 								<button class="adm-bouton" type="submit">Rechercher</button>
 							</form>

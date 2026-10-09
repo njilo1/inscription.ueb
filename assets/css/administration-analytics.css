@@ -1,5 +1,5 @@
 /* Composition analytique UEb, isolée des animations du back-office. */
-.adm-dashboard { --dash-foret:#1d5a38; --dash-bleu:#1f6f94; --dash-or:#d49a1e; --dash-neutre:#dce6df; --dash-generes:#597f37; --adm-rayon:10px; --adm-ombre:0 3px 18px -12px rgba(15,44,31,.16); font-variant-numeric:tabular-nums; }
+.adm-dashboard { --st-verifie:#18864a; --st-verifier:#3b6fd8; --st-corriger:#d8463c; --st-payer:#e9a400; --dash-foret:#1d5a38; --dash-bleu:#1f6f94; --dash-or:#d49a1e; --dash-neutre:#dce6df; --dash-generes:#597f37; --adm-rayon:10px; --adm-ombre:0 3px 18px -12px rgba(15,44,31,.16); font-variant-numeric:tabular-nums; }
 .espace-admin .bo-contenu.adm-dashboard { grid-template-columns:minmax(0,1fr); gap:1.15rem; padding:1.8rem clamp(1rem,2.2vw,2.4rem) 3rem; }
 .adm-dashboard .adm-tete { align-items:center; padding-bottom:1.05rem; border-bottom:1px solid var(--filet); }
 .adm-dashboard .adm-tete h1 { font-size:clamp(1.7rem,2.15vw,2.3rem); }
@@ -79,25 +79,6 @@
 .adm-periodes a { display:grid; place-items:center; padding:0 .6rem; min-height:40px; color:var(--gris); font-size:.8rem; text-decoration:none; border-radius:5px; transition:background-color .18s; }
 .adm-periodes a:hover { color:var(--encre); background:var(--adm-puce); }
 .adm-periodes a[aria-current] { background:var(--blanc); color:var(--encre); font-weight:700; box-shadow:0 1px 4px rgba(15,44,31,.12); }
-.adm-dashboard .adm-evolution .graphe { flex:1; border:0; padding:0; background:none; box-shadow:none; }
-.adm-evolution .graphe__entete { min-height:62px; }
-.adm-evolution .courbes__resume { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); }
-.adm-evolution .courbes { --courbes-h:190px; grid-template-columns:auto minmax(0,1fr); grid-template-rows:var(--courbes-h) auto auto; margin-top:.3rem; }
-.adm-evolution .courbes__fins { grid-area:3 / 1 / auto / -1; display:flex; flex-wrap:wrap; justify-content:center; gap:.5rem 1.2rem; margin:.4rem 0 .7rem; }
-.adm-evolution .courbes__fin { position:static; translate:none; display:flex; gap:.4rem; }
-.adm-evolution .courbes__fin b { font-size:.8rem; }
-.adm-evolution .courbes__fin span { font-size:.78rem; }
-.adm-evolution .courbes__aire { fill:var(--dash-foret); fill-opacity:.17; }
-.adm-evolution .courbes__ligne--generes, .adm-evolution .courbes__cle--generes path { stroke:var(--dash-generes); }
-.adm-evolution .courbes__point--generes { background:var(--dash-generes); }
-.adm-evolution .courbes__ligne--envoyes, .adm-evolution .courbes__cle--envoyes path { stroke:var(--dash-bleu); }
-.adm-evolution .courbes__point--envoyes { border-color:var(--dash-bleu); }
-.adm-evolution__bilan { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); padding-top:.85rem; border-top:1px solid var(--filet); margin-top:auto; }
-.adm-evolution__bilan > div { display:grid; justify-items:center; gap:.1rem; padding:.1rem .5rem; text-align:center; }
-.adm-evolution__bilan > div + div { border-left:1px solid var(--filet); }
-.adm-evolution__bilan b { font-size:1.25rem; line-height:1.2; font-weight:600; }
-.adm-evolution__bilan span { font-size:.74rem; color:var(--gris); }
-.adm-evolution .graphe__vide { min-height:220px; display:flex; align-items:center; justify-content:center; color:var(--gris); }
 .adm-secondaire { display:grid; grid-template-columns:minmax(0,2.35fr) minmax(0,.9fr); gap:1.15rem; }
 .adm-statistiques__total { display:flex; align-items:baseline; gap:.65rem; margin:.2rem 0 1.1rem; }
 .adm-statistiques__total b { font-size:2.2rem; font-weight:600; line-height:1.1; letter-spacing:-.035em; }
@@ -137,7 +118,7 @@
 .adm-dashboard .adm-registre { padding:0; }
 .adm-dashboard .adm-complements.adm-grille { grid-template-columns:minmax(0,1fr) minmax(0,1.35fr) minmax(0,.9fr); gap:1.15rem; }
 .adm-dashboard .adm-complements.adm-grille > * { grid-column:auto; }
-:root[data-theme="sombre"] .adm-dashboard { --dash-foret:#8fd6a8; --dash-bleu:#7cc0e6; --dash-or:#e9b949; --dash-neutre:#36463c; --dash-generes:#69b77b; }
+:root[data-theme="sombre"] .adm-dashboard { --st-verifie:#2a9a58; --st-verifier:#5b8ff0; --st-corriger:#e05f55; --st-payer:#c99419; --dash-foret:#8fd6a8; --dash-bleu:#7cc0e6; --dash-or:#e9b949; --dash-neutre:#36463c; --dash-generes:#69b77b; }
 @media (min-width:961px) and (max-width:1250px) {
  .adm-kpis { gap:.6rem; } .adm-kpi { padding:.95rem .8rem .85rem; }
  .adm-kpi__entete .icone { display:none; } .adm-kpi__entete h2 { font-size:.8rem; }
@@ -172,7 +153,6 @@
 @media (max-width:420px) {
  .espace-admin .bo-contenu.adm-dashboard { padding-inline:.8rem; } .adm-dashboard .adm-panneau { padding-inline:1rem; } .adm-dashboard .adm-registre { padding:0; }
  .adm-kpis { gap:.65rem; } .adm-kpi { padding-inline:.8rem; } .adm-kpi__entete { gap:.2rem; } .adm-kpi__entete h2 { font-size:.83rem; } .adm-kpi__entete .icone { width:15px; }
- .adm-evolution__bilan { grid-template-columns:repeat(2,minmax(0,1fr)); gap:.85rem 0; } .adm-evolution__bilan > div:nth-child(3) { border-left:0; }
  .adm-donut b { font-size:1.8rem; } .adm-finances { column-gap:.4rem; } .adm-finances__legende li { font-size:.78rem; }
 }
 @media (prefers-reduced-motion:reduce) { .adm-barre i,.adm-spark__ligne { animation:none; } .adm-periodes a,.adm-spark__lecture { transition:none; } }
@@ -205,3 +185,162 @@
 .adm-attente__nouveaux { display:inline-block; margin-left:.55rem; padding:.12rem .5rem; border-radius:999px; background:#fff; color:#a3241c; font:700 .72rem/1.4 var(--f-texte); letter-spacing:0; vertical-align:.45em; white-space:nowrap; animation:adm-attente-arrivee .45s var(--ease-sortie); }
 @keyframes adm-attente-arrivee { from { scale:.6; opacity:0; } }
 @media (prefers-reduced-motion:reduce) { .adm-attente { transition:none; } .adm-attente__nouveaux { animation:none; } }
+
+/* Droits universitaires et frais médicaux, jamais additionnés : une couleur par
+   type (paire validée, contraste et daltonisme), et les frais médicaux en
+   tirets, pour ne pas dépendre de la couleur seule. */
+.adm-dashboard { --type-droits:#2e8a4c; --type-medicaux:#3a78c9; }
+:root[data-theme="sombre"] .adm-dashboard, .adm-dashboard .adm-kpi { --type-droits:#4dab66; --type-medicaux:#4f8fe0; }
+.adm-type-cle { display:inline-block; flex:none; width:14px; height:3px; border-radius:2px; background:var(--type-droits); vertical-align:middle; }
+.adm-type-cle--medicaux { background:repeating-linear-gradient(90deg,var(--type-medicaux) 0 4px,transparent 4px 6px); }
+
+/* Carte à deux types : un chiffre de chaque côté d'un filet. */
+.adm-kpi__types { position:relative; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:1.2rem; margin:.65rem 0 .3rem; }
+.adm-kpi__types::after { content:""; position:absolute; top:.25rem; bottom:.25rem; left:50%; width:1px; background:rgba(255,255,255,.18); }
+.adm-kpi__type { display:flex; flex-direction:column-reverse; justify-content:flex-end; gap:.3rem; min-width:0; }
+.adm-kpi__type dd { margin:0; font-size:clamp(1.45rem,1.9vw,2.15rem); font-weight:600; line-height:1.1; letter-spacing:-.03em; overflow-wrap:anywhere; }
+.adm-kpi__type dt { display:flex; align-items:flex-start; gap:.4rem; font-size:.74rem; line-height:1.3; color:rgba(255,255,255,.85); }
+.adm-kpi__type dt .adm-type-cle { margin-top:.42em; }
+.adm-spark--double .adm-spark__ligne { stroke:var(--type-droits); }
+.adm-spark--double .adm-spark__ligne--seconde { stroke:var(--type-medicaux); stroke-dasharray:4 3; }
+.adm-spark--double .adm-spark__fin { fill:var(--type-droits); }
+.adm-spark--double .adm-spark__fin--seconde { fill:var(--type-medicaux); }
+.adm-spark--double .adm-spark__point--seconde { stroke:var(--type-medicaux); }
+
+/* Évolution des quitus : un type à la fois, choisi par onglets. */
+.adm-onglets { position:absolute; top:1.05rem; right:1.2rem; z-index:1; display:inline-flex; gap:2px; padding:3px; border:1px solid var(--filet); border-radius:10px; background:var(--papier); }
+.adm-onglets [role="tab"] { display:inline-flex; align-items:center; gap:.45rem; min-height:34px; padding:0 .75rem; border:0; border-radius:7px; background:transparent; color:var(--gris); font:600 .8rem/1 var(--f-texte); white-space:nowrap; cursor:pointer; transition:background-color .15s var(--ease-sortie), color .15s var(--ease-sortie); }
+.adm-onglets [role="tab"]:hover { color:var(--encre); }
+.adm-onglets [aria-selected="true"] { background:var(--blanc); color:var(--encre); box-shadow:0 1px 2px rgba(15,44,31,.12); }
+.adm-onglets [role="tab"]:focus-visible { outline:2px solid var(--or); outline-offset:1px; }
+.adm-evolution:has(.adm-onglets) .adm-evolution__tete { padding-right:19.5rem; }
+.adm-evolution__type { display:flex; flex:1; flex-direction:column; }
+.adm-evolution__type[hidden] { display:none; }
+
+/* Situation des quitus : un groupe par type. */
+.adm-statistiques--types .adm-statistiques__groupe + .adm-statistiques__groupe { margin-top:1.1rem; padding-top:1rem; border-top:1px solid var(--filet); }
+.adm-statistiques__type { display:flex; align-items:center; gap:.5rem; margin:0 0 .2rem; font:600 .82rem/1.3 var(--f-texte); color:var(--gris); }
+.adm-statistiques--types .adm-statistiques__total { margin-bottom:.7rem; }
+.adm-statistiques--types .adm-statistiques__total b { font-size:1.75rem; }
+
+/* Registre des établissements : une ligne par type, une colonne par type dans le tiroir. */
+.adm-registre__type { display:block; }
+.adm-registre__type + .adm-registre__type { margin-top:.2rem; }
+.adm-registre__total .adm-type-cle { margin-right:.45rem; }
+.adm-detail__liste--types li { grid-template-columns:16px minmax(0,1fr) repeat(var(--types,1),2.6rem); }
+.adm-detail__liste--types li b { text-align:right; }
+.adm-detail__liste li.adm-detail__entete { min-height:22px; font-size:.7rem; }
+.adm-detail__entete span:nth-child(n+3) { text-align:right; }
+
+@media (max-width:1280px) {
+ .adm-onglets { position:static; align-self:flex-start; margin-bottom:.6rem; }
+ .adm-evolution:has(.adm-onglets) .adm-evolution__tete { padding-right:0; }
+}
+@media (prefers-reduced-motion:reduce) { .adm-onglets [role="tab"] { transition:none; } }
+@media print { .adm-onglets { display:none; } .adm-evolution__type[hidden] { display:flex; } }
+
+/* ---------- Recouvrement par filière : colonnes attendu / encaissé ----------
+   Le gris porte la référence (droits attendus), le vert ce qui est encaissé ;
+   chaque colonne a son montant écrit. Sous 640 px, barres horizontales. */
+.adm-recouvrement { --plot:210px; --reserve:1.7rem; display:flex; flex-direction:column; }
+.adm-recouvrement__haut { display:flex; flex-wrap:wrap; align-items:flex-end; justify-content:space-between; gap:1rem 2rem; margin-bottom:1.5rem; }
+.adm-recouvrement__montant { display:grid; gap:.25rem; margin:0; }
+.adm-recouvrement__montant b { display:flex; align-items:baseline; gap:.4rem; font:700 2.15rem/1 var(--f-texte); letter-spacing:-.02em; color:var(--encre); }
+.adm-recouvrement__montant small { font-size:.9rem; font-weight:600; letter-spacing:0; color:var(--gris); }
+.adm-recouvrement__montant span { font-size:.86rem; color:var(--gris); }
+.adm-recouvrement__constat { display:flex; align-items:flex-start; gap:.55rem; max-width:34rem; margin:0; padding:.65rem .85rem; border:1px solid var(--filet); border-radius:10px; background:var(--papier); font-size:.86rem; line-height:1.45; color:var(--gris); }
+.adm-recouvrement__constat .icone { flex:none; margin-top:.1rem; color:var(--dash-foret); }
+.adm-recouvrement__constat b { font-weight:700; color:var(--encre); }
+.adm-recouvrement__graphe { display:grid; grid-template-columns:4.4rem minmax(0,1fr); gap:.6rem; }
+.adm-recouvrement__axe { position:relative; align-self:start; height:calc(var(--plot) + var(--reserve)); font-size:.7rem; color:var(--gris); }
+.adm-recouvrement__axe span { position:absolute; right:0; bottom:calc(var(--y) * var(--plot)); translate:0 50%; white-space:nowrap; }
+.adm-recouvrement__zone { position:relative; min-width:0; }
+.adm-recouvrement__grille { position:absolute; top:var(--reserve); left:0; right:0; height:var(--plot); pointer-events:none; }
+.adm-recouvrement__grille i { position:absolute; left:0; right:0; bottom:calc(var(--y) * var(--plot)); border-top:1px solid var(--filet); }
+.adm-recouvrement__grille i:first-child { border-top-color:var(--filet-fort); }
+.adm-recouvrement__filieres { position:relative; display:grid; grid-template-columns:repeat(var(--n),minmax(0,1fr)); gap:0 clamp(.4rem,1.5vw,1.4rem); margin:0; padding:0; list-style:none; }
+.adm-recouvrement__filiere { position:relative; display:grid; grid-template-rows:calc(var(--plot) + var(--reserve)) auto auto auto; justify-items:center; text-align:center; border-radius:10px; outline:none; }
+.adm-recouvrement__filiere:focus-visible { box-shadow:0 0 0 3px var(--or); }
+.adm-recouvrement__paire { display:flex; align-items:flex-end; justify-content:center; gap:5px; width:100%; height:100%; }
+.adm-recouvrement__col { position:relative; display:flex; flex-direction:column; justify-content:flex-end; width:min(44%,52px); height:calc(var(--h) * var(--plot)); }
+.adm-recouvrement__col i { display:block; height:100%; border-radius:4px 4px 0 0; transform-origin:center bottom; transition:filter .18s; }
+.adm-recouvrement__col--attendu i, .adm-recouvrement__puce--attendu { background:var(--dash-neutre); box-shadow:inset 0 0 0 1px var(--filet-fort); }
+.adm-recouvrement__col--encaisse i, .adm-recouvrement__puce--encaisse { background:var(--dash-foret); }
+.adm-recouvrement__col b { position:absolute; bottom:calc(100% + .3rem); left:50%; translate:-50% 0; font-size:.76rem; font-weight:700; white-space:nowrap; color:var(--encre); }
+.adm-recouvrement__col--attendu b { font-weight:600; color:var(--gris); }
+.adm-recouvrement__filiere:is(:hover,:focus-visible) .adm-recouvrement__col i { filter:brightness(1.08); }
+.adm-recouvrement__nom { display:-webkit-box; max-width:100%; margin-top:.65rem; overflow:hidden; -webkit-line-clamp:2; -webkit-box-orient:vertical; font-size:.84rem; font-weight:600; line-height:1.3; color:var(--encre); }
+.adm-recouvrement__taux { margin-top:.2rem; font-size:.78rem; color:var(--gris); }
+.adm-recouvrement__taux b { font-size:.95rem; color:var(--encre); }
+.adm-recouvrement__filiere small { margin-top:.1rem; font-size:.74rem; color:var(--gris); }
+.adm-recouvrement__bulle { position:absolute; z-index:3; top:0; left:50%; translate:-50% 0; width:max-content; max-width:15rem; padding:.6rem .75rem; border-radius:8px; background:var(--encre); color:var(--blanc); box-shadow:var(--ombre-2); font-size:.76rem; line-height:1.55; text-align:left; opacity:0; visibility:hidden; pointer-events:none; transition:opacity .15s, visibility .15s; }
+.adm-recouvrement__bulle b { display:block; margin-bottom:.1rem; }
+.adm-recouvrement__filiere:first-child .adm-recouvrement__bulle { left:0; translate:0 0; }
+.adm-recouvrement__filiere:last-child:not(:first-child) .adm-recouvrement__bulle { left:auto; right:0; translate:0 0; }
+.adm-recouvrement__filiere:is(:hover,:focus-visible) .adm-recouvrement__bulle { opacity:1; visibility:visible; }
+.adm-recouvrement__pied { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:.5rem 1.5rem; margin-top:1.2rem; padding-top:.85rem; border-top:1px solid var(--filet); }
+.adm-recouvrement__legende { display:flex; flex-wrap:wrap; gap:.4rem 1.4rem; margin:0; padding:0; list-style:none; font-size:.78rem; color:var(--gris); }
+.adm-recouvrement__legende li { display:inline-flex; align-items:center; gap:.45rem; }
+.adm-recouvrement__legende i { width:10px; height:10px; border-radius:3px; }
+.adm-recouvrement__tout { display:inline-flex; align-items:center; gap:.35rem; min-height:44px; font-size:.88rem; font-weight:700; color:var(--foret-700); text-decoration:none; }
+.adm-recouvrement__tout .icone { transition:translate .18s var(--ease-sortie); }
+.adm-recouvrement__tout:hover { text-decoration:underline; text-underline-offset:3px; }
+.adm-recouvrement__tout:hover .icone { translate:3px 0; }
+.adm-recouvrement__tout:focus-visible { outline:2px solid var(--or); outline-offset:2px; border-radius:4px; }
+:root[data-theme="sombre"] .adm-recouvrement__tout { color:var(--dash-foret); }
+/* Sans la comparaison des filières (un établissement affiché) : deux cartes égales. */
+.adm-dashboard .adm-complements--duo.adm-grille { grid-template-columns:repeat(2,minmax(0,1fr)); }
+@media (max-width:1180px) { .adm-dashboard .adm-complements--duo.adm-grille > .graphe { grid-column:auto; } }
+@media (max-width:760px) { .adm-dashboard .adm-complements--duo.adm-grille { grid-template-columns:minmax(0,1fr); } }
+@media (max-width:900px) { .adm-recouvrement__col b { font-size:.7rem; } }
+@media (max-width:640px) {
+ .adm-recouvrement__graphe { display:block; }
+ .adm-recouvrement__axe, .adm-recouvrement__grille, .adm-recouvrement__bulle { display:none; }
+ .adm-recouvrement__filieres { grid-template-columns:minmax(0,1fr); gap:1.1rem; }
+ .adm-recouvrement__filiere { grid-template-rows:none; grid-template-columns:minmax(0,1fr) auto; align-items:baseline; justify-items:stretch; column-gap:.75rem; text-align:left; }
+ .adm-recouvrement__nom { grid-column:1; grid-row:1; margin:0; -webkit-line-clamp:1; }
+ .adm-recouvrement__taux { grid-column:2; grid-row:1; margin:0; }
+ .adm-recouvrement__filiere small { grid-column:1 / -1; grid-row:2; }
+ .adm-recouvrement__paire { grid-column:1 / -1; grid-row:3; flex-direction:column; align-items:stretch; gap:4px; height:auto; margin-top:.45rem; padding-right:4.4rem; }
+ .adm-recouvrement__col { width:calc(var(--h) * 100%); height:12px; }
+ .adm-recouvrement__col i { border-radius:0 3px 3px 0; transform-origin:left center; }
+ .adm-recouvrement__col b { top:50%; bottom:auto; left:calc(100% + .4rem); translate:0 -50%; font-size:.72rem; }
+}
+@media (prefers-reduced-motion:reduce) { .adm-recouvrement__col i, .adm-recouvrement__bulle, .adm-recouvrement__tout .icone { transition:none; } }
+
+
+/* ---------- Évolution des quitus : anneau double ----------
+   Intérieur : les quitus de l'année par statut ; extérieur, fin : la part de
+   chaque statut générée ces 7 derniers jours. Survoler une ligne de la légende
+   ne laisse que son statut dans les deux anneaux. */
+.adm-evolution { container-type:inline-size; }
+.adm-evolution__tete { min-height:56px; }
+.adm-evolution__corps { flex:1; display:grid; grid-template-columns:minmax(170px,240px) minmax(0,1fr); align-items:center; gap:1.2rem 2.4rem; padding-block:.4rem .2rem; }
+.adm-anneau-double { position:relative; width:100%; max-width:240px; aspect-ratio:1; margin-inline:auto; }
+.adm-anneau-double > svg { display:block; width:100%; height:100%; overflow:visible; }
+.adm-anneau-double .animation--donut { position:absolute; inset:0; width:100%; max-width:none; aspect-ratio:1; }
+.adm-anneau-double .animation--donut svg { transform:none; }
+.adm-anneau-double:has(.animation--donut.est-pret) > svg { visibility:hidden; }
+.adm-anneau-double .donut-part { transition:opacity .25s var(--ease-sortie); }
+.adm-anneau-double__centre { position:absolute; inset:0; z-index:1; display:flex; flex-direction:column; align-items:center; justify-content:center; margin:0; text-align:center; pointer-events:none; }
+.adm-anneau-double__centre b { font:700 2.15rem/1 var(--f-texte); letter-spacing:-.02em; color:var(--encre); }
+.adm-anneau-double__centre span { margin-top:.2rem; font-size:.8rem; color:var(--gris); }
+.adm-anneau-double__centre em { margin-top:.4rem; font-size:.78rem; font-style:normal; font-weight:700; color:var(--encre); }
+.adm-anneau-double__legende { display:grid; margin:0; padding:0; list-style:none; }
+.adm-anneau-double__legende li { display:grid; grid-template-columns:12px minmax(0,1fr) auto; align-items:center; gap:.75rem; min-height:48px; padding:.35rem .6rem; border-radius:8px; font-size:.92rem; transition:background-color .2s; }
+.adm-anneau-double__legende li + li { box-shadow:0 -1px 0 var(--filet); }
+.adm-anneau-double__legende li:is(:hover,:focus-visible) { background:var(--adm-puce); outline:none; }
+.adm-anneau-double__legende li:focus-visible { box-shadow:0 0 0 2px var(--or); }
+.adm-anneau-double__legende i { width:12px; height:12px; border-radius:3px; }
+.adm-anneau-double__legende small { display:block; font-size:.78rem; color:var(--gris); }
+.adm-anneau-double__legende b { font-size:1.15rem; font-weight:700; color:var(--encre); }
+.adm-evolution__corps:has(li[data-cle="verifie"]:is(:hover,:focus-visible)) .donut-part:not([class*="donut-part--verifie"]),
+.adm-evolution__corps:has(li[data-cle="recu_envoye"]:is(:hover,:focus-visible)) .donut-part:not([class*="donut-part--recu_envoye"]),
+.adm-evolution__corps:has(li[data-cle="rejete"]:is(:hover,:focus-visible)) .donut-part:not([class*="donut-part--rejete"]),
+.adm-evolution__corps:has(li[data-cle="genere"]:is(:hover,:focus-visible)) .donut-part:not([class*="donut-part--genere"]) { opacity:.15; }
+.adm-evolution .graphe__vide { flex:1; min-height:220px; display:flex; align-items:center; justify-content:center; gap:.5rem; color:var(--gris); }
+@container (max-width:520px) {
+ .adm-evolution__corps { grid-template-columns:minmax(0,1fr); }
+ .adm-anneau-double { max-width:220px; }
+}
+@media (prefers-reduced-motion:reduce) { .adm-anneau-double .donut-part, .adm-anneau-double__legende li { transition:none; } }

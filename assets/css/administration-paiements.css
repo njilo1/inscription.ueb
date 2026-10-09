@@ -23,8 +23,10 @@
 .pay-btn:active { transform:scale(.97); }
 .pay-btn:disabled { opacity:.45; cursor:default; transform:none; }
 .pay-btn--discret { border-color:transparent; background:transparent; color:var(--gris); }
-.pay-apercu { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.15fr); gap:1.2rem; }
-.pay-kpis { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.95rem; }
+/* Quatre colonnes communes : les bilans, puis l'histogramme (deux colonnes) avec
+   la situation des étudiants et les contrôles, puis répartition, niveaux et écart. */
+.pay-kpis, .pay-apercu { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:1.2rem; }
+.pay-apercu > .pay-histogramme { grid-column:span 2; }
 .pay-kpi, .pay-panneau, .pay-tuile { min-width:0; border:1px solid color-mix(in srgb,var(--filet) 70%,transparent); border-radius:17px; background:var(--blanc); box-shadow:var(--pay-ombre); }
 .pay-kpi { display:flex; flex-direction:column; padding:1.15rem 1.2rem; }
 .pay-kpi header { display:flex; align-items:flex-start; justify-content:space-between; gap:.7rem; min-height:2.35rem; }
@@ -78,7 +80,22 @@
 .pay-couleur-droits { background:var(--pay-vert); }
 .pay-couleur-medicaux { background:var(--pay-or); }
 .pay-aucune-activite { margin:0 0 .8rem; color:var(--gris); font-size:.8rem; }
-.pay-secondaire { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1.7fr); gap:1.2rem; }
+.pay-duo { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:1.2rem; align-items:stretch; }
+.pay-duo > .pay-niveaux { grid-column:span 2; }
+.pay-duo > .pay-niveaux:last-child { grid-column:span 3; } /* aucun écart à rapprocher */
+/* Tuiles étirées à la hauteur de l'histogramme : le chiffre au centre, la
+   jauge et sa légende en bas. */
+@media (min-width:1251px) {
+ .pay-apercu > .pay-tuile .pay-tuile__chiffre { margin-block:auto; font-size:2.6rem; }
+ .pay-apercu > .pay-tuile .pay-tuile__details { margin-top:1rem; }
+}
+.pay-repartition { display:flex; flex-direction:column; container-type:inline-size; }
+.pay-repartition .pay-repartition__corps { flex:1; }
+@container (max-width:400px) {
+ .pay-repartition .pay-repartition__corps { flex-direction:column; align-items:stretch; justify-content:center; gap:1.2rem; }
+ .pay-repartition .pay-repartition__corps ul { flex:none; }
+ .pay-anneau { align-self:center; }
+}
 .pay-tuile { padding:1.15rem 1.25rem; display:flex; flex-direction:column; }
 .pay-tuile header { display:flex; align-items:center; gap:.65rem; }
 .pay-tuile h2 { margin:0; font:600 .85rem/1.35 var(--f-texte); color:var(--gris); }
@@ -171,15 +188,20 @@
 .pay-vide p { margin:0; font-size:.85rem; }
 :root[data-theme="sombre"] .adm-paiements { --pay-vert:#8fd6a8; --pay-partiel:#4d8a61; --pay-or:#e3b84f; --pay-piste:#2b3c30; --pay-bleu:#7cc0e6; }
 :root[data-theme="sombre"] .pay-kpi--medical .pay-kpi__repere, :root[data-theme="sombre"] .pay-type--medicaux, :root[data-theme="sombre"] .pay-etat--partiel { color:#8bc9eb; }
-@media (max-width:1250px) {
- .pay-apercu { grid-template-columns:minmax(0,1fr); }
- .pay-kpis { grid-template-columns:repeat(4,minmax(0,1fr)); }
- .pay-kpi { padding:1rem; } .pay-kpi header > span { display:none; }
- .pay-histogramme__graphe { height:180px; }
- .pay-secondaire { grid-template-columns:repeat(2,minmax(0,1fr)); }
- .pay-repartition { grid-column:1/-1; }
+/* Colonnes trop étroites pour trois panneaux : la répartition passe en bandeau. */
+@media (max-width:1400px) {
+ .pay-duo { grid-template-columns:minmax(0,1.1fr) minmax(0,1fr); }
+ .pay-duo > .pay-repartition, .pay-duo > .pay-niveaux:last-child { grid-column:1/-1; }
+ .pay-duo > .pay-niveaux { grid-column:auto; }
  .pay-repartition__corps { gap:2rem; } .pay-repartition ul { grid-template-columns:repeat(2,minmax(0,1fr)); }
 }
+@media (max-width:1250px) {
+ .pay-kpi { padding:1rem; } .pay-kpi header > span { display:none; }
+ .pay-histogramme__graphe { height:180px; }
+ .pay-apercu > .pay-histogramme { grid-column:1/-1; }
+ .pay-apercu > .pay-tuile { grid-column:span 2; }
+}
+@media (max-width:1100px) { .pay-duo { grid-template-columns:minmax(0,1fr); } }
 @media (max-width:760px) {
  .pay-kpis { grid-template-columns:repeat(2,minmax(0,1fr)); }
  .pay-contexte form { flex-wrap:wrap; width:100%; } .pay-contexte label { width:100%; }
@@ -197,7 +219,7 @@
  .espace-admin .bo-contenu.adm-paiements { padding:1.2rem .8rem 2rem; }
  .pay-kpis { gap:.7rem; } .pay-kpi { padding:.9rem; }
  .pay-kpi__valeur { font-size:1.6rem; } .pay-kpi h2 { min-height:2.3rem; }
- .pay-secondaire { gap:.7rem; } .pay-tuile { padding:1rem; }
+ .pay-apercu { gap:.7rem; } .pay-tuile { padding:1rem; }
  .pay-tuile header { align-items:flex-start; flex-direction:column; gap:.5rem; }
  .pay-tuile__chiffre { font-size:1.9rem; } .pay-tuile__chiffre > span { font-size:.8rem; }
  .pay-panneau { padding:1rem; } .pay-registre { padding:0; }
@@ -342,10 +364,6 @@ a.pay-ecart__ligne:hover > .icone { translate:2px 0; color:var(--encre); }
 .adm-anime .adm-paiements .pay-ecart__barre i { transform:scaleX(0); }
 @media (prefers-reduced-motion:reduce) { a.pay-ecart__ligne, .pay-ecart__ligne > .icone { transition:none; } }
 
-/* Recouvrement par niveau, à gauche de l'écart de rapprochement. */
-.pay-duo { display:grid; grid-template-columns:minmax(0,1.1fr) minmax(0,1fr); gap:1.2rem; align-items:stretch; }
-.pay-duo > :only-child { grid-column:1 / -1; }
-@media (max-width:1100px) { .pay-duo { grid-template-columns:minmax(0,1fr); } }
 
 /* Jauges verticales : taux au-dessus, niveau et effectif dessous. La ligne du
    taux moyen traverse toutes les colonnes à la même hauteur. */

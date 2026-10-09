@@ -100,21 +100,22 @@ if ( $autorise ) {
 		$vue = 'quitus';
 	}
 	$ici  = static fn( array $args = array() ) => esc_url( add_query_arg( $args, ueb_url_scolarite() ) );
-	$prov = $_SESSION['ueb_mdp_provisoire'] ?? null;
-	unset( $_SESSION['ueb_mdp_provisoire'] );
 	$prov_cellule = $_SESSION['ueb_mdp_cellule'] ?? null;
 	unset( $_SESSION['ueb_mdp_cellule'] );
 	/* Comptes que ce compte peut créer pour son établissement : rôles dont les
 	   droits restent dans les siens (jamais un nom de rôle écrit ici). */
 	$roles_creables = ueb_peut( 'ueb_creer_agents' ) ? ueb_roles_attribuables( true ) : array();
 	$cellules       = $roles_creables ? array_values( array_filter( ueb_agents(), static fn( $u ) => isset( $roles_creables[ ueb_role_du_compte( $u->ID ) ] ) && ueb_etab_agent( $u->ID ) === $etab_agent ) ) : array();
-	if ( 'comptes' === $vue ) {
+	if ( 'comptes' === $vue ) { // les comptes étudiants se gèrent dans l'espace de la cellule informatique
 		ueb_rediriger( ueb_url_cellule() );
 	}
 	/* Tableau de bord : même rendu que celui de l'administration (inc/administration-dashboard.php),
 	   sur les droits universitaires, ou celui du CMS sur les frais médicaux (inc/cms-tableau.php). */
 	$tableau     = 'bord' === $vue && ! $fiche;
 	$tableau_cms = $tableau && 'medicaux' === ueb_type_recus_courant();
+	/* Paiements : la page de l'administration (inc/administration-paiements.php),
+	   limitée à l'établissement de l'agent. */
+	$suivi_paie  = 'paiements' === $vue && ! $fiche;
 	$periode     = (int) ( $_GET['periode'] ?? 30 ); // phpcs:ignore -- lecture seule
 	$periode     = in_array( $periode, array( 7, 30, 90 ), true ) ? $periode : 30;
 }
@@ -194,13 +195,12 @@ ueb_page_debut( array(
 			);
 			?>
 
-			<div class="bo-contenu<?php echo $tableau ? ' adm adm-dashboard' : ''; ?>">
+			<div class="bo-contenu<?php echo $tableau ? ' adm adm-dashboard' : ( $suivi_paie ? ' adm adm-paiements' : '' ); ?>">
 				<?php
 				$titres = array(
 					'bord'     => array( 'Tableau de bord', sprintf( 'Bonjour %s. Voici où en sont les inscriptions %s.', wp_get_current_user()->display_name ?: wp_get_current_user()->user_login, $etab ? 'de ' . $etab['fr'] : 'de tous les établissements' ) ),
 					'quitus'   => 'medicaux' !== ueb_type_recus_courant() ? array( 'Reçus', 'Les reçus envoyés par les étudiants : retrouve un dossier, compare ses reçus aux originaux et rends ta décision.' ) : array( 'Reçus CMS', 'Les reçus des frais médicaux envoyés par les étudiants : compare-les aux originaux, puis valide-les ou renvoie-les.' ),
 					'etudiants' => array( 'Étudiants UEB', 'Les étudiants inscrits de ta portée et l’état de leurs droits de l’année, en lecture seule.' ),
-					'paiements' => array( 'Suivi des paiements', 'Droits universitaires attendus et encaissés, filière par filière. Seuls les reçus vérifiés comptent comme encaissés.' ),
 					'cellule'  => array( 'Comptes du personnel', 'Les comptes que tu crées pour ton établissement, avec un rôle aux droits inférieurs aux tiens.' ),
 					'ipes'     => array( 'IPES sous tutelle', 'Les établissements privés placés sous la tutelle de ton établissement : leurs étudiants et leurs reversements.' ),
 					'securite' => array( 'Sécurité', 'Le mot de passe de ton accès à l’Administration.' ),
@@ -208,6 +208,51 @@ ueb_page_debut( array(
 				list( $titre_vue, $sous_titre_vue ) = $titres[ $vue ] ?? $titres['bord'];
 				$stats_entete = ueb_gestion_stats( $annee['code'], $etab_agent, 'droits' ); // tableau de bord : droits universitaires
 				$a_verifier   = (int) ( $stats_entete['statuts']['recu_envoye'] ?? 0 );
+				/* Registre des reçus : filtres, dossiers et validations en attente, préparés avant
+				   l'en-tête, qui porte le bouton rouge des validations en attente. */
+				if ( 'quitus' === $vue && ! $fiche ) {
+					$filtres = array(
+						'annee'     => $annee['code'],
+						'etab'      => $etab_agent,
+						'statut'    => sanitize_key( $_GET['statut'] ?? '' ),
+						'paiements' => '', // un seul type de reçus par onglet : pas de filtre DU / FM
+						/* Un seul type de reçus par onglet : Reçus (droits) ou Reçus CMS (frais médicaux). */
+						'type'      => ueb_type_recus_courant(),
+						'q'         => sanitize_text_field( wp_unslash( $_GET['q'] ?? '' ) ),
+						'filiere'   => sanitize_text_field( wp_unslash( $_GET['filiere'] ?? '' ) ),
+						'niveau'    => sanitize_text_field( wp_unslash( $_GET['niveau'] ?? '' ) ),
+						'moyen'     => sanitize_text_field( wp_unslash( $_GET['moyen'] ?? '' ) ),
+						'page'      => (int) ( $_GET['p'] ?? 1 ),
+					);
+					if ( ! isset( UEB_STATUTS_QUITUS[ $filtres['statut'] ] ) ) {
+						$filtres['statut'] = '';
+					}
+					if ( ! isset( UEB_FILTRES_PAIEMENTS[ $filtres['paiements'] ] ) ) {
+						$filtres['paiements'] = '';
+					}
+					/* Une ligne par dossier : les droits universitaires (DU) et les frais
+					   médicaux (FM) d'un même étudiant sont réunis (inc/gestion.php). */
+					$dossiers    = ueb_gestion_stats_dossiers( $filtres );
+					$liste       = ueb_gestion_liste_dossiers( $filtres );
+					$options     = ueb_gestion_options_dossiers( $filtres );
+					$maintenant  = current_time( 'timestamp' );
+					$plus_ancien = $dossiers['plus_ancien'];
+					$attente     = (int) ( $dossiers['attente']->paiements ?? 0 );
+					$depuis      = $plus_ancien ? human_time_diff( strtotime( $plus_ancien->date_modification ), $maintenant ) : '';
+					/* Les compteurs et les pastilles parlent comme l'agent : ce qu'il
+					   a à valider, ce qui n'est pas encore validé, rejeté ou validé. */
+					$etats = array(
+						'recu_envoye' => array( 'compteur' => 'À valider', 'pastille' => 'À valider', 'icone' => 'envoyer', 'note' => 'Reçus envoyés, à contrôler', 'vide' => 'Les reçus envoyés par les étudiants s’afficheront ici, prêts à être vérifiés.' ),
+						'genere'      => array( 'compteur' => 'Non validés', 'pastille' => 'À payer', 'icone' => 'horloge', 'note' => 'Reçu pas encore envoyé', 'vide' => 'Les dossiers dont l’étudiant n’a pas encore envoyé le reçu s’afficheront ici.' ),
+						'rejete'      => array( 'compteur' => 'Rejetés', 'pastille' => 'Rejeté', 'icone' => 'alerte', 'note' => 'Renvoyés à l’étudiant', 'vide' => 'Les dossiers renvoyés à l’étudiant avec un motif s’afficheront ici.' ),
+						'verifie'     => array( 'compteur' => 'Validés', 'pastille' => 'Validé', 'icone' => 'check', 'note' => 'Tous les paiements vérifiés', 'vide' => 'Les dossiers dont tous les paiements sont vérifiés s’afficheront ici.' ),
+					);
+					$abreviations   = array( 'droits' => array( 'DU', 'Droits universitaires' ), 'medicaux' => array( 'FM', 'Frais médicaux' ) );
+					$libelle_statut = $filtres['statut'] ? $etats[ $filtres['statut'] ]['compteur'] : '';
+					/* Filtres en cours (hors statut) : gardés par les compteurs, l'alerte et les pages. */
+					$actifs    = array_filter( array_intersect_key( $filtres, array_flip( array( 'paiements', 'type', 'q', 'filiere', 'niveau', 'moyen' ) ) ), 'strlen' );
+					$url_liste = static fn( array $args = array() ) => $ici( array_merge( array( 'vue' => 'quitus', 'statut' => $filtres['statut'] ?: null ), $actifs, $args ) );
+				}
 				?>
 				<?php if ( $tableau_cms ) : ?>
 					<?php
@@ -220,11 +265,19 @@ ueb_page_debut( array(
 					ueb_adm_tete( array(
 						'titre'      => 'Tableau de bord',
 						'sous_titre' => $etab
-							? sprintf( '%s, à %s : %d quitus pour %s cette année.', $etab['fr'], $etab['ville'], $c['quitus'], ueb_suivi_etudiants( $c['etudiants'] ) )
-							: sprintf( 'Tous les établissements : %d quitus pour %s cette année.', $c['quitus'], ueb_suivi_etudiants( $c['etudiants'] ) ),
+							? sprintf( '%s, à %s : %s pour %s cette année.', $etab['fr'], $etab['ville'], ueb_texte_quitus_par_type( $c ), ueb_suivi_etudiants( $c['etudiants'] ) )
+							: sprintf( 'Tous les établissements : %s pour %s cette année.', ueb_texte_quitus_par_type( $c ), ueb_suivi_etudiants( $c['etudiants'] ) ),
 						'theme'      => false,
 						/* Les reçus à vérifier : la carte rouge en tête des indicateurs. */
-						'actions'    => ueb_bouton_imprimer() . ( $peut_paiements ? ueb_adm_action( add_query_arg( 'vue', 'paiements', ueb_url_scolarite() ), $etab ? 'Paiements de ' . $etab['sigle'] : 'Suivi des paiements', 'banque', true ) : '' ),
+						'actions'    => $peut_paiements ? ueb_adm_action( add_query_arg( 'vue', 'paiements', ueb_url_scolarite() ), $etab ? 'Paiements de ' . $etab['sigle'] : 'Suivi des paiements', 'banque', true ) : '',
+					) );
+					?>
+				<?php elseif ( $suivi_paie ) : ?>
+					<?php
+					ueb_adm_tete( array(
+						'titre'      => $etab ? 'Paiements de ' . $etab['sigle'] : 'Suivi des paiements',
+						'sous_titre' => $etab ? 'Droits universitaires et frais médicaux, ' . $etab['fr'] . '.' : 'Droits universitaires et frais médicaux, du bilan global au détail des établissements.',
+						'actions'    => ( $peut_bord ? ueb_adm_action( ueb_url_scolarite(), $etab ? 'Tableau de bord de ' . $etab['sigle'] : 'Tableau de bord', 'tableau' ) : '' ) . ueb_adm_exports_menu( $etab_agent ),
 					) );
 					?>
 				<?php elseif ( ! $fiche && ! ( 'ipes' === $vue && isset( $_GET['ipes'] ) ) ) : /* la fiche d'un IPES a son propre en-tête */ ?>
@@ -238,8 +291,23 @@ ueb_page_debut( array(
 							<h1><?php echo esc_html( $titre_vue ); ?></h1>
 							<p class="bo-entete__sous-titre"><?php echo esc_html( $sous_titre_vue ); ?></p>
 						</div>
-						<?php if ( in_array( $vue, array( 'paiements', 'etudiants', 'ipes' ), true ) ) : ?>
+						<?php if ( in_array( $vue, array( 'etudiants', 'ipes' ), true ) ) : ?>
 							<div class="bo-entete__action"><?php echo ueb_bouton_imprimer(); // phpcs:ignore -- échappé ?></div>
+						<?php endif; ?>
+						<?php if ( 'quitus' === $vue && ! $fiche && $attente && 'recu_envoye' !== $filtres['statut'] ) : /* liste déjà filtrée sur les reçus à valider : pas de bouton */ ?>
+							<div class="bo-entete__action attente-action">
+								<a class="attente-bouton" href="<?php echo $url_liste( array( 'statut' => 'recu_envoye' ) ); ?>" data-attente>
+									<span class="attente-bouton__nombre"><span class="attente-bouton__chiffre"><?php echo (int) $attente; ?></span></span>
+									<span class="attente-bouton__texte">
+										<b><?php echo 1 === $attente ? 'Validation en attente' : 'Validations en attente'; ?></b>
+										<small><?php echo esc_html( sprintf( '%d %s, le plus ancien depuis %s', (int) $dossiers['attente']->dossiers, 1 === (int) $dossiers['attente']->dossiers ? 'dossier' : 'dossiers', $depuis ) ); ?></small>
+									</span>
+									<?php echo ueb_icone( 'chevron-d', 18 ); ?>
+								</a>
+								<?php if ( $plus_ancien ) : ?>
+									<a class="attente-action__second" href="<?php echo $ici( array( 'quitus' => $plus_ancien->id ) ); ?>"><?php echo ueb_icone( 'horloge', 14 ); ?>Ouvrir le plus ancien</a>
+								<?php endif; ?>
+							</div>
 						<?php endif; ?>
 						<?php if ( 'bord' === $vue && $a_verifier && $peut_recus_du ) : ?>
 							<a class="btn btn--primaire bo-entete__action" href="<?php echo $ici( array( 'vue' => 'quitus', 'statut' => 'recu_envoye' ) ); ?>"><?php echo ueb_icone( 'recu', 18 ); ?>Reçus à vérifier <span class="bo-entete__pastille"><?php echo (int) $a_verifier; ?></span></a>
@@ -264,9 +332,14 @@ ueb_page_debut( array(
 				<?php elseif ( 'paiements' === $vue ) : ?>
 
 					<?php
-					ueb_suivi_paiements_vue( ueb_suivi_paiements( $annee['code'], $etab_agent ), array(
-						'perimetre' => $etab ? $etab['sigle'] : 'Université',
-						'lignes'    => $etab ? 'filieres' : 'etabs',
+					/* Choix d'un autre établissement : seulement dans la portée du compte,
+					   par le sélecteur mémorisé de inc/roles.php (?ueb_etab=). */
+					$admin_ici = ueb_est_admin_ueb();
+					ueb_adm_paiements( ueb_suivi_paiements( $annee['code'], $etab_agent, 366 ), $etab_agent, array(
+						'action' => ueb_url_scolarite(),
+						'champ'  => 'ueb_etab',
+						'etabs'  => $admin_ici ? array() : ueb_etabs_autorises(),
+						'tous'   => ! $admin_ici && ueb_portee_totale(),
 					) );
 					?>
 
@@ -281,7 +354,7 @@ ueb_page_debut( array(
 					   limité à l'établissement de l'agent : la carte rouge des reçus en attente
 					   en tête, la file des plus anciens dessous (inc/attente-recus.php). */
 					$suivi         = ueb_suivi_paiements( $annee['code'], $etab_agent, $periode );
-					$activite      = ueb_gestion_activite( $annee['code'], $etab_agent, $periode );
+					$activite      = ueb_gestion_activite_par_type( $annee['code'], $etab_agent, $periode );
 					$url_espace    = static fn( array $args = array() ) => add_query_arg( $args, ueb_url_scolarite() );
 					$url_paiements = $peut_paiements ? $url_espace( array( 'vue' => 'paiements' ) ) : '';
 
@@ -307,10 +380,13 @@ ueb_page_debut( array(
 						?>
 					<?php endif; ?>
 
-					<div class="adm-grille adm-grille--graphes adm-complements">
+					<?php /* Un établissement : son recouvrement par filière est la carte du bas. */ ?>
+					<div class="adm-grille adm-grille--graphes adm-complements<?php echo $etab_agent ? ' adm-complements--duo' : ''; ?>">
 						<?php
 						ueb_adm_statistiques( $c );
-						ueb_adm_comparaison( $suivi, $etab_agent, $periode, $url_paiements ?: $url_espace( array( 'vue' => 'quitus' ) ) );
+						if ( ! $etab_agent ) {
+							ueb_adm_comparaison( $suivi, $etab_agent, $periode, $url_paiements ?: $url_espace( array( 'vue' => 'quitus' ) ) );
+						}
 						ueb_graphe_anneau( 'Répartition par sexe', 'Étudiants ayant au moins un quitus', array(
 							'Masculin' => array( 'valeur' => $c['sexe']['M'], 'couleur' => 'var(--viz-id-1)' ),
 							'Féminin'  => array( 'valeur' => $c['sexe']['F'], 'couleur' => 'var(--viz-id-2)' ),
@@ -329,7 +405,7 @@ ueb_page_debut( array(
 							ueb_adm_filieres( ueb_gestion_par_filiere( $annee['code'], $etab_agent ) );
 							?>
 						</div>
-						<?php ueb_graphe_filieres( 'Recouvrement par filière', 'Part encaissée des droits attendus, les plus gros montants d’abord', $suivi['filieres'], $url_paiements ); ?>
+						<?php ueb_graphe_filieres( 'Recouvrement par filière', 'Droits attendus et droits encaissés de chaque filière, en FCFA', $suivi['filieres'], $url_paiements ); ?>
 					<?php endif; ?>
 
 				<?php elseif ( 'cellule' === $vue ) : ?>
@@ -376,134 +452,6 @@ ueb_page_debut( array(
 						</section>
 					</div>
 
-				<?php elseif ( 'comptes' === $vue ) : ?>
-
-					<?php
-					$filtres_e = array(
-						'q'        => sanitize_text_field( wp_unslash( $_GET['qc'] ?? '' ) ),
-						'paiement' => sanitize_key( $_GET['paiement'] ?? '' ),
-					);
-					$etudiants = ueb_gestion_chercher_etudiants( $filtres_e, $etab_agent );
-					?>
-
-					<?php $reinit = $_SESSION['ueb_reinit_effectuee'] ?? null; unset( $_SESSION['ueb_reinit_effectuee'] ); ?>
-					<?php if ( $reinit ) : ?>
-						<div class="provisoire carte" role="status">
-							<?php echo ueb_icone( 'cle', 26 ); ?>
-							<div>
-								<p>Compte <b><?php echo esc_html( $reinit['compte'] ); ?></b> réinitialisé, <b>jusqu’à <?php echo esc_html( $reinit['jusqua'] ); ?></b>.</p>
-								<p class="champ__aide">Conseille à l’étudiant de choisir son mot de passe maintenant, sur son téléphone : page de connexion → « Mot de passe oublié ? », puis son matricule. Personne d’autre que lui ne connaîtra ce mot de passe. Passé ce délai, il faudra réinitialiser de nouveau.</p>
-							</div>
-						</div>
-					<?php endif; ?>
-					<?php if ( $prov ) : ?>
-						<div class="provisoire carte" role="status">
-							<?php echo ueb_icone( 'cle', 26 ); ?>
-							<div>
-								<p>Mot de passe provisoire pour <b><?php echo esc_html( $prov['compte'] ); ?></b> — à communiquer maintenant, il ne sera plus affiché :</p>
-								<p class="provisoire__mdp"><?php echo esc_html( $prov['mdp'] ); ?></p>
-								<button type="button" class="btn btn--fantome btn--petit provisoire__copier" data-copier-mot-de-passe="<?php echo esc_attr( $prov['mdp'] ); ?>"><?php echo ueb_icone( 'fichier', 16 ); ?><span>Copier le mot de passe</span></button>
-								<p class="champ__aide">L'étudiant choisira son propre mot de passe à sa première connexion.</p>
-							</div>
-						</div>
-					<?php endif; ?>
-
-					<form class="filtres carte" method="get" action="<?php echo esc_url( ueb_url_scolarite() ); ?>" role="search"><?php ueb_champ_espace(); ?>
-						<input type="hidden" name="vue" value="comptes">
-						<div class="champ">
-							<label for="e-q">Rechercher un étudiant</label>
-							<input id="e-q" type="search" name="qc" value="<?php echo esc_attr( $filtres_e['q'] ); ?>" placeholder="Nom, prénom, matricule ou téléphone">
-						</div>
-						<div class="champ">
-							<label for="e-paiement">Paiement</label>
-							<div class="champ__select">
-								<select id="e-paiement" name="paiement">
-									<option value="">Tous</option>
-									<option value="paye" <?php selected( $filtres_e['paiement'], 'paye' ); ?>>A payé (reçu vérifié)</option>
-									<option value="non_paye" <?php selected( $filtres_e['paiement'], 'non_paye' ); ?>>N'a pas encore payé</option>
-								</select><?php echo ueb_icone( 'chevron', 18 ); ?>
-							</div>
-						</div>
-						<button class="btn btn--primaire" type="submit"><?php echo ueb_icone( 'loupe', 18 ); ?>Rechercher</button>
-					</form>
-
-					<div class="tableau-conteneur">
-						<table class="tableau">
-							<thead><tr><th>Étudiant</th><th>Identifiants</th><th>Téléphone</th><th>Quitus</th><th>État</th><th><span class="sr">Actions</span></th></tr></thead>
-							<tbody>
-							<?php if ( ! $etudiants ) : ?>
-								<tr><td colspan="6" class="texte-discret">Aucun étudiant ne correspond à cette recherche.</td></tr>
-							<?php endif; ?>
-							<?php foreach ( $etudiants as $e ) : ?>
-								<tr>
-									<td><b><?php echo esc_html( trim( $e->nom . ' ' . $e->prenom ) ?: '—' ); ?></b></td>
-									<td><?php echo esc_html( $e->matricule ?: '—' ); ?></td>
-									<td class="num"><?php echo esc_html( $e->telephone ? ueb_formater_telephone( $e->telephone ) : '—' ); ?></td>
-									<td class="num"><?php echo (int) $e->quitus; ?><br><small class="texte-discret"><?php echo (int) $e->verifies; ?> vérifié(s)</small></td>
-									<td>
-										<?php echo 'actif' === $e->statut ? '<span class="badge badge--verifie"><i></i>Actif</span>' : '<span class="badge badge--rejete"><i></i>Suspendu</span>'; ?>
-										<?php echo ueb_badge_mdp( $e ); // phpcs:ignore -- échappé ?>
-									</td>
-									<td class="actions-ligne">
-										<form method="post" action="<?php echo esc_url( ueb_url_scolarite() ); ?>" data-confirmer="Réinitialiser le mot de passe de <?php echo esc_attr( ueb_identifiant_compte( $e ) ); ?> ? As-tu vérifié sa carte d’identité ? Il aura 1 heure pour choisir son nouveau mot de passe.">
-											<?php ueb_champ_csrf(); ?>
-											<input type="hidden" name="ueb_action" value="gestion_reinit_mdp">
-											<input type="hidden" name="compte_id" value="<?php echo (int) $e->id; ?>">
-											<input type="hidden" name="q" value="<?php echo esc_attr( $filtres_e['q'] ); ?>">
-											<button class="btn btn--fantome btn--petit" type="submit"><?php echo ueb_icone( 'cle', 16 ); ?>Mot de passe</button>
-										</form>
-										<form method="post" action="<?php echo esc_url( ueb_url_scolarite() ); ?>" data-confirmer="<?php echo 'actif' === $e->statut ? 'Suspendre ce compte ? L’étudiant sera déconnecté.' : 'Réactiver ce compte ?'; ?>">
-											<?php ueb_champ_csrf(); ?>
-											<input type="hidden" name="ueb_action" value="gestion_bloquer">
-											<input type="hidden" name="compte_id" value="<?php echo (int) $e->id; ?>">
-											<input type="hidden" name="q" value="<?php echo esc_attr( $filtres_e['q'] ); ?>">
-											<button class="btn btn--lien btn--petit" type="submit"><?php echo 'actif' === $e->statut ? 'Suspendre' : 'Réactiver'; ?></button>
-										</form>
-									</td>
-								</tr>
-							<?php endforeach; ?>
-							</tbody>
-						</table>
-					</div>
-
-					<section class="carte section-form" aria-labelledby="titre-ajout">
-						<header class="section-form__entete">
-							<span class="section-form__num"><?php echo ueb_icone( 'plus', 18 ); ?></span>
-							<div>
-								<h2 id="titre-ajout">Ajouter un étudiant</h2>
-								<p>Pour un étudiant qui ne peut pas créer son compte lui-même, faute de téléphone par exemple.</p>
-							</div>
-						</header>
-						<div class="section-form__corps formulaire">
-							<form class="formulaire" method="post" action="<?php echo esc_url( ueb_url_scolarite() ); ?>" data-formulaire novalidate>
-								<?php ueb_champ_csrf(); ?>
-								<input type="hidden" name="ueb_action" value="gestion_creer_etudiant">
-								<div class="formulaire__rangee">
-									<?php
-									ueb_champ( array(
-										'nom'     => 'identifiant',
-										'libelle' => 'Matricule',
-										'icone'   => 'utilisateur',
-										'attrs'   => array( 'placeholder' => 'Exemple : 24I0017FS', 'autocapitalize' => 'characters', 'spellcheck' => 'false', 'autocomplete' => 'off', 'data-identifiant' => true ),
-									) );
-									ueb_champ( array(
-										'nom'     => 'telephone',
-										'libelle' => 'Téléphone',
-										'type'    => 'tel',
-										'icone'   => 'telephone',
-										'requis'  => false,
-										'aide'    => 'Laisse vide si l’étudiant n’a pas de numéro.',
-										'attrs'   => array( 'inputmode' => 'tel', 'maxlength' => 17, 'placeholder' => '6XX XX XX XX', 'data-telephone' => true, 'autocomplete' => 'off' ),
-									) );
-									?>
-								</div>
-								<div class="securite-form__actions">
-									<button class="btn btn--primaire" type="submit"><?php echo ueb_icone( 'plus', 18 ); ?>Créer le compte</button>
-								</div>
-							</form>
-						</div>
-					</section>
-
 				<?php elseif ( $fiche ) : ?>
 
 					<?php require UEB_INSC_DIR . '/templates/composants/scolarite-quitus.php'; ?>
@@ -518,47 +466,6 @@ ueb_page_debut( array(
 
 				<?php elseif ( 'quitus' === $vue ) : /* jamais un « else » : une vue sans branche n'affiche rien, surtout pas les quitus */ ?>
 					<?php
-					$filtres = array(
-						'annee'     => $annee['code'],
-						'etab'      => $etab_agent,
-						'statut'    => sanitize_key( $_GET['statut'] ?? '' ),
-						'paiements' => '', // un seul type de reçus par onglet : pas de filtre DU / FM
-						/* Un seul type de reçus par onglet : Reçus (droits) ou Reçus CMS (frais médicaux). */
-						'type'      => ueb_type_recus_courant(),
-						'q'         => sanitize_text_field( wp_unslash( $_GET['q'] ?? '' ) ),
-						'filiere'   => sanitize_text_field( wp_unslash( $_GET['filiere'] ?? '' ) ),
-						'niveau'    => sanitize_text_field( wp_unslash( $_GET['niveau'] ?? '' ) ),
-						'moyen'     => sanitize_text_field( wp_unslash( $_GET['moyen'] ?? '' ) ),
-						'page'      => (int) ( $_GET['p'] ?? 1 ),
-					);
-					if ( ! isset( UEB_STATUTS_QUITUS[ $filtres['statut'] ] ) ) {
-						$filtres['statut'] = '';
-					}
-					if ( ! isset( UEB_FILTRES_PAIEMENTS[ $filtres['paiements'] ] ) ) {
-						$filtres['paiements'] = '';
-					}
-					/* Une ligne par dossier : les droits universitaires (DU) et les frais
-					   médicaux (FM) d'un même étudiant sont réunis (inc/gestion.php). */
-					$dossiers    = ueb_gestion_stats_dossiers( $filtres );
-					$liste       = ueb_gestion_liste_dossiers( $filtres );
-					$options     = ueb_gestion_options_dossiers( $filtres );
-					$maintenant  = current_time( 'timestamp' );
-					$plus_ancien = $dossiers['plus_ancien'];
-					$attente     = (int) ( $dossiers['attente']->paiements ?? 0 );
-					$depuis      = $plus_ancien ? human_time_diff( strtotime( $plus_ancien->date_modification ), $maintenant ) : '';
-					/* Les compteurs et les pastilles parlent comme l'agent : ce qu'il
-					   a à valider, ce qui n'est pas encore validé, rejeté ou validé. */
-					$etats = array(
-						'recu_envoye' => array( 'compteur' => 'À valider', 'pastille' => 'À valider', 'icone' => 'envoyer', 'note' => 'Reçus envoyés, à contrôler', 'vide' => 'Les reçus envoyés par les étudiants s’afficheront ici, prêts à être vérifiés.' ),
-						'genere'      => array( 'compteur' => 'Non validés', 'pastille' => 'À payer', 'icone' => 'horloge', 'note' => 'Reçu pas encore envoyé', 'vide' => 'Les dossiers dont l’étudiant n’a pas encore envoyé le reçu s’afficheront ici.' ),
-						'rejete'      => array( 'compteur' => 'Rejetés', 'pastille' => 'Rejeté', 'icone' => 'alerte', 'note' => 'Renvoyés à l’étudiant', 'vide' => 'Les dossiers renvoyés à l’étudiant avec un motif s’afficheront ici.' ),
-						'verifie'     => array( 'compteur' => 'Validés', 'pastille' => 'Validé', 'icone' => 'check', 'note' => 'Tous les paiements vérifiés', 'vide' => 'Les dossiers dont tous les paiements sont vérifiés s’afficheront ici.' ),
-					);
-					$abreviations   = array( 'droits' => array( 'DU', 'Droits universitaires' ), 'medicaux' => array( 'FM', 'Frais médicaux' ) );
-					$libelle_statut = $filtres['statut'] ? $etats[ $filtres['statut'] ]['compteur'] : '';
-					/* Filtres en cours (hors statut) : gardés par les compteurs, l'alerte et les pages. */
-					$actifs    = array_filter( array_intersect_key( $filtres, array_flip( array( 'paiements', 'type', 'q', 'filiere', 'niveau', 'moyen' ) ) ), 'strlen' );
-					$url_liste = static fn( array $args = array() ) => $ici( array_merge( array( 'vue' => 'quitus', 'statut' => $filtres['statut'] ?: null ), $actifs, $args ) );
 					$niveau_lu = static function ( $code ) {
 						foreach ( UEB_NIVEAUX_INSCRIPTION as $cle_niveau => $libelle ) {
 							if ( 0 === strcasecmp( $cle_niveau, $code ) ) {
@@ -593,20 +500,6 @@ ueb_page_debut( array(
 					?>
 
 					<div class="registre-quitus" data-registre-quitus>
-						<?php if ( $attente && 'recu_envoye' !== $filtres['statut'] ) : /* liste déjà filtrée sur les reçus à valider : pas de bandeau */ ?>
-								<div class="attente">
-									<span class="attente__icone" aria-hidden="true"><?php echo ueb_icone( 'tampon', 20 ); ?><span class="attente__nombre"><?php echo (int) $attente; ?></span></span>
-									<div class="attente__texte">
-										<p class="attente__titre"><a class="attente__lien" href="<?php echo $url_liste( array( 'statut' => 'recu_envoye' ) ); ?>"><?php echo esc_html( sprintf( '%d %s en attente', $attente, 1 === $attente ? 'validation' : 'validations' ) ); ?></a></p>
-										<p><?php echo esc_html( sprintf( 'Dans %d %s. Le plus ancien reçu attend depuis %s.', (int) $dossiers['attente']->dossiers, 1 === (int) $dossiers['attente']->dossiers ? 'dossier' : 'dossiers', $depuis ) ); ?></p>
-									</div>
-									<span class="attente__voir" aria-hidden="true">Afficher les reçus à valider<?php echo ueb_icone( 'chevron-d', 18 ); ?></span>
-									<?php if ( $plus_ancien ) : ?>
-										<a class="attente__second" href="<?php echo $ici( array( 'quitus' => $plus_ancien->id ) ); ?>">Ouvrir le plus ancien</a>
-									<?php endif; ?>
-								</div>
-						<?php endif; ?>
-
 						<nav class="compteurs" aria-label="Dossiers par statut">
 							<a class="compteurs__carte compteurs__carte--tous" href="<?php echo $url_liste( array( 'statut' => null ) ); ?>"<?php echo '' === $filtres['statut'] ? ' aria-current="page"' : ''; ?>>
 								<span class="compteurs__libelle">Tous les dossiers</span>
@@ -637,7 +530,11 @@ ueb_page_debut( array(
 								var interne = !! ref && ref.pathname === location.pathname && ref.searchParams.get( 'vue' ) === 'quitus' && ! ref.searchParams.has( 'quitus' );
 								racine.dataset.arrivee = interne ? 'interne' : 'entree';
 								if ( matchMedia( '(prefers-reduced-motion: reduce)' ).matches ) { return; }
-								if ( ! interne ) { racine.classList.add( 'est-entree' ); }
+								if ( ! interne ) {
+									racine.classList.add( 'est-entree' );
+									var bouton = document.querySelector( '[data-attente]' );
+									if ( bouton ) { bouton.classList.add( 'est-entree' ); }
+								}
 								var anciens = interne ? JSON.parse( sessionStorage.getItem( 'ueb-registre-comptes' ) || '{}' ) : {};
 								var nombres = racine.querySelectorAll( '[data-compte]' );
 								nombres.forEach( function ( el ) {
@@ -660,7 +557,7 @@ ueb_page_debut( array(
 								<label class="sr" for="f-q">Rechercher un dossier</label>
 								<span class="registre__champ">
 									<?php echo ueb_icone( 'loupe', 18 ); ?>
-									<input id="f-q" type="search" name="q" value="<?php echo esc_attr( $filtres['q'] ); ?>" placeholder="N° de quitus, matricule, nom…" enterkeyhint="search" autocomplete="off">
+									<input id="f-q" type="search" name="q" value="<?php echo esc_attr( $filtres['q'] ); ?>" placeholder="N° de quitus, matricule, nom…" enterkeyhint="search" autocomplete="off"<?php echo ueb_attr_suggestions( 'quitus', array( 'type' => ueb_type_recus_courant() ) ); // phpcs:ignore -- échappé ?>>
 									<kbd class="registre__touche" aria-hidden="true">Entrée</kbd>
 								</span>
 								<?php foreach ( $selects as $nom => list( $tous, $choix ) ) : if ( ! $choix ) { continue; } ?>

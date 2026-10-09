@@ -57,7 +57,7 @@ unset( $_SESSION['ueb_ipes_bloc'] );
 			<?php if ( $tous ) : ?>
 				<form class="ipes-outils" method="get" action="<?php echo esc_url( ueb_url_administration() ); ?>" role="search" aria-label="Filtrer les IPES" data-filtres-direct="ipes-resultats">
 					<input type="hidden" name="vue" value="ipes">
-					<label class="ipes-recherche"><span class="sr">Rechercher un IPES</span><?php echo ueb_icone( 'loupe', 17 ); ?><input type="search" name="q" value="<?php echo esc_attr( $filtres_ipes['recherche'] ); ?>" placeholder="Sigle ou nom" enterkeyhint="search" autocomplete="off"></label>
+					<label class="ipes-recherche"><span class="sr">Rechercher un IPES</span><?php echo ueb_icone( 'loupe', 17 ); ?><input type="search" name="q" value="<?php echo esc_attr( $filtres_ipes['recherche'] ); ?>" placeholder="Sigle ou nom" enterkeyhint="search" autocomplete="off"<?php echo ueb_attr_suggestions_liste( array_map( static fn( $i ) => array( $i->nom_fr, $i->sigle . ( $i->ville ? ', ' . $i->ville : '' ), $i->sigle ), $tous ) ); // phpcs:ignore -- échappé ?>></label>
 					<label class="ipes-selecteur"><span class="sr">Tutelle</span>
 						<select name="tutelle">
 							<option value="">Toutes les tutelles</option>

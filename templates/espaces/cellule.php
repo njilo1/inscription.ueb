@@ -82,15 +82,85 @@ ueb_page_debut( array( 'titre' => 'Cellule informatique', 'variante' => $autoris
 					</div>
 				<?php endif; ?>
 				<?php if ( $prov ) : ?><div class="provisoire carte" role="status"><?php echo ueb_icone( 'cle', 26 ); ?><div><p>Mot de passe provisoire pour <b><?php echo esc_html( $prov['compte'] ); ?></b> :</p><p class="provisoire__mdp"><?php echo esc_html( $prov['mdp'] ); ?></p><button type="button" class="btn btn--fantome btn--petit provisoire__copier" data-copier-mot-de-passe="<?php echo esc_attr( $prov['mdp'] ); ?>"><?php echo ueb_icone( 'fichier', 16 ); ?><span>Copier le mot de passe</span></button></div></div><?php endif; ?>
-				<form class="filtres carte" method="get" action="<?php echo esc_url( ueb_url_cellule() ); ?>" role="search"><?php ueb_champ_espace(); ?>
-					<div class="champ"><label for="cellule-q">Rechercher un étudiant</label><input id="cellule-q" type="search" name="qc" value="<?php echo esc_attr( $filtres['q'] ); ?>" placeholder="Nom, matricule ou téléphone"></div>
-					<button class="btn btn--primaire" type="submit"><?php echo ueb_icone( 'loupe', 18 ); ?>Rechercher</button>
-				</form>
-				<div class="tableau-conteneur"><table class="tableau"><thead><tr><th>Étudiant</th><th>Identifiants</th><th>Téléphone</th><th>État</th><th><span class="sr">Actions</span></th></tr></thead><tbody>
-				<?php if ( ! $etudiants ) : ?><tr><td colspan="5" class="texte-discret">Aucun étudiant ne correspond à cette recherche.</td></tr><?php endif; ?>
-				<?php foreach ( $etudiants as $e ) : ?><tr><td><b><?php echo esc_html( trim( $e->nom . ' ' . $e->prenom ) ?: '—' ); ?></b></td><td><?php echo esc_html( $e->matricule ?: '—' ); ?></td><td class="num"><?php echo esc_html( $e->telephone ? ueb_formater_telephone( $e->telephone ) : '—' ); ?></td><td><?php echo 'actif' === $e->statut ? '<span class="badge badge--verifie"><i></i>Actif</span>' : '<span class="badge badge--rejete"><i></i>Suspendu</span>'; ?><?php echo ueb_badge_mdp( $e ); // phpcs:ignore -- échappé ?></td><td class="actions-ligne"><form method="post" action="<?php echo esc_url( ueb_url_cellule() ); ?>" data-confirmer="Réinitialiser le mot de passe de <?php echo esc_attr( ueb_identifiant_compte( $e ) ); ?> ? As-tu vérifié sa carte d’identité ? Il aura 1 heure pour choisir son nouveau mot de passe."><?php ueb_champ_csrf(); ?><input type="hidden" name="ueb_action" value="gestion_reinit_mdp"><input type="hidden" name="compte_id" value="<?php echo (int) $e->id; ?>"><input type="hidden" name="q" value="<?php echo esc_attr( $filtres['q'] ); ?>"><button class="btn btn--fantome btn--petit" type="submit"><?php echo ueb_icone( 'cle', 16 ); ?>Mot de passe</button></form><?php if ( $gere_comptes ) : ?><form method="post" action="<?php echo esc_url( ueb_url_cellule() ); ?>" data-confirmer="<?php echo 'actif' === $e->statut ? 'Suspendre ce compte ?' : 'Réactiver ce compte ?'; ?>"><?php ueb_champ_csrf(); ?><input type="hidden" name="ueb_action" value="gestion_bloquer"><input type="hidden" name="compte_id" value="<?php echo (int) $e->id; ?>"><input type="hidden" name="q" value="<?php echo esc_attr( $filtres['q'] ); ?>"><button class="btn btn--lien btn--petit" type="submit"><?php echo 'actif' === $e->statut ? 'Suspendre' : 'Réactiver'; ?></button></form><?php endif; ?></td></tr><?php endforeach; ?>
-				</tbody></table></div>
-				<?php if ( $gere_comptes ) : ?><section class="carte section-form" aria-labelledby="titre-ajout-cellule"><header class="section-form__entete"><span class="section-form__num"><?php echo ueb_icone( 'plus', 18 ); ?></span><div><h2 id="titre-ajout-cellule">Ajouter un étudiant</h2><p>Crée un compte lorsqu’un étudiant ne peut pas le faire lui-même.</p></div></header><div class="section-form__corps formulaire"><form class="formulaire" method="post" action="<?php echo esc_url( ueb_url_cellule() ); ?>" data-formulaire novalidate><?php ueb_champ_csrf(); ?><input type="hidden" name="ueb_action" value="gestion_creer_etudiant"><div class="formulaire__rangee"><?php ueb_champ( array( 'nom' => 'identifiant', 'libelle' => 'Matricule', 'icone' => 'utilisateur', 'attrs' => array( 'placeholder' => '24I0017FS', 'autocapitalize' => 'characters', 'spellcheck' => 'false', 'autocomplete' => 'off', 'data-identifiant' => true ) ) ); ?><?php ueb_champ( array( 'nom' => 'telephone', 'libelle' => 'Téléphone (facultatif)', 'type' => 'tel', 'icone' => 'telephone', 'requis' => false, 'attrs' => array( 'inputmode' => 'tel', 'maxlength' => 17, 'placeholder' => '6XX XX XX XX', 'data-telephone' => true, 'autocomplete' => 'off' ) ) ); ?></div><div class="securite-form__actions"><button class="btn btn--primaire" type="submit"><?php echo ueb_icone( 'plus', 18 ); ?>Créer le compte</button></div></form></div></section><?php endif; ?>
+				<section class="carte comptes-etu" aria-labelledby="comptes-etu-titre">
+					<header class="comptes-etu__tete">
+						<div>
+							<h2 id="comptes-etu-titre">Registre des comptes</h2>
+							<p><?php echo esc_html( $filtres['q'] ? sprintf( '%d résultat%s pour « %s »', count( $etudiants ), 1 < count( $etudiants ) ? 's' : '', $filtres['q'] ) : sprintf( '%d compte%s, les plus récents d’abord', count( $etudiants ), 1 < count( $etudiants ) ? 's' : '' ) ); ?></p>
+						</div>
+						<form class="comptes-etu__recherche" method="get" action="<?php echo esc_url( ueb_url_cellule() ); ?>" role="search"><?php ueb_champ_espace(); ?>
+							<label class="sr" for="cellule-q">Rechercher un étudiant</label>
+							<span class="comptes-etu__champ"><?php echo ueb_icone( 'loupe', 18 ); ?><input id="cellule-q" type="search" name="qc" value="<?php echo esc_attr( $filtres['q'] ); ?>" placeholder="Nom, prénom, matricule ou téléphone" autocomplete="off"<?php echo ueb_attr_suggestions( 'comptes' ); // phpcs:ignore -- échappé ?>></span>
+							<button class="btn btn--primaire" type="submit">Rechercher</button>
+						</form>
+					</header>
+					<div class="tableau-conteneur comptes-etu__registre">
+						<table class="tableau">
+							<thead>
+								<tr>
+									<th scope="col">Étudiant</th>
+									<th scope="col">Matricule</th>
+									<th scope="col">Téléphone</th>
+									<th scope="col">État</th>
+									<th scope="col" class="comptes-etu__col-action">Mot de passe</th>
+									<?php if ( $gere_comptes ) : ?><th scope="col" class="comptes-etu__col-action">Accès</th><?php endif; ?>
+								</tr>
+							</thead>
+							<tbody>
+								<?php if ( ! $etudiants ) : ?>
+									<tr><td colspan="<?php echo $gere_comptes ? 6 : 5; ?>" class="texte-discret">Aucun étudiant ne correspond à cette recherche.</td></tr>
+								<?php endif; ?>
+								<?php foreach ( $etudiants as $e ) : $actif = 'actif' === $e->statut; ?>
+									<tr>
+										<th scope="row"><b><?php echo esc_html( trim( $e->nom . ' ' . $e->prenom ) ?: '—' ); ?></b></th>
+										<td class="comptes-etu__matricule"><?php echo esc_html( $e->matricule ?: '—' ); ?></td>
+										<td class="num"><?php echo esc_html( $e->telephone ? ueb_formater_telephone( $e->telephone ) : '—' ); ?></td>
+										<td><span class="comptes-etu__etats"><?php echo $actif ? '<span class="badge badge--verifie"><i></i>Actif</span>' : '<span class="badge badge--rejete"><i></i>Suspendu</span>'; ?><?php echo ueb_badge_mdp( $e ); // phpcs:ignore -- échappé ?></span></td>
+										<td class="comptes-etu__col-action">
+											<form method="post" action="<?php echo esc_url( ueb_url_cellule() ); ?>" data-confirmer="Réinitialiser le mot de passe de <?php echo esc_attr( ueb_identifiant_compte( $e ) ); ?> ? As-tu vérifié sa carte d’identité ? Il aura 1 heure pour choisir son nouveau mot de passe." data-confirmer-titre="Réinitialiser le mot de passe ?" data-confirmer-bouton="Réinitialiser" data-confirmer-ton="enregistrer">
+												<?php ueb_champ_csrf(); ?>
+												<input type="hidden" name="ueb_action" value="gestion_reinit_mdp">
+												<input type="hidden" name="compte_id" value="<?php echo (int) $e->id; ?>">
+												<input type="hidden" name="q" value="<?php echo esc_attr( $filtres['q'] ); ?>">
+												<button class="comptes-etu__action" type="submit"><?php echo ueb_icone( 'cle', 15 ); ?>Réinitialiser</button>
+											</form>
+										</td>
+										<?php if ( $gere_comptes ) : ?>
+											<td class="comptes-etu__col-action">
+												<form method="post" action="<?php echo esc_url( ueb_url_cellule() ); ?>" data-confirmer="<?php echo $actif ? 'L’étudiant sera déconnecté et ne pourra plus se connecter jusqu’à la réactivation de son compte.' : 'L’étudiant pourra de nouveau se connecter.'; ?>" data-confirmer-titre="<?php echo esc_attr( ( $actif ? 'Suspendre le compte de ' : 'Réactiver le compte de ' ) . ueb_identifiant_compte( $e ) . ' ?' ); ?>" data-confirmer-bouton="<?php echo $actif ? 'Suspendre' : 'Réactiver'; ?>"<?php echo $actif ? '' : ' data-confirmer-ton="enregistrer"'; ?>>
+													<?php ueb_champ_csrf(); ?>
+													<input type="hidden" name="ueb_action" value="gestion_bloquer">
+													<input type="hidden" name="compte_id" value="<?php echo (int) $e->id; ?>">
+													<input type="hidden" name="q" value="<?php echo esc_attr( $filtres['q'] ); ?>">
+													<button class="comptes-etu__action comptes-etu__action--<?php echo $actif ? 'suspendre' : 'reactiver'; ?>" type="submit"><?php echo ueb_icone( $actif ? 'pause' : 'lecture', 15 ); ?><?php echo $actif ? 'Suspendre' : 'Réactiver'; ?></button>
+												</form>
+											</td>
+										<?php endif; ?>
+									</tr>
+								<?php endforeach; ?>
+							</tbody>
+						</table>
+					</div>
+				</section>
+				<?php if ( $gere_comptes ) : ?>
+					<section class="carte comptes-etu comptes-etu--ajout" aria-labelledby="titre-ajout-cellule">
+						<header class="comptes-etu__tete">
+							<div>
+								<h2 id="titre-ajout-cellule">Ajouter un étudiant</h2>
+								<p>Crée un compte lorsqu’un étudiant ne peut pas le faire lui-même. Un mot de passe provisoire s’affichera une seule fois.</p>
+							</div>
+						</header>
+						<form class="formulaire comptes-etu__ajout" method="post" action="<?php echo esc_url( ueb_url_cellule() ); ?>" data-formulaire novalidate>
+							<?php ueb_champ_csrf(); ?>
+							<input type="hidden" name="ueb_action" value="gestion_creer_etudiant">
+							<?php
+							ueb_champ( array( 'nom' => 'identifiant', 'libelle' => 'Matricule', 'icone' => 'utilisateur', 'attrs' => array( 'placeholder' => '24I0017FS', 'autocapitalize' => 'characters', 'spellcheck' => 'false', 'autocomplete' => 'off', 'data-identifiant' => true ) ) );
+							ueb_champ( array( 'nom' => 'telephone', 'libelle' => 'Téléphone', 'type' => 'tel', 'icone' => 'telephone', 'requis' => false, 'attrs' => array( 'inputmode' => 'tel', 'maxlength' => 17, 'placeholder' => '6XX XX XX XX', 'data-telephone' => true, 'autocomplete' => 'off' ) ) );
+							?>
+							<button class="btn btn--primaire comptes-etu__creer" type="submit"><?php echo ueb_icone( 'plus', 18 ); ?>Créer le compte</button>
+						</form>
+					</section>
+				<?php endif; ?>
 				<?php endif; ?>
 			</div>
 		</div>

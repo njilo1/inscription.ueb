@@ -229,19 +229,33 @@ function ueb_gestion_chiffres( $annee_code, $etab = '' ) {
 		'montant_verifie' => 0,
 		'sexe'            => array( 'M' => 0, 'F' => 0 ),
 		'tranches'        => array( 'tranche1' => 0, 'tranche2' => 0, 'totalite' => 0 ),
+		/* Les mêmes comptes pour chaque type de quitus : les tableaux de bord ne
+		   mélangent jamais droits universitaires et frais médicaux. */
+		/* « recents » : par statut, les quitus générés ces 7 derniers jours
+		   (carte « Évolution des quitus », anneau extérieur). */
+		'types'           => array_fill_keys( array_keys( UEB_TYPES_QUITUS ), array( 'quitus' => 0, 'genere' => 0, 'recu_envoye' => 0, 'verifie' => 0, 'rejete' => 0, 'montant_verifie' => 0, 'recents' => array( 'genere' => 0, 'recu_envoye' => 0, 'verifie' => 0, 'rejete' => 0 ) ) ),
 	);
 
-	foreach ( (array) $wpdb->get_results( $wpdb->prepare( "SELECT statut, COUNT(*) n, SUM(montant) total FROM ueb_insc_quitus WHERE $ou GROUP BY statut", $params ) ) as $l ) { // phpcs:ignore
-		$chiffres['quitus'] += (int) $l->n;
+	$depuis = gmdate( 'Y-m-d 00:00:00', strtotime( current_time( 'Y-m-d' ) . ' -6 days' ) );
+	foreach ( (array) $wpdb->get_results( $wpdb->prepare( "SELECT type, statut, COUNT(*) n, SUM(montant) total, SUM(date_creation >= %s) recents FROM ueb_insc_quitus WHERE $ou GROUP BY type, statut", array_merge( array( $depuis ), $params ) ) ) as $l ) { // phpcs:ignore
+		$n    = (int) $l->n;
+		$type = 'medicaux' === $l->type ? 'medicaux' : 'droits';
+		$chiffres['quitus']                += $n;
+		$chiffres['types'][ $type ]['quitus'] += $n;
+		if ( isset( $chiffres['types'][ $type ][ $l->statut ] ) ) {
+			$chiffres['types'][ $type ][ $l->statut ]              += $n;
+			$chiffres['types'][ $type ]['recents'][ $l->statut ] += (int) $l->recents;
+		}
 		if ( 'recu_envoye' === $l->statut ) {
-			$chiffres['recus_envoyes'] = (int) $l->n;
+			$chiffres['recus_envoyes'] += $n;
 		} elseif ( 'verifie' === $l->statut ) {
-			$chiffres['recus_verifies']  = (int) $l->n;
-			$chiffres['montant_verifie'] = (int) $l->total;
+			$chiffres['recus_verifies']                    += $n;
+			$chiffres['montant_verifie']                   += (int) $l->total;
+			$chiffres['types'][ $type ]['montant_verifie'] += (int) $l->total;
 		} elseif ( 'rejete' === $l->statut ) {
-			$chiffres['recus_rejetes'] = (int) $l->n;
+			$chiffres['recus_rejetes'] += $n;
 		} elseif ( 'genere' === $l->statut ) {
-			$chiffres['a_payer'] = (int) $l->n;
+			$chiffres['a_payer'] += $n;
 		}
 	}
 
@@ -341,15 +355,21 @@ function ueb_gestion_par_filiere( $annee_code, $etab ) {
  * compte comme envoyé le jour de sa décision : la courbe des envois ne passe
  * jamais sous celle des vérifiés.
  *
+ * $type limite à un type de quitus (« droits » ou « medicaux ») ; vide : les deux.
+ *
  * @return array{jours: string[], generes: int[], envoyes: int[], verifies: int[]}
  */
-function ueb_gestion_activite( $annee_code, $etab = '', $jours_max = 45 ) {
+function ueb_gestion_activite( $annee_code, $etab = '', $jours_max = 45, $type = '' ) {
 	global $wpdb;
 	$ou     = 'q.annee_academique = %s';
 	$params = array( $annee_code );
 	if ( $etab ) {
 		$ou      .= ' AND q.etablissement = %s';
 		$params[] = $etab;
+	}
+	if ( $type ) {
+		$ou      .= ' AND q.type = %s';
+		$params[] = $type;
 	}
 	$lignes = (array) $wpdb->get_results( $wpdb->prepare(
 		"SELECT DATE(q.date_creation) AS genere,
@@ -397,6 +417,36 @@ function ueb_gestion_activite( $annee_code, $etab = '', $jours_max = 45 ) {
 		$series[ $serie ] = $par_jour;
 	}
 	return array( 'jours' => $jours ) + $series;
+}
+
+/**
+ * Progression de l'année pour chaque type de quitus dont le compte voit les
+ * statistiques, droits universitaires d'abord : les courbes du tableau de
+ * bord ne mélangent pas les deux types.
+ *
+ * @return array<string, array> type => retour de ueb_gestion_activite()
+ */
+function ueb_gestion_activite_par_type( $annee_code, $etab = '', $jours_max = 45 ) {
+	$par_type = array();
+	foreach ( ueb_types_stats_visibles() ?: array( 'droits' ) as $type ) {
+		$par_type[ $type ] = ueb_gestion_activite( $annee_code, $etab, $jours_max, $type );
+	}
+	return $par_type;
+}
+
+/**
+ * « 24 quitus de droits universitaires et 15 de frais médicaux » : les quitus
+ * de chaque type que le compte voit, sans jamais les additionner.
+ *
+ * @param array $c Retour de ueb_gestion_chiffres().
+ */
+function ueb_texte_quitus_par_type( array $c ) {
+	$morceaux = array();
+	foreach ( ueb_types_stats_visibles() ?: array( 'droits' ) as $type ) {
+		$n          = (int) ( $c['types'][ $type ]['quitus'] ?? 0 );
+		$morceaux[] = sprintf( $morceaux ? '%s de %s' : '%s quitus de %s', ueb_formater_montant( $n ), mb_strtolower( UEB_TYPES_QUITUS[ $type ]['libelle'] ) );
+	}
+	return implode( ' et ', $morceaux );
 }
 
 /* ---------- Suivi des paiements ----------
@@ -548,10 +598,10 @@ function ueb_suivi_paiements( $annee_code, $etab = '', $jours_historique = 0 ) {
 		$aujourdhui = current_time( 'Y-m-d' );
 		$debut = gmdate( 'Y-m-d', strtotime( $aujourdhui . ' -' . ( min( 366, max( 2, (int) $jours_historique ) ) - 1 ) . ' days' ) );
 		$depots = (array) $wpdb->get_results( $wpdb->prepare(
-			"SELECT DATE(r.date_envoi) AS jour, COUNT(DISTINCT r.quitus_id) AS nombre
+			"SELECT DATE(r.date_envoi) AS jour, q.type, COUNT(DISTINCT r.quitus_id) AS nombre
 			 FROM ueb_insc_recus r JOIN ueb_insc_quitus q ON q.id = r.quitus_id
 			 WHERE q.annee_academique = %s $filtre AND r.date_envoi >= %s AND r.date_envoi < %s
-			 GROUP BY DATE(r.date_envoi)",
+			 GROUP BY DATE(r.date_envoi), q.type",
 			$annee_code, $debut, gmdate( 'Y-m-d', strtotime( $aujourdhui . ' +1 day' ) )
 		) );
 		$resultat['historique'] = ueb_suivi_series_indicateurs( (array) $lignes, $etudiants, $depots, $debut, $aujourdhui );
@@ -564,6 +614,7 @@ function ueb_suivi_paiements( $annee_code, $etab = '', $jours_historique = 0 ) {
  * Le type de formation actuel est le même que celui du bilan. Les validations
  * annulées et pièces supprimées ne peuvent pas être reconstituées sans journal.
  * « depots » est un flux quotidien de quitus distincts, pas la file d'attente.
+ * « quitus » et « depots » existent aussi par type (_droits, _medicaux).
  * Les cumuls antérieurs à la fenêtre sont conservés ; zéro est une vraie valeur.
  */
 function ueb_suivi_series_indicateurs( array $lignes, array $etudiants, array $depots, $debut, $fin ) {
@@ -571,7 +622,7 @@ function ueb_suivi_series_indicateurs( array $lignes, array $etudiants, array $d
 	for ( $t = strtotime( $debut ); $t <= strtotime( $fin ); $t += DAY_IN_SECONDS ) {
 		$jours[] = gmdate( 'Y-m-d', $t );
 	}
-	$series = array_fill_keys( array( 'etudiants', 'encaisse', 'medicaux', 'quitus', 'taux', 'depots' ), array() );
+	$series = array_fill_keys( array( 'etudiants', 'encaisse', 'medicaux', 'quitus', 'quitus_droits', 'quitus_medicaux', 'taux', 'depots', 'depots_droits', 'depots_medicaux' ), array() );
 	$evenements = $vus = $groupes = array();
 	foreach ( $lignes as $l ) {
 		$creation = substr( $l->date_creation, 0, 10 );
@@ -579,7 +630,7 @@ function ueb_suivi_series_indicateurs( array $lignes, array $etudiants, array $d
 			continue;
 		}
 		$jour = max( $debut, $creation );
-		$evenements[ $jour ][] = array( 'quitus', 1 );
+		$evenements[ $jour ][] = array( 'quitus', 'droits' === $l->type ? 'droits' : 'medicaux' );
 		$vus[ $l->compte_id ] = isset( $vus[ $l->compte_id ] ) ? min( $vus[ $l->compte_id ], $jour ) : $jour;
 		if ( 'droits' !== $l->type ) {
 			if ( 'verifie' === $l->statut ) {
@@ -603,15 +654,18 @@ function ueb_suivi_series_indicateurs( array $lignes, array $etudiants, array $d
 	foreach ( $vus as $jour ) {
 		$evenements[ $jour ][] = array( 'etudiants', 1 );
 	}
-	$receptions = array();
+	$receptions = array( 'droits' => array(), 'medicaux' => array() );
 	foreach ( $depots as $depot ) {
-		$receptions[ $depot->jour ] = (int) $depot->nombre;
+		$type = 'medicaux' === ( $depot->type ?? 'droits' ) ? 'medicaux' : 'droits';
+		$receptions[ $type ][ $depot->jour ] = ( $receptions[ $type ][ $depot->jour ] ?? 0 ) + (int) $depot->nombre;
 	}
 	$effectif = $quitus = $attendu = $encaisse = $medical = 0;
+	$par_type = array( 'droits' => 0, 'medicaux' => 0 );
 	foreach ( $jours as $jour ) {
 		foreach ( $evenements[ $jour ] ?? array() as $evt ) {
 			if ( 'quitus' === $evt[0] ) {
 				$quitus++;
+				$par_type[ $evt[1] ]++;
 			} elseif ( 'etudiants' === $evt[0] ) {
 				$effectif++;
 			} elseif ( 'medical' === $evt[0] ) {
@@ -632,10 +686,14 @@ function ueb_suivi_series_indicateurs( array $lignes, array $etudiants, array $d
 		}
 		$series['etudiants'][] = $effectif;
 		$series['quitus'][] = $quitus;
+		$series['quitus_droits'][] = $par_type['droits'];
+		$series['quitus_medicaux'][] = $par_type['medicaux'];
 		$series['encaisse'][] = $encaisse;
 		$series['medicaux'][] = $medical;
 		$series['taux'][] = $attendu ? round( 100 * $encaisse / $attendu, 2 ) : null;
-		$series['depots'][] = $receptions[ $jour ] ?? 0;
+		$series['depots_droits'][] = $receptions['droits'][ $jour ] ?? 0;
+		$series['depots_medicaux'][] = $receptions['medicaux'][ $jour ] ?? 0;
+		$series['depots'][] = end( $series['depots_droits'] ) + end( $series['depots_medicaux'] );
 	}
 	return array( 'jours' => $jours ) + $series;
 }

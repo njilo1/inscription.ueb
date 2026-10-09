@@ -55,7 +55,7 @@ ueb_afficher_flash();
 				</div>
 				<form class="ipes-outils" method="get" action="<?php echo esc_url( ueb_url_administration() ); ?>" role="search" aria-label="Filtrer les filières" data-filtres-direct="filieres-resultats">
 					<input type="hidden" name="vue" value="filieres">
-					<label class="ipes-recherche"><span class="sr">Rechercher une filière</span><?php echo ueb_icone( 'loupe', 17 ); ?><input type="search" name="q" value="<?php echo esc_attr( $filtres['recherche'] ); ?>" placeholder="Nom ou code" enterkeyhint="search" autocomplete="off"></label>
+					<label class="ipes-recherche"><span class="sr">Rechercher une filière</span><?php echo ueb_icone( 'loupe', 17 ); ?><input type="search" name="q" value="<?php echo esc_attr( $filtres['recherche'] ); ?>" placeholder="Nom ou code" enterkeyhint="search" autocomplete="off"<?php echo ueb_attr_suggestions_liste( array_map( static fn( $fi ) => array( $fi->libelle, trim( $fi->code . ', ' . $fi->etablissement, ', ' ), $fi->libelle ), $filtre_actif ? ueb_catalogue_filieres( array() ) : $liste ) ); // phpcs:ignore -- échappé ?>></label>
 					<label class="ipes-selecteur"><span class="sr">Établissement</span>
 						<select name="etab">
 							<option value="">Tous les établissements</option>
