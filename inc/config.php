@@ -177,23 +177,8 @@ function ueb_moyens_paiement() {
 	return 'à la ' . array_shift( $moyens ) . ', par ' . implode( ', ', $moyens ) . ' ou ' . $dernier;
 }
 
-/**
- * Année académique en cours. Elle bascule le 1er septembre :
- * le 31 août 2027 on est en 2026-2027, le 1er septembre 2027 en 2027-2028.
- *
- * @return array{debut:int, fin:int, libelle:string, code:string}
- */
-function ueb_annee_academique( $timestamp = null ) {
-	$date  = ( new DateTimeImmutable( '@' . ( $timestamp ?? time() ) ) )->setTimezone( wp_timezone() );
-	$annee = (int) $date->format( 'Y' );
-	$debut = (int) $date->format( 'n' ) >= 9 ? $annee : $annee - 1;
-	return array(
-		'debut'   => $debut,
-		'fin'     => $debut + 1,
-		'libelle' => $debut . ' – ' . ( $debut + 1 ),
-		'code'    => $debut . '-' . ( $debut + 1 ),
-	);
-}
+/* L'année académique (exercice en cours, exercices clôturés, exercice
+   consulté par le super-administrateur) : inc/exercices.php. */
 
 /* Matricule : seul identifiant de connexion. Lettres, chiffres, « - », « _ »
    ou « . », 3 à 30 caractères, comparé en majuscules et sans espaces : chaque

@@ -157,6 +157,7 @@ function ueb_navigation_administration() {
 			$lien( 'admin', 'scolarites', 'Personnel', 'groupe' ),
 			$lien( 'admin', 'filieres', 'Filières', 'fichier' ),
 			$lien( 'admin', 'ipes', 'IPES', 'ecole' ),
+			$lien( 'admin', 'exercices', 'Exercice', 'calendrier' ),
 		) );
 		$groupes['Scolarité'] = array( 'tampon', array(
 			$lien( 'scolarite', 'bord', 'Tableau de bord', 'tampon', array( 'type' => 'droits' ) ),

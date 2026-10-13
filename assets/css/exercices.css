@@ -1,0 +1,268 @@
+/* ==========================================================================
+   Onglet « Exercice » de l'administration — templates/composants/exercices-admin.php
+   Deux colonnes :
+     1. les années académiques, dans une carte : l'exercice consulté ressort
+        en vert pâle, et la sélection glisse d'une année à l'autre ; chaque
+        ligne porte une icône de calendrier, verte pour l'exercice en cours ;
+     2. le détail de l'exercice consulté, en cartes de rangs différents :
+        la une (blanche, la plus grande, avec le panneau « Statut actuel » en
+        creux), l'avancement (frise Remotion, couleurs lues dans --frise-*),
+        les chiffres réunis dans une seule carte, puis raccourcis et historique.
+   L'or désigne le jour présent sur la frise. Mouvement : assets/js/exercices.js.
+   ========================================================================== */
+
+.adm-exercices {
+	--exo-surface: var(--blanc);
+	--exo-creux: color-mix(in srgb, var(--filet) 30%, var(--papier));
+	--exo-bord: color-mix(in srgb, var(--filet) 85%, transparent);
+	--exo-choix: color-mix(in srgb, var(--foret-700) 7%, var(--blanc));
+	--exo-choix-bord: color-mix(in srgb, var(--foret-700) 34%, transparent);
+	--exo-puce: color-mix(in srgb, var(--foret-700) 10%, var(--blanc));
+	--exo-ombre: 0 1px 2px rgba(15, 44, 31, .05), 0 18px 40px -32px rgba(15, 44, 31, .32);
+	--frise-piste: #e5ece6;
+	--frise-plein: var(--foret-700);
+	--frise-clos: #a9b5ad;
+	--frise-contour: #b9c6bd;
+	--frise-anneau: var(--blanc);
+	--sceau-encre: #2f4a3a;
+}
+:root[data-theme="sombre"] .adm-exercices {
+	--exo-creux: #141c17;
+	--exo-choix: #18271d;
+	--exo-choix-bord: rgba(111, 208, 138, .32);
+	--exo-puce: #1c2a21;
+	--exo-ombre: 0 1px 2px rgba(0, 0, 0, .35), 0 18px 40px -30px rgba(0, 0, 0, .8);
+	--frise-piste: #26322b;
+	--frise-plein: #6fbf8a;
+	--frise-clos: #4d5d53;
+	--frise-contour: #46574c;
+	--sceau-encre: #cfe3d5;
+}
+
+.exo-maitre { display: grid; grid-template-columns: minmax(270px, 320px) minmax(0, 1fr); align-items: start; gap: clamp(1rem, 1.8vw, 1.5rem); }
+
+/* ---------- 1. Années académiques ---------- */
+
+.exo-liste { position: sticky; top: 1.25rem; padding: .5rem; border: 1px solid var(--exo-bord); border-radius: 20px; background: var(--exo-surface); box-shadow: var(--exo-ombre); }
+.exo-liste__tete { display: grid; gap: .1rem; padding: .85rem .85rem .9rem; }
+.exo-liste__tete h2 { margin: 0; font: 700 1.02rem/1.3 var(--f-texte); color: var(--encre); }
+.exo-liste__tete p { margin: 0; font-size: .82rem; color: var(--gris); }
+.exo-liste__corps { position: relative; }
+.exo-liste__annees { position: relative; z-index: 1; display: grid; gap: .3rem; margin: 0; padding: 0; list-style: none; }
+.exo-ligne form { margin: 0; }
+
+.exo-ligne__bouton { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; column-gap: .8rem; width: 100%; min-height: 66px; padding: .65rem .7rem .65rem .8rem; border: 1px solid transparent; border-radius: 14px; background: transparent; color: var(--encre); font: inherit; text-align: left; cursor: pointer; transition: background-color .18s var(--ease-sortie), border-color .18s var(--ease-sortie); }
+.exo-ligne__bouton:hover { border-color: var(--exo-bord); background: color-mix(in srgb, var(--papier) 70%, transparent); }
+.exo-ligne__bouton:focus-visible { outline: 3px solid var(--or); outline-offset: 2px; }
+.exo-ligne__bouton[aria-busy="true"] { cursor: progress; }
+
+/* L'exercice consulté ressort en vert pâle. Sans script : la ligne elle-même ;
+   avec le script (.a-selection), une seule pièce qui glisse d'une ligne à l'autre. */
+.exo-ligne.est-consulte .exo-ligne__bouton, .exo-liste__selection { border-color: var(--exo-choix-bord); background: var(--exo-choix); }
+.exo-ligne.est-consulte .exo-ligne__bouton { cursor: default; }
+.exo-liste__selection { position: absolute; top: 0; left: 0; z-index: 0; display: none; border-style: solid; border-width: 1px; border-radius: 14px; pointer-events: none; }
+.exo-liste.a-selection .exo-liste__selection { display: block; }
+.exo-liste.a-selection .exo-ligne.est-consulte .exo-ligne__bouton { border-color: transparent; background: transparent; }
+
+.exo-ligne__texte { display: grid; gap: .2rem; min-width: 0; }
+.exo-ligne__texte b { font: 700 1.08rem/1.2 var(--f-titre); letter-spacing: -.01em; font-variant-numeric: lining-nums tabular-nums; }
+.exo-ligne__statut { display: inline-flex; align-items: center; gap: .4rem; font-size: .8rem; font-weight: 600; color: var(--gris); }
+.exo-ligne__statut .icone { color: var(--gris-clair); }
+.exo-ligne--cloture .exo-ligne__texte b { color: var(--gris); }
+
+.exo-ligne__quitus { display: grid; justify-items: end; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.exo-ligne__quitus b { font: 700 1.05rem/1.1 var(--f-titre); color: var(--encre); }
+.exo-ligne__quitus small { font-size: .72rem; color: var(--gris); }
+.exo-ligne__quitus.est-vide b { color: var(--gris-clair); }
+.exo-ligne__chevron { color: var(--gris-clair); transition: translate .18s var(--ease-sortie), color .18s; }
+.exo-ligne__bouton:hover .exo-ligne__chevron, .exo-ligne.est-consulte .exo-ligne__chevron { color: var(--foret-700); }
+.exo-ligne__bouton:hover .exo-ligne__chevron { translate: 2px 0; }
+
+/* Pastille de statut (liste et une) : pleine pour l'exercice actif, en
+   anneau pour un exercice ouvert, or pour l'exercice à venir ; un cadenas
+   pour un exercice clôturé. */
+.exo-ligne__statut i, .exo-statut i { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--gris-clair); }
+.exo-ligne--en_cours .exo-ligne__statut, .exo-statut--en_cours { color: var(--adm-st-verifie); }
+.exo-ligne--en_cours .exo-ligne__statut i, .exo-statut--en_cours i { background: var(--adm-st-verifie); box-shadow: 0 0 0 3px color-mix(in srgb, var(--adm-st-verifie) 18%, transparent); }
+.exo-ligne--ouvert .exo-ligne__statut i, .exo-statut--ouvert i { background: transparent; box-shadow: inset 0 0 0 2px var(--foret-700); }
+.exo-ligne--a_venir .exo-ligne__statut, .exo-statut--a_venir { color: var(--adm-st-genere); }
+.exo-ligne--a_venir .exo-ligne__statut i, .exo-statut--a_venir i { background: var(--or); }
+
+/* Icône de calendrier : neutre, verte pour l'exercice en cours et pour
+   l'exercice consulté, estompée pour un exercice clôturé. */
+.exo-ligne__icone { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; background: var(--exo-creux); color: var(--gris); box-shadow: inset 0 0 0 1px var(--exo-bord); transition: background-color .18s var(--ease-sortie), color .18s var(--ease-sortie); }
+.exo-ligne--en_cours .exo-ligne__icone, .exo-ligne.est-consulte .exo-ligne__icone { background: var(--exo-puce); color: var(--foret-700); box-shadow: inset 0 0 0 1px var(--exo-choix-bord); }
+.exo-ligne--a_venir .exo-ligne__icone { color: var(--adm-st-genere); }
+.exo-ligne--cloture .exo-ligne__icone { color: var(--gris-clair); }
+
+/* ---------- 2. Détail de l'exercice consulté ---------- */
+
+.exo-detail { display: grid; gap: clamp(.85rem, 1.4vw, 1.15rem); min-width: 0; transition: opacity .3s var(--ease-sortie); }
+.exo-detail.est-en-attente { opacity: .45; }
+.exo-carte { min-width: 0; padding: 1.25rem clamp(1.1rem, 2vw, 1.6rem); border: 1px solid var(--exo-bord); border-radius: 18px; background: var(--exo-surface); box-shadow: var(--exo-ombre); }
+.exo-carte h3 { display: flex; align-items: center; gap: .6rem; margin: 0; font: 700 1.02rem/1.3 var(--f-texte); color: var(--encre); }
+.exo-carte h3 .icone { color: var(--foret-700); }
+.exo-carte__tete { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: .35rem 1.5rem; }
+
+/* La une : ce qu'est l'exercice, et ce qu'on peut en décider. */
+.exo-une { display: grid; grid-template-columns: minmax(0, 1fr) minmax(250px, 300px); gap: clamp(1.25rem, 2.5vw, 2.25rem); padding: clamp(1.3rem, 2.4vw, 1.9rem); border: 1px solid var(--exo-bord); border-radius: 24px; background: var(--exo-surface); box-shadow: var(--exo-ombre); }
+.exo-une__texte { position: relative; display: grid; align-content: start; gap: .85rem; min-width: 0; }
+.exo-une__tete { display: flex; align-items: center; flex-wrap: wrap; gap: .5rem .9rem; }
+.exo-une__tete h2 { margin: 0; font: 700 clamp(1.75rem, 1.35rem + 1.2vw, 2.45rem)/1.08 var(--f-titre); letter-spacing: -.025em; color: var(--encre); font-variant-numeric: lining-nums; }
+.exo-detail--cloture .exo-une__tete h2 { color: var(--gris); }
+.exo-une__description { max-width: 58ch; margin: 0; font-size: .97rem; line-height: 1.6; color: var(--gris); }
+.exo-une__dates { display: inline-flex; align-items: center; gap: .45rem; margin: .1rem 0 0; font-size: .86rem; font-weight: 600; color: var(--encre); }
+.exo-une__dates .icone { color: var(--foret-700); }
+.exo-une__dates sup { font-size: .65em; }
+
+.exo-statut { display: inline-flex; align-items: center; gap: .45rem; min-height: 28px; padding: 0 .75rem; border: 1px solid transparent; border-radius: 999px; font-size: .82rem; font-weight: 700; white-space: nowrap; }
+.exo-statut--en_cours { border-color: color-mix(in srgb, var(--adm-st-verifie) 26%, transparent); background: var(--adm-st-verifie-fond); }
+.exo-statut--ouvert { border-color: var(--filet-fort); background: var(--exo-puce); color: var(--encre); }
+.exo-statut--cloture { border-color: var(--filet-fort); background: var(--papier); color: var(--gris); }
+.exo-statut--a_venir { border-color: color-mix(in srgb, var(--or) 45%, transparent); background: var(--adm-st-genere-fond); }
+
+/* Panneau « Statut actuel », en creux dans la une. */
+.exo-etat { position: relative; display: grid; align-content: start; gap: .85rem; padding: 1rem 1.05rem 1.05rem; border: 1px solid var(--exo-bord); border-radius: 16px; background: var(--exo-creux); }
+.exo-etat__tete { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.exo-etat__tete p { display: grid; gap: .1rem; margin: 0; }
+.exo-etat__tete span { font-size: .8rem; color: var(--gris); }
+.exo-etat__tete b { font: 700 1.08rem/1.25 var(--f-texte); color: var(--encre); }
+.exo-etat__tete form { margin: 0; }
+/* Sceau de la clôture, posé en biais dans l'angle du panneau, à la place de
+   l'interrupteur ; à la frappe, il paraît à l'impact (0,3 s, image 9 du
+   tampon) et l'interrupteur s'efface. */
+.exo-etat__sceau { position: absolute; top: -.85rem; right: -.6rem; width: 108px; pointer-events: none; }
+.exo-etat--cloture .exo-etat__tete { min-height: 64px; padding-right: 84px; }
+.exo-etat:has(.exo-etat__sceau:not([hidden])) .exo-interrupteur { visibility: hidden; }
+.exo-etat__sceau[data-exo-sceau] .exo-sceau { animation: exo-appui .16s .3s both; }
+@keyframes exo-appui { from { opacity: 0; scale: .92; } }
+.exo-sceau { position: relative; width: 100%; aspect-ratio: 1; }
+.exo-sceau .animation__pause { display: none; }
+.exo-etat__action:empty { display: none; }
+.exo-etat__action form { margin: 0; }
+.exo-etat__action .adm-bouton { width: 100%; min-height: 46px; border-radius: 12px; font-size: .92rem; }
+.exo-etat__action .adm-bouton--primaire { border-color: var(--vert-bandeau); background: var(--vert-bandeau); }
+.exo-etat__action .adm-bouton--primaire:hover { border-color: var(--foret-800); background: var(--foret-800); }
+.exo-etat__action .adm-bouton[aria-busy="true"] { opacity: .7; pointer-events: none; }
+.exo-etat__note { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: .55rem; margin: 0; padding: .7rem .75rem; border-radius: 12px; background: var(--exo-surface); font-size: .8rem; line-height: 1.45; color: var(--gris); }
+.exo-etat__note .icone { margin-top: .1rem; color: var(--foret-700); }
+:root[data-theme="sombre"] .exo-etat__action .adm-bouton--primaire { border-color: #2f7a4a; background: #2f7a4a; }
+
+/* Interrupteur « Exercice actif » : allumé = actif. Il s'allume pour activer
+   (fenêtre de confirmation, puis le curseur glisse) ; verrouillé, il porte
+   un cadenas et ne réagit pas. */
+.exo-interrupteur { position: relative; flex: none; display: inline-flex; align-items: center; width: 54px; height: 30px; padding: 3px; border: 0; border-radius: 999px; background: var(--filet-fort); cursor: pointer; transition: background-color .25s var(--ease-sortie); }
+.exo-interrupteur:hover { background: color-mix(in srgb, var(--filet-fort) 70%, var(--foret-700)); }
+.exo-interrupteur:focus-visible { outline: 3px solid var(--or); outline-offset: 2px; }
+.exo-interrupteur__curseur { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: #fff; color: var(--gris); box-shadow: 0 1px 3px rgba(15, 44, 31, .3); transition: translate .32s var(--ease-sortie); }
+.exo-interrupteur.est-allume, .exo-interrupteur[aria-checked="true"] { background: var(--foret-700); }
+.exo-interrupteur.est-allume .exo-interrupteur__curseur, .exo-interrupteur[aria-checked="true"] .exo-interrupteur__curseur { translate: 24px 0; color: var(--foret-700); }
+.exo-interrupteur.est-verrouille { cursor: not-allowed; }
+.exo-interrupteur.est-verrouille:not(.est-allume) { background: var(--filet); }
+:root[data-theme="sombre"] .exo-interrupteur__curseur { background: #e9f1ec; }
+
+/* Avancement : la frise des douze mois, puis deux repères. */
+.exo-avancement { display: grid; gap: 1rem; }
+.exo-avancement__part { margin: 0; font-size: .86rem; color: var(--gris); }
+.exo-avancement__part b { margin-right: .2rem; font: 700 1.35rem/1 var(--f-titre); color: var(--encre); font-variant-numeric: lining-nums tabular-nums; }
+
+.exo-frise { position: relative; padding-top: 1.75rem; }
+.exo-frise:not(:has(.exo-frise__jour)) { padding-top: .25rem; }
+.exo-detail .animation--frise { width: 100%; aspect-ratio: 720 / 48; }
+.exo-detail .animation--frise .animation__pause { display: none; } /* jouée une seule fois */
+.exo-detail .animation--frise .animation__scene, .exo-frise-repli { display: block; width: 100%; height: 100%; overflow: visible; }
+/* Repère « Aujourd'hui », accroché au point or : sa tige part du point, le
+   texte s'écarte vers le centre de la frise. */
+.exo-frise__jour { position: absolute; top: 0; left: var(--x); margin: 0; padding-left: .55rem; font-size: .8rem; font-weight: 700; line-height: 1.2; color: var(--or-fonce); white-space: nowrap; }
+.exo-frise__jour::before { content: ""; position: absolute; left: 0; top: .2rem; width: 2px; height: 1.55rem; border-radius: 2px; background: var(--or); translate: -50% 0; }
+.exo-frise__jour.est-a-gauche { left: auto; right: calc(100% - var(--x)); padding: 0 .55rem 0 0; }
+.exo-frise__jour.est-a-gauche::before { left: auto; right: 0; translate: 50% 0; }
+.exo-frise__mois { position: relative; height: 1.15rem; margin: .3rem 0 0; padding: 0; list-style: none; }
+.exo-frise__mois li { position: absolute; top: 0; left: var(--x); translate: -50% 0; font-size: .76rem; line-height: 1.15rem; color: var(--gris-clair); white-space: nowrap; }
+.exo-frise__mois .est-passe { color: var(--gris); }
+.exo-frise__mois .est-courant { font-weight: 700; color: var(--encre); }
+.exo-frise__court { display: none; }
+
+.exo-reperes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; margin: 0; padding: 0; list-style: none; }
+.exo-reperes li { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; column-gap: .9rem; padding: .8rem 1rem; border-radius: 14px; background: var(--exo-creux); }
+.exo-reperes__icone { grid-row: span 2; display: grid; place-items: center; width: 42px; height: 42px; border-radius: 12px; background: var(--exo-surface); color: var(--foret-700); box-shadow: 0 0 0 1px var(--exo-bord); }
+.exo-reperes p { margin: 0; font-size: .8rem; color: var(--gris); }
+.exo-reperes .exo-reperes__valeur { display: flex; align-items: baseline; gap: .35rem; color: var(--gris); }
+.exo-reperes__valeur b { font: 700 1.55rem/1.1 var(--f-titre); letter-spacing: -.015em; color: var(--encre); font-variant-numeric: lining-nums tabular-nums; white-space: nowrap; }
+.exo-reperes__valeur sup { font-size: .55em; }
+.exo-reperes__valeur small { font-size: .82rem; }
+
+/* Chiffres : une seule carte, quatre cases séparées par un filet. L'icône
+   et le chiffre sur une ligne, le libellé dessous. */
+.exo-chiffres { padding: 0; overflow: hidden; container-type: inline-size; }
+.exo-chiffres ul { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; margin: 0; padding: 0; list-style: none; background: var(--exo-bord); }
+.exo-chiffres__case { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; align-content: start; column-gap: .7rem; row-gap: .55rem; padding: 1.1rem clamp(.95rem, 1.5vw, 1.3rem) 1.15rem; background: var(--exo-surface); }
+.exo-chiffres__icone { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 50%; background: var(--exo-puce); color: var(--foret-700); }
+.exo-chiffres__case--attente .exo-chiffres__icone { background: var(--adm-st-rejete-fond); color: var(--adm-st-rejete); }
+.exo-chiffres__valeur { margin: 0; font: 700 clamp(1.5rem, 1.2rem + .7vw, 1.9rem)/1 var(--f-titre); letter-spacing: -.02em; color: var(--encre); font-variant-numeric: lining-nums tabular-nums; white-space: nowrap; }
+.exo-chiffres__libelle { grid-column: 1 / -1; margin: 0; font-size: .8rem; line-height: 1.4; color: var(--gris); }
+.exo-chiffres__libelle b { display: block; font-size: .9rem; font-weight: 700; color: var(--encre); }
+.exo-detail--cloture .exo-chiffres__valeur { color: var(--gris); }
+@container (max-width: 620px) {
+	.exo-chiffres ul { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* Raccourcis et historique. */
+.exo-bas { display: grid; grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr); gap: inherit; align-items: start; }
+.exo-raccourcis > p { margin: .3rem 0 .75rem; font-size: .85rem; line-height: 1.5; color: var(--gris); }
+.exo-raccourcis ul { display: grid; gap: .25rem; margin: 0 -.5rem -.4rem; padding: 0; list-style: none; }
+.exo-raccourcis a { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: .8rem; min-height: 54px; padding: .45rem .5rem; border-radius: 12px; color: var(--encre); text-decoration: none; transition: background-color .15s var(--ease-sortie); }
+.exo-raccourcis a:hover { background: var(--exo-creux); }
+.exo-raccourcis a:focus-visible { outline: 3px solid var(--or); outline-offset: 1px; }
+.exo-raccourcis a > span:nth-child(2) { display: grid; gap: .05rem; min-width: 0; }
+.exo-raccourcis b { font-size: .92rem; }
+.exo-raccourcis small { font-size: .78rem; color: var(--gris); }
+.exo-raccourcis__icone { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 11px; background: var(--exo-puce); color: var(--foret-700); }
+.exo-raccourcis__chevron { color: var(--gris-clair); transition: translate .18s var(--ease-sortie), color .18s; }
+.exo-raccourcis a:hover .exo-raccourcis__chevron { translate: 2px 0; color: var(--foret-700); }
+
+.exo-historique { display: grid; gap: .8rem; }
+.exo-historique__vide { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: .95rem; padding: 1rem 1.1rem; border-radius: 14px; background: var(--exo-creux); }
+.exo-historique__vide-icone { display: grid; place-items: center; width: 46px; height: 46px; border-radius: 50%; background: var(--exo-surface); color: var(--gris); box-shadow: 0 0 0 1px var(--exo-bord); }
+.exo-historique__vide p { margin: 0; font-size: .82rem; line-height: 1.5; color: var(--gris); }
+.exo-historique__vide b { display: block; margin-bottom: .1rem; font-size: .9rem; color: var(--encre); }
+.exo-historique__liste { display: grid; margin: 0; padding: 0; list-style: none; }
+.exo-historique__ligne { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; column-gap: .8rem; padding: .65rem 0; }
+.exo-historique__ligne + .exo-historique__ligne { border-top: 1px solid var(--filet); }
+.exo-historique__ligne p { margin: 0; font-size: .88rem; color: var(--gris); }
+.exo-historique__ligne p b { font-weight: 700; color: var(--encre); }
+.exo-historique__ligne time { font-size: .8rem; color: var(--gris); font-variant-numeric: tabular-nums; }
+.exo-historique__icone { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: var(--exo-puce); color: var(--foret-700); }
+.exo-historique__ligne--cloturer .exo-historique__icone { background: transparent; color: var(--gris); box-shadow: inset 0 0 0 1px var(--filet-fort); }
+
+/* ---------- 3. Responsive ---------- */
+
+@media (max-width: 1180px) {
+	.exo-une { grid-template-columns: minmax(0, 1fr); }
+	.exo-bas { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-width: 960px) {
+	.exo-maitre { grid-template-columns: minmax(0, 1fr); }
+	.exo-liste { position: static; }
+}
+
+@media (max-width: 620px) {
+	.exo-une { border-radius: 20px; }
+	.exo-frise__long { display: none; }
+	.exo-frise__court { display: inline; }
+	.exo-reperes { grid-template-columns: minmax(0, 1fr); }
+	.exo-historique__ligne { grid-template-columns: auto minmax(0, 1fr); }
+	.exo-historique__ligne time { grid-column: 2; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.exo-ligne__bouton, .exo-ligne__icone, .exo-detail, .exo-interrupteur, .exo-interrupteur__curseur, .exo-ligne__chevron, .exo-raccourcis__chevron { transition: none; }
+	.exo-etat__sceau[data-exo-sceau] .exo-sceau { animation: none; }
+}
+
+@media print {
+	.exo-liste, .exo-etat, .exo-raccourcis { display: none; }
+	.exo-maitre, .exo-une, .exo-bas { grid-template-columns: minmax(0, 1fr); }
+	.exo-une, .exo-carte { box-shadow: none; }
+}

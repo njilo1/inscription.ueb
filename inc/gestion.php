@@ -79,7 +79,8 @@ function ueb_peut_voir_quitus( $quitus ) {
 /** Le compte peut-il valider ou renvoyer le reçu de ce quitus ? */
 function ueb_peut_decider_quitus( $quitus ) {
 	$p = UEB_PERMISSIONS_TYPE_QUITUS[ ueb_type_du_quitus( $quitus ) ];
-	return $quitus && ueb_peut( $p[0], $quitus->etablissement ) && ueb_peut( $p[1], $quitus->etablissement );
+	/* Exercice clôturé : ses dossiers se consultent, plus aucune décision. */
+	return $quitus && ! ueb_exercice_cloture( $quitus->annee_academique ) && ueb_peut( $p[0], $quitus->etablissement ) && ueb_peut( $p[1], $quitus->etablissement );
 }
 
 /** Décision sur un quitus : consulter ET décider au moins un type ; le quitus est contrôlé ensuite. */
@@ -132,25 +133,26 @@ function ueb_action_gestion_creer_cellule() {
 	ueb_exiger_scolarite();
 	$retour = add_query_arg( 'vue', 'cellule', ueb_url_scolarite() );
 	/* Rôle choisi parmi ceux que ce compte peut attribuer pour son établissement. */
-	$role = sanitize_key( wp_unslash( $_POST['role'] ?? '' ) );
+	$role   = sanitize_key( wp_unslash( $_POST['role'] ?? '' ) );
+	$saisie = array(
+		'role'  => $role,
+		'login' => sanitize_text_field( wp_unslash( $_POST['login'] ?? '' ) ),
+		'nom'   => sanitize_text_field( wp_unslash( $_POST['nom'] ?? '' ) ),
+		'email' => sanitize_email( wp_unslash( $_POST['email'] ?? '' ) ),
+	);
+	/* En cas d'échec, le formulaire est rendu rempli, avec l'erreur à côté. */
 	if ( $role && ! isset( ueb_roles_attribuables( true )[ $role ] ) ) {
-		ueb_flash( 'erreur', 'Ce rôle ne peut pas être attribué depuis ton espace.' );
+		$_SESSION['ueb_cellule_saisie'] = array( 'erreur' => 'Ce rôle ne peut pas être attribué depuis ton espace.', 'role' => '' ) + $saisie;
 		ueb_rediriger( $retour );
 	}
-	$cellule = ueb_creer_cellule(
-		sanitize_text_field( wp_unslash( $_POST['login'] ?? '' ) ),
-		sanitize_text_field( wp_unslash( $_POST['nom'] ?? '' ) ),
-		sanitize_email( wp_unslash( $_POST['email'] ?? '' ) ),
-		ueb_etab_agent(),
-		$role
-	);
+	$cellule = ueb_creer_cellule( $saisie['login'], $saisie['nom'], $saisie['email'], ueb_etab_agent(), $role );
 	if ( is_wp_error( $cellule ) ) {
-		ueb_flash( 'erreur', $cellule->get_error_message() );
+		$_SESSION['ueb_cellule_saisie'] = array( 'erreur' => $cellule->get_error_message() ) + $saisie;
 		ueb_rediriger( $retour );
 	}
 	list( $id, $provisoire ) = $cellule;
+	/* La carte de remise du mot de passe tient lieu de confirmation. */
 	$_SESSION['ueb_mdp_cellule'] = array( 'compte' => get_userdata( $id )->user_login, 'mdp' => $provisoire );
-	ueb_flash( 'succes', 'Compte créé.' );
 	ueb_rediriger( $retour );
 }
 
@@ -236,19 +238,33 @@ function ueb_gestion_chiffres( $annee_code, $etab = '' ) {
 		'montant_verifie' => 0,
 		'sexe'            => array( 'M' => 0, 'F' => 0 ),
 		'tranches'        => array( 'tranche1' => 0, 'tranche2' => 0, 'totalite' => 0 ),
+		/* Les mêmes comptes pour chaque type de quitus : les tableaux de bord ne
+		   mélangent jamais droits universitaires et frais médicaux. */
+		/* « recents » : par statut, les quitus générés ces 7 derniers jours
+		   (carte « Évolution des quitus », anneau extérieur). */
+		'types'           => array_fill_keys( array_keys( UEB_TYPES_QUITUS ), array( 'quitus' => 0, 'genere' => 0, 'recu_envoye' => 0, 'verifie' => 0, 'rejete' => 0, 'montant_verifie' => 0, 'recents' => array( 'genere' => 0, 'recu_envoye' => 0, 'verifie' => 0, 'rejete' => 0 ) ) ),
 	);
 
-	foreach ( (array) $wpdb->get_results( $wpdb->prepare( "SELECT statut, COUNT(*) n, SUM(montant) total FROM ueb_insc_quitus WHERE $ou GROUP BY statut", $params ) ) as $l ) { // phpcs:ignore
-		$chiffres['quitus'] += (int) $l->n;
+	$depuis = gmdate( 'Y-m-d 00:00:00', strtotime( current_time( 'Y-m-d' ) . ' -6 days' ) );
+	foreach ( (array) $wpdb->get_results( $wpdb->prepare( "SELECT type, statut, COUNT(*) n, SUM(montant) total, SUM(date_creation >= %s) recents FROM ueb_insc_quitus WHERE $ou GROUP BY type, statut", array_merge( array( $depuis ), $params ) ) ) as $l ) { // phpcs:ignore
+		$n    = (int) $l->n;
+		$type = 'medicaux' === $l->type ? 'medicaux' : 'droits';
+		$chiffres['quitus']                += $n;
+		$chiffres['types'][ $type ]['quitus'] += $n;
+		if ( isset( $chiffres['types'][ $type ][ $l->statut ] ) ) {
+			$chiffres['types'][ $type ][ $l->statut ]              += $n;
+			$chiffres['types'][ $type ]['recents'][ $l->statut ] += (int) $l->recents;
+		}
 		if ( 'recu_envoye' === $l->statut ) {
-			$chiffres['recus_envoyes'] = (int) $l->n;
+			$chiffres['recus_envoyes'] += $n;
 		} elseif ( 'verifie' === $l->statut ) {
-			$chiffres['recus_verifies']  = (int) $l->n;
-			$chiffres['montant_verifie'] = (int) $l->total;
+			$chiffres['recus_verifies']                    += $n;
+			$chiffres['montant_verifie']                   += (int) $l->total;
+			$chiffres['types'][ $type ]['montant_verifie'] += (int) $l->total;
 		} elseif ( 'rejete' === $l->statut ) {
-			$chiffres['recus_rejetes'] = (int) $l->n;
+			$chiffres['recus_rejetes'] += $n;
 		} elseif ( 'genere' === $l->statut ) {
-			$chiffres['a_payer'] = (int) $l->n;
+			$chiffres['a_payer'] += $n;
 		}
 	}
 
@@ -341,22 +357,29 @@ function ueb_gestion_par_filiere( $annee_code, $etab ) {
  * dont un premier reçu a été envoyé, quitus vérifiés. Chaque quitus compte une
  * fois par courbe (un renvoi après correction ne le recompte pas).
  *
- * La fenêtre couvre au plus $jours_max jours jusqu'à aujourd'hui ; ce qui la
- * précède est reporté dans la valeur de départ, pour que les cumuls restent justes.
+ * Tout l'exercice : du premier quitus à aujourd'hui (exercice en cours) ou
+ * au dernier jour de l'exercice (ueb_exercice_bornes). Un établissement sans
+ * quitus a un seul jour, à zéro.
  *
  * Un quitus passé par la vérification sans reçu en base (ancien dossier)
  * compte comme envoyé le jour de sa décision : la courbe des envois ne passe
  * jamais sous celle des vérifiés.
  *
+ * $type limite à un type de quitus (« droits » ou « medicaux ») ; vide : les deux.
+ *
  * @return array{jours: string[], generes: int[], envoyes: int[], verifies: int[]}
  */
-function ueb_gestion_activite( $annee_code, $etab = '', $jours_max = 45 ) {
+function ueb_gestion_activite( $annee_code, $etab = '', $type = '' ) {
 	global $wpdb;
 	$ou     = 'q.annee_academique = %s';
 	$params = array( $annee_code );
 	if ( $etab ) {
 		$ou      .= ' AND q.etablissement = %s';
 		$params[] = $etab;
+	}
+	if ( $type ) {
+		$ou      .= ' AND q.type = %s';
+		$params[] = $type;
 	}
 	$lignes = (array) $wpdb->get_results( $wpdb->prepare(
 		"SELECT DATE(q.date_creation) AS genere,
@@ -370,19 +393,19 @@ function ueb_gestion_activite( $annee_code, $etab = '', $jours_max = 45 ) {
 		$params
 	) );
 
-	$aujourdhui = current_time( 'Y-m-d' );
-	$premier    = $aujourdhui;
+	$premier = $dernier = '';
 	foreach ( $lignes as $l ) {
-		$premier = min( $premier, $l->genere );
+		$premier = $premier ? min( $premier, $l->genere ) : $l->genere;
 		/* Dates incohérentes en base (décision datée avant la création) : un
 		   envoi ne précède jamais le quitus, une vérification jamais l'envoi. */
 		$l->envoye  = $l->envoye ? max( $l->envoye, $l->genere ) : null;
 		$l->verifie = $l->verifie ? max( $l->verifie, (string) $l->envoye, $l->genere ) : null;
+		$dernier    = max( $dernier, $l->genere, (string) $l->envoye, (string) $l->verifie );
 	}
-	$debut = max( $premier, gmdate( 'Y-m-d', strtotime( $aujourdhui . ' -' . ( max( 2, (int) $jours_max ) - 1 ) . ' days' ) ) );
+	list( $debut, $fin ) = ueb_exercice_bornes( $annee_code, $premier, $dernier ) ?? array_fill( 0, 2, ueb_exercice_fin_historique( $annee_code ) );
 
 	$jours = array();
-	for ( $t = strtotime( $debut ); $t <= strtotime( $aujourdhui ); $t += DAY_IN_SECONDS ) {
+	for ( $t = strtotime( $debut ); $t <= strtotime( $fin ); $t += DAY_IN_SECONDS ) {
 		$jours[] = gmdate( 'Y-m-d', $t );
 	}
 	$index  = array_flip( $jours );
@@ -393,8 +416,8 @@ function ueb_gestion_activite( $annee_code, $etab = '', $jours_max = 45 ) {
 			if ( ! $l->$colonne ) {
 				continue;
 			}
-			/* Avant la fenêtre : reporté au premier jour ; jamais après aujourd'hui. */
-			$par_jour[ $index[ max( $debut, min( $aujourdhui, $l->$colonne ) ) ] ]++;
+			/* Dans les bornes de l'historique : jamais avant le premier jour ni après le dernier. */
+			$par_jour[ $index[ max( $debut, min( $fin, $l->$colonne ) ) ] ]++;
 		}
 		$cumul = 0;
 		foreach ( $par_jour as $i => $n ) {
@@ -404,6 +427,36 @@ function ueb_gestion_activite( $annee_code, $etab = '', $jours_max = 45 ) {
 		$series[ $serie ] = $par_jour;
 	}
 	return array( 'jours' => $jours ) + $series;
+}
+
+/**
+ * Progression de l'année pour chaque type de quitus dont le compte voit les
+ * statistiques, droits universitaires d'abord : les courbes du tableau de
+ * bord ne mélangent pas les deux types.
+ *
+ * @return array<string, array> type => retour de ueb_gestion_activite()
+ */
+function ueb_gestion_activite_par_type( $annee_code, $etab = '' ) {
+	$par_type = array();
+	foreach ( ueb_types_stats_visibles() ?: array( 'droits' ) as $type ) {
+		$par_type[ $type ] = ueb_gestion_activite( $annee_code, $etab, $type );
+	}
+	return $par_type;
+}
+
+/**
+ * « 24 quitus de droits universitaires et 15 de frais médicaux » : les quitus
+ * de chaque type que le compte voit, sans jamais les additionner.
+ *
+ * @param array $c Retour de ueb_gestion_chiffres().
+ */
+function ueb_texte_quitus_par_type( array $c ) {
+	$morceaux = array();
+	foreach ( ueb_types_stats_visibles() ?: array( 'droits' ) as $type ) {
+		$n          = (int) ( $c['types'][ $type ]['quitus'] ?? 0 );
+		$morceaux[] = sprintf( $morceaux ? '%s de %s' : '%s quitus de %s', ueb_formater_montant( $n ), mb_strtolower( UEB_TYPES_QUITUS[ $type ]['libelle'] ) );
+	}
+	return implode( ' et ', $morceaux );
 }
 
 /* ---------- Suivi des paiements ----------
@@ -448,8 +501,9 @@ function ueb_suivi_taux( array $a, $cle = 'encaisse' ) {
 /**
  * Suivi des paiements de l'année : global, par établissement, par filière,
  * par niveau, et frais médicaux. $etab limite à un établissement (scolarité).
+ * $historique ajoute les séries des mini-courbes, sur tout l'exercice.
  */
-function ueb_suivi_paiements( $annee_code, $etab = '', $jours_historique = 0 ) {
+function ueb_suivi_paiements( $annee_code, $etab = '', $historique = false ) {
 	global $wpdb;
 	$etab   = ueb_etab_agent() ?: $etab;
 	$filtre = $etab ? $wpdb->prepare( ' AND q.etablissement = %s', $etab ) : '';
@@ -551,17 +605,22 @@ function ueb_suivi_paiements( $annee_code, $etab = '', $jours_historique = 0 ) {
 	uksort( $niveaux, static fn( $a, $b ) => ( $ordre[ $a ] ?? 99 ) <=> ( $ordre[ $b ] ?? 99 ) );
 
 	$resultat = compact( 'global', 'etabs', 'filieres', 'niveaux', 'medicaux', 'medicaux_etabs', 'quitus_statuts', 'etab' );
-	if ( $jours_historique > 0 ) {
-		$aujourdhui = current_time( 'Y-m-d' );
-		$debut = gmdate( 'Y-m-d', strtotime( $aujourdhui . ' -' . ( min( 366, max( 2, (int) $jours_historique ) ) - 1 ) . ' days' ) );
+	if ( $historique ) {
+		/* Tout l'exercice : du premier quitus au dernier jour de l'historique. */
+		$premier = $dernier = '';
+		foreach ( $lignes as $l ) {
+			$premier = $premier ? min( $premier, $l->date_creation ) : $l->date_creation;
+			$dernier = max( $dernier, $l->date_creation, (string) $l->date_verification );
+		}
+		list( $debut, $fin ) = ueb_exercice_bornes( $annee_code, $premier, $dernier ) ?? array_fill( 0, 2, ueb_exercice_fin_historique( $annee_code ) );
 		$depots = (array) $wpdb->get_results( $wpdb->prepare(
-			"SELECT DATE(r.date_envoi) AS jour, COUNT(DISTINCT r.quitus_id) AS nombre
+			"SELECT DATE(r.date_envoi) AS jour, q.type, COUNT(DISTINCT r.quitus_id) AS nombre
 			 FROM ueb_insc_recus r JOIN ueb_insc_quitus q ON q.id = r.quitus_id
 			 WHERE q.annee_academique = %s $filtre AND r.date_envoi >= %s AND r.date_envoi < %s
-			 GROUP BY DATE(r.date_envoi)",
-			$annee_code, $debut, gmdate( 'Y-m-d', strtotime( $aujourdhui . ' +1 day' ) )
+			 GROUP BY DATE(r.date_envoi), q.type",
+			$annee_code, $debut, gmdate( 'Y-m-d', strtotime( $fin . ' +1 day' ) )
 		) );
-		$resultat['historique'] = ueb_suivi_series_indicateurs( (array) $lignes, $etudiants, $depots, $debut, $aujourdhui );
+		$resultat['historique'] = ueb_suivi_series_indicateurs( (array) $lignes, $etudiants, $depots, $debut, $fin );
 	}
 	return $resultat;
 }
@@ -571,6 +630,7 @@ function ueb_suivi_paiements( $annee_code, $etab = '', $jours_historique = 0 ) {
  * Le type de formation actuel est le même que celui du bilan. Les validations
  * annulées et pièces supprimées ne peuvent pas être reconstituées sans journal.
  * « depots » est un flux quotidien de quitus distincts, pas la file d'attente.
+ * « quitus » et « depots » existent aussi par type (_droits, _medicaux).
  * Les cumuls antérieurs à la fenêtre sont conservés ; zéro est une vraie valeur.
  */
 function ueb_suivi_series_indicateurs( array $lignes, array $etudiants, array $depots, $debut, $fin ) {
@@ -578,7 +638,7 @@ function ueb_suivi_series_indicateurs( array $lignes, array $etudiants, array $d
 	for ( $t = strtotime( $debut ); $t <= strtotime( $fin ); $t += DAY_IN_SECONDS ) {
 		$jours[] = gmdate( 'Y-m-d', $t );
 	}
-	$series = array_fill_keys( array( 'etudiants', 'encaisse', 'medicaux', 'quitus', 'taux', 'depots' ), array() );
+	$series = array_fill_keys( array( 'etudiants', 'encaisse', 'medicaux', 'quitus', 'quitus_droits', 'quitus_medicaux', 'taux', 'depots', 'depots_droits', 'depots_medicaux' ), array() );
 	$evenements = $vus = $groupes = array();
 	foreach ( $lignes as $l ) {
 		$creation = substr( $l->date_creation, 0, 10 );
@@ -586,7 +646,7 @@ function ueb_suivi_series_indicateurs( array $lignes, array $etudiants, array $d
 			continue;
 		}
 		$jour = max( $debut, $creation );
-		$evenements[ $jour ][] = array( 'quitus', 1 );
+		$evenements[ $jour ][] = array( 'quitus', 'droits' === $l->type ? 'droits' : 'medicaux' );
 		$vus[ $l->compte_id ] = isset( $vus[ $l->compte_id ] ) ? min( $vus[ $l->compte_id ], $jour ) : $jour;
 		if ( 'droits' !== $l->type ) {
 			if ( 'verifie' === $l->statut ) {
@@ -610,15 +670,18 @@ function ueb_suivi_series_indicateurs( array $lignes, array $etudiants, array $d
 	foreach ( $vus as $jour ) {
 		$evenements[ $jour ][] = array( 'etudiants', 1 );
 	}
-	$receptions = array();
+	$receptions = array( 'droits' => array(), 'medicaux' => array() );
 	foreach ( $depots as $depot ) {
-		$receptions[ $depot->jour ] = (int) $depot->nombre;
+		$type = 'medicaux' === ( $depot->type ?? 'droits' ) ? 'medicaux' : 'droits';
+		$receptions[ $type ][ $depot->jour ] = ( $receptions[ $type ][ $depot->jour ] ?? 0 ) + (int) $depot->nombre;
 	}
 	$effectif = $quitus = $attendu = $encaisse = $medical = 0;
+	$par_type = array( 'droits' => 0, 'medicaux' => 0 );
 	foreach ( $jours as $jour ) {
 		foreach ( $evenements[ $jour ] ?? array() as $evt ) {
 			if ( 'quitus' === $evt[0] ) {
 				$quitus++;
+				$par_type[ $evt[1] ]++;
 			} elseif ( 'etudiants' === $evt[0] ) {
 				$effectif++;
 			} elseif ( 'medical' === $evt[0] ) {
@@ -639,10 +702,14 @@ function ueb_suivi_series_indicateurs( array $lignes, array $etudiants, array $d
 		}
 		$series['etudiants'][] = $effectif;
 		$series['quitus'][] = $quitus;
+		$series['quitus_droits'][] = $par_type['droits'];
+		$series['quitus_medicaux'][] = $par_type['medicaux'];
 		$series['encaisse'][] = $encaisse;
 		$series['medicaux'][] = $medical;
 		$series['taux'][] = $attendu ? round( 100 * $encaisse / $attendu, 2 ) : null;
-		$series['depots'][] = $receptions[ $jour ] ?? 0;
+		$series['depots_droits'][] = $receptions['droits'][ $jour ] ?? 0;
+		$series['depots_medicaux'][] = $receptions['medicaux'][ $jour ] ?? 0;
+		$series['depots'][] = end( $series['depots_droits'] ) + end( $series['depots_medicaux'] );
 	}
 	return array( 'jours' => $jours ) + $series;
 }
@@ -1013,6 +1080,10 @@ function ueb_action_gestion_statut() {
 	}
 	ueb_exiger_etab( $quitus->etablissement );
 	$retour = add_query_arg( 'quitus', $quitus->id, ueb_url_scolarite() );
+	if ( ueb_exercice_cloture( $quitus->annee_academique ) ) {
+		ueb_flash( 'erreur', 'L’exercice ' . ueb_exercice( $quitus->annee_academique )['libelle'] . ' est clôturé : ce dossier se consulte, sans nouvelle décision.' );
+		ueb_rediriger( $retour );
+	}
 	if ( ! ueb_peut_decider_quitus( $quitus ) ) {
 		ueb_flash( 'erreur', 'medicaux' === ueb_type_du_quitus( $quitus ) ? 'Le reçu des frais médicaux est validé par le CMS.' : 'Le reçu des droits universitaires est validé par la scolarité.' );
 		ueb_rediriger( $retour );
@@ -1074,6 +1145,10 @@ function ueb_action_gestion_valider() {
 	/* Le registre met en évidence la ligne du dossier validé. */
 	$paiements = ueb_gestion_dossier( $quitus );
 	$retour   .= '#dossier-' . (int) $paiements[0]->id;
+	if ( ueb_exercice_cloture( $quitus->annee_academique ) ) {
+		ueb_flash( 'erreur', 'L’exercice ' . ueb_exercice( $quitus->annee_academique )['libelle'] . ' est clôturé : ce dossier se consulte, sans nouvelle décision.' );
+		ueb_rediriger( $retour );
+	}
 	$valides   = array();
 	foreach ( $paiements as $q ) {
 		if ( 'recu_envoye' !== $q->statut || ! ueb_peut_gerer_etab( $q->etablissement ) || ! ueb_peut_decider_quitus( $q ) || ! ueb_recus_du_quitus( $q->id ) ) {

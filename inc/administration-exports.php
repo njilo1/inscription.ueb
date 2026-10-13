@@ -1,6 +1,7 @@
 <?php
 /**
- * Exports du suivi des paiements (administration, vue Paiements).
+ * Exports du suivi des paiements (vue Paiements de l'administration et de
+ * l'espace scolarité, qui exporte seulement l'établissement de l'agent).
  *
  *   - PDF et Word : rapport au format institutionnel, en A4 paysage.
  *     Il porte l'en-tête bilingue des actes de l'université (français à
@@ -23,6 +24,10 @@ const UEB_EXPORT_FORMATS = array( 'pdf', 'docx', 'xlsx' );
 /** Lien de téléchargement d'un format, pour le périmètre affiché (jeton anti-rejeu). */
 function ueb_adm_export_url( $format, $focus ) {
 	$args = array( 'vue' => 'paiements', 'export' => $format );
+	/* La scolarité n'a pas d'établissement dans le lien : c'est celui du compte. */
+	if ( 'scolarite' === ueb_espace_courant() ) {
+		return wp_nonce_url( add_query_arg( $args, ueb_url_scolarite() ), 'ueb_export_paiements', 'jeton' );
+	}
 	if ( $focus ) {
 		$args['etab'] = $focus;
 	}
@@ -54,13 +59,17 @@ function ueb_adm_exports_menu( $focus ) {
 	return ob_get_clean();
 }
 
-/* Téléchargement : ?vue=paiements&export=pdf|docx|xlsx[&etab=FS]&jeton=… */
+/* Téléchargement : ?vue=paiements&export=pdf|docx|xlsx[&etab=FS]&jeton=…
+   Dans l'espace scolarité, l'établissement est celui de l'agent : un « etab »
+   ajouté à l'adresse est ignoré. */
 add_action( 'template_redirect', function () {
-	if ( ! isset( $_GET['export'] ) || 'admin' !== ueb_espace_courant() || 'etudiants' === sanitize_key( $_GET['vue'] ?? '' ) ) { // phpcs:ignore -- l'export de la liste des étudiants a son propre déclencheur (inc/etudiants.php)
+	$espace = ueb_espace_courant();
+	if ( ! isset( $_GET['export'] ) || ! in_array( $espace, array( 'admin', 'scolarite' ), true ) || 'paiements' !== sanitize_key( $_GET['vue'] ?? '' ) ) { // phpcs:ignore -- la liste des étudiants a son propre export (inc/etudiants.php)
 		return;
 	}
-	if ( ! ueb_est_admin_ueb() ) {
-		wp_die( 'Cet export est réservé à l’administration.', 'Accès refusé', array( 'response' => 403 ) );
+	$scolarite = 'scolarite' === $espace;
+	if ( $scolarite ? ! ( ueb_peut( 'ueb_voir_paiements' ) && UEB_AUCUN_ETAB !== ueb_etab_agent() ) : ! ueb_est_admin_ueb() ) {
+		wp_die( 'Cet export est réservé aux comptes qui suivent les paiements.', 'Accès refusé', array( 'response' => 403 ) );
 	}
 	if ( ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_GET['jeton'] ?? '' ) ), 'ueb_export_paiements' ) ) {
 		wp_die( 'Ce lien d’export a expiré. Recharge la page Paiements puis relance l’export.', 'Lien expiré', array( 'response' => 403 ) );
@@ -69,10 +78,10 @@ add_action( 'template_redirect', function () {
 	if ( ! in_array( $format, UEB_EXPORT_FORMATS, true ) ) {
 		wp_die( 'Format d’export inconnu.', 'Export', array( 'response' => 400 ) );
 	}
-	$focus = strtoupper( sanitize_text_field( wp_unslash( $_GET['etab'] ?? '' ) ) );
+	$focus = $scolarite ? ueb_etab_agent() : strtoupper( sanitize_text_field( wp_unslash( $_GET['etab'] ?? '' ) ) );
 	$focus = ueb_etablissement( $focus ) ? $focus : '';
-	$annee = ueb_annee_academique();
-	$d     = ueb_adm_rapport_donnees( ueb_suivi_paiements( $annee['code'], $focus, 366 ), $focus, $annee );
+	$annee = ueb_exercice_consulte();
+	$d     = ueb_adm_rapport_donnees( ueb_suivi_paiements( $annee['code'], $focus, true ), $focus, $annee );
 
 	nocache_headers();
 	if ( 'pdf' === $format ) {
@@ -276,15 +285,15 @@ function ueb_adm_rapport_entete( array $d ) {
    ========================================================================== */
 
 function ueb_adm_export_pdf( array $d ) {
-	require_once UEB_INSC_DIR . '/lib/tcpdf/tcpdf.php';
+	require_once UEB_INSC_DIR . '/inc/pdf-ueb.php';
 	$couleur = ueb_pdf_rvb( $d['couleur'] );
 	$encre   = array( 33, 37, 41 );
 	$gris    = array( 100, 108, 104 );
 	$marge   = 14.0;
 
-	$pdf = new TCPDF( 'L', 'mm', 'A4', true, 'UTF-8', false );
-	$pdf->SetCreator( 'Plateforme d’inscription, ' . UEB_UNIVERSITE['fr'] );
-	$pdf->SetAuthor( UEB_UNIVERSITE['fr'] );
+	$pdf = new UEB_TCPDF( 'L', 'mm', 'A4', true, 'UTF-8', false );
+	$pdf->SetCreator( 'Plateforme d’inscription, ' . str_replace( "'", '’', UEB_UNIVERSITE['fr'] ) );
+	$pdf->SetAuthor( str_replace( "'", '’', UEB_UNIVERSITE['fr'] ) );
 	$pdf->SetTitle( $d['titre'] . ' ' . $d['annee']['libelle'] );
 	$pdf->SetSubject( $d['sous_titre'] );
 	$pdf->setPrintHeader( false );
@@ -393,10 +402,22 @@ function ueb_adm_export_pdf( array $d ) {
 		$pdf->writeHTML( '<p style="font-family:uebsans;font-size:8.4pt;color:#212529;"><span style="font-family:uebsansb;">' . esc_html( $nt[0] ) . ' : </span>' . esc_html( $nt[1] ) . '</p>', true, false, false, false, '' );
 		$pdf->Ln( 0.8 );
 	}
-	$pdf->Ln( 4 );
+	/* « Fait à Ebolowa » reste sur la page des notes quand il tient au-dessus du
+	   filet du pied de page, plutôt que d'aller seul sur une nouvelle page. */
 	$pdf->SetFont( 'uebserifi', '', 9.5 );
 	$pdf->SetTextColorArray( $encre );
-	$pdf->Cell( 0, 6, 'Fait à Ebolowa, le ' . $d['fait_le'] . '.', 0, 1, 'R' );
+	$fait  = 'Fait à Ebolowa, le ' . $d['fait_le'] . '.';
+	$plafond = $pdf->getPageHeight() - 13.5; // juste au-dessus du filet du pied
+	$y       = $pdf->GetY();
+	if ( $y + 7 <= $plafond ) {
+		$pdf->SetAutoPageBreak( false );
+		$pdf->SetY( $y + min( 4, $plafond - $y - 6 ) );
+		$pdf->Cell( 0, 6, $fait, 0, 1, 'R' );
+		$pdf->SetAutoPageBreak( true, 18 );
+	} else {
+		$pdf->Ln( 4 );
+		$pdf->Cell( 0, 6, $fait, 0, 1, 'R' );
+	}
 
 	/* Pied de chaque page : origine du document et pagination. */
 	$total = $pdf->getNumPages();
@@ -422,7 +443,7 @@ function ueb_adm_export_pdf( array $d ) {
    ========================================================================== */
 
 function ueb_ooxml_txt( $texte ) {
-	return htmlspecialchars( (string) $texte, ENT_XML1 | ENT_QUOTES, 'UTF-8' );
+	return htmlspecialchars( str_replace( "'", '’', (string) $texte ), ENT_XML1 | ENT_QUOTES, 'UTF-8' );
 }
 
 /** Assemble une archive OOXML et l'envoie. */

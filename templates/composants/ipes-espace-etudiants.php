@@ -98,7 +98,7 @@ $champs_etudiant = static function ( callable $valeur, array $erreurs, $garder =
 					<?php if ( $jauge['etudiants'] ) : ?>
 						<form class="ipes-outils" method="get" action="<?php echo esc_url( ueb_url_espace_ipes() ); ?>" role="search" aria-label="Filtrer les étudiants" data-filtres-direct="ipes-etudiants-resultats"><?php ueb_champ_espace(); ?>
 							<input type="hidden" name="vue" value="etudiants">
-							<label class="ipes-recherche"><span class="sr">Rechercher un étudiant</span><?php echo ueb_icone( 'loupe', 17 ); ?><input type="search" name="q" value="<?php echo esc_attr( $filtres['recherche'] ); ?>" placeholder="Matricule, nom ou prénom" enterkeyhint="search" autocomplete="off"></label>
+							<label class="ipes-recherche"><span class="sr">Rechercher un étudiant</span><?php echo ueb_icone( 'loupe', 17 ); ?><input type="search" name="q" value="<?php echo esc_attr( $filtres['recherche'] ); ?>" placeholder="Matricule, nom ou prénom" enterkeyhint="search" autocomplete="off"<?php echo ueb_attr_suggestions_liste( array_map( static fn( $e ) => array( trim( $e->nom . ' ' . $e->prenom ), $e->matricule, $e->matricule ?: trim( $e->nom ) ), $filtre ? ueb_ipes_etudiants( $ipes->id ) : $liste ) ); // phpcs:ignore -- échappé ?>></label>
 							<label class="ipes-selecteur"><span class="sr">Filière</span>
 								<select name="filiere">
 									<option value="">Toutes les filières</option>
