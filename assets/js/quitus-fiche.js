@@ -123,10 +123,14 @@
 		scenes.filter(estImage).forEach((s) => {
 			$("img", s)?.addEventListener("load", () => { if (s === scene) appliquer(); });
 
-			/* Double-clic : agrandir à l'endroit visé, ou revenir à la vue entière. */
-			s.addEventListener("dblclick", (ev) => {
-				const [cx, cy] = depuisCentre(ev);
-				zoomer(vue.z > 1 ? 1 : 2, cx, cy);
+			/* Un clic sur le reçu l'affiche en grand (visionneuse d'app.js) ; pas
+			   après un glissement, ni quand on parcourt un reçu déjà agrandi. */
+			let appui = null;
+			s.addEventListener("pointerdown", (ev) => { appui = [ev.clientX, ev.clientY]; });
+			s.addEventListener("click", (ev) => {
+				const bouge = appui && Math.hypot(ev.clientX - appui[0], ev.clientY - appui[1]) > 6;
+				if (bouge || vue.z > 1 || ev.target.closest("button, a") || !window.uebVoirRecu) return;
+				window.uebVoirRecu(s.dataset.ouvrir, s.dataset.legende, s);
 			});
 
 			/* Pincement du pavé tactile ou Ctrl + molette : zoom progressif. */
@@ -170,8 +174,13 @@
 			s.addEventListener("pointerup", relacher);
 			s.addEventListener("pointercancel", relacher);
 
-			/* Clavier, la scène ayant le focus : + − 0, R, flèches. */
+			/* Clavier, la scène ayant le focus : Entrée (en grand), + − 0, R, flèches. */
 			s.addEventListener("keydown", (ev) => {
+				if (ev.key === "Enter" && ev.target === s && window.uebVoirRecu) {
+					ev.preventDefault();
+					window.uebVoirRecu(s.dataset.ouvrir, s.dataset.legende, s);
+					return;
+				}
 				const pas = 48;
 				const actions = {
 					"+": () => palier(1), "=": () => palier(1), "-": () => palier(-1),
@@ -215,7 +224,7 @@
 				const n = points.filter((p) => p.checked).length;
 				const reste = total - n;
 				jauge.style.setProperty("--p", n / total);
-				compte.textContent = reste ? `${n} sur ${total} points contrôlés` : "Tout concorde : tu peux valider le paiement.";
+				compte.textContent = reste ? `${n} sur ${total} points contrôlés` : "Tout concorde : tu peux valider le reçu.";
 				aside.classList.toggle("est-complete", !reste);
 				/* La confirmation rappelle les points restés sans coche. */
 				if (valider) {

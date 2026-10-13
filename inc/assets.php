@@ -162,7 +162,13 @@ add_action( 'wp_enqueue_scripts', function () {
 		}
 		ueb_script( 'ueb-administration', 'assets/js/administration.js' );
 	}
-	if ( ( is_front_page() && ! $page ) || in_array( $page, array( 'connexion', 'creer-compte', 'mdp-oublie' ), true ) || $connexion_scolarite || $bord_scolarite || $ipes_heros ) {
+	/* Tableau de bord de la cellule informatique : comptes étudiants, sans aucun montant (inc/cellule-tableau.php). */
+	$cellule_bord = 'cellule' === ueb_espace_courant() && 'bord' === $vue_bo && is_user_logged_in();
+	if ( $cellule_bord ) {
+		ueb_style( 'ueb-cellule', 'assets/css/cellule.css', array( 'ueb-administration' ) );
+		ueb_script( 'ueb-cellule', 'assets/js/cellule.js', array( 'ueb-remotion' ) );
+	}
+	if ( ( is_front_page() && ! $page ) || in_array( $page, array( 'connexion', 'creer-compte', 'mdp-oublie' ), true ) || $connexion_scolarite || $bord_scolarite || $ipes_heros || $cellule_bord ) {
 		ueb_script( 'ueb-remotion', 'assets/js/remotion-ueb.js' );
 	}
 	/* Étudiants UEB : registre de l'administration, de l'espace de gestion et de

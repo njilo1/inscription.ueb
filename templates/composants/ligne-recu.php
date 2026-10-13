@@ -1,7 +1,7 @@
 <?php
 /**
- * Une ligne de « Mes reçus » : vignette du fichier (format), nom, quitus et
- * date d'envoi, statut du paiement, puis téléchargement de la copie. Un
+ * Une ligne de « Mes reçus » : photo du reçu (un clic l'affiche en grand) ou
+ * vignette du PDF, nom, quitus et date d'envoi, statut du paiement, puis téléchargement de la copie. Un
  * reçu à corriger affiche le motif et le bouton pour en renvoyer un.
  * Attend $recu (ueb_recus_du_compte) et $rang.
  */
@@ -11,9 +11,15 @@ $libelle  = array( 'verifie' => 'Validé', 'rejete' => 'À corriger' )[ $statut 
 $badge    = array( 'verifie' => 'verifie', 'rejete' => 'rejete' )[ $statut ] ?? 'recu_envoye';
 $ext      = strtoupper( substr( (string) pathinfo( $recu->nom_original, PATHINFO_EXTENSION ), 0, 4 ) ) ?: 'FICH';
 $etab     = ueb_etablissement( $recu->etablissement );
+$photo    = 'PDF' !== $ext;
+$legende  = ueb_libelle_objet_recu( $recu, $recu->type_quitus ) . ', quitus ' . $recu->numero;
 ?>
 <li class="ligne-recu ligne-recu--<?php echo esc_attr( $statut ); ?>" style="--etab: <?php echo esc_attr( $etab['couleur'] ?? '#13351a' ); ?>; --i: <?php echo (int) ( $rang ?? 0 ); ?>">
-	<span class="ligne-recu__fichier<?php echo 'PDF' === $ext ? ' ligne-recu__fichier--pdf' : ''; ?>" aria-hidden="true"><?php echo ueb_icone( 'PDF' === $ext ? 'fichier' : 'appareil', 18 ); ?><b><?php echo esc_html( $ext ); ?></b></span>
+	<?php if ( $photo ) : /* la photo du reçu : un clic l'affiche en grand (visionneuse) */ ?>
+		<a class="ligne-recu__fichier ligne-recu__fichier--photo" href="<?php echo esc_url( ueb_url_recu( $recu->id ) ); ?>" target="_blank" rel="noopener" data-visionneuse="<?php echo esc_attr( $legende ); ?>" aria-label="<?php echo esc_attr( 'Afficher en grand le reçu ' . $recu->nom_original ); ?>"><img src="<?php echo esc_url( ueb_url_recu( $recu->id ) ); ?>" alt="" loading="lazy"></a>
+	<?php else : ?>
+		<span class="ligne-recu__fichier ligne-recu__fichier--pdf" aria-hidden="true"><?php echo ueb_icone( 'fichier', 18 ); ?><b><?php echo esc_html( $ext ); ?></b></span>
+	<?php endif; ?>
 
 	<div class="ligne-recu__corps">
 		<p class="ligne-recu__nom" title="<?php echo esc_attr( $recu->nom_original ); ?>"><?php echo esc_html( $recu->nom_original ); ?></p>
@@ -32,7 +38,7 @@ $etab     = ueb_etablissement( $recu->etablissement );
 		<?php if ( 'rejete' === $statut ) : ?>
 			<a class="btn btn--primaire btn--petit" href="<?php echo esc_url( ueb_url( 'mon-espace/recus/' . $recu->numero ) ); ?>"><?php echo ueb_icone( 'envoyer', 17 ); ?>Renvoyer</a>
 		<?php endif; ?>
-		<a class="btn btn--fantome btn--petit" href="<?php echo esc_url( ueb_url_recu( $recu->id ) ); ?>" target="_blank" rel="noopener" aria-label="<?php echo esc_attr( 'Voir ' . $recu->nom_original ); ?>"><?php echo ueb_icone( 'oeil', 17 ); ?>Voir</a>
+		<a class="btn btn--fantome btn--petit" href="<?php echo esc_url( ueb_url_recu( $recu->id ) ); ?>" target="_blank" rel="noopener"<?php echo $photo ? ' data-visionneuse="' . esc_attr( $legende ) . '"' : ''; ?> aria-label="<?php echo esc_attr( 'Voir ' . $recu->nom_original ); ?>"><?php echo ueb_icone( 'oeil', 17 ); ?>Voir</a>
 		<a class="btn btn--fantome btn--petit" href="<?php echo esc_url( ueb_url_recu( $recu->id, true ) ); ?>" aria-label="<?php echo esc_attr( 'Télécharger ' . $recu->nom_original ); ?>"><?php echo ueb_icone( 'telecharger', 17 ); ?>Télécharger</a>
 	</div>
 </li>

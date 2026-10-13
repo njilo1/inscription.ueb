@@ -359,6 +359,10 @@
 .ligne-recu__fichier--pdf { background: var(--danger-fond); color: var(--danger); box-shadow: inset 0 0 0 1px rgba(179, 38, 30, .16); }
 .ligne-recu__fichier--pdf::after { background: rgba(179, 38, 30, .18); }
 .ligne-recu__fichier b { font-size: .64rem; letter-spacing: .04em; line-height: 1; }
+.ligne-recu__fichier--photo { overflow: hidden; background: var(--papier); box-shadow: inset 0 0 0 1px var(--filet); cursor: zoom-in; }
+.ligne-recu__fichier--photo::after { content: none; }
+.ligne-recu__fichier--photo img { width: 100%; height: 100%; object-fit: cover; font-size: 0; }
+.ligne-recu__fichier--photo:focus-visible { outline: 3px solid var(--or); outline-offset: 2px; }
 .ligne-recu__corps { display: grid; gap: .3rem; min-width: 0; }
 .ligne-recu__nom { margin: 0; overflow: hidden; font-weight: 700; color: var(--encre); text-overflow: ellipsis; white-space: nowrap; }
 .ligne-recu__meta { display: flex; flex-wrap: wrap; gap: .2rem 1rem; margin: 0; font-size: .85rem; color: var(--gris); }
@@ -1205,7 +1209,7 @@
 .recus-liste__item { display: flex; align-items: center; gap: .9rem; padding: .55rem .6rem .55rem .55rem; border: 1px solid var(--filet); border-radius: 14px; background: var(--blanc); transition: border-color .2s, box-shadow .25s; animation: vignette .4s var(--ease-sortie) both; animation-delay: calc(var(--i, 0) * 70ms + .15s); }
 .recus-liste__item:hover { border-color: var(--filet-fort); box-shadow: var(--ombre-1); }
 .recus-liste__vignette { flex: none; display: grid; place-items: center; width: 56px; height: 72px; overflow: hidden; border-radius: 9px; background: var(--papier); box-shadow: inset 0 0 0 1px var(--filet); }
-.recus-liste__vignette img { width: 100%; height: 100%; object-fit: cover; font-size: 0; }
+.recus-liste__vignette img { width: 100%; height: 100%; object-fit: cover; font-size: 0; cursor: zoom-in; }
 .recus-liste__vignette:focus-visible { outline: 3px solid var(--or); outline-offset: 2px; }
 .recus-liste__infos { display: grid; flex: 1; gap: .15rem; min-width: 0; }
 .recus-liste__infos b { overflow: hidden; font-size: .95rem; text-overflow: ellipsis; white-space: nowrap; }

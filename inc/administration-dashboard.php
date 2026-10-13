@@ -37,24 +37,26 @@ function ueb_adm_dashboard( array $c, array $suivi, array $activite, $focus, $pe
 	$url     = $propre ? $options['url'] : static fn( array $args = array() ) => add_query_arg( $args, ueb_url_administration() );
 	$args    = $focus && ! $propre ? array( 'etab' => $focus ) : array();
 	$options = array_merge( array( 'perimetre' => true, 'paiements' => $url( $args + array( 'vue' => 'paiements' ) ), 'ipes' => true, 'attente' => '' ), $options );
+	/* L'anneau ne suit que l'argent des quitus déjà générés : la part de
+	   l'attendu que personne n'a encore déclarée (« non déclaré ») n'y figure pas. */
 	$parts   = array(
 		'encaisse'     => array( 'Encaissé', 'var(--dash-foret)' ),
 		'verification' => array( 'En vérification', 'var(--dash-bleu)' ),
 		'declare'      => array( 'Déclaré, sans reçu', 'var(--dash-or)' ),
-		'non_declare'  => array( 'Non déclaré', 'var(--dash-neutre)' ),
 	);
+	$genere  = $g['encaisse'] + $g['verification'] + $g['declare'];
+	/* Les nombres à gauche, l'argent à droite (dernier élément : carte d'argent).
+	   La carte rouge des reçus en attente remplace « Reçus à vérifier ». */
 	$cartes = array(
-		array( 'Étudiants', ueb_formater_montant( $c['etudiants'] ), 'Avec au moins un quitus', 'groupe', 'foret' ),
-		array( 'Droits encaissés', ueb_adm_montant_court( $g['encaisse'] ), 'FCFA · paiements vérifiés', 'banque', 'foret' ),
-		array( 'Quitus générés', ueb_formater_montant( $c['quitus'] ), 'Droits et frais médicaux', 'fichier', 'foret' ),
-		array( 'Recouvrement', $g['attendu'] ? ueb_pourcent( $taux ) : '—', 'Des droits universitaires attendus', 'check', 'vert' ),
-		array( 'Reçus à vérifier', ueb_formater_montant( $c['recus_envoyes'] ), 'En attente de la scolarité', 'horloge', 'foret' ),
+		array( 'Étudiants', ueb_formater_montant( $c['etudiants'] ), 'Avec au moins un quitus', 'groupe', 'foret', 'etudiants', false ),
+		array( 'Quitus générés', ueb_formater_montant( $c['quitus'] ), 'Droits et frais médicaux', 'fichier', 'foret', 'quitus', false ),
+		array( 'Reçus à vérifier', ueb_formater_montant( $c['recus_envoyes'] ), 'En attente de la scolarité', 'horloge', 'foret', 'depots', false ),
+		array( 'Droits encaissés', ueb_adm_montant_court( $g['encaisse'] ), 'FCFA · paiements vérifiés', 'banque', 'foret', 'encaisse', true ),
+		array( 'Recouvrement', $g['attendu'] ? ueb_pourcent( $taux ) : '—', 'Des droits universitaires attendus', 'check', 'vert', 'taux', true ),
 	);
 	$hist = $suivi['historique'] ?? array( 'jours' => array() );
-	$cles = array( 'etudiants', 'encaisse', 'quitus', 'taux', 'depots' );
 	if ( $options['attente'] ) {
-		array_pop( $cartes );
-		array_pop( $cles );
+		unset( $cartes[2] );
 	}
 	?>
 	<div class="adm-pilotage">
@@ -83,37 +85,17 @@ function ueb_adm_dashboard( array $c, array $suivi, array $activite, $focus, $pe
 	</div>
 	<div class="adm-kpis" aria-label="Indicateurs de l’année académique">
 		<?php if ( $options['attente'] ) { ueb_carte_attente( $options['attente'], null, $periode ); } ?>
-		<?php foreach ( $cartes as $i => $carte ) : ?>
-			<article class="adm-kpi adm-kpi--<?php echo esc_attr( $carte[4] ); ?>">
+		<?php foreach ( $cartes as $carte ) : ?>
+			<article class="adm-kpi adm-kpi--<?php echo esc_attr( $carte[4] ) . ( $carte[6] ? ' adm-kpi--argent' : '' ); ?>">
 				<div class="adm-kpi__entete"><h2><?php echo esc_html( $carte[0] ); ?></h2><?php echo ueb_icone( $carte[3], 18 ); ?></div>
 				<p class="adm-kpi__valeur"><?php echo esc_html( $carte[1] ); ?></p>
 				<p class="adm-kpi__note"><?php echo esc_html( $carte[2] ); ?></p>
-				<?php ueb_adm_mini_courbe( $cles[ $i ], $hist['jours'], $hist[ $cles[ $i ] ] ?? array() ); ?>
+				<?php ueb_adm_mini_courbe( $carte[5], $hist['jours'], $hist[ $carte[5] ] ?? array() ); ?>
 			</article>
 		<?php endforeach; ?>
 	</div>
 	<?php ueb_adm_donnees_courbes( $hist ); ?>
 	<div class="adm-analyse">
-		<section class="adm-panneau adm-finances" aria-labelledby="adm-finances-titre">
-			<header class="adm-panneau__tete"><div><h2 id="adm-finances-titre">Recouvrement des droits</h2><p>Répartition des montants attendus</p></div><?php echo ueb_icone( 'banque', 19 ); ?></header>
-			<div class="adm-donut">
-				<svg viewBox="0 0 200 200" aria-hidden="true">
-					<circle class="adm-donut__piste" cx="100" cy="100" r="76"/>
-					<?php $offset = 0; foreach ( $parts as $cle => $part ) :
-						$longueur = $g['attendu'] ? 100 * $g[ $cle ] / $g['attendu'] : 0;
-						if ( $longueur > 0 ) : ?>
-							<circle cx="100" cy="100" r="76" pathLength="100" stroke="<?php echo esc_attr( $part[1] ); ?>" stroke-dasharray="<?php echo esc_attr( $longueur . ' ' . ( 100 - $longueur ) ); ?>" stroke-dashoffset="<?php echo esc_attr( -$offset ); ?>"/>
-						<?php endif; $offset += $longueur; endforeach; ?>
-				</svg>
-				<p><b><?php echo esc_html( $g['attendu'] ? ueb_pourcent( $taux ) : '—' ); ?></b><span><?php echo $g['attendu'] ? 'encaissés' : 'Aucun droit attendu'; ?></span></p>
-			</div>
-			<ul class="adm-finances__legende">
-				<?php foreach ( $parts as $cle => $part ) : ?>
-					<li><i style="background: <?php echo esc_attr( $part[1] ); ?>" aria-hidden="true"></i><span><?php echo esc_html( $part[0] ); ?></span><b><?php echo esc_html( ueb_formater_montant( $g[ $cle ] ) ); ?><small> FCFA</small></b></li>
-				<?php endforeach; ?>
-			</ul>
-			<p class="adm-finances__total"><span>Total attendu</span><b><?php echo esc_html( ueb_formater_montant( $g['attendu'] ) ); ?> <small>FCFA</small></b></p>
-		</section>
 		<section class="adm-panneau adm-evolution" aria-label="Évolution des quitus">
 			<?php ueb_graphe_courbes( 'Évolution des quitus', 'Cumuls de l’année · fenêtre de ' . $periode . ' jours', $activite ); ?>
 			<div class="adm-evolution__bilan">
@@ -122,6 +104,26 @@ function ueb_adm_dashboard( array $c, array $suivi, array $activite, $focus, $pe
 				<div><b><?php echo esc_html( ueb_formater_montant( $g['soldes'] ) ); ?></b><span>Droits soldés</span></div>
 				<div><b><?php echo esc_html( ueb_formater_montant( $c['recus_rejetes'] ) ); ?></b><span>Reçus à corriger</span></div>
 			</div>
+		</section>
+		<section class="adm-panneau adm-finances" aria-labelledby="adm-finances-titre">
+			<header class="adm-panneau__tete"><div><h2 id="adm-finances-titre">Recouvrement des droits</h2><p>Répartition des montants des quitus générés</p></div><?php echo ueb_icone( 'banque', 19 ); ?></header>
+			<div class="adm-donut">
+				<svg viewBox="0 0 200 200" aria-hidden="true">
+					<circle class="adm-donut__piste" cx="100" cy="100" r="76"/>
+					<?php $offset = 0; foreach ( $parts as $cle => $part ) :
+						$longueur = $genere ? 100 * $g[ $cle ] / $genere : 0;
+						if ( $longueur > 0 ) : ?>
+							<circle cx="100" cy="100" r="76" pathLength="100" stroke="<?php echo esc_attr( $part[1] ); ?>" stroke-dasharray="<?php echo esc_attr( $longueur . ' ' . ( 100 - $longueur ) ); ?>" stroke-dashoffset="<?php echo esc_attr( -$offset ); ?>"/>
+						<?php endif; $offset += $longueur; endforeach; ?>
+				</svg>
+				<p><b><?php echo esc_html( $genere ? ueb_pourcent( 100 * $g['encaisse'] / $genere ) : '—' ); ?></b><span><?php echo $genere ? 'encaissés' : 'Aucun quitus généré'; ?></span></p>
+			</div>
+			<ul class="adm-finances__legende">
+				<?php foreach ( $parts as $cle => $part ) : ?>
+					<li><i style="background: <?php echo esc_attr( $part[1] ); ?>" aria-hidden="true"></i><span><?php echo esc_html( $part[0] ); ?></span><b><?php echo esc_html( ueb_formater_montant( $g[ $cle ] ) ); ?><small> FCFA</small></b></li>
+				<?php endforeach; ?>
+			</ul>
+			<p class="adm-finances__total"><span>Total des quitus générés</span><b><?php echo esc_html( ueb_formater_montant( $genere ) ); ?> <small>FCFA</small></b></p>
 		</section>
 	</div>
 	<div class="adm-secondaire">

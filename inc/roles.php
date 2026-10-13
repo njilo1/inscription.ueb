@@ -30,7 +30,7 @@ defined( 'ABSPATH' ) || exit;
 const UEB_CAP_GESTION   = 'ueb_gerer_quitus';
 const UEB_CAP_COMPTES   = 'ueb_gerer_comptes';
 const UEB_CAP_DIRECTION = 'ueb_diriger';
-const UEB_ROLES_VERSION = '5';
+const UEB_ROLES_VERSION = '6';
 /* Identifiants des deux rôles historiques. Ils ne servent plus qu'à la
    compatibilité : le code ne teste plus jamais un rôle par son nom. */
 const UEB_ROLE_SCOLARITE = 'ueb_scolarite';
@@ -53,7 +53,8 @@ function ueb_permissions() {
 		'ueb_voir_stats_cms'  => array( 'groupe' => 'Frais médicaux (CMS)', 'libelle' => 'Statistiques des frais médicaux', 'phrase' => 'consulter les statistiques des frais médicaux de sa portée, en lecture seule', 'aide' => 'Tableau de bord du CMS : quitus, montants attendus et encaissés, imprimable, sans accès aux reçus.', 'icone' => 'banque' ),
 		'ueb_voir_paiements'  => array( 'groupe' => 'Quitus et paiements', 'libelle' => 'Suivre les paiements', 'phrase' => 'suivre le recouvrement des droits par établissement et filière', 'aide' => 'Vue « Paiements » : montants attendus, encaissés, taux.', 'icone' => 'banque' ),
 		'ueb_voir_etudiants'  => array( 'groupe' => 'Étudiants', 'libelle' => 'Voir la liste des étudiants', 'phrase' => 'consulter la liste des étudiants inscrits de sa portée', 'aide' => 'Vue « Étudiants UEB » : les étudiants inscrits, filtrables par établissement, filière, niveau et paiement, en lecture seule. Une portée « un établissement » ne voit que les siens.', 'icone' => 'diplome' ),
-		'ueb_reinit_mdp'      => array( 'groupe' => 'Comptes étudiants', 'libelle' => 'Réinitialiser les mots de passe', 'phrase' => 'réinitialiser le mot de passe d’un étudiant de sa portée', 'aide' => 'Espace « Comptes étudiants » limité à la recherche et au bouton « Mot de passe » : ni création ni suspension.', 'icone' => 'cle' ),
+		'ueb_reinit_mdp'      => array( 'groupe' => 'Comptes étudiants', 'libelle' => 'Réinitialiser les mots de passe', 'phrase' => 'réinitialiser le mot de passe d’un étudiant de sa portée', 'aide' => 'Espace « Comptes étudiants » : tableau de bord des comptes, recherche et bouton « Mot de passe », sans création de compte ni aucun montant.', 'icone' => 'cle' ),
+		'ueb_suspendre_etudiants' => array( 'groupe' => 'Comptes étudiants', 'libelle' => 'Suspendre les comptes étudiants', 'phrase' => 'suspendre ou réactiver le compte d’un étudiant de sa portée', 'aide' => 'Boutons « Suspendre » et « Réactiver » de l’espace « Comptes étudiants », sans création de compte.', 'icone' => 'cadenas' ),
 		'ueb_gerer_comptes'   => array( 'groupe' => 'Comptes étudiants', 'libelle' => 'Gérer les comptes étudiants', 'phrase' => 'créer, réinitialiser ou suspendre les comptes étudiants', 'aide' => 'Espace « Comptes étudiants » : recherche, mot de passe provisoire, suspension.', 'icone' => 'utilisateur' ),
 		'ueb_creer_agents'    => array( 'groupe' => 'Personnel', 'libelle' => 'Créer des comptes pour son établissement', 'phrase' => 'créer des comptes pour son établissement, avec un rôle aux droits inférieurs', 'aide' => 'Comme la scolarité qui crée sa cellule informatique.', 'icone' => 'plus' ),
 		'ueb_voir_ipes'       => array( 'groupe' => 'IPES sous tutelle', 'libelle' => 'Voir les IPES sous tutelle', 'phrase' => 'suivre les IPES placés sous la tutelle de son établissement : étudiants, versements, bordereaux', 'aide' => 'Vue « IPES » de l’espace scolarité, en lecture seule, pour les établissements de sa portée.', 'icone' => 'ecole' ),
@@ -153,10 +154,28 @@ add_action( 'init', function () {
 		ueb_migrer_roles_historiques();
 		ueb_migrer_roles_etudiants();
 		ueb_retirer_roles_sans_compte();
+		ueb_migrer_role_celinfo();
 		update_option( 'ueb_insc_roles_version', UEB_ROLES_VERSION );
 	}
 	ueb_insc_deverrouiller( 'roles' );
 }, 4 );
+
+/**
+ * Version 6 : la cellule informatique (rôle « Celinfo » de la plateforme) ne
+ * fait que réinitialiser les mots de passe et suspendre les comptes étudiants ;
+ * elle ne voit ni quitus, ni paiements, ni montants. Le rôle déjà en base est
+ * remis à sa définition (inc/comptes-plateforme.php), une seule fois.
+ */
+function ueb_migrer_role_celinfo() {
+	$definition = ueb_plateforme_roles()['Celinfo'] ?? null;
+	foreach ( ueb_roles() as $slug => $def ) {
+		if ( $definition && 'Celinfo' === ( $def['nom'] ?? '' ) && $def['permissions'] !== $definition[1] ) {
+			$def['permissions'] = $definition[1];
+			$def['modifie_le']  = current_time( 'mysql' );
+			ueb_enregistrer_role( $slug, $def );
+		}
+	}
+}
 
 /**
  * Version 5 : les anciens rôles qui n'ont plus aucun compte sont retirés (les
@@ -415,7 +434,7 @@ function ueb_est_scolarite( $user_id = 0 ) {
 /** Accès à l'espace « comptes étudiants » (hors administrateur). */
 function ueb_est_cellule( $user_id = 0 ) {
 	$user = get_userdata( $user_id ?: get_current_user_id() );
-	return $user && ! user_can( $user, 'manage_options' ) && ( user_can( $user, UEB_CAP_COMPTES ) || user_can( $user, 'ueb_reinit_mdp' ) );
+	return $user && ! user_can( $user, 'manage_options' ) && ( user_can( $user, UEB_CAP_COMPTES ) || user_can( $user, 'ueb_reinit_mdp' ) || user_can( $user, 'ueb_suspendre_etudiants' ) );
 }
 
 /** Vrai si ce compte WordPress est un agent (porte un rôle du registre), hors administrateur. */
@@ -467,10 +486,19 @@ function ueb_roles_attribuables( $etab_seul = false ) {
 	return $roles;
 }
 
+/**
+ * Vrai si le compte courant peut donner cette permission : il l'a lui-même, ou
+ * il gère les comptes étudiants, ce qui couvre la seule réinitialisation des
+ * mots de passe et la seule suspension (la scolarité crée ainsi sa cellule).
+ */
+function ueb_peut_attribuer_permission( $cap ) {
+	return current_user_can( $cap ) || ( in_array( $cap, array( 'ueb_reinit_mdp', 'ueb_suspendre_etudiants' ), true ) && current_user_can( UEB_CAP_COMPTES ) );
+}
+
 /** Vrai si une définition de rôle reste dans les droits et la portée du compte courant. */
 function ueb_role_dans_mes_droits( array $def ) {
 	foreach ( $def['permissions'] as $cap ) {
-		if ( ! current_user_can( $cap ) ) {
+		if ( ! ueb_peut_attribuer_permission( $cap ) ) {
 			return false;
 		}
 	}

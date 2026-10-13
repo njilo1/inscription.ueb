@@ -67,8 +67,7 @@ adm-compte { display: inline-block; }
 .adm-donut .donut-part { transition: opacity .25s var(--ease-sortie); }
 .adm-finances:has(.adm-finances__legende li:nth-child(1):hover) .donut-part:not(.donut-part--encaisse),
 .adm-finances:has(.adm-finances__legende li:nth-child(2):hover) .donut-part:not(.donut-part--verification),
-.adm-finances:has(.adm-finances__legende li:nth-child(3):hover) .donut-part:not(.donut-part--declare),
-.adm-finances:has(.adm-finances__legende li:nth-child(4):hover) .donut-part:not(.donut-part--non_declare) { opacity: .2; }
+.adm-finances:has(.adm-finances__legende li:nth-child(3):hover) .donut-part:not(.donut-part--declare) { opacity: .2; }
 
 /* ---------- Comparaison et registre : la ligne survolée ravive ses données ---------- */
 

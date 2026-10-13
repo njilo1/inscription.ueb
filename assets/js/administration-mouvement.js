@@ -132,7 +132,7 @@
 			const donut = $(".adm-donut", finances);
 			const svg = donut && $("svg", donut);
 			const cercles = svg ? $$("circle:not(.adm-donut__piste)", svg) : [];
-			const cles = { foret: "encaisse", bleu: "verification", or: "declare", neutre: "non_declare" };
+			const cles = { foret: "encaisse", bleu: "verification", or: "declare" };
 			const parts = cercles.map((c) => {
 				const couleur = c.getAttribute("stroke") || "";
 				const nom = (couleur.match(/--dash-([a-z]+)/) || [])[1];
@@ -148,7 +148,7 @@
 			let debut = 0;
 			const departs = {};
 			parts.forEach((p) => { departs[p.cle] = debut; debut += p.valeur; });
-			const ordre = ["encaisse", "verification", "declare", "non_declare"];
+			const ordre = ["encaisse", "verification", "declare"];
 			$$(".adm-finances__legende li", finances).forEach((li, i) => {
 				const t = 1.8 * ((departs[ordre[i]] ?? 100) / 100);
 				tl.to(li, { opacity: 1, duration: 0.45, ease: "power1.out" }, t);

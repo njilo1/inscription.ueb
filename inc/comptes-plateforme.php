@@ -29,8 +29,8 @@ function ueb_plateforme_roles() {
 	return array(
 		/* Statistiques de son établissement, reçus des droits universitaires (consulter, valider, rejeter), ses étudiants. */
 		'Scolarité'       => array( 'un', array( 'ueb_voir_stats', 'ueb_gerer_quitus', 'ueb_decider_quitus', 'ueb_voir_paiements', 'ueb_voir_etudiants' ) ),
-		/* Cellule informatique : la seule réinitialisation des mots de passe des étudiants. */
-		'Celinfo'         => array( 'un', array( 'ueb_reinit_mdp' ) ),
+		/* Cellule informatique : réinitialiser le mot de passe d'un étudiant et suspendre son compte, rien d'autre (aucun montant). */
+		'Celinfo'         => array( 'un', array( 'ueb_reinit_mdp', 'ueb_suspendre_etudiants' ) ),
 		/* Statistiques et étudiants de son établissement, IPES sous tutelle et validation de leurs bordereaux. */
 		'Doyen/Directeur' => array( 'un', array( 'ueb_voir_stats', 'ueb_voir_paiements', 'ueb_voir_etudiants', 'ueb_voir_ipes', 'ueb_verifier_ipes' ), array( 'FS' => 'Doyen', 'FSJP' => 'Doyen', 'FSEG' => 'Doyen', 'FALSH' => 'Doyen', 'defaut' => 'Directeur' ) ),
 		/* Régie CMS : reçus des frais médicaux (consulter, accepter, refuser) et leurs statistiques, tous établissements. */

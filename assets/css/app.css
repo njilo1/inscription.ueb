@@ -348,6 +348,33 @@ html:has(.bienvenue:modal) { overflow: hidden; }
 .tableau tbody tr:hover { background: #fafcfa; }
 .tableau .num { font-variant-numeric: tabular-nums; white-space: nowrap; }
 
+/* ---------- Visionneuse : un reçu en grand ----------
+   Toute la fenêtre ; la photo tient dans l'écran, « Agrandir » (ou un clic
+   sur la photo) la montre en grand et se parcourt au défilement. Les marges
+   automatiques centrent la photo sans la rogner quand elle déborde. */
+.visionneuse { width: 100vw; max-width: none; height: 100dvh; max-height: none; margin: 0; padding: 0; border: 0; background: transparent; color: #fff; }
+.visionneuse[open] { display: grid; grid-template: auto minmax(0, 1fr) / minmax(0, 1fr); }
+.visionneuse::backdrop { background: rgba(8, 24, 15, .9); backdrop-filter: blur(4px); }
+.visionneuse__barre { display: flex; align-items: center; gap: .5rem; padding: .75rem max(1rem, env(safe-area-inset-right)) .75rem max(1.25rem, env(safe-area-inset-left)); }
+.visionneuse__titre { flex: 1 1 auto; min-width: 0; margin: 0; overflow: hidden; font-size: .95rem; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.visionneuse__bouton { display: inline-flex; align-items: center; gap: .45rem; min-height: 44px; padding: 0 1rem; border: 1px solid rgba(255, 255, 255, .22); border-radius: 999px; background: rgba(255, 255, 255, .08); color: #fff; font: 600 .9rem/1 var(--f-texte); cursor: pointer; transition: background-color .15s, border-color .15s; }
+.visionneuse__bouton:hover { border-color: rgba(255, 255, 255, .45); background: rgba(255, 255, 255, .16); }
+.visionneuse__bouton:focus-visible { outline: 3px solid var(--or); outline-offset: 2px; }
+.visionneuse__bouton--fermer { width: 44px; padding: 0; justify-content: center; }
+.visionneuse__scene { display: grid; overflow: auto; padding: 0 1.25rem 1.25rem; overscroll-behavior: contain; }
+.visionneuse__scene img { display: block; margin: auto; max-width: 100%; max-height: 100%; height: auto; border-radius: 4px; background: #fff; box-shadow: 0 30px 70px -20px rgba(0, 0, 0, .7); cursor: zoom-in; }
+.visionneuse.est-reelle .visionneuse__scene img { max-width: none; max-height: none; cursor: zoom-out; }
+.visionneuse[open] .visionneuse__scene img { animation: visionneuse-entree .28s var(--ease-sortie); }
+@keyframes visionneuse-entree { from { opacity: 0; transform: scale(.96); } }
+@media (max-width: 560px) {
+	.visionneuse__bouton span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+	.visionneuse__bouton { width: 44px; padding: 0; justify-content: center; }
+	.visionneuse__scene { padding: 0 .5rem .75rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+	.visionneuse[open] .visionneuse__scene img { animation: none; }
+}
+
 /* ---------- Fenêtre de confirmation ---------- */
 
 .fenetre { border: 0; padding: 0; border-radius: var(--r-carte); box-shadow: var(--ombre-3); max-width: min(92vw, 440px); }

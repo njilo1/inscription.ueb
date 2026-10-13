@@ -1,8 +1,9 @@
 /*
  * Espace de gestion (page-direction.php), même comportement que celui de la
  * préinscription : assistant de rôle en fenêtre (nom, portée, permissions)
- * avec l'aperçu de la barre latérale du titulaire, modèles, dépendances entre
- * permissions ; panneau « Changer le rôle » dans la vue Comptes.
+ * avec l'aperçu de la barre latérale du titulaire, modèles (proposés ou
+ * enregistrés par l'équipe), « Tout cocher », dépendances entre permissions ;
+ * panneau « Changer le rôle » dans la vue Comptes.
  *
  * Amélioration progressive : chaque bouton est d'abord un lien ou un
  * formulaire qui fonctionne sans script (?vue=role ouvre l'assistant,
@@ -100,7 +101,36 @@
 	const enregistrer = $("[data-enregistrer]", form);
 	const choixEtabs = $("[data-etabs-choix]", form);
 	const cases = (nom) => $$(`[name="${nom}"]`, form);
+	const touts = $$("[data-tout]", form);
+	const modeleCase = $("[data-modele-enregistrer]", form);
+	const modeleNom = $("[data-modele-nom]", form);
 	let etape = 0;
+
+	/* « Tout cocher » : cochée si toutes les cases permises le sont, partielle
+	   si quelques-unes ; les permissions que le compte n'a pas restent intactes. */
+	const majTouts = () => touts.forEach((tout) => {
+		const permises = cases(tout.dataset.tout).filter((c) => !c.disabled);
+		const cochees = permises.filter((c) => c.checked).length;
+		const caseTout = $("input", tout);
+		caseTout.checked = permises.length > 0 && cochees === permises.length;
+		caseTout.indeterminate = cochees > 0 && cochees < permises.length;
+		caseTout.disabled = !permises.length;
+		const compte = $("[data-tout-compte]", tout);
+		if (compte) compte.textContent = `${cochees} sur ${permises.length}`;
+	});
+	touts.forEach((tout) => {
+		tout.hidden = false;
+		$("input", tout).addEventListener("change", (ev) => {
+			cases(tout.dataset.tout).forEach((c) => { if (!c.disabled) c.checked = ev.target.checked; });
+		});
+	});
+
+	/* Le nom du modèle ne se demande que si l'on enregistre un modèle ; par défaut, celui du rôle. */
+	const majModele = () => {
+		if (!modeleCase || !modeleNom) return;
+		modeleNom.hidden = !modeleCase.checked;
+		$("input", modeleNom).placeholder = form.elements.nom.value.trim() || "Par défaut, le nom du rôle";
+	};
 
 	const message = (texte) => {
 		erreur.hidden = !texte;
@@ -113,6 +143,9 @@
 		const etabs = cases("etablissements[]").filter((c) => c.checked).map((c) => c.value);
 		const caps = cases("permissions[]").filter((c) => c.checked).map((c) => c.value);
 		choixEtabs.hidden = portee !== "plusieurs";
+		touts.forEach((tout) => { if (tout.dataset.tout === "etablissements[]") tout.hidden = portee !== "plusieurs"; });
+		majTouts();
+		majModele();
 		$("[data-apercu-nom]", dialogue).textContent = form.elements.nom.value.trim() || "Nouveau rôle";
 
 		const vus = new Set();
@@ -193,6 +226,8 @@
 		cases("permissions[]").forEach((c) => { c.checked = def.permissions.includes(c.value); });
 		const modele = $("[data-modele-role]", form);
 		if (modele) modele.value = "";
+		if (modeleCase) modeleCase.checked = false;
+		if (modeleNom) $("input", modeleNom).value = "";
 	};
 
 	/* mode : « nouveau », « modifier » ou « dupliquer » (rien n'est créé avant l'enregistrement). */

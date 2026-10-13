@@ -1,0 +1,105 @@
+/* ==========================================================================
+   Tableau de bord de la cellule informatique (inc/cellule-tableau.php)
+   Comptes étudiants seulement : recherche, état des comptes (anneau Remotion),
+   journal des réinitialisations, comptes suspendus. Aucun montant.
+   Couleurs d'état validées (contrôle dataviz) : autour de l'anneau, utilisés,
+   mot de passe à choisir, suspendus, jamais connectés ; le rouge ne touche
+   jamais le vert, et chaque état est écrit en toutes lettres.
+   ========================================================================== */
+
+.cel-bord {
+	--cel-utilise: #18864a;
+	--cel-choisir: #3b6fd8;
+	--cel-suspendu: #d8463c;
+	--cel-jamais: #e9a400;
+	--cel-piste: #e8eee9;
+	font-variant-numeric: tabular-nums;
+}
+:root[data-theme="sombre"] .cel-bord {
+	--cel-utilise: #2a9a58;
+	--cel-choisir: #5b8ff0;
+	--cel-suspendu: #e05f55;
+	--cel-jamais: #c99419;
+	--cel-piste: #233029;
+}
+
+/* ---------- Recherche : le point de départ de chaque intervention ---------- */
+.cel-recherche { display: grid; gap: .55rem; padding: 1.25rem 1.4rem; border: 1px solid var(--filet); border-radius: var(--adm-rayon, 12px); background: var(--blanc); }
+.cel-recherche label { font: 700 1.05rem/1.3 var(--f-texte); color: var(--encre); }
+.cel-recherche__champ { display: flex; align-items: center; gap: .6rem; padding: .35rem .35rem .35rem .9rem; border: 1px solid var(--filet-fort); border-radius: 12px; background: var(--blanc); transition: border-color .15s, box-shadow .15s; }
+.cel-recherche__champ:focus-within { border-color: var(--foret-700, #1d5a38); box-shadow: 0 0 0 3px color-mix(in srgb, var(--or) 45%, transparent); }
+.cel-recherche__champ > .icone { flex: none; color: var(--gris); }
+.cel-recherche__champ input { flex: 1; min-width: 0; min-height: 44px; border: 0; background: transparent; color: var(--encre); font: 400 1rem/1.4 var(--f-texte); outline: none; }
+.cel-recherche__champ .btn { flex: none; }
+.cel-recherche p { margin: 0; font-size: .85rem; color: var(--gris); }
+
+/* ---------- Deux panneaux : état des comptes, réinitialisations ---------- */
+.cel-grille { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 1.25rem; align-items: stretch; }
+.cel-etats, .cel-journal { display: flex; flex-direction: column; container-type: inline-size; }
+
+.cel-etats__corps { flex: 1; display: grid; grid-template-columns: 190px minmax(0, 1fr); align-items: center; gap: 1rem 1.8rem; }
+.cel-anneau { position: relative; width: 100%; max-width: 190px; aspect-ratio: 1; margin-inline: auto; }
+.cel-anneau > svg { display: block; width: 100%; height: 100%; }
+.cel-anneau__piste { stroke: var(--cel-piste); }
+.cel-anneau .animation--donut { position: absolute; inset: 0; width: 100%; max-width: none; aspect-ratio: 1; }
+.cel-anneau .animation--donut svg { transform: none; }
+.cel-anneau:has(.animation--donut.est-pret) > svg { visibility: hidden; }
+.adm-anime .cel-anneau > svg .donut-part { opacity: 0; }
+.cel-anneau .donut-part { transition: opacity .25s var(--ease-sortie); }
+.cel-anneau__centre { position: absolute; inset: 0; z-index: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; margin: 0; text-align: center; pointer-events: none; }
+.cel-anneau__centre b { font: 700 2.1rem/1 var(--f-texte); letter-spacing: -.02em; color: var(--encre); }
+.cel-anneau__centre span { margin-top: .2rem; font-size: .8rem; color: var(--gris); }
+
+.cel-etats__legende { display: grid; margin: 0; padding: 0; list-style: none; }
+.cel-etats__legende li { display: grid; grid-template-columns: 12px minmax(0, 1fr) auto; align-items: center; gap: .75rem; min-height: 52px; padding: .4rem .55rem; border-radius: 8px; transition: background-color .2s; }
+.cel-etats__legende li + li { box-shadow: 0 -1px 0 var(--filet); }
+.cel-etats__legende li:is(:hover, :focus-visible) { background: var(--adm-puce, var(--papier)); outline: none; }
+.cel-etats__legende li:focus-visible { box-shadow: 0 0 0 2px var(--or); }
+.cel-etats__legende i { width: 12px; height: 12px; border-radius: 3px; }
+.cel-etats__legende span { display: grid; font-size: .92rem; font-weight: 600; color: var(--encre); }
+.cel-etats__legende small { font-size: .77rem; font-weight: 400; color: var(--gris); }
+.cel-etats__legende b { font-size: 1.2rem; font-weight: 700; color: var(--encre); }
+/* Survoler un état ne laisse que lui dans l'anneau. */
+.cel-etats:has(li[data-cle="utilise"]:is(:hover, :focus-visible)) .donut-part:not(.donut-part--utilise),
+.cel-etats:has(li[data-cle="a_choisir"]:is(:hover, :focus-visible)) .donut-part:not(.donut-part--a_choisir),
+.cel-etats:has(li[data-cle="suspendu"]:is(:hover, :focus-visible)) .donut-part:not(.donut-part--suspendu),
+.cel-etats:has(li[data-cle="jamais"]:is(:hover, :focus-visible)) .donut-part:not(.donut-part--jamais) { opacity: .15; }
+.cel-etats__pied { display: flex; align-items: center; gap: .5rem; margin: 1rem 0 0; padding-top: .85rem; border-top: 1px solid var(--filet); font-size: .86rem; color: var(--gris); }
+.cel-etats__pied b { color: var(--encre); }
+
+/* ---------- Journal des réinitialisations ---------- */
+.cel-journal__compte { margin: 0; padding: .3rem .7rem; border-radius: 999px; background: var(--papier); font-size: .8rem; color: var(--gris); white-space: nowrap; }
+.cel-journal__compte b { color: var(--encre); }
+.cel-journal__liste, .cel-suspendus__liste { margin: 0; padding: 0; list-style: none; }
+.cel-journal__liste li { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr) auto; align-items: center; gap: .4rem 1rem; padding: .7rem 0; }
+.cel-journal__liste li + li, .cel-suspendus__liste li + li { border-top: 1px solid var(--filet); }
+.cel-journal__qui, .cel-journal__quand { display: grid; min-width: 0; }
+.cel-journal__qui b { overflow: hidden; font-size: .92rem; text-overflow: ellipsis; white-space: nowrap; color: var(--encre); }
+.cel-journal__qui small, .cel-journal__quand small { font-size: .77rem; color: var(--gris); }
+.cel-journal__quand { font-size: .86rem; color: var(--encre); }
+.cel-suite { display: inline-flex; align-items: center; gap: .4rem; justify-self: end; padding: .28rem .65rem; border-radius: 999px; font-size: .78rem; font-weight: 600; white-space: nowrap; color: var(--encre); background: var(--papier); }
+.cel-suite i { width: 7px; height: 7px; border-radius: 50%; background: var(--gris); }
+.cel-suite--choisi { background: color-mix(in srgb, var(--cel-utilise) 14%, transparent); } .cel-suite--choisi i { background: var(--cel-utilise); }
+.cel-suite--attente { background: color-mix(in srgb, var(--cel-choisir) 14%, transparent); } .cel-suite--attente i { background: var(--cel-choisir); }
+.cel-suite--expiree { background: color-mix(in srgb, var(--cel-jamais) 18%, transparent); } .cel-suite--expiree i { background: var(--cel-jamais); }
+
+/* ---------- Comptes suspendus ---------- */
+.cel-suspendus__liste li { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: .6rem 0; }
+.cel-suspendus__liste form { margin: 0; flex: none; }
+
+.cel-vide { display: flex; align-items: center; gap: .6rem; margin: 0; padding: 1rem; border: 1px dashed var(--filet-fort); border-radius: 10px; font-size: .9rem; color: var(--gris); }
+.cel-vide .icone { flex: none; }
+
+@container (max-width: 430px) {
+	.cel-etats__corps { grid-template-columns: minmax(0, 1fr); }
+	.cel-journal__liste li { grid-template-columns: minmax(0, 1fr) auto; }
+	.cel-journal__quand { grid-column: 1; grid-row: 2; }
+	.cel-suite { grid-row: 1 / 3; grid-column: 2; }
+}
+@media (max-width: 1000px) { .cel-grille { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 560px) {
+	.cel-recherche__champ { flex-wrap: wrap; padding: .5rem; }
+	.cel-recherche__champ > .icone { display: none; }
+	.cel-recherche__champ .btn { width: 100%; }
+}
+@media (prefers-reduced-motion: reduce) { .cel-anneau .donut-part, .cel-etats__legende li, .cel-recherche__champ { transition: none; } }

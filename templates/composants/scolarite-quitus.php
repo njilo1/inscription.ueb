@@ -47,11 +47,6 @@ foreach ( $paiements as $q ) {
 	$verif = 'verifie' === $q->statut;
 	$rejet = 'rejete' === $q->statut;
 	$somme = ueb_fcfa( $q->montant );
-	/* Le compte que le reçu doit créditer : celui de l'établissement, ou celui
-	   des services centraux pour les frais médicaux. */
-	$attendu = 'medicaux' === $type
-		? array( 'Services centraux', UEB_COMPTE_MEDICAL['compte'], UEB_COMPTE_MEDICAL['cle'] )
-		: array( 'Compte de la ' . $sigle, $etab_fiche['compte'] ?? '', $etab_fiche['cle'] ?? '' );
 	$volets[] = (object) array(
 		'q'           => $q,
 		'id'          => (int) $q->id,
@@ -74,7 +69,7 @@ foreach ( $paiements as $q ) {
 		'points'      => array(
 			array( 'Montant versé', $somme, 'balance' ),
 			array( 'Nom de l’étudiant', $nom_complet, 'utilisateur' ),
-			array( $attendu[0], $attendu[1] . ' clé ' . $attendu[2], 'banque' ),
+			array( 'Quitus vérifié', 'N° ' . $q->numero, 'fichier' ),
 			array( 'Original présenté', 'Reçu en main et tamponné', 'tampon' ),
 		),
 	);
@@ -274,7 +269,7 @@ $motifs = array(
 								$url   = ueb_url_recu( $r->id );
 								$objet = ueb_libelle_objet_recu( $r, $v->type );
 								$pdf   = 'application/pdf' === $r->type_mime; ?>
-								<figure class="qf-scene<?php echo $pdf ? ' qf-scene--pdf' : ''; ?>" id="qf-recu-<?php echo (int) $r->id; ?>" data-qf-recu data-legende="<?php echo esc_attr( $objet . ', envoyé le ' . $date_heure( $r->date_envoi ) ); ?>" data-fichier="<?php echo esc_attr( $r->nom_original ); ?>" data-ouvrir="<?php echo esc_url( $url ); ?>" data-telecharger="<?php echo esc_url( ueb_url_recu( $r->id, true ) ); ?>"<?php echo $pdf ? ' data-pdf' : ''; ?><?php echo $pdf ? '' : ' tabindex="0" aria-label="' . esc_attr( 'Reçu ' . $objet . ' : glisse pour déplacer, double-clic pour agrandir' ) . '"'; ?>>
+								<figure class="qf-scene<?php echo $pdf ? ' qf-scene--pdf' : ''; ?>" id="qf-recu-<?php echo (int) $r->id; ?>" data-qf-recu data-legende="<?php echo esc_attr( $objet . ', envoyé le ' . $date_heure( $r->date_envoi ) ); ?>" data-fichier="<?php echo esc_attr( $r->nom_original ); ?>" data-ouvrir="<?php echo esc_url( $url ); ?>" data-telecharger="<?php echo esc_url( ueb_url_recu( $r->id, true ) ); ?>"<?php echo $pdf ? ' data-pdf' : ''; ?><?php echo $pdf ? '' : ' tabindex="0" aria-label="' . esc_attr( 'Reçu ' . $objet . ' : clique ou appuie sur Entrée pour l’afficher en grand' ) . '"'; ?>>
 									<div class="qf-feuille" data-qf-feuille>
 										<?php if ( $pdf ) : ?>
 											<iframe src="<?php echo esc_url( $url ); ?>" title="<?php echo esc_attr( 'Reçu de paiement : ' . $objet ); ?>" loading="lazy"></iframe>
@@ -378,12 +373,12 @@ $motifs = array(
 								<?php if ( $v->a_controler ) : ?>
 									<form method="post" action="<?php echo $adresse; ?>" data-qf-tamponner="verifie"
 										data-confirmer="<?php echo esc_attr( sprintf( '%s de %s sera marqué comme vérifié. L’étudiant le verra dans son espace.', $quoi, $nom_complet ) ); ?>"
-										data-confirmer-titre="Valider ce paiement ?" data-confirmer-bouton="Valider le paiement" data-confirmer-ton="enregistrer">
+										data-confirmer-titre="Valider ce reçu ?" data-confirmer-bouton="Valider le reçu" data-confirmer-ton="enregistrer">
 										<?php $champs_decision( $v->q, 'verifie' ); ?>
-										<button class="qf-bouton qf-bouton--valider" type="submit"><?php echo ueb_icone( 'tampon', 20 ); ?>Valider le paiement<?php echo $double ? '<span class="sr"> des ' . esc_html( mb_strtolower( $v->libelle ) ) . '</span>' : ''; ?></button>
+										<button class="qf-bouton qf-bouton--valider" type="submit"><?php echo ueb_icone( 'tampon', 20 ); ?>Valider le reçu<?php echo $double ? '<span class="sr"> des ' . esc_html( mb_strtolower( $v->libelle ) ) . '</span>' : ''; ?></button>
 									</form>
 								<?php elseif ( ! $v->verifie ) : ?>
-									<button class="qf-bouton qf-bouton--valider" type="button" disabled aria-describedby="qf-sans-recu-<?php echo $id; ?>"><?php echo ueb_icone( 'tampon', 20 ); ?>Valider le paiement</button>
+									<button class="qf-bouton qf-bouton--valider" type="button" disabled aria-describedby="qf-sans-recu-<?php echo $id; ?>"><?php echo ueb_icone( 'tampon', 20 ); ?>Valider le reçu</button>
 									<p class="qf-aide" id="qf-sans-recu-<?php echo $id; ?>">Disponible dès l’envoi du reçu.</p>
 								<?php endif; ?>
 

@@ -33,6 +33,86 @@ function ueb_modeles_roles() {
 	);
 }
 
+/* Modèles de l'équipe : un jeu de permissions enregistré depuis l'assistant
+   (« Enregistrer aussi comme modèle »), proposé ensuite à toute la Direction
+   à côté des modèles ci-dessus. Comme eux, ils ne font que cocher des cases. */
+
+const UEB_MODELES_EQUIPE     = 'ueb_modeles_roles_equipe';
+const UEB_MODELES_EQUIPE_MAX = 30;
+
+/** Modèles de l'équipe : slug => titre, permissions (liste blanche), cree_par, cree_le. */
+function ueb_modeles_equipe() {
+	$catalogue = array_keys( ueb_permissions() );
+	$modeles   = array();
+	foreach ( (array) get_option( UEB_MODELES_EQUIPE, array() ) as $slug => $m ) {
+		if ( is_array( $m ) && ! empty( $m['titre'] ) ) {
+			$modeles[ $slug ] = array_merge( $m, array( 'permissions' => array_values( array_intersect( $catalogue, (array) ( $m['permissions'] ?? array() ) ) ) ) );
+		}
+	}
+	return $modeles;
+}
+
+/** Le compte courant peut supprimer ce modèle : il l'a créé, ou chacune de ses permissions est dans ses droits. */
+function ueb_modele_supprimable( array $m ) {
+	if ( (int) ( $m['cree_par'] ?? 0 ) === get_current_user_id() ) {
+		return true;
+	}
+	foreach ( $m['permissions'] as $cap ) {
+		if ( ! ueb_peut_attribuer_permission( $cap ) ) {
+			return false;
+		}
+	}
+	return true;
+}
+
+/** Vérifie le nom d'un modèle de l'équipe ; retourne le message d'erreur ou ''. */
+function ueb_erreur_nom_modele( $titre ) {
+	if ( mb_strlen( $titre ) < 2 || mb_strlen( $titre ) > 60 ) {
+		return 'Donne au modèle un nom de 2 à 60 caractères.';
+	}
+	foreach ( ueb_modeles_roles() as $m ) {
+		if ( 0 === strcasecmp( remove_accents( $m['titre'] ), remove_accents( $titre ) ) ) {
+			return 'Un modèle proposé porte déjà ce nom : choisis-en un autre pour le tien.';
+		}
+	}
+	$existant = ueb_modele_equipe_par_nom( $titre );
+	if ( $existant && ! ueb_modele_supprimable( ueb_modeles_equipe()[ $existant ] ) ) {
+		return 'Un modèle de ce nom donne des accès que tu n’as pas : choisis un autre nom.';
+	}
+	if ( ! $existant && count( ueb_modeles_equipe() ) >= UEB_MODELES_EQUIPE_MAX ) {
+		return 'Ton équipe a déjà ' . UEB_MODELES_EQUIPE_MAX . ' modèles : supprimes-en un dans « Modèles de ton équipe » avant d’en ajouter.';
+	}
+	return '';
+}
+
+/** Slug du modèle de l'équipe qui porte ce nom (sans tenir compte des accents ni de la casse), ou ''. */
+function ueb_modele_equipe_par_nom( $titre ) {
+	foreach ( ueb_modeles_equipe() as $slug => $m ) {
+		if ( 0 === strcasecmp( remove_accents( $m['titre'] ), remove_accents( $titre ) ) ) {
+			return $slug;
+		}
+	}
+	return '';
+}
+
+/**
+ * Enregistre un modèle de l'équipe. Un modèle du même nom est remplacé :
+ * c'est ainsi qu'on le met à jour. Retourne vrai pour une mise à jour.
+ */
+function ueb_enregistrer_modele_equipe( $titre, array $permissions ) {
+	$modeles = (array) get_option( UEB_MODELES_EQUIPE, array() );
+	$slug    = ueb_modele_equipe_par_nom( $titre );
+	$maj     = '' !== $slug;
+	$modeles[ $maj ? $slug : 'e' . strtolower( wp_generate_password( 10, false, false ) ) ] = array(
+		'titre'       => $titre,
+		'permissions' => array_values( array_intersect( array_keys( ueb_permissions() ), $permissions ) ),
+		'cree_par'    => get_current_user_id(),
+		'cree_le'     => current_time( 'mysql' ),
+	);
+	update_option( UEB_MODELES_EQUIPE, $modeles, false );
+	return $maj;
+}
+
 /* ---------- Contrôles communs ---------- */
 
 /** Nonce propre à la Direction, en plus du jeton de session de tous les formulaires. */
@@ -152,8 +232,16 @@ function ueb_action_direction_role_enregistrer() {
 		ueb_rediriger( ueb_url_direction() );
 	}
 	list( $def, $erreur ) = ueb_lire_role_poste( $slug );
+	/* « Enregistrer aussi comme modèle » : ses permissions, sous le nom choisi (celui du rôle par défaut). */
+	$modele = ! empty( $_POST['modele_enregistrer'] ) ? trim( sanitize_text_field( wp_unslash( $_POST['modele_nom'] ?? '' ) ) ) : null;
+	if ( '' === $modele ) {
+		$modele = $def['nom'];
+	}
+	if ( ! $erreur && null !== $modele ) {
+		$erreur = ueb_erreur_nom_modele( $modele );
+	}
 	if ( $erreur ) {
-		$_SESSION['ueb_role_saisi'] = $def;
+		$_SESSION['ueb_role_saisi'] = $def + ( null === $modele ? array() : array( 'modele' => $modele ) );
 		ueb_flash( 'erreur', $erreur );
 		ueb_rediriger( add_query_arg( array_filter( array( 'vue' => 'role', 'role' => $slug ) ), ueb_url_direction() ) );
 	}
@@ -166,7 +254,27 @@ function ueb_action_direction_role_enregistrer() {
 		'modifie_par' => get_current_user_id(),
 	);
 	ueb_enregistrer_role( $slug ?: ueb_nouveau_slug_role(), $def );
-	ueb_flash( 'succes', $slug ? 'Rôle « ' . $def['nom'] . ' » mis à jour : ses comptes ont leurs nouveaux droits dès leur prochaine page.' : 'Rôle « ' . $def['nom'] . ' » créé.' );
+	$message = $slug ? 'Rôle « ' . $def['nom'] . ' » mis à jour : ses comptes ont leurs nouveaux droits dès leur prochaine page.' : 'Rôle « ' . $def['nom'] . ' » créé.';
+	if ( null !== $modele ) {
+		$message .= ueb_enregistrer_modele_equipe( $modele, $def['permissions'] ) ? ' Modèle « ' . $modele . ' » mis à jour.' : ' Modèle « ' . $modele . ' » ajouté à « Partir d’un modèle ».';
+	}
+	ueb_flash( 'succes', $message );
+	ueb_rediriger( ueb_url_direction() );
+}
+
+/** Supprime un modèle de l'équipe ; les rôles créés à partir de lui ne changent pas. */
+function ueb_action_direction_modele_supprimer() {
+	ueb_exiger_direction( 'direction_modele_supprimer' );
+	$slug    = sanitize_key( wp_unslash( $_POST['modele'] ?? '' ) );
+	$modeles = ueb_modeles_equipe();
+	if ( ! isset( $modeles[ $slug ] ) || ! ueb_modele_supprimable( $modeles[ $slug ] ) ) {
+		ueb_flash( 'erreur', 'Ce modèle n’existe plus, ou il donne des accès que tu n’as pas.' );
+		ueb_rediriger( ueb_url_direction() );
+	}
+	$brut = (array) get_option( UEB_MODELES_EQUIPE, array() );
+	unset( $brut[ $slug ] );
+	update_option( UEB_MODELES_EQUIPE, $brut, false );
+	ueb_flash( 'succes', 'Modèle « ' . $modeles[ $slug ]['titre'] . ' » supprimé. Les rôles créés à partir de lui ne changent pas.' );
 	ueb_rediriger( ueb_url_direction() );
 }
 
@@ -362,6 +470,7 @@ function ueb_gestion_ecrans() {
 		array( 'ueb_voir_etudiants', 'Étudiants UEB', 'diplome' ),
 		array( UEB_CAP_COMPTES, 'Comptes étudiants', 'utilisateur' ),
 		array( 'ueb_reinit_mdp', 'Comptes étudiants (mot de passe)', 'cle' ),
+		array( 'ueb_suspendre_etudiants', 'Comptes étudiants (suspension)', 'cadenas' ),
 		array( 'ueb_creer_agents', 'Comptes du personnel', 'cle' ),
 		array( UEB_CAP_DIRECTION, 'Rôles et accès', 'bouclier' ),
 		array( UEB_CAP_DIRECTION, 'Comptes', 'groupe' ),

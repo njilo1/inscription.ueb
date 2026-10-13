@@ -108,7 +108,7 @@ function ueb_vue_courante() {
 		case 'direction':
 			return 'roles';
 		case 'cellule':
-			return 'comptes';
+			return 'bord';
 		default:
 			return 'bord';
 	}
@@ -132,7 +132,7 @@ function ueb_navigation_administration() {
 	/* Tableau de bord et reçus : l'onglet du type affiché (droits ou frais médicaux) reste surligné, fiche comprise. */
 	$type   = 'scolarite' === $espace && in_array( $vue, array( 'bord', 'quitus' ), true ) ? ueb_type_recus_courant() : '';
 	$lien = static fn( $e, $v, $libelle, $icone, array $args = array() ) => array(
-		'url'     => ueb_url_espace_admin( $e, ( in_array( $v, array( 'bord', 'roles', 'comptes' ), true ) ? array() : array( 'vue' => $v ) ) + $args ),
+		'url'     => ueb_url_espace_admin( $e, ( in_array( $v, array( 'bord', 'roles' ), true ) ? array() : array( 'vue' => $v ) ) + $args ),
 		'libelle' => $libelle,
 		'icone'   => $icone,
 		/* Actif : même espace, même vue et mêmes paramètres (« type » sépare les deux onglets des quitus). */
@@ -197,7 +197,9 @@ function ueb_navigation_administration() {
 		) );
 	}
 	if ( in_array( 'cellule', $permis, true ) ) {
+		/* Cellule informatique : un tableau de bord des comptes, sans aucun montant. */
 		$groupes['Comptes étudiants'] = array( 'utilisateur', array(
+			$lien( 'cellule', 'bord', 'Tableau de bord', 'tableau' ),
 			$lien( 'cellule', 'comptes', 'Comptes étudiants', 'utilisateur' ),
 			$admin ? $lien( 'cellule', 'securite', 'Sécurité', 'cadenas' ) : null,
 		) );
