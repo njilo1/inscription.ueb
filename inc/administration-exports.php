@@ -285,15 +285,15 @@ function ueb_adm_rapport_entete( array $d ) {
    ========================================================================== */
 
 function ueb_adm_export_pdf( array $d ) {
-	require_once UEB_INSC_DIR . '/lib/tcpdf/tcpdf.php';
+	require_once UEB_INSC_DIR . '/inc/pdf-ueb.php';
 	$couleur = ueb_pdf_rvb( $d['couleur'] );
 	$encre   = array( 33, 37, 41 );
 	$gris    = array( 100, 108, 104 );
 	$marge   = 14.0;
 
-	$pdf = new TCPDF( 'L', 'mm', 'A4', true, 'UTF-8', false );
-	$pdf->SetCreator( 'Plateforme d’inscription, ' . UEB_UNIVERSITE['fr'] );
-	$pdf->SetAuthor( UEB_UNIVERSITE['fr'] );
+	$pdf = new UEB_TCPDF( 'L', 'mm', 'A4', true, 'UTF-8', false );
+	$pdf->SetCreator( 'Plateforme d’inscription, ' . str_replace( "'", '’', UEB_UNIVERSITE['fr'] ) );
+	$pdf->SetAuthor( str_replace( "'", '’', UEB_UNIVERSITE['fr'] ) );
 	$pdf->SetTitle( $d['titre'] . ' ' . $d['annee']['libelle'] );
 	$pdf->SetSubject( $d['sous_titre'] );
 	$pdf->setPrintHeader( false );
@@ -402,10 +402,22 @@ function ueb_adm_export_pdf( array $d ) {
 		$pdf->writeHTML( '<p style="font-family:uebsans;font-size:8.4pt;color:#212529;"><span style="font-family:uebsansb;">' . esc_html( $nt[0] ) . ' : </span>' . esc_html( $nt[1] ) . '</p>', true, false, false, false, '' );
 		$pdf->Ln( 0.8 );
 	}
-	$pdf->Ln( 4 );
+	/* « Fait à Ebolowa » reste sur la page des notes quand il tient au-dessus du
+	   filet du pied de page, plutôt que d'aller seul sur une nouvelle page. */
 	$pdf->SetFont( 'uebserifi', '', 9.5 );
 	$pdf->SetTextColorArray( $encre );
-	$pdf->Cell( 0, 6, 'Fait à Ebolowa, le ' . $d['fait_le'] . '.', 0, 1, 'R' );
+	$fait  = 'Fait à Ebolowa, le ' . $d['fait_le'] . '.';
+	$plafond = $pdf->getPageHeight() - 13.5; // juste au-dessus du filet du pied
+	$y       = $pdf->GetY();
+	if ( $y + 7 <= $plafond ) {
+		$pdf->SetAutoPageBreak( false );
+		$pdf->SetY( $y + min( 4, $plafond - $y - 6 ) );
+		$pdf->Cell( 0, 6, $fait, 0, 1, 'R' );
+		$pdf->SetAutoPageBreak( true, 18 );
+	} else {
+		$pdf->Ln( 4 );
+		$pdf->Cell( 0, 6, $fait, 0, 1, 'R' );
+	}
 
 	/* Pied de chaque page : origine du document et pagination. */
 	$total = $pdf->getNumPages();
@@ -431,7 +443,7 @@ function ueb_adm_export_pdf( array $d ) {
    ========================================================================== */
 
 function ueb_ooxml_txt( $texte ) {
-	return htmlspecialchars( (string) $texte, ENT_XML1 | ENT_QUOTES, 'UTF-8' );
+	return htmlspecialchars( str_replace( "'", '’', (string) $texte ), ENT_XML1 | ENT_QUOTES, 'UTF-8' );
 }
 
 /** Assemble une archive OOXML et l'envoie. */
