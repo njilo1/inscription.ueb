@@ -511,6 +511,7 @@ function ueb_page_fin( $variante = 'simple' ) {
 		ueb_pied_site();
 	}
 	ueb_fenetre_confirmation();
+	ueb_visionneuse();
 	wp_footer();
 	echo "</body>\n</html>\n";
 }
@@ -1218,6 +1219,27 @@ function ueb_fenetre_confirmation() {
 				<button class="btn btn--danger" value="oui" data-fenetre-valider>Confirmer</button>
 			</div>
 		</form>
+	</dialog>
+	<?php
+}
+
+/**
+ * Visionneuse : une photo de reçu en grand, sans quitter la page. Ouverte par
+ * un lien « data-visionneuse » (sa valeur est la légende) ou par la fiche de
+ * contrôle de la scolarité ; app.js la pilote. Sans script, le lien ouvre
+ * simplement le reçu dans un nouvel onglet.
+ */
+function ueb_visionneuse() {
+	?>
+	<dialog class="visionneuse" id="visionneuse" aria-labelledby="visionneuse-titre">
+		<div class="visionneuse__barre">
+			<p class="visionneuse__titre" id="visionneuse-titre" data-visionneuse-titre>Reçu de paiement</p>
+			<button type="button" class="visionneuse__bouton" data-visionneuse-taille aria-pressed="false"><?php echo ueb_icone( 'loupe', 18 ); ?><span data-visionneuse-taille-texte>Agrandir</span></button>
+			<button type="button" class="visionneuse__bouton visionneuse__bouton--fermer" data-visionneuse-fermer aria-label="Fermer"><?php echo ueb_icone( 'croix', 20 ); ?></button>
+		</div>
+		<div class="visionneuse__scene" data-visionneuse-scene>
+			<img data-visionneuse-image alt="">
+		</div>
 	</dialog>
 	<?php
 }

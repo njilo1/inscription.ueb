@@ -15,7 +15,11 @@
 .adm-perimetre { display:flex; align-items:center; gap:.55rem; max-width:100%; }
 .adm-perimetre label { font-size:.84rem; color:var(--gris); }
 .adm-perimetre select { width:15rem; max-width:100%; min-width:0; min-height:44px; padding:.45rem 1.6rem .45rem .65rem; border:1px solid var(--filet); border-radius:7px; background:var(--blanc); color:var(--encre); font:600 .86rem var(--f-texte); text-overflow:ellipsis; }
-.adm-kpis { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:.9rem; }
+.adm-kpis { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)) 0 repeat(2,minmax(0,1fr)); gap:.9rem; }
+/* Les nombres à gauche, l'argent à droite : la piste vide double l'espace entre les deux groupes.
+   Quatre cartes (statistiques seules du CMS, sans la carte rouge) : deux et deux. */
+.adm-kpis:has(> :nth-child(4):last-child) { grid-template-columns:repeat(2,minmax(0,1fr)) 0 repeat(2,minmax(0,1fr)); }
+.adm-kpi:not(.adm-kpi--argent) + .adm-kpi--argent { grid-column-start:-3; }
 .adm-kpi { position:relative; display:flex; flex-direction:column; min-width:0; padding:1.05rem 1.1rem .85rem; border-radius:18px; background:var(--vert-bandeau); color:#fff; box-shadow:0 8px 18px -13px rgba(10,31,22,.6); }
 .adm-kpi--vert { background:#1d5a38; }
 .adm-kpi__entete { display:flex; align-items:flex-start; justify-content:space-between; gap:.4rem; }
@@ -51,7 +55,7 @@
 .adm-historique tr > :first-child { text-align:left; }
 .adm-historique thead { position:sticky; top:0; background:var(--blanc); }
 @keyframes adm-spark-entree { from { clip-path:inset(-8px 100% -8px -8px); } to { clip-path:inset(-8px); } }
-.adm-analyse { display:grid; grid-template-columns:minmax(280px,1fr) minmax(0,1.85fr); gap:1.15rem; }
+.adm-analyse { display:grid; grid-template-columns:minmax(0,1.85fr) minmax(280px,1fr); gap:1.15rem; }
 .adm-dashboard .adm-panneau { padding:1.25rem 1.35rem; }
 .adm-dashboard .adm-panneau__tete h2, .adm-dashboard .graphe__titre { font-size:1rem; }
 .adm-dashboard .adm-panneau__tete p, .adm-dashboard .graphe__sous-titre { font-size:.8rem; }
@@ -72,7 +76,8 @@
 .adm-finances__total { display:flex; justify-content:space-between; gap:.5rem; padding-top:.8rem; margin:.8rem 0 0; border-top:1px solid var(--filet); font-size:.82rem; }
 .adm-finances__total > span { color:var(--gris); }
 .adm-evolution { position:relative; display:flex; flex-direction:column; }
-.adm-secondaire { display:grid; grid-template-columns:minmax(0,2.35fr) minmax(0,.9fr); gap:1.15rem; }
+/* Mêmes colonnes que .adm-analyse : l'argent forme une seule colonne à droite. */
+.adm-secondaire { display:grid; grid-template-columns:minmax(0,1.85fr) minmax(280px,1fr); gap:1.15rem; }
 .adm-statistiques__total { display:flex; align-items:baseline; gap:.65rem; margin:.2rem 0 1.1rem; }
 .adm-statistiques__total b { font-size:2.2rem; font-weight:600; line-height:1.1; letter-spacing:-.035em; }
 .adm-statistiques__total > span { font-size:.8rem; color:var(--gris); }
@@ -118,7 +123,7 @@
  .adm-kpi__valeur { font-size:1.7rem; } .adm-kpi__note { font-size:.73rem; }
 }
 @media (max-width:1200px) {
- .adm-analyse { grid-template-columns:minmax(260px,1fr) minmax(0,1.55fr); }
+ .adm-analyse { grid-template-columns:minmax(0,1.55fr) minmax(260px,1fr); }
  .adm-secondaire { grid-template-columns:repeat(2,minmax(0,1fr)); } .adm-secondaire .adm-verifies { grid-column:1 / -1; }
  .adm-solde { grid-column:1 / -1; display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); column-gap:2rem; }
  .adm-solde header { grid-column:1; } .adm-solde__montant { grid-column:1; margin-top:.65rem; }
@@ -131,7 +136,9 @@
 }
 @media (max-width:760px) {
  .adm-kpis { grid-template-columns:repeat(2,minmax(0,1fr)); }
- .adm-kpi:last-child { grid-column:1 / -1; } .adm-kpi:last-child .adm-spark figcaption > span { max-width:none; }
+ .adm-kpi:not(.adm-kpi--argent) + .adm-kpi--argent { grid-column-start:auto; }
+ /* La dernière carte de nombres prend la ligne quand elle est seule : l'argent garde sa ligne à lui. */
+ .adm-kpi:nth-child(odd):has(+ .adm-kpi--argent) { grid-column:1 / -1; } .adm-kpi:nth-child(odd):has(+ .adm-kpi--argent) .adm-spark figcaption > span { max-width:none; }
  .adm-analyse { grid-template-columns:minmax(0,1fr); }
  .adm-finances { display:grid; grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr); align-items:center; gap:.5rem 1rem; }
  .adm-finances .adm-panneau__tete, .adm-finances__total { grid-column:1 / -1; } .adm-finances .adm-panneau__tete { margin-bottom:0; }

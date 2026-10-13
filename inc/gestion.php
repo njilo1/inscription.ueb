@@ -107,6 +107,13 @@ function ueb_exiger_reinit() {
 	}
 }
 
+/** Suspension et réactivation d'un compte étudiant : gestion des comptes, ou la seule suspension (cellule). */
+function ueb_exiger_suspension() {
+	if ( ! ( ueb_peut( UEB_CAP_COMPTES ) || ueb_peut( 'ueb_suspendre_etudiants' ) ) || ( ! ueb_est_admin_ueb() && ueb_peut( 'ueb_creer_agents' ) ) ) {
+		wp_die( 'Action réservée aux comptes autorisés à suspendre les comptes étudiants.', 'Accès refusé', array( 'response' => 403 ) );
+	}
+}
+
 function ueb_exiger_comptes() {
 	/* La scolarité garde la permission pour la déléguer à sa cellule, sans s'en servir (inc/espaces.php). */
 	if ( ! ueb_peut( UEB_CAP_COMPTES ) || ( ! ueb_est_admin_ueb() && ueb_peut( 'ueb_creer_agents' ) ) ) {
@@ -1249,9 +1256,12 @@ function ueb_action_gestion_creer_etudiant() {
 
 function ueb_action_gestion_bloquer() {
 	global $wpdb;
-	ueb_exiger_comptes();
+	ueb_exiger_suspension();
 	$compte = ueb_compte_par_id( (int) ( $_POST['compte_id'] ?? 0 ) );
-	$retour = add_query_arg( array( 'vue' => 'comptes', 'qc' => sanitize_text_field( wp_unslash( $_POST['q'] ?? '' ) ) ), ueb_url_comptes() );
+	/* Réactivation depuis le tableau de bord de la cellule : retour au tableau de bord. */
+	$retour = 'bord' === sanitize_key( $_POST['depuis'] ?? '' )
+		? ueb_url_cellule()
+		: add_query_arg( array( 'vue' => 'comptes', 'qc' => sanitize_text_field( wp_unslash( $_POST['q'] ?? '' ) ) ), ueb_url_comptes() );
 	if ( $compte && ueb_compte_dans_etab( $compte->id, ueb_etab_agent() ) ) {
 		$nouveau = 'actif' === $compte->statut ? 'bloque' : 'actif';
 		$wpdb->update( 'ueb_insc_comptes', array( 'statut' => $nouveau, 'version_session' => (int) $compte->version_session + 1 ), array( 'id' => $compte->id ) );

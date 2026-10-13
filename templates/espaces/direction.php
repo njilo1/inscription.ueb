@@ -172,6 +172,7 @@ ueb_page_debut( array(
 					foreach ( $catalogue as $cap => $p ) {
 						$groupes[ $p['groupe'] ][ $cap ] = $p;
 					}
+					$modeles_equipe = ueb_modeles_equipe();
 					?>
 
 					<?php if ( $interdit ) : ?>
@@ -273,6 +274,37 @@ ueb_page_debut( array(
 						</div>
 					<?php endif; ?>
 
+					<?php if ( $modeles_equipe ) : ?>
+						<div class="gestion-section gestion-section--modeles">
+							<div>
+								<h2>Modèles de ton équipe</h2>
+								<p>Enregistrés depuis l’assistant. Ils cochent des permissions, sans créer de rôle.</p>
+							</div>
+						</div>
+						<ul class="gestion-panneau gestion-modeles">
+							<?php foreach ( $modeles_equipe as $cle => $m ) :
+								$auteur = get_userdata( (int) ( $m['cree_par'] ?? 0 ) );
+								$n_caps = count( $m['permissions'] );
+								?>
+								<li class="gestion-modeles__ligne">
+									<span class="gestion-modeles__icone" aria-hidden="true"><?php echo ueb_icone( 'copier', 18 ); ?></span>
+									<div class="gestion-modeles__texte">
+										<h3><?php echo esc_html( $m['titre'] ); ?></h3>
+										<p><?php echo esc_html( $n_caps ? implode( ', ', array_map( static fn( $cap ) => $catalogue[ $cap ]['libelle'], $m['permissions'] ) ) : 'Aucune permission' ); ?></p>
+									</div>
+									<p class="gestion-modeles__auteur"><?php echo esc_html( sprintf( '%d permission%s', $n_caps, $n_caps > 1 ? 's' : '' ) ); ?><small><?php echo esc_html( ( $auteur ? $auteur->display_name . ', le ' : 'Le ' ) . wp_date( 'j F Y', strtotime( $m['cree_le'] ?? 'now' ) ) ); ?></small></p>
+									<?php if ( ueb_modele_supprimable( $m ) ) : ?>
+										<form method="post" action="<?php echo esc_url( ueb_url_direction() ); ?>" data-confirmer="<?php echo esc_attr( 'Supprimer le modèle « ' . $m['titre'] . ' » ? Les rôles créés à partir de lui ne changent pas.' ); ?>" data-confirmer-titre="Supprimer ce modèle ?" data-confirmer-bouton="Supprimer">
+											<?php ueb_champs_direction( 'direction_modele_supprimer' ); ?>
+											<input type="hidden" name="modele" value="<?php echo esc_attr( $cle ); ?>">
+											<button class="adm-bouton" type="submit"><?php echo ueb_icone( 'corbeille', 16 ); ?>Supprimer</button>
+										</form>
+									<?php endif; ?>
+								</li>
+							<?php endforeach; ?>
+						</ul>
+					<?php endif; ?>
+
 					<!-- Assistant en trois temps : nommer, délimiter, autoriser. Rien
 					     n'est enregistré avant la dernière étape. -->
 					<dialog class="gestion-dialogue" id="dialogue-role" aria-labelledby="dialogue-role-titre"<?php echo $ouvrir ? ' open data-ouvert' : ''; ?>>
@@ -325,6 +357,7 @@ ueb_page_debut( array(
 													</label>
 												<?php endforeach; ?>
 											</div>
+											<label class="gestion-case gestion-tout" data-tout="etablissements[]" hidden><input type="checkbox">Tout cocher</label>
 											<div class="gestion-choix" data-etabs-choix>
 												<?php foreach ( ueb_etablissements() as $sigle => $e ) : $possible = in_array( $sigle, $mes_etabs, true ); ?>
 													<label class="gestion-case<?php echo $possible ? '' : ' est-hors'; ?>">
@@ -341,19 +374,29 @@ ueb_page_debut( array(
 												<label>Partir d’un modèle
 													<select data-modele-role>
 														<option value="">Tout décocher et composer librement</option>
+														<?php if ( $modeles_equipe ) : ?><optgroup label="Modèles proposés"><?php endif; ?>
 														<?php foreach ( ueb_modeles_roles() as $cle => $m ) : ?>
 															<option value="<?php echo esc_attr( $cle ); ?>"><?php echo esc_html( $m['titre'] ); ?></option>
 														<?php endforeach; ?>
+														<?php if ( $modeles_equipe ) : ?>
+															</optgroup>
+															<optgroup label="Modèles de ton équipe">
+																<?php foreach ( $modeles_equipe as $cle => $m ) : ?>
+																	<option value="<?php echo esc_attr( $cle ); ?>"><?php echo esc_html( $m['titre'] ); ?></option>
+																<?php endforeach; ?>
+															</optgroup>
+														<?php endif; ?>
 													</select>
 												</label>
 												<p class="gestion-aide">Un modèle ne fait que cocher des cases : tout reste modifiable ensuite. Tu ne peux accorder que les permissions que tu as toi-même.</p>
 											</div>
 											<div class="gestion-droits">
+												<label class="gestion-case gestion-tout" data-tout="permissions[]" hidden><input type="checkbox">Tout cocher<small data-tout-compte></small></label>
 												<?php foreach ( $groupes as $groupe => $perms ) : ?>
 													<div class="gestion-droits__groupe">
 														<h3><?php echo esc_html( $groupe ); ?></h3>
 														<div>
-															<?php foreach ( $perms as $cap => $p ) : $possible = current_user_can( $cap ); ?>
+															<?php foreach ( $perms as $cap => $p ) : $possible = ueb_peut_attribuer_permission( $cap ); ?>
 																<label class="gestion-case<?php echo $possible ? '' : ' est-hors'; ?>" title="<?php echo esc_attr( $possible ? $p['aide'] : 'Tu n’as pas cette permission : tu ne peux pas l’accorder.' ); ?>">
 																	<input type="checkbox" name="permissions[]" value="<?php echo esc_attr( $cap ); ?>" <?php checked( in_array( $cap, $def['permissions'], true ) ); ?> <?php disabled( ! $possible ); ?> <?php echo empty( $p['requiert'] ) ? '' : 'data-requiert="' . esc_attr( $p['requiert'] ) . '"'; ?>>
 																	<?php echo esc_html( $p['libelle'] ); ?>
@@ -362,6 +405,11 @@ ueb_page_debut( array(
 														</div>
 													</div>
 												<?php endforeach; ?>
+											</div>
+											<div class="gestion-modele">
+												<label class="gestion-case"><input type="checkbox" name="modele_enregistrer" value="1" <?php checked( isset( $def['modele'] ) ); ?> data-modele-enregistrer>Enregistrer aussi ces permissions comme modèle</label>
+												<p class="gestion-aide">Le modèle apparaîtra dans « Partir d’un modèle » pour toute l’équipe de gestion. Un modèle qui porte déjà ce nom est mis à jour.</p>
+												<label class="gestion-modele__nom" data-modele-nom>Nom du modèle<input name="modele_nom" maxlength="60" value="<?php echo esc_attr( $def['modele'] ?? '' ); ?>" placeholder="Par défaut, le nom du rôle" autocomplete="off"></label>
 											</div>
 										</fieldset>
 									</div>
@@ -392,7 +440,7 @@ ueb_page_debut( array(
 						'permissions' => array_map( static fn( $p ) => array( 'libelle' => $p['libelle'], 'requiert' => $p['requiert'] ?? '' ), $catalogue ),
 						'ecrans'      => array_map( static fn( $e ) => array( $e[0], $e[1], ueb_icone( $e[2], 15 ) ), ueb_gestion_ecrans() ),
 						'verrou'      => ueb_icone( 'cadenas', 15 ),
-						'modeles'     => array_map( static fn( $m ) => $m['permissions'], ueb_modeles_roles() ),
+						'modeles'     => array_map( static fn( $m ) => $m['permissions'], ueb_modeles_roles() + $modeles_equipe ),
 						'etabs'       => array_keys( ueb_etablissements() ),
 					), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT ); ?></script>
 

@@ -132,7 +132,7 @@ ueb_page_debut( array( 'titre' => $titre . ' ' . $q->numero, 'variante' => 'espa
 							$url = ueb_url_recu( $r->id );
 							?>
 							<li class="recus-liste__item" style="--i: <?php echo (int) $rang; ?>">
-								<a class="recus-liste__vignette" href="<?php echo esc_url( $url ); ?>" target="_blank" rel="noopener" aria-label="<?php echo esc_attr( 'Ouvrir ' . $r->nom_original ); ?>">
+								<a class="recus-liste__vignette" href="<?php echo esc_url( $url ); ?>" target="_blank" rel="noopener"<?php echo 'application/pdf' === $r->type_mime ? '' : ' data-visionneuse="' . esc_attr( ueb_libelle_objet_recu( $r, $q->type ) . ', quitus ' . $q->numero ) . '"'; ?> aria-label="<?php echo esc_attr( ( 'application/pdf' === $r->type_mime ? 'Ouvrir ' : 'Afficher en grand ' ) . $r->nom_original ); ?>">
 									<?php if ( 'application/pdf' === $r->type_mime ) : ?>
 										<span class="recus-liste__pdf"><?php echo ueb_icone( 'fichier', 26 ); ?>PDF</span>
 									<?php else : ?>

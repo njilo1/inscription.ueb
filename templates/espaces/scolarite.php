@@ -603,7 +603,7 @@ ueb_page_debut( array(
 													<?php if ( $valider ) : ?>
 														<form method="post" action="<?php echo esc_url( ueb_url_scolarite() ); ?>" class="registre__valider" data-registre-valider
 															data-confirmer="<?php echo esc_attr( sprintf( $deux ? 'Les paiements de %1$s seront marqués comme vérifiés : %2$s. Valide seulement après avoir contrôlé les originaux des reçus.' : 'Le paiement de %1$s sera marqué comme vérifié : %2$s. Valide seulement après avoir contrôlé l’original du reçu.', $nom, $detail ) ); ?>"
-															data-confirmer-titre="<?php echo $deux ? 'Valider les deux paiements ?' : 'Valider ce paiement ?'; ?>" data-confirmer-bouton="<?php echo $deux ? 'Valider les deux' : 'Valider le paiement'; ?>" data-confirmer-ton="enregistrer">
+															data-confirmer-titre="<?php echo $deux ? 'Valider les deux reçus ?' : 'Valider ce reçu ?'; ?>" data-confirmer-bouton="<?php echo $deux ? 'Valider les deux reçus' : 'Valider le reçu'; ?>" data-confirmer-ton="enregistrer">
 															<?php ueb_champ_csrf(); ?>
 															<input type="hidden" name="ueb_action" value="gestion_valider">
 															<input type="hidden" name="quitus_id" value="<?php echo (int) $p0->id; ?>">

@@ -1065,6 +1065,73 @@
 		});
 	});
 
+	/* ---------- Visionneuse : une photo de reçu en grand, sans quitter la page ----------
+	   Un lien data-visionneuse (sa valeur est la légende) ; la fiche de contrôle
+	   de la scolarité l'ouvre par window.uebVoirRecu. Un clic sur la photo ou
+	   « Agrandir » la montre en grand à l'endroit visé ; un clic à côté ferme. */
+	const visionneuse = $("#visionneuse");
+	if (visionneuse?.showModal) {
+		const image = $("[data-visionneuse-image]", visionneuse);
+		const scene = $("[data-visionneuse-scene]", visionneuse);
+		const taille = $("[data-visionneuse-taille]", visionneuse);
+		let retour = null;
+
+		/* Ajustée : la plus grande taille qui tient dans l'écran, même pour une petite photo. */
+		const ajustee = () => {
+			if (!image.naturalWidth) return 0;
+			const style = getComputedStyle(scene);
+			const largeur = scene.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+			const hauteur = scene.clientHeight - parseFloat(style.paddingBottom);
+			return Math.floor(image.naturalWidth * Math.min(largeur / image.naturalWidth, hauteur / image.naturalHeight));
+		};
+		const ajuster = () => {
+			if (!visionneuse.classList.contains("est-reelle")) image.style.width = ajustee() ? `${ajustee()}px` : "";
+		};
+		image.addEventListener("load", ajuster);
+		window.addEventListener("resize", ajuster);
+
+		/* Grand : au moins la taille réelle de la photo, et deux fois sa taille ajustée. */
+		const agrandir = (oui, fx = 0.5, fy = 0.3) => {
+			visionneuse.classList.toggle("est-reelle", oui);
+			image.style.width = oui ? `${Math.max(image.naturalWidth, ajustee() * 2)}px` : (ajustee() ? `${ajustee()}px` : "");
+			taille.setAttribute("aria-pressed", String(oui));
+			$("[data-visionneuse-taille-texte]", visionneuse).textContent = oui ? "Ajuster à l’écran" : "Agrandir";
+			if (oui) scene.scrollTo({ left: fx * image.offsetWidth - scene.clientWidth / 2, top: fy * image.offsetHeight - scene.clientHeight / 2 });
+		};
+
+		window.uebVoirRecu = (url, legende, origine) => {
+			retour = origine || document.activeElement;
+			visionneuse.classList.remove("est-reelle");
+			taille.setAttribute("aria-pressed", "false");
+			$("[data-visionneuse-taille-texte]", visionneuse).textContent = "Agrandir";
+			image.style.width = "";
+			image.src = url;
+			image.alt = legende || "Reçu de paiement";
+			$("[data-visionneuse-titre]", visionneuse).textContent = legende || "Reçu de paiement";
+			visionneuse.showModal();
+			ajuster();
+		};
+
+		image.addEventListener("click", (ev) => {
+			const r = image.getBoundingClientRect();
+			agrandir(!visionneuse.classList.contains("est-reelle"), (ev.clientX - r.left) / r.width, (ev.clientY - r.top) / r.height);
+		});
+		taille.addEventListener("click", () => agrandir(!visionneuse.classList.contains("est-reelle")));
+		$("[data-visionneuse-fermer]", visionneuse).addEventListener("click", () => visionneuse.close());
+		scene.addEventListener("click", (ev) => { if (ev.target === scene) visionneuse.close(); });
+		visionneuse.addEventListener("close", () => {
+			image.removeAttribute("src");
+			retour?.focus?.({ preventScroll: true });
+		});
+
+		document.addEventListener("click", (ev) => {
+			const lien = ev.target.closest("a[data-visionneuse]");
+			if (!lien || ev.button !== 0 || ev.ctrlKey || ev.metaKey || ev.shiftKey || ev.altKey) return;
+			ev.preventDefault();
+			window.uebVoirRecu(lien.href, lien.dataset.visionneuse, lien);
+		});
+	}
+
 	/* ---------- Confirmation avant une action sensible ----------
 	   data-confirmer : le texte ; data-confirmer-titre, -bouton, -annuler ;
 	   data-confirmer-ton="enregistrer" (vert) ou destructive par défaut (rouge). */

@@ -32,6 +32,7 @@
  *   inc/administration.php composants de l'espace Administration
  *   inc/attente-recus.php reçus en attente de validation : carte rouge, file, actualisation
  *   inc/cms-tableau.php   tableau de bord du Centre médico-social (frais médicaux)
+ *   inc/cellule-tableau.php tableau de bord de la cellule informatique (comptes étudiants, sans montant)
  *   inc/ipes-vues.php     composants d'affichage des IPES (trois espaces)
  *   inc/assets.php       feuilles de style et scripts
  *
@@ -44,7 +45,7 @@ define( 'UEB_INSC_VERSION', '1.0.0' );
 define( 'UEB_INSC_DIR', get_template_directory() );
 define( 'UEB_INSC_URI', get_template_directory_uri() );
 
-foreach ( array( 'config', 'exercices', 'db-schema', 'session', 'routes', 'roles', 'acces-modules', 'espaces', 'profil-simule', 'comptes', 'nombres', 'inscription', 'quitus', 'profil', 'etudiants', 'quitus-pdf', 'recus', 'gestion', 'suggestions', 'direction', 'comptes-plateforme', 'ipes', 'ipes-filieres', 'ipes-etudiants', 'ipes-bordereaux', 'ipes-recus', 'ipes-bordereau-pdf', 'ipes-espace', 'ipes-tutelle', 'filieres-catalogue', 'assets', 'vues', 'bord', 'bord-graphes', 'administration', 'attente-recus', 'cms-tableau', 'ipes-vues', 'landing' ) as $ueb_module ) {
+foreach ( array( 'config', 'exercices', 'db-schema', 'session', 'routes', 'roles', 'acces-modules', 'espaces', 'profil-simule', 'comptes', 'nombres', 'inscription', 'quitus', 'profil', 'etudiants', 'quitus-pdf', 'recus', 'gestion', 'suggestions', 'direction', 'comptes-plateforme', 'ipes', 'ipes-filieres', 'ipes-etudiants', 'ipes-bordereaux', 'ipes-recus', 'ipes-bordereau-pdf', 'ipes-espace', 'ipes-tutelle', 'filieres-catalogue', 'assets', 'vues', 'bord', 'bord-graphes', 'administration', 'cellule-tableau', 'attente-recus', 'cms-tableau', 'ipes-vues', 'landing' ) as $ueb_module ) {
 	require_once UEB_INSC_DIR . '/inc/' . $ueb_module . '.php';
 }
 

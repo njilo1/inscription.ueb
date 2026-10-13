@@ -1,5 +1,9 @@
 <?php
-/** Espace de la cellule informatique : comptes étudiants de l'établissement. */
+/**
+ * Espace de la cellule informatique : tableau de bord des comptes étudiants
+ * (inc/cellule-tableau.php), comptes étudiants (réinitialiser, suspendre) et
+ * sécurité. Aucun quitus, paiement ni montant.
+ */
 
 defined( 'ABSPATH' ) || exit;
 
@@ -29,15 +33,17 @@ if ( isset( $_POST['ueb_connexion_cellule'] ) ) {
 }
 
 /* Accès par capacité et portée (inc/roles.php), jamais par nom de rôle. */
-$autorise = ( ueb_est_cellule() || ueb_est_admin_ueb() ) && ( ueb_peut( UEB_CAP_COMPTES ) || ueb_peut( 'ueb_reinit_mdp' ) );
-/* Réinitialisation seule (cellule informatique) : ni création ni suspension. */
-$gere_comptes = ueb_peut( UEB_CAP_COMPTES );
+$autorise = ( ueb_est_cellule() || ueb_est_admin_ueb() ) && ( ueb_peut( UEB_CAP_COMPTES ) || ueb_peut( 'ueb_reinit_mdp' ) || ueb_peut( 'ueb_suspendre_etudiants' ) );
+/* Création : gestion complète des comptes. Suspension : gestion complète, ou la seule suspension (cellule). */
+$gere_comptes   = ueb_peut( UEB_CAP_COMPTES );
+$peut_suspendre = $gere_comptes || ueb_peut( 'ueb_suspendre_etudiants' );
+$peut_reinit    = $gere_comptes || ueb_peut( 'ueb_reinit_mdp' );
 $annee    = ueb_annee_academique();
 $etab     = $autorise ? ueb_etablissement( ueb_etab_agent() ) : null;
 $etab     = $etab ?: array( 'sigle' => 'Tous', 'fr' => 'Tous les établissements' );
-$vue      = sanitize_key( $_GET['vue'] ?? 'comptes' );
+$vue      = in_array( ueb_vue_courante(), array( 'bord', 'comptes', 'securite' ), true ) ? ueb_vue_courante() : 'bord';
 $filtres  = array( 'q' => sanitize_text_field( wp_unslash( $_GET['qc'] ?? '' ) ), 'paiement' => '' );
-$etudiants = $autorise ? ueb_gestion_chercher_etudiants( $filtres, ueb_etab_agent() ) : array();
+$etudiants = $autorise && 'comptes' === $vue ? ueb_gestion_chercher_etudiants( $filtres, ueb_etab_agent() ) : array();
 $prov = $_SESSION['ueb_mdp_provisoire'] ?? null;
 unset( $_SESSION['ueb_mdp_provisoire'] );
 
@@ -65,10 +71,15 @@ ueb_page_debut( array( 'titre' => 'Cellule informatique', 'variante' => $autoris
 	<?php else : ?>
 		<div class="bo">
 			<?php ueb_bo_barre( 'Comptes étudiants', array( array( 'url' => ueb_url_cellule(), 'libelle' => 'Comptes étudiants', 'icone' => 'utilisateur', 'actif' => 'comptes' === $vue ), ueb_est_scolarite() && ( ueb_peut( UEB_CAP_GESTION ) || ueb_peut( 'ueb_voir_paiements' ) ) ? array( 'url' => ueb_url_scolarite(), 'libelle' => 'Espace scolarité', 'icone' => 'recu', 'actif' => false ) : null, ueb_peut( UEB_CAP_DIRECTION ) ? array( 'url' => ueb_url_direction(), 'libelle' => 'Direction', 'icone' => 'bouclier', 'actif' => false ) : null, array( 'url' => add_query_arg( 'vue', 'securite', ueb_url_cellule() ), 'libelle' => 'Sécurité', 'icone' => 'cadenas', 'actif' => 'securite' === $vue ) ), array( 'titre' => $etab['sigle'], 'note' => $etab['fr'] ) ); ?>
-			<div class="bo-contenu">
-				<header class="page-app__entete"><div><h1><?php echo 'securite' === $vue ? 'Sécurité' : 'Comptes étudiants'; ?></h1><p class="page-app__sous-titre"><?php echo esc_html( $etab['fr'] ); ?> · année <?php echo esc_html( $annee['libelle'] ); ?></p></div></header>
+			<div class="bo-contenu<?php echo 'bord' === $vue ? ' adm cel-bord' : ''; ?>">
+				<?php if ( 'bord' === $vue ) : ?>
+					<?php ueb_cellule_tableau( ueb_cellule_donnees( ueb_etab_agent() ), $etab, $peut_suspendre ); ?>
+				<?php else : ?>
+				<header class="page-app__entete"><div><h1><?php echo 'securite' === $vue ? 'Sécurité' : 'Comptes étudiants'; ?></h1><p class="page-app__sous-titre"><?php echo esc_html( $etab['fr'] ); ?>, année <?php echo esc_html( $annee['libelle'] ); ?></p></div></header>
 				<?php ueb_afficher_flash(); ?>
-				<?php if ( 'securite' === $vue ) : ?>
+				<?php endif; ?>
+				<?php if ( 'bord' === $vue ) : ?>
+				<?php elseif ( 'securite' === $vue ) : ?>
 					<?php ueb_bloc_mot_de_passe( array( 'action' => ueb_url_cellule(), 'titre' => 'Ton accès touche aux comptes des étudiants', 'conseil' => array( 'utilisateur', 'Chaque réinitialisation est enregistrée à ton nom', ', avec sa date.' ) ) ); ?>
 				<?php else : ?>
 				<?php $reinit = $_SESSION['ueb_reinit_effectuee'] ?? null; unset( $_SESSION['ueb_reinit_effectuee'] ); ?>
@@ -88,7 +99,7 @@ ueb_page_debut( array( 'titre' => 'Cellule informatique', 'variante' => $autoris
 							<h2 id="comptes-etu-titre">Registre des comptes</h2>
 							<p><?php echo esc_html( $filtres['q'] ? sprintf( '%d résultat%s pour « %s »', count( $etudiants ), 1 < count( $etudiants ) ? 's' : '', $filtres['q'] ) : sprintf( '%d compte%s, les plus récents d’abord', count( $etudiants ), 1 < count( $etudiants ) ? 's' : '' ) ); ?></p>
 						</div>
-						<form class="comptes-etu__recherche" method="get" action="<?php echo esc_url( ueb_url_cellule() ); ?>" role="search"><?php ueb_champ_espace(); ?>
+						<form class="comptes-etu__recherche" method="get" action="<?php echo esc_url( ueb_url_cellule() ); ?>" role="search"><?php ueb_champ_espace(); ?><input type="hidden" name="vue" value="comptes">
 							<label class="sr" for="cellule-q">Rechercher un étudiant</label>
 							<span class="comptes-etu__champ"><?php echo ueb_icone( 'loupe', 18 ); ?><input id="cellule-q" type="search" name="qc" value="<?php echo esc_attr( $filtres['q'] ); ?>" placeholder="Nom, prénom, matricule ou téléphone" autocomplete="off"<?php echo ueb_attr_suggestions( 'comptes' ); // phpcs:ignore -- échappé ?>></span>
 							<button class="btn btn--primaire" type="submit">Rechercher</button>
@@ -102,13 +113,13 @@ ueb_page_debut( array( 'titre' => 'Cellule informatique', 'variante' => $autoris
 									<th scope="col">Matricule</th>
 									<th scope="col">Téléphone</th>
 									<th scope="col">État</th>
-									<th scope="col" class="comptes-etu__col-action">Mot de passe</th>
-									<?php if ( $gere_comptes ) : ?><th scope="col" class="comptes-etu__col-action">Accès</th><?php endif; ?>
+									<?php if ( $peut_reinit ) : ?><th scope="col" class="comptes-etu__col-action">Mot de passe</th><?php endif; ?>
+									<?php if ( $peut_suspendre ) : ?><th scope="col" class="comptes-etu__col-action">Accès</th><?php endif; ?>
 								</tr>
 							</thead>
 							<tbody>
 								<?php if ( ! $etudiants ) : ?>
-									<tr><td colspan="<?php echo $gere_comptes ? 6 : 5; ?>" class="texte-discret">Aucun étudiant ne correspond à cette recherche.</td></tr>
+									<tr><td colspan="<?php echo 4 + (int) $peut_reinit + (int) $peut_suspendre; ?>" class="texte-discret">Aucun étudiant ne correspond à cette recherche.</td></tr>
 								<?php endif; ?>
 								<?php foreach ( $etudiants as $e ) : $actif = 'actif' === $e->statut; ?>
 									<tr>
@@ -116,6 +127,7 @@ ueb_page_debut( array( 'titre' => 'Cellule informatique', 'variante' => $autoris
 										<td class="comptes-etu__matricule"><?php echo esc_html( $e->matricule ?: '—' ); ?></td>
 										<td class="num"><?php echo esc_html( $e->telephone ? ueb_formater_telephone( $e->telephone ) : '—' ); ?></td>
 										<td><span class="comptes-etu__etats"><?php echo $actif ? '<span class="badge badge--verifie"><i></i>Actif</span>' : '<span class="badge badge--rejete"><i></i>Suspendu</span>'; ?><?php echo ueb_badge_mdp( $e ); // phpcs:ignore -- échappé ?></span></td>
+										<?php if ( $peut_reinit ) : ?>
 										<td class="comptes-etu__col-action">
 											<form method="post" action="<?php echo esc_url( ueb_url_cellule() ); ?>" data-confirmer="Réinitialiser le mot de passe de <?php echo esc_attr( ueb_identifiant_compte( $e ) ); ?> ? As-tu vérifié sa carte d’identité ? Il aura 1 heure pour choisir son nouveau mot de passe." data-confirmer-titre="Réinitialiser le mot de passe ?" data-confirmer-bouton="Réinitialiser" data-confirmer-ton="enregistrer">
 												<?php ueb_champ_csrf(); ?>
@@ -125,7 +137,8 @@ ueb_page_debut( array( 'titre' => 'Cellule informatique', 'variante' => $autoris
 												<button class="comptes-etu__action" type="submit"><?php echo ueb_icone( 'cle', 15 ); ?>Réinitialiser</button>
 											</form>
 										</td>
-										<?php if ( $gere_comptes ) : ?>
+										<?php endif; ?>
+										<?php if ( $peut_suspendre ) : ?>
 											<td class="comptes-etu__col-action">
 												<form method="post" action="<?php echo esc_url( ueb_url_cellule() ); ?>" data-confirmer="<?php echo $actif ? 'L’étudiant sera déconnecté et ne pourra plus se connecter jusqu’à la réactivation de son compte.' : 'L’étudiant pourra de nouveau se connecter.'; ?>" data-confirmer-titre="<?php echo esc_attr( ( $actif ? 'Suspendre le compte de ' : 'Réactiver le compte de ' ) . ueb_identifiant_compte( $e ) . ' ?' ); ?>" data-confirmer-bouton="<?php echo $actif ? 'Suspendre' : 'Réactiver'; ?>"<?php echo $actif ? '' : ' data-confirmer-ton="enregistrer"'; ?>>
 													<?php ueb_champ_csrf(); ?>

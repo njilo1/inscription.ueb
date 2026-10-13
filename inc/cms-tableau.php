@@ -102,11 +102,12 @@ function ueb_cms_tableau( array $d ) {
 	$taux  = $f['attendu'] ? 100 * $f['encaisse'] / $f['attendu'] : 0;
 	$reste = max( 0, $f['attendu'] - $f['encaisse'] );
 	$url   = static fn( array $args = array() ) => ueb_url_espace_admin( 'scolarite', array( 'type' => 'medicaux' ) + $args );
+	/* Les nombres à gauche (après la carte rouge), l'argent à droite (dernier élément : carte d'argent). */
 	$cartes = array(
-		array( 'Étudiants', ueb_formater_montant( $c['etudiants'] ), 'Avec un quitus de frais médicaux', 'groupe', 'foret', 'etudiants', 'Étudiants, cumul' ),
-		array( 'Frais encaissés', ueb_adm_montant_court( $f['encaisse'] ), 'FCFA de reçus validés', 'banque', 'foret', 'encaisse', 'Encaissé, cumul' ),
-		array( 'Quitus générés', ueb_formater_montant( $c['quitus'] ), 'Frais médicaux de l’année', 'fichier', 'foret', 'quitus', 'Quitus, cumul' ),
-		array( 'Encaissement', $f['attendu'] ? ueb_pourcent( $taux ) : '0 %', 'Des frais médicaux attendus', 'check', 'vert', 'taux', 'Taux d’encaissement' ),
+		array( 'Étudiants', ueb_formater_montant( $c['etudiants'] ), 'Avec un quitus de frais médicaux', 'groupe', 'foret', 'etudiants', 'Étudiants, cumul', false ),
+		array( 'Quitus générés', ueb_formater_montant( $c['quitus'] ), 'Frais médicaux de l’année', 'fichier', 'foret', 'quitus', 'Quitus, cumul', false ),
+		array( 'Frais encaissés', ueb_adm_montant_court( $f['encaisse'] ), 'FCFA de reçus validés', 'banque', 'foret', 'encaisse', 'Encaissé, cumul', true ),
+		array( 'Encaissement', $f['attendu'] ? ueb_pourcent( $taux ) : '0 %', 'Des frais médicaux attendus', 'check', 'vert', 'taux', 'Taux d’encaissement', true ),
 	);
 	$parts = array(
 		'encaisse'     => array( 'Encaissé', 'var(--dash-foret)' ),
@@ -120,7 +121,7 @@ function ueb_cms_tableau( array $d ) {
 	<div class="adm-kpis" aria-label="Indicateurs des frais médicaux de l’exercice">
 		<?php ueb_carte_attente( 'medicaux' ); ?>
 		<?php foreach ( $cartes as $carte ) : ?>
-			<article class="adm-kpi adm-kpi--<?php echo esc_attr( $carte[4] ); ?>">
+			<article class="adm-kpi adm-kpi--<?php echo esc_attr( $carte[4] ) . ( $carte[7] ? ' adm-kpi--argent' : '' ); ?>">
 				<div class="adm-kpi__entete"><h2><?php echo esc_html( $carte[0] ); ?></h2><?php echo ueb_icone( $carte[3], 18 ); ?></div>
 				<p class="adm-kpi__valeur"><?php echo esc_html( $carte[1] ); ?></p>
 				<p class="adm-kpi__note"><?php echo esc_html( $carte[2] ); ?></p>
@@ -130,6 +131,7 @@ function ueb_cms_tableau( array $d ) {
 	</div>
 
 	<div class="adm-analyse">
+		<?php ueb_file_attente( 'medicaux' ); ?>
 		<section class="adm-panneau adm-finances" aria-labelledby="cms-finances-titre">
 			<header class="adm-panneau__tete"><div><h2 id="cms-finances-titre">Encaissement des frais médicaux</h2><p>Répartition des montants attendus</p></div><?php echo ueb_icone( 'banque', 19 ); ?></header>
 			<div class="adm-donut">
@@ -157,7 +159,6 @@ function ueb_cms_tableau( array $d ) {
 			</ul>
 			<p class="adm-finances__total"><span>Total attendu</span><b><?php echo esc_html( ueb_formater_montant( $f['attendu'] ) ); ?> <small>FCFA</small></b></p>
 		</section>
-		<?php ueb_file_attente( 'medicaux' ); ?>
 	</div>
 
 	<div class="adm-secondaire">
