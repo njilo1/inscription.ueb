@@ -18,9 +18,9 @@
 
 /* Nombres : cachés jusqu'à leur comptage. */
 .adm-anime .adm-dashboard :is(
-	.adm-kpi__valeur, .adm-spark figcaption b,
+	.adm-kpi__valeur, .adm-kpi__type dd, .adm-spark figcaption b,
 	.adm-donut p b, .adm-finances__legende b, .adm-finances__total b,
-	.adm-evolution__bilan b, .adm-statistiques__total b, .adm-barres-statut li > b, .adm-comparaison a > b,
+	.adm-statistiques__total b, .adm-barres-statut li > b, .adm-comparaison a > b,
 	.adm-solde__montant, .adm-solde dd,
 	.adm-registre__effectif b, .adm-registre__total b, .adm-registre__mesure > b
 ) { opacity: 0; }
@@ -33,14 +33,19 @@
 .adm-anime .adm-dashboard .adm-donut > svg circle:not(.adm-donut__piste) { opacity: 0; }
 .adm-anime .adm-dashboard .adm-finances__legende li { opacity: .35; }
 
-/* Courbes d'évolution : tracé caché, points et étiquettes de fin aussi. */
-.adm-anime .adm-dashboard .adm-evolution .courbes__trace { clip-path: inset(0px 100% 0px 0px); animation: none; }
-.adm-anime .adm-dashboard .adm-evolution :is(.courbes__point--fin, .courbes__fin) { opacity: 0; animation: none; }
+/* Évolution des quitus : l'anneau de l'onglet affiché d'abord part vide, ses
+   deux balayages Remotion le remplissent ; nombres cachés jusqu'au passage. */
+.adm-anime .adm-dashboard .adm-anneau-double--entree > svg .donut-part { opacity: 0; }
+.adm-anime .adm-dashboard .adm-anneau-double--entree :is(.adm-anneau-double__centre b, .adm-anneau-double__centre em) { opacity: 0; }
+.adm-anime .adm-dashboard .adm-evolution__corps:has(.adm-anneau-double--entree) .adm-anneau-double__legende b { opacity: 0; }
 
 /* Barres : à zéro, elles grandiront depuis leur origine. */
 .adm-anime .adm-dashboard .adm-barre i { transform: scaleX(0); animation: none; }
 .adm-anime .adm-dashboard .adm-registre__mesure .suivi-barre { clip-path: inset(0px 100% 0px 0px); }
-.adm-anime .adm-dashboard .graphe--filieres .suivi-barre { animation: none; }
+/* Recouvrement par filière : colonnes à zéro, montants et taux cachés. */
+.adm-anime .adm-dashboard .adm-recouvrement__col i { transform: scaleY(0); }
+.adm-anime .adm-dashboard :is(.adm-recouvrement__montant b, .adm-recouvrement__constat b, .adm-recouvrement__col b, .adm-recouvrement__taux b) { opacity: 0; }
+@media (max-width: 640px) { .adm-anime .adm-dashboard .adm-recouvrement__col i { transform: scaleX(0); } }
 
 /* Origines des croissances. */
 .adm-dashboard .adm-colonnes__barre i { transform-origin: center bottom; }

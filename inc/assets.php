@@ -30,6 +30,10 @@ add_action( 'wp_enqueue_scripts', function () {
 	ueb_style( 'ueb-app', 'assets/css/app.css', array( 'ueb-polices' ) );
 	ueb_style( 'ueb-pages', 'assets/css/pages.css', array( 'ueb-app' ) );
 	ueb_script( 'ueb-app', 'assets/js/app.js' );
+	if ( is_user_logged_in() ) {
+		/* Recherche intelligente des espaces de gestion (inc/suggestions.php). */
+		ueb_script( 'ueb-suggestions', 'assets/js/suggestions.js' );
+	}
 
 	if ( 'support' === $page ) {
 		ueb_style( 'ueb-support', 'assets/css/support.css', array( 'ueb-pages' ) );
@@ -54,6 +58,11 @@ add_action( 'wp_enqueue_scripts', function () {
 	/* Vue affichée : celle de l'adresse, sinon la vue par défaut de l'espace (inc/espaces.php).
 	   L'espace affiché n'est jamais donné à un compte qui n'y a pas droit : pas d'autre contrôle. */
 	$vue_bo         = ueb_espace_courant() ? ueb_vue_courante() : sanitize_key( $_GET['vue'] ?? 'bord' ); // phpcs:ignore -- lecture seule
+	/* Comptes du personnel de la scolarité : bandeau d'équipe, registre et tiroir de création. */
+	if ( 'scolarite' === ueb_espace_courant() && 'cellule' === $vue_bo && ueb_peut( 'ueb_creer_agents' ) ) {
+		ueb_style( 'ueb-scolarite-personnel', 'assets/css/scolarite-personnel.css', array( 'ueb-pages' ) );
+		ueb_script( 'ueb-scolarite-personnel', 'assets/js/scolarite-personnel.js', array( 'ueb-app' ) );
+	}
 	$bord_scolarite = ( ( 'scolarite' === ueb_espace_courant() )
 			&& ( in_array( $vue_bo, array( 'bord', 'quitus', 'paiements' ), true ) || isset( $_GET['quitus'] ) ) ) // phpcs:ignore
 		|| ( $admin && in_array( $vue_bo, array( 'bord', 'paiements' ), true ) );
@@ -85,6 +94,17 @@ add_action( 'wp_enqueue_scripts', function () {
 		ueb_style( 'ueb-administration-dashboard', 'assets/css/administration-dashboard.css', array( 'ueb-administration' ) );
 		ueb_style( 'ueb-administration-analytics', 'assets/css/administration-analytics.css', array( 'ueb-administration-dashboard' ) );
 		ueb_script( 'ueb-administration-sparklines', 'assets/js/administration-sparklines.js' );
+		ueb_script( 'gsap', 'assets/js/vendor/gsap.min.js' );
+		ueb_script( 'ueb-administration-mouvement', 'assets/js/administration-mouvement.js', array( 'gsap', 'ueb-remotion' ) );
+	}
+	/* Suivi des paiements de la scolarité : la page de l'administration, avec les
+	   mêmes feuilles et le même mouvement (comptages, colonnes, anneau Remotion). */
+	$paiements_scolarite = ( 'scolarite' === ueb_espace_courant() ) && 'paiements' === $vue_bo && ! isset( $_GET['quitus'] ) // phpcs:ignore -- lecture seule
+		&& ueb_peut( 'ueb_voir_paiements' );
+	if ( $paiements_scolarite ) {
+		ueb_style( 'ueb-administration', 'assets/css/administration.css', array( 'ueb-pages', 'ueb-bord-graphes', 'ueb-paiements' ) );
+		ueb_style( 'ueb-administration-paiements', 'assets/css/administration-paiements.css', array( 'ueb-administration' ) );
+		ueb_script( 'ueb-administration-paiements', 'assets/js/administration-paiements.js' );
 		ueb_script( 'gsap', 'assets/js/vendor/gsap.min.js' );
 		ueb_script( 'ueb-administration-mouvement', 'assets/js/administration-mouvement.js', array( 'gsap', 'ueb-remotion' ) );
 	}

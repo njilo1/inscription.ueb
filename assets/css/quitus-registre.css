@@ -1,7 +1,7 @@
 /* Registre des quitus, espace scolarité (?vue=quitus).
- * De haut en bas : l'alerte des validations en attente (elle n'affiche que
- * les reçus à valider), les compteurs en cartes blanches qui filtrent par
- * statut, puis le registre avec ses filtres. Une ligne par dossier, toutes de
+ * En haut à droite de l'en-tête, le bouton rouge des validations en attente
+ * (il n'affiche que les reçus à valider). Puis les compteurs en cartes
+ * blanches qui filtrent par statut, et le registre avec ses filtres. Une ligne par dossier, toutes de
  * la même hauteur : les droits universitaires (DU) et les frais médicaux (FM)
  * d'un même étudiant tiennent sur deux lignes de texte au plus.
  * Toute la ligne ouvre la fiche ; « Valider » fait frapper le tampon de la
@@ -16,31 +16,45 @@
 	gap: 1rem;
 }
 
-/* ---------- Alerte : les validations en attente ---------- */
-.attente {
-	position: relative;
-	display: flex; align-items: center; flex-wrap: wrap; gap: .75rem 1.1rem;
-	padding: .8rem 1rem .8rem .85rem;
-	border: 1px solid #ecd28f; border-radius: 16px;
-	background: var(--alerte-fond);
-	color: #4a3700;
-	transition: border-color .18s, background-color .18s;
+/* ---------- Bouton des validations en attente (en-tête) ----------
+   Rouge plein : le nombre en grand dans une pastille blanche, le libellé et
+   l'ancienneté du plus ancien reçu, un chevron. Dessous, un lien discret
+   vers le plus ancien dossier. */
+.attente-action { display: grid; justify-items: end; gap: .4rem; }
+.attente-bouton {
+	--attente-rouge: #b3261e;
+	display: inline-flex; align-items: center; gap: .8rem;
+	min-height: 56px; padding: .5rem .85rem .5rem .5rem;
+	border-radius: 16px;
+	background: var(--attente-rouge);
+	color: #fff; text-decoration: none;
+	box-shadow: inset 0 1px 0 rgba(255, 255, 255, .16), 0 14px 26px -16px rgba(179, 38, 30, .9);
+	transition: background-color .18s var(--ease-sortie), box-shadow .18s var(--ease-sortie), translate .18s var(--ease-sortie);
 }
-.attente:hover { border-color: #d9b14a; background: #fff0c4; }
-.attente:has(.attente__lien:focus-visible) { outline: 3px solid var(--or); outline-offset: 2px; }
-.attente__icone { position: relative; flex: none; display: grid; place-items: center; width: 42px; height: 42px; border-radius: 12px; background: var(--blanc); color: var(--or-fonce); box-shadow: 0 0 0 1px #ecd28f; }
-.attente__nombre { position: absolute; top: -7px; right: -8px; display: grid; place-items: center; min-width: 22px; height: 22px; padding: 0 .35rem; border-radius: 999px; background: var(--or-fonce); color: var(--blanc); font-size: .74rem; font-weight: 800; font-variant-numeric: tabular-nums; box-shadow: 0 0 0 2px var(--alerte-fond); }
-.attente__texte { flex: 1 1 18rem; min-width: 0; }
-.attente__titre { margin: 0; font: 600 1.08rem/1.25 var(--f-titre); color: #3b2c00; }
-.attente__texte p:not(.attente__titre) { margin: .15rem 0 0; font-size: .88rem; color: #6b5310; }
-/* Toute l'alerte est cliquable : le lien du titre la recouvre. */
-.attente__lien { color: inherit; text-decoration: none; }
-.attente__lien::after { content: ""; position: absolute; inset: 0; border-radius: inherit; }
-.attente__lien:focus-visible { outline: 0; }
-.attente__voir { display: inline-flex; align-items: center; gap: .3rem; color: #4a3700; font-size: .9rem; font-weight: 700; white-space: nowrap; }
-.attente__second { position: relative; z-index: 1; padding: .3rem .1rem; color: #6b5310; font-size: .86rem; font-weight: 600; text-decoration: underline; text-underline-offset: .2em; white-space: nowrap; }
-.attente__second:hover { color: #3b2c00; }
-.attente__second:focus-visible { outline: 3px solid var(--or); outline-offset: 2px; border-radius: 4px; }
+.attente-bouton:hover { background: #9a1f18; color: #fff; translate: 0 -1px; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .16), 0 18px 30px -16px rgba(179, 38, 30, .95); }
+.attente-bouton:active { translate: 0 0; scale: .985; }
+.attente-bouton:focus-visible { outline: 3px solid var(--or); outline-offset: 3px; }
+.attente-bouton__nombre {
+	position: relative; flex: none; display: grid; place-items: center;
+	min-width: 40px; height: 40px; padding: 0 .45rem;
+	border-radius: 11px; background: #fff; color: var(--attente-rouge);
+	font: 800 1.15rem/1 var(--f-texte); font-variant-numeric: tabular-nums;
+}
+.attente-bouton__nombre::after { content: ""; position: absolute; inset: -4px; border: 2px solid rgba(255, 255, 255, .85); border-radius: 14px; opacity: 0; pointer-events: none; }
+/* Signal d'alerte : le chiffre s'éteint et se rallume, un halo blanc s'échappe
+   de la pastille au même rythme (1,2 s : bien sous trois éclats par seconde). */
+.attente-bouton__chiffre { display: block; animation: attente-clignote 1.2s ease-in-out .9s infinite; }
+.attente-bouton__nombre::after { animation: attente-halo 1.2s ease-out .9s infinite; }
+@keyframes attente-clignote { 0%, 45%, 100% { opacity: 1; } 60%, 80% { opacity: .12; } }
+@keyframes attente-halo { 0% { opacity: .9; scale: 1; } 70%, 100% { opacity: 0; scale: 1.35; } }
+.attente-bouton__texte { display: grid; gap: .1rem; min-width: 0; text-align: left; }
+.attente-bouton__texte b { font: 700 .98rem/1.2 var(--f-texte); white-space: nowrap; }
+.attente-bouton__texte small { font-size: .78rem; line-height: 1.3; color: rgba(255, 255, 255, .84); }
+.attente-bouton > .icone { flex: none; opacity: .85; transition: translate .18s var(--ease-sortie); }
+.attente-bouton:hover > .icone { translate: 2px 0; }
+.attente-action__second { display: inline-flex; align-items: center; gap: .3rem; padding: .1rem .15rem; color: var(--gris); font-size: .82rem; font-weight: 600; text-decoration: none; }
+.attente-action__second:hover { color: var(--encre); text-decoration: underline; text-underline-offset: .2em; }
+.attente-action__second:focus-visible { outline: 3px solid var(--or); outline-offset: 2px; border-radius: 4px; }
 
 /* ---------- Compteurs : cartes blanches à bordure ---------- */
 .compteurs { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: .6rem; }
@@ -165,13 +179,10 @@
    actions : transition de vue entre deux états du registre et vers la fiche,
    ligne du dossier validé mise en évidence, tampon sur la ligne. */
 @keyframes rq-pop { from { opacity: 0; scale: .4; } 60% { opacity: 1; scale: 1.12; } to { scale: 1; } }
-@keyframes rq-onde { from { opacity: .75; scale: .92; } to { opacity: 0; scale: 1.45; } }
 @keyframes rq-ligne { from { opacity: 0; translate: 0 6px; } }
 @keyframes rq-retrouve { 0%, 30% { box-shadow: inset 0 0 0 100vmax rgba(46, 125, 50, .16); } to { box-shadow: inset 0 0 0 100vmax rgba(46, 125, 50, 0); } }
 
-.attente__icone::after { content: ""; position: absolute; inset: -5px; border: 2px solid var(--or); border-radius: 16px; opacity: 0; pointer-events: none; }
-.est-entree .attente__nombre { animation: rq-pop .55s var(--ease-sortie) .2s both; }
-.est-entree .attente__icone::after { animation: rq-onde 1.1s ease-out .55s 1 both; }
+.attente-bouton.est-entree .attente-bouton__nombre { animation: rq-pop .55s var(--ease-sortie) .2s both; }
 .est-entree .registre__dossier { animation: rq-ligne .4s var(--ease-sortie) both; animation-delay: calc(var(--i, 0) * 28ms + 180ms); }
 .registre__dossier.est-retrouve td { animation: rq-retrouve 2.4s ease-out both; }
 .registre__dossier.est-retrouve .registre__statut { animation: rq-pop .5s var(--ease-sortie) .15s both; }
@@ -181,7 +192,7 @@
    fondent, l'avatar de la ligne rejoint l'en-tête de la fiche. */
 @view-transition { navigation: auto; }
 .bo-sidebar { view-transition-name: bo-barre; }
-.attente { view-transition-name: rq-attente; }
+.attente-bouton { view-transition-name: rq-attente; }
 .compteurs { view-transition-name: rq-compteurs; }
 .registre--quitus { view-transition-name: rq-registre; }
 ::view-transition-group(*) { animation-duration: .38s; animation-timing-function: var(--ease-sortie); }
@@ -220,24 +231,24 @@
 }
 @media (max-width: 640px) {
 	.compteurs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-	.attente__voir { display: none; }
+	.attente-action { justify-items: stretch; width: 100%; }
+	.attente-bouton { width: 100%; }
+	.attente-bouton__texte { flex: 1; }
+	.attente-action__second { justify-self: end; }
 }
 
 @media (prefers-reduced-motion: reduce) {
 	@view-transition { navigation: none; }
-	.attente, .compteurs__carte, .registre__tableau td, .registre__bouton-valider { transition: none; }
-	.est-entree .attente__nombre, .est-entree .attente__icone::after, .est-entree .registre__dossier, .registre__dossier.est-retrouve .registre__statut { animation: none; }
+	.attente-bouton, .attente-bouton > .icone, .compteurs__carte, .registre__tableau td, .registre__bouton-valider { transition: none; }
+	.attente-bouton:hover, .attente-bouton:hover > .icone { translate: none; }
+	.attente-bouton.est-entree .attente-bouton__nombre, .attente-bouton__nombre::after, .attente-bouton__chiffre, .est-entree .registre__dossier, .registre__dossier.est-retrouve .registre__statut { animation: none; }
 	.registre__dossier.est-retrouve td { animation: none; box-shadow: inset 0 0 0 100vmax rgba(46, 125, 50, .1); }
 	.registre__bouton-valider:active { scale: none; }
 }
 
 /* ---------- Thème sombre (Administration, bascule de la barre latérale) ---------- */
 :root[data-theme="sombre"] .espace-admin .registre-quitus { --rq-survol: #1b261f; --rq-attente: #10232d; --rq-attente-survol: #14303d; }
-:root[data-theme="sombre"] .espace-admin .attente { border-color: #5c4a1c; color: #f0c05a; }
-:root[data-theme="sombre"] .espace-admin .attente:hover { border-color: #8a6d24; background: #332a12; }
-:root[data-theme="sombre"] .espace-admin .attente__titre, :root[data-theme="sombre"] .espace-admin .attente__voir { color: #f3d58a; }
-:root[data-theme="sombre"] .espace-admin .attente__texte p:not(.attente__titre), :root[data-theme="sombre"] .espace-admin .attente__second { color: #d9bd75; }
-:root[data-theme="sombre"] .espace-admin .attente__second:hover { color: #f3d58a; }
+:root[data-theme="sombre"] .espace-admin .attente-bouton { box-shadow: inset 0 1px 0 rgba(255, 255, 255, .14), 0 14px 26px -16px rgba(0, 0, 0, .9); }
 :root[data-theme="sombre"] .espace-admin .registre__tableau th { background: #1b261f; box-shadow: inset 0 -1px 0 var(--filet); }
 :root[data-theme="sombre"] .espace-admin .registre__dossier.est-tamponne td { background: #13291b; }
 :root[data-theme="sombre"] .espace-admin .registre__select.est-actif select { background: #13291b; color: #8fcca3; }

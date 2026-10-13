@@ -258,12 +258,15 @@ function ueb_graphe_courbes( $titre, $sous_titre, array $activite ) {
 /* ---------- Recouvrement par filière ---------- */
 
 /**
- * Recouvrement par filière : une ligne par filière (les plus gros montants
- * attendus d'abord, au plus $limite), avec le taux encaissé et la barre en
- * quatre parts du suivi des paiements. Le nom complet reste lisible au survol
- * quand il est coupé ; la barre porte déjà son équivalent texte.
+ * Recouvrement par filière, en colonnes groupées : pour chaque filière, la
+ * colonne claire porte les droits attendus, la colonne verte ce qui est
+ * encaissé (reçus vérifiés), montants posés dessus ; sous la paire, le nom,
+ * le taux encaissé et l'effectif. L'infobulle ajoute ce qui est en
+ * vérification et le reste. En tête, le total et une phrase de constat : la
+ * filière la plus avancée et la plus en retard. Les plus gros montants
+ * attendus d'abord ; toutes les filières sont dans la vue Paiements.
  *
- * @param string $titre      Titre de la figure.
+ * @param string $titre      Titre du panneau.
  * @param string $sous_titre Précision facultative.
  * @param array  $filieres   $suivi['filieres'] de ueb_suivi_paiements().
  * @param string $url_suivi  Suivi complet des paiements (lien du pied), facultatif.
@@ -273,43 +276,86 @@ function ueb_graphe_filieres( $titre, $sous_titre, array $filieres, $url_suivi =
 	$filieres = array_values( $filieres );
 	$total    = count( $filieres );
 	$visibles = array_slice( $filieres, 0, max( 1, (int) $limite ) );
-	$legende  = array(
-		'encaisse'     => 'Encaissé',
-		'verification' => 'En vérification',
-		'declare'      => 'Déclaré',
-		'non_declare'  => 'Pas encore déclaré',
-	);
+	$attendu  = array_sum( array_column( $filieres, 'attendu' ) );
+	$encaisse = array_sum( array_column( $filieres, 'encaisse' ) );
+	$echelle  = ueb_graphe_echelle( max( array_merge( array( 1 ), array_column( $visibles, 'attendu' ) ) ) );
+	$haut     = $echelle['haut'];
+	$classees = array_values( array_filter( $visibles, static fn( $f ) => $f['attendu'] > 0 ) );
+	usort( $classees, static fn( $a, $b ) => ueb_suivi_taux( $b ) <=> ueb_suivi_taux( $a ) );
+	$premiere = $classees[0] ?? null;
+	$derniere = $classees ? end( $classees ) : null;
+	$taux_pc  = static fn( $f ) => ueb_pourcent( min( 100, ueb_suivi_taux( $f ) ) );
 	?>
-	<figure class="graphe graphe--filieres">
-		<?php ueb_graphe_entete( $titre, $sous_titre, null ); ?>
+	<section class="adm-panneau adm-recouvrement" aria-labelledby="adm-recouvrement-titre">
+		<header class="adm-panneau__tete">
+			<div>
+				<h2 id="adm-recouvrement-titre"><?php echo esc_html( $titre ); ?></h2>
+				<?php if ( $sous_titre ) : ?><p><?php echo esc_html( $sous_titre ); ?></p><?php endif; ?>
+			</div>
+		</header>
 		<?php if ( ! $total ) : ?>
-			<p class="graphe__vide"><?php echo ueb_icone( 'info', 18 ); ?>Aucune filière pour l’instant.</p>
+			<p class="graphe__vide"><?php echo ueb_icone( 'info', 18 ); ?>Les filières apparaîtront dès le premier quitus de droits universitaires.</p>
 		<?php else : ?>
-			<ul class="filieres">
-				<?php foreach ( $visibles as $i => $f ) :
-					$etudiants = (int) $f['etudiants'];
-					?>
-					<li class="filieres__ligne" style="--i: <?php echo (int) min( $i, 6 ); ?>">
-						<span class="filieres__nom" title="<?php echo esc_attr( $f['libelle'] ); ?>"><?php echo esc_html( $f['libelle'] ); ?></span>
-						<b class="filieres__taux"><?php echo esc_html( ueb_pourcent( ueb_suivi_taux( $f ) ) ); ?></b>
-						<span class="filieres__meta">
-							<?php echo esc_html( ueb_formater_montant( $etudiants ) . ' ' . ueb_graphe_accord( $etudiants, array( 'étudiant', 'étudiants' ) ) ); ?><?php if ( ! empty( $f['pro'] ) ) : ?>, <span class="filieres__pro">formation professionnelle</span><?php endif; ?>
-						</span>
-						<?php ueb_suivi_barre( $f, 'suivi-barre--fine' ); ?>
-					</li>
-				<?php endforeach; ?>
-			</ul>
-			<div class="filieres__pied">
-				<ul class="filieres__legende">
-					<?php foreach ( $legende as $cle => $libelle ) : ?>
-						<li class="suivi-legende__item--<?php echo esc_attr( $cle ); ?>"><i aria-hidden="true"></i><?php echo esc_html( $libelle ); ?></li>
-					<?php endforeach; ?>
+			<div class="adm-recouvrement__haut">
+				<p class="adm-recouvrement__montant"><b><?php echo esc_html( ueb_formater_montant( $encaisse ) ); ?><small>FCFA</small></b><span>encaissés sur <?php echo esc_html( ueb_fcfa( $attendu ) ); ?> attendus</span></p>
+				<?php if ( $premiere ) : ?>
+					<p class="adm-recouvrement__constat"><?php echo ueb_icone( 'banque', 18 ); ?><span>
+						<?php if ( 1 === count( $classees ) ) : ?>
+							<b><?php echo esc_html( $premiere['libelle'] ); ?></b> a encaissé <b><?php echo esc_html( $taux_pc( $premiere ) ); ?></b> de ses droits attendus.
+						<?php elseif ( ueb_suivi_taux( $premiere ) === ueb_suivi_taux( $derniere ) ) : ?>
+							Toutes les filières affichées en sont à <b><?php echo esc_html( $taux_pc( $premiere ) ); ?></b> de leurs droits encaissés.
+						<?php else : ?>
+							<b><?php echo esc_html( $premiere['libelle'] ); ?></b> est la plus avancée, avec <b><?php echo esc_html( $taux_pc( $premiere ) ); ?></b> encaissés ; <b><?php echo esc_html( $derniere['libelle'] ); ?></b> ferme la marche avec <b><?php echo esc_html( $taux_pc( $derniere ) ); ?></b>.
+						<?php endif; ?>
+					</span></p>
+				<?php endif; ?>
+			</div>
+			<div class="adm-recouvrement__graphe">
+				<div class="adm-recouvrement__axe" aria-hidden="true">
+					<?php for ( $v = 0; $v <= $haut; $v += $echelle['pas'] ) : ?><span style="--y: <?php echo esc_attr( round( $v / $haut, 4 ) ); ?>"><?php echo esc_html( ueb_adm_montant_court( $v ) ); ?></span><?php endfor; ?>
+				</div>
+				<div class="adm-recouvrement__zone">
+					<div class="adm-recouvrement__grille" aria-hidden="true">
+						<?php for ( $v = 0; $v <= $haut; $v += $echelle['pas'] ) : ?><i style="--y: <?php echo esc_attr( round( $v / $haut, 4 ) ); ?>"></i><?php endfor; ?>
+					</div>
+					<ol class="adm-recouvrement__filieres" style="--n: <?php echo count( $visibles ); ?>">
+						<?php foreach ( $visibles as $f ) :
+							$etudiants = (int) $f['etudiants'];
+							$effectif  = ueb_formater_montant( $etudiants ) . ' ' . ueb_graphe_accord( $etudiants, array( 'étudiant', 'étudiants' ) );
+							$reste     = max( 0, $f['attendu'] - $f['encaisse'] );
+							$dit       = sprintf( '%s, %s : %s encaissés sur %s attendus (%s), %s en vérification, reste %s.', $f['libelle'], $effectif, ueb_fcfa( $f['encaisse'] ), ueb_fcfa( $f['attendu'] ), $taux_pc( $f ), ueb_fcfa( $f['verification'] ), ueb_fcfa( $reste ) );
+							?>
+							<li class="adm-recouvrement__filiere" tabindex="0" aria-label="<?php echo esc_attr( $dit ); ?>">
+								<span class="adm-recouvrement__paire" aria-hidden="true">
+									<?php foreach ( array( 'attendu', 'encaisse' ) as $cle ) : ?>
+										<span class="adm-recouvrement__col adm-recouvrement__col--<?php echo esc_attr( $cle ); ?>" style="--h: <?php echo esc_attr( $f[ $cle ] > 0 ? max( .012, round( $f[ $cle ] / $haut, 4 ) ) : 0 ); ?>"><b><?php echo esc_html( ueb_adm_montant_court( $f[ $cle ] ) ); ?></b><i></i></span>
+									<?php endforeach; ?>
+								</span>
+								<span class="adm-recouvrement__nom" aria-hidden="true" title="<?php echo esc_attr( $f['libelle'] ); ?>"><?php echo esc_html( $f['libelle'] ); ?></span>
+								<span class="adm-recouvrement__taux" aria-hidden="true"><b><?php echo esc_html( $f['attendu'] ? $taux_pc( $f ) : '—' ); ?></b> encaissés</span>
+								<small aria-hidden="true"><?php echo esc_html( $effectif ); ?><?php echo ! empty( $f['pro'] ) ? ', formation professionnelle' : ''; ?></small>
+								<span class="adm-recouvrement__bulle" aria-hidden="true">
+									<b><?php echo esc_html( $f['libelle'] ); ?></b>
+									Attendu : <?php echo esc_html( ueb_fcfa( $f['attendu'] ) ); ?><br>
+									Encaissé : <?php echo esc_html( ueb_fcfa( $f['encaisse'] ) ); ?><br>
+									En vérification : <?php echo esc_html( ueb_fcfa( $f['verification'] ) ); ?><br>
+									Reste : <?php echo esc_html( ueb_fcfa( $reste ) ); ?>
+								</span>
+							</li>
+						<?php endforeach; ?>
+					</ol>
+				</div>
+			</div>
+			<div class="adm-recouvrement__pied">
+				<ul class="adm-recouvrement__legende">
+					<li><i class="adm-recouvrement__puce--attendu" aria-hidden="true"></i>Droits attendus</li>
+					<li><i class="adm-recouvrement__puce--encaisse" aria-hidden="true"></i>Encaissés, reçus vérifiés</li>
 				</ul>
-				<?php if ( $total > count( $visibles ) && $url_suivi ) : ?>
-					<a class="filieres__tout" href="<?php echo esc_url( $url_suivi ); ?>">Voir les <?php echo (int) $total; ?> filières<?php echo ueb_icone( 'fleche', 16 ); ?></a>
+				<?php if ( $url_suivi ) : ?>
+					<a class="adm-recouvrement__tout" href="<?php echo esc_url( $url_suivi ); ?>"><?php echo esc_html( $total > count( $visibles ) ? 'Voir les ' . $total . ' filières' : 'Détail des paiements' ); ?><?php echo ueb_icone( 'fleche', 16 ); ?></a>
 				<?php endif; ?>
 			</div>
 		<?php endif; ?>
-	</figure>
+	</section>
 	<?php
 }
