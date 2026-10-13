@@ -1,6 +1,7 @@
 <?php
 /**
- * Exports du suivi des paiements (administration, vue Paiements).
+ * Exports du suivi des paiements (vue Paiements de l'administration et de
+ * l'espace scolarité, qui exporte seulement l'établissement de l'agent).
  *
  *   - PDF et Word : rapport au format institutionnel, en A4 paysage.
  *     Il porte l'en-tête bilingue des actes de l'université (français à
@@ -23,6 +24,10 @@ const UEB_EXPORT_FORMATS = array( 'pdf', 'docx', 'xlsx' );
 /** Lien de téléchargement d'un format, pour le périmètre affiché (jeton anti-rejeu). */
 function ueb_adm_export_url( $format, $focus ) {
 	$args = array( 'vue' => 'paiements', 'export' => $format );
+	/* La scolarité n'a pas d'établissement dans le lien : c'est celui du compte. */
+	if ( 'scolarite' === ueb_espace_courant() ) {
+		return wp_nonce_url( add_query_arg( $args, ueb_url_scolarite() ), 'ueb_export_paiements', 'jeton' );
+	}
 	if ( $focus ) {
 		$args['etab'] = $focus;
 	}
@@ -54,13 +59,17 @@ function ueb_adm_exports_menu( $focus ) {
 	return ob_get_clean();
 }
 
-/* Téléchargement : ?vue=paiements&export=pdf|docx|xlsx[&etab=FS]&jeton=… */
+/* Téléchargement : ?vue=paiements&export=pdf|docx|xlsx[&etab=FS]&jeton=…
+   Dans l'espace scolarité, l'établissement est celui de l'agent : un « etab »
+   ajouté à l'adresse est ignoré. */
 add_action( 'template_redirect', function () {
-	if ( ! isset( $_GET['export'] ) || 'admin' !== ueb_espace_courant() || 'etudiants' === sanitize_key( $_GET['vue'] ?? '' ) ) { // phpcs:ignore -- l'export de la liste des étudiants a son propre déclencheur (inc/etudiants.php)
+	$espace = ueb_espace_courant();
+	if ( ! isset( $_GET['export'] ) || ! in_array( $espace, array( 'admin', 'scolarite' ), true ) || 'paiements' !== sanitize_key( $_GET['vue'] ?? '' ) ) { // phpcs:ignore -- la liste des étudiants a son propre export (inc/etudiants.php)
 		return;
 	}
-	if ( ! ueb_est_admin_ueb() ) {
-		wp_die( 'Cet export est réservé à l’administration.', 'Accès refusé', array( 'response' => 403 ) );
+	$scolarite = 'scolarite' === $espace;
+	if ( $scolarite ? ! ( ueb_peut( 'ueb_voir_paiements' ) && UEB_AUCUN_ETAB !== ueb_etab_agent() ) : ! ueb_est_admin_ueb() ) {
+		wp_die( 'Cet export est réservé aux comptes qui suivent les paiements.', 'Accès refusé', array( 'response' => 403 ) );
 	}
 	if ( ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_GET['jeton'] ?? '' ) ), 'ueb_export_paiements' ) ) {
 		wp_die( 'Ce lien d’export a expiré. Recharge la page Paiements puis relance l’export.', 'Lien expiré', array( 'response' => 403 ) );
@@ -69,7 +78,7 @@ add_action( 'template_redirect', function () {
 	if ( ! in_array( $format, UEB_EXPORT_FORMATS, true ) ) {
 		wp_die( 'Format d’export inconnu.', 'Export', array( 'response' => 400 ) );
 	}
-	$focus = strtoupper( sanitize_text_field( wp_unslash( $_GET['etab'] ?? '' ) ) );
+	$focus = $scolarite ? ueb_etab_agent() : strtoupper( sanitize_text_field( wp_unslash( $_GET['etab'] ?? '' ) ) );
 	$focus = ueb_etablissement( $focus ) ? $focus : '';
 	$annee = ueb_annee_academique();
 	$d     = ueb_adm_rapport_donnees( ueb_suivi_paiements( $annee['code'], $focus, 366 ), $focus, $annee );

@@ -1928,3 +1928,45 @@
 .ligne-quitus__correction .champ { margin: 0; }
 .ligne-quitus__correction .btn { justify-self: start; }
 .dossier-infos__correction dd { color: var(--alerte, #9a5b00); }
+
+/* ==========================================================================
+   Comptes étudiants (templates/espaces/cellule.php) : le registre et sa
+   recherche dans une seule carte, puis l'ajout d'un étudiant sur une ligne.
+   Colonnes d'actions titrées : « Mot de passe » (Réinitialiser) et « Accès »
+   (Suspendre / Réactiver).
+   ========================================================================== */
+.comptes-etu { margin-bottom: 1.25rem; overflow: visible; }
+.comptes-etu__tete { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem 1.5rem; padding: 1.15rem clamp(1rem, 2vw, 1.5rem); border-bottom: 1px solid var(--filet); }
+.comptes-etu__tete h2 { margin: 0 0 .15rem; font: 700 1.1rem/1.3 var(--f-texte); color: var(--encre); }
+.comptes-etu__tete p { margin: 0; max-width: 62ch; font-size: .88rem; color: var(--gris); }
+.comptes-etu__recherche { display: flex; flex: 1 1 26rem; gap: .6rem; max-width: 34rem; }
+.comptes-etu__champ { position: relative; flex: 1; display: flex; align-items: center; }
+.comptes-etu__champ > .icone { position: absolute; left: .85rem; color: var(--gris); pointer-events: none; }
+.comptes-etu__champ input { width: 100%; min-height: 46px; padding: .55rem .9rem .55rem 2.6rem; border: 1px solid var(--filet-fort); border-radius: 12px; background: var(--blanc); color: var(--encre); font: 500 .96rem var(--f-texte); }
+.comptes-etu__champ input:focus { outline: none; border-color: var(--foret-700); box-shadow: 0 0 0 4px rgba(46, 125, 50, .14); }
+.comptes-etu__recherche .btn { min-height: 46px; border-radius: 12px; }
+.comptes-etu__registre { border: 0; border-radius: 0 0 var(--r-carte) var(--r-carte); }
+.comptes-etu .tableau th { background: var(--papier); }
+.comptes-etu .tableau tbody th { padding: .85rem 1rem; border-bottom: 1px solid var(--filet); background: none; color: var(--encre); font-size: .96rem; font-weight: 400; white-space: normal; }
+.comptes-etu .tableau tbody tr:last-child th { border-bottom: 0; }
+.comptes-etu__matricule { font-variant-numeric: tabular-nums; letter-spacing: .01em; }
+.comptes-etu__etats { display: inline-flex; flex-wrap: wrap; gap: .35rem; }
+.comptes-etu .tableau .comptes-etu__col-action { width: 1%; text-align: left; white-space: nowrap; }
+.comptes-etu__col-action form { margin: 0; }
+.comptes-etu__action { display: inline-flex; align-items: center; gap: .45rem; min-height: 38px; padding: 0 .9rem; border: 1px solid var(--filet-fort); border-radius: 10px; background: var(--blanc); color: var(--foret-800); font: 600 .86rem/1 var(--f-texte); cursor: pointer; transition: background-color .15s var(--ease-sortie), border-color .15s var(--ease-sortie); }
+.comptes-etu__action:hover { border-color: var(--foret-700); background: rgba(29, 90, 56, .06); }
+.comptes-etu__action:focus-visible { outline: 3px solid var(--or); outline-offset: 2px; }
+.comptes-etu__action .icone { color: var(--foret-700); }
+.comptes-etu__action--suspendre { color: #9f2a22; }
+.comptes-etu__action--suspendre .icone { color: currentColor; }
+.comptes-etu__action--suspendre:hover { border-color: #c4473f; background: rgba(208, 59, 59, .06); }
+.comptes-etu__ajout { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)) auto; align-items: start; gap: 1rem 1.15rem; padding: 1.2rem clamp(1rem, 2vw, 1.5rem) 1.35rem; }
+.comptes-etu__ajout .champ { margin: 0; }
+.comptes-etu__creer { align-self: start; min-height: 52px; margin-top: 1.95rem; border-radius: 12px; white-space: nowrap; }
+
+@media (max-width: 760px) {
+	.comptes-etu__recherche { max-width: none; }
+	.comptes-etu__ajout { grid-template-columns: minmax(0, 1fr); }
+	.comptes-etu__creer { margin-top: 0; justify-self: start; }
+}
+@media (prefers-reduced-motion: reduce) { .comptes-etu__action { transition: none; } }

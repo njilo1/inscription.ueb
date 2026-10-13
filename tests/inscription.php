@@ -490,6 +490,16 @@ verifier( ! array_filter( array_keys( $activite['jours'] ), static fn( $i ) => $
 $fenetre = ueb_gestion_activite( $annee['code'], '', 2 );
 verifier( 2 === count( $fenetre['jours'] ) && 4 === end( $fenetre['generes'] ) && $fenetre['generes'][0] >= 3, 'activité : fenêtre de 2 jours, antérieur reporté au départ' );
 verifier( array( 0 ) === ueb_gestion_activite( $annee['code'], 'ETAB-INCONNU' )['generes'], 'activité : établissement sans quitus = un jour à zéro' );
+// Tableaux de bord : droits universitaires et frais médicaux comptés à part, jamais additionnés.
+$wpdb->insert( 'ueb_insc_quitus', array( 'numero' => 'TYPE-MED', 'code_verif' => 'type-medical-0000000', 'compte_id' => 207, 'etablissement' => 'FS', 'annee_academique' => $annee['code'], 'type' => 'medicaux', 'situation' => 'ancien', 'identifiant' => '24TYP207', 'type_identifiant' => 'matricule', 'nom' => 'TYPE', 'prenom' => 'Medical', 'date_naissance' => '2003-01-01', 'lieu_naissance' => 'Ebolowa', 'sexe' => 'F', 'nationalite' => 'Camerounaise', 'departement' => 'x', 'parcours' => 'L1', 'montant' => 3000, 'tranche' => 0, 'statut' => 'recu_envoye' ) );
+$par_type = ueb_gestion_chiffres( $annee['code'] );
+verifier( 4 === $par_type['types']['droits']['quitus'] && 1 === $par_type['types']['medicaux']['quitus'] && 1 === $par_type['types']['medicaux']['recu_envoye'], 'chiffres : quitus comptés par type ' . json_encode( $par_type['types'] ) );
+verifier( $par_type['quitus'] === array_sum( array_column( $par_type['types'], 'quitus' ) ) && $par_type['recus_envoyes'] === array_sum( array_column( $par_type['types'], 'recu_envoye' ) ), 'chiffres : les types se partagent les totaux sans se recouvrir' );
+$courbe_droits   = ueb_gestion_activite( $annee['code'], '', 45, 'droits' )['generes'];
+$courbe_medicaux = ueb_gestion_activite( $annee['code'], '', 45, 'medicaux' )['generes'];
+verifier( 4 === end( $courbe_droits ) && 1 === end( $courbe_medicaux ), 'activité : une courbe par type de quitus' );
+$series = ueb_suivi_paiements( $annee['code'], '', 30 )['historique'];
+verifier( end( $series['quitus_droits'] ) + end( $series['quitus_medicaux'] ) === end( $series['quitus'] ) && 1 === end( $series['quitus_medicaux'] ), 'mini-courbes : quitus de chaque type, sans double compte' );
 vider_quitus();
 
 // Étudiants UEB : dernier quitus de droits de l'année par compte, portée imposée, états du paiement.

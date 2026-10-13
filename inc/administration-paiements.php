@@ -98,7 +98,8 @@ function ueb_adm_paiements_niveaux( array $niveaux, array $g, $focus ) {
  * ventilés par établissement, ou par filière dans la vue d'un établissement.
  * Rien ne s'affiche tant qu'il n'y a pas d'écart.
  */
-function ueb_adm_paiements_rapprochement( array $suivi, $focus ) {
+function ueb_adm_paiements_rapprochement( array $suivi, $focus, $url_ligne = null ) {
+ $url_ligne = $url_ligne ?? 'ueb_adm_paiements_url_etab';
  $total = $suivi['global']['trop_percu'];
  if ( $total <= 0 ) {
   return;
@@ -143,11 +144,12 @@ function ueb_adm_paiements_rapprochement( array $suivi, $focus ) {
         esc_html( ueb_pourcent( $part ) . ' du total' )
        );
        ?>
+       <?php $href = $focus ? '' : $url_ligne( $p['sigle'] ); ?>
        <li class="pay-ecart">
-        <?php if ( $focus ) : ?>
+        <?php if ( ! $href ) : ?>
          <div class="pay-ecart__ligne"><?php echo $corps; // phpcs:ignore -- composé et échappé ci-dessus ?></div>
         <?php else : ?>
-         <a class="pay-ecart__ligne" href="<?php echo esc_url( add_query_arg( array( 'vue' => 'paiements', 'etab' => $p['sigle'] ), ueb_url_administration() ) ); ?>"><?php echo $corps; // phpcs:ignore -- composé et échappé ci-dessus ?><?php echo ueb_icone( 'chevron-d', 16 ); ?></a>
+         <a class="pay-ecart__ligne" href="<?php echo esc_url( $href ); ?>"><?php echo $corps; // phpcs:ignore -- composé et échappé ci-dessus ?><?php echo ueb_icone( 'chevron-d', 16 ); ?></a>
         <?php endif; ?>
        </li>
       <?php endforeach; ?>
@@ -165,7 +167,25 @@ function ueb_adm_paiement_situation( array $a ) {
  return $a['attendu'] <= 0 ? 'vide' : ( $a['encaisse'] >= $a['attendu'] ? 'solde' : ( $a['encaisse'] > 0 ? 'partiel' : 'attente' ) );
 }
 
-function ueb_adm_paiements( array $suivi, $focus ) {
+/** Vue Paiements d'un établissement dans l'administration. */
+function ueb_adm_paiements_url_etab( $sigle ) {
+ return add_query_arg( array( 'vue' => 'paiements', 'etab' => $sigle ), ueb_url_administration() );
+}
+
+/**
+ * Suivi des paiements. L'espace scolarité affiche la même page pour sa portée
+ * (templates/espaces/scolarite.php) et passe dans $options :
+ *   - action : adresse de la vue Paiements de l'espace ;
+ *   - champ  : paramètre du choix d'établissement (« etab », ou « ueb_etab »,
+ *     le sélecteur mémorisé de inc/roles.php) ;
+ *   - etabs  : établissements proposés ; sans choix possible, pas de sélecteur
+ *     ni de lien vers un établissement ;
+ *   - tous   : « Tous les établissements » fait partie du choix.
+ */
+function ueb_adm_paiements( array $suivi, $focus, array $options = array() ) {
+ $o = array_merge( array( 'action' => ueb_url_administration(), 'champ' => 'etab', 'etabs' => array_keys( ueb_etablissements() ), 'tous' => true ), $options );
+ $url_ligne = static fn( $sigle ) => in_array( $sigle, $o['etabs'], true ) ? add_query_arg( array( 'vue' => 'paiements', $o['champ'] => $sigle ), $o['action'] ) : '';
+ $choix = count( $o['etabs'] ) + ( $o['tous'] ? 1 : 0 ) > 1;
  $g = $suivi['global']; $m = $suivi['medicaux'];
  $annee = ueb_annee_academique();
  $verification = $g['verification'] + $m['verification'];
@@ -180,15 +200,18 @@ function ueb_adm_paiements( array $suivi, $focus ) {
  <div class="pay" data-pay data-annee="<?php echo esc_attr( $annee['code'] ); ?>">
   <div class="pay-contexte">
    <p><?php echo ueb_icone( 'banque', 16 ); ?><span>Périmètre suivi : <b><?php echo esc_html( $focus ? $focus . ', ' . ueb_etablissement( $focus )['fr'] : 'toute l’université' ); ?></b></span></p>
-   <form method="get" action="<?php echo esc_url( ueb_url_administration() ); ?>">
+   <?php if ( $choix ) : ?>
+   <form method="get" action="<?php echo esc_url( $o['action'] ); ?>">
+    <?php parse_str( (string) wp_parse_url( $o['action'], PHP_URL_QUERY ), $garde ); /* un formulaire GET remplace la requête de son adresse (?espace=…) */ ?>
+    <?php foreach ( array_diff_key( $garde, array( 'vue' => 1, $o['champ'] => 1 ) ) as $nom => $valeur ) : ?><input type="hidden" name="<?php echo esc_attr( $nom ); ?>" value="<?php echo esc_attr( $valeur ); ?>"><?php endforeach; ?>
     <input type="hidden" name="vue" value="paiements">
     <label for="pay-etab">Établissement</label>
-    <select name="etab" id="pay-etab"><option value="">Tous les établissements</option><?php foreach ( ueb_etablissements() as $sigle => $e ) : ?><option value="<?php echo esc_attr( $sigle ); ?>" <?php selected( $focus, $sigle ); ?>><?php echo esc_html( $e['fr'] . ' (' . $sigle . ')' ); ?></option><?php endforeach; ?></select>
+    <select name="<?php echo esc_attr( $o['champ'] ); ?>" id="pay-etab"><?php if ( $o['tous'] ) : ?><option value="">Tous les établissements</option><?php endif; ?><?php foreach ( $o['etabs'] as $sigle ) : ?><option value="<?php echo esc_attr( $sigle ); ?>" <?php selected( $focus, $sigle ); ?>><?php echo esc_html( ueb_etablissement( $sigle )['fr'] . ' (' . $sigle . ')' ); ?></option><?php endforeach; ?></select>
     <button class="pay-btn" type="submit">Afficher</button>
    </form>
+   <?php endif; ?>
   </div>
-  <div class="pay-apercu">
-   <div class="pay-kpis">
+  <div class="pay-kpis">
     <?php foreach ( array(
      array( 'Droits encaissés', $g['encaisse'], 'Sur ' . ueb_fcfa( $g['attendu'] ) . ' attendus', 'banque', 'fort', $g['attendu'] ? ueb_pourcent( ueb_suivi_taux( $g ) ) . ' recouvrés' : 'Aucun droit attendu' ),
      array( 'Frais médicaux encaissés', $m['encaisse'], 'Sur ' . ueb_fcfa( $m['attendu'] ) . ' déclarés', 'bouclier', 'medical', ueb_formater_montant( $m['etudiants'] ) . ' quitus médicaux' ),
@@ -202,10 +225,11 @@ function ueb_adm_paiements( array $suivi, $focus ) {
       <span class="pay-kpi__repere"><?php echo esc_html( $k[5] ); ?></span>
      </article>
     <?php endforeach; ?>
-   </div>
-   <?php ueb_adm_paiements_histogramme( ueb_adm_paiements_mois( $suivi['historique'] ?? array(), $annee['debut'] . '-09-01' ) ); ?>
   </div>
-  <div class="pay-secondaire">
+  <?php /* Sous les quatre bilans : l'histogramme sur deux colonnes, puis la
+     situation des étudiants et les contrôles en attente. */ ?>
+  <div class="pay-apercu">
+   <?php ueb_adm_paiements_histogramme( ueb_adm_paiements_mois( $suivi['historique'] ?? array(), $annee['debut'] . '-09-01' ) ); ?>
    <?php $suivis = $g['soldes'] + $g['partiels'] + $g['aucun']; ?>
    <section class="pay-tuile">
     <header><span class="pay-tuile__icone"><?php echo ueb_icone( 'check', 20 ); ?></span><h2>Situation des étudiants</h2></header>
@@ -227,13 +251,13 @@ function ueb_adm_paiements( array $suivi, $focus ) {
      <p class="pay-tuile__corriger"><?php echo ueb_icone( 'alerte', 15 ); ?><b><?php echo (int) $a_corriger; ?></b> quitus à corriger</p>
     </div>
    </section>
-   <?php ueb_adm_paiements_repartition( $g['encaisse'], $m['encaisse'] ); ?>
   </div>
   <div class="pay-duo">
+   <?php ueb_adm_paiements_repartition( $g['encaisse'], $m['encaisse'] ); ?>
    <?php ueb_adm_paiements_niveaux( $suivi['niveaux'], $g, $focus ); ?>
-   <?php ueb_adm_paiements_rapprochement( $suivi, $focus ); ?>
+   <?php ueb_adm_paiements_rapprochement( $suivi, $focus, $url_ligne ); ?>
   </div>
-  <?php ueb_adm_paiements_registre( $lignes, $focus ); ?>
+  <?php ueb_adm_paiements_registre( $lignes, $focus, $url_ligne ); ?>
  </div>
  <?php
 }
@@ -296,15 +320,16 @@ function ueb_adm_paiements_repartition( $droits, $medicaux ) {
  <?php
 }
 
-function ueb_adm_paiements_registre( array $lignes, $focus ) {
- $libelles = array( 'solde' => 'Soldé', 'partiel' => 'Partiel', 'attente' => 'À encaisser', 'vide' => 'Aucun montant' );
+function ueb_adm_paiements_registre( array $lignes, $focus, $url_ligne = null ) {
+ $libelles  = array( 'solde' => 'Soldé', 'partiel' => 'Partiel', 'attente' => 'À encaisser', 'vide' => 'Aucun montant' );
+ $url_ligne = $url_ligne ?? 'ueb_adm_paiements_url_etab';
  ?>
  <section class="pay-panneau pay-registre" id="pay-registre" data-pay-registre aria-labelledby="pay-registre-titre">
   <header class="pay-entete"><div><h2 id="pay-registre-titre"><?php echo $focus ? 'Suivi détaillé de ' . esc_html( $focus ) : 'Suivi par établissement'; ?></h2><p>Droits et frais médicaux séparés, montants en FCFA</p></div><button class="pay-btn" type="button" data-pay-export hidden><?php echo ueb_icone( 'telecharger', 17 ); ?>Lignes affichées en CSV</button></header>
   <div class="pay-outils" data-pay-outils hidden>
    <div class="pay-types" role="group" aria-label="Type de paiement"><button type="button" data-pay-type="tous" aria-pressed="true">Tous les paiements</button><button type="button" data-pay-type="droits" aria-pressed="false">Droits universitaires</button><button type="button" data-pay-type="medicaux" aria-pressed="false">Frais médicaux</button></div>
    <div class="pay-filtres">
-    <label class="pay-recherche"><span>Recherche</span><span><?php echo ueb_icone( 'loupe', 17 ); ?><input type="search" placeholder="<?php echo $focus ? 'Rechercher une filière' : 'Rechercher un établissement'; ?>" data-pay-recherche aria-controls="pay-table"></span></label>
+    <label class="pay-recherche"><span>Recherche</span><span><?php echo ueb_icone( 'loupe', 17 ); ?><input type="search" placeholder="<?php echo $focus ? 'Rechercher une filière' : 'Rechercher un établissement'; ?>" data-pay-recherche aria-controls="pay-table" autocomplete="off" data-suggestions-lignes="#pay-registre [data-pay-ligne]"></span></label>
     <label><span>Situation</span><select data-pay-situation aria-controls="pay-table"><option value="tous">Toutes les situations</option><option value="verification">En vérification</option><option value="attente">À encaisser</option><option value="partiel">Paiement partiel</option><option value="solde">Soldé</option><option value="reste">Avec un reste</option></select></label>
     <label><span>Trier par</span><select data-pay-tri aria-controls="pay-table"><option value="attendu">Montant attendu</option><option value="reste">Reste à encaisser</option><option value="taux">Taux de recouvrement</option><option value="nom">Nom</option></select></label>
     <button type="button" class="pay-btn pay-btn--discret" data-pay-reset>Réinitialiser</button>
@@ -316,7 +341,7 @@ function ueb_adm_paiements_registre( array $lignes, $focus ) {
    <?php foreach ( $lignes as $ligne ) : $a = $ligne['a']; $reste = max( 0, $a['attendu'] - $a['encaisse'] ); $taux = ueb_suivi_taux( $a ); $etat = ueb_adm_paiement_situation( $a );
     $data = array( 'nom' => $ligne['nom'], 'detail' => $ligne['detail'], 'type' => $ligne['type'], 'unite' => $ligne['unite'], 'effectif' => $a['etudiants'], 'attendu' => $a['attendu'], 'encaisse' => $a['encaisse'], 'verification' => $a['verification'], 'reste' => $reste, 'taux' => $taux, 'situation' => $etat ); ?>
     <tr data-pay-ligne="<?php echo esc_attr( wp_json_encode( $data ) ); ?>">
-     <th scope="row"><div class="pay-identite"><?php if ( ! $focus ) : ?><img src="<?php echo esc_url( ueb_logo_url( $ligne['sigle'] ) ); ?>" alt="" width="30" height="30" loading="lazy"><?php endif; ?><div><?php if ( ! $focus ) : ?><a href="<?php echo esc_url( add_query_arg( array( 'vue' => 'paiements', 'etab' => $ligne['sigle'] ), ueb_url_administration() ) ); ?>"><?php echo esc_html( $ligne['nom'] ); ?><?php echo ueb_icone( 'chevron-d', 13 ); ?></a><?php else : ?><b><?php echo esc_html( $ligne['nom'] ); ?></b><?php endif; ?><small><?php echo esc_html( $ligne['detail'] ); ?></small></div></div></th>
+     <th scope="row"><div class="pay-identite"><?php if ( ! $focus ) : ?><img src="<?php echo esc_url( ueb_logo_url( $ligne['sigle'] ) ); ?>" alt="" width="30" height="30" loading="lazy"><?php endif; ?><div><?php $href = $focus ? '' : $url_ligne( $ligne['sigle'] ); if ( $href ) : ?><a href="<?php echo esc_url( $href ); ?>"><?php echo esc_html( $ligne['nom'] ); ?><?php echo ueb_icone( 'chevron-d', 13 ); ?></a><?php else : ?><b><?php echo esc_html( $ligne['nom'] ); ?></b><?php endif; ?><small><?php echo esc_html( $ligne['detail'] ); ?></small></div></div></th>
      <td data-titre="Type"><span class="pay-type pay-type--<?php echo esc_attr( $ligne['type'] ); ?>"><?php echo 'droits' === $ligne['type'] ? 'Droits' : 'Médicaux'; ?></span></td>
      <td data-titre="Effectif"><?php echo esc_html( ueb_formater_montant( $a['etudiants'] ) ); ?><small class="pay-unite"><?php echo esc_html( $ligne['unite'] ); ?></small></td>
      <?php foreach ( array( 'attendu' => 'Attendu', 'encaisse' => 'Encaissé', 'verification' => 'À vérifier' ) as $cle => $titre ) : ?><td class="pay-montant pay-montant--<?php echo esc_attr( $cle ); ?>" data-titre="<?php echo esc_attr( $titre ); ?>"><?php echo esc_html( ueb_formater_montant( $a[ $cle ] ) ); ?></td><?php endforeach; ?>

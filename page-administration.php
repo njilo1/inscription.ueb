@@ -93,7 +93,7 @@ if ( $autorise ) {
 		$periode  = in_array( $periode, array( 7, 30, 90 ), true ) ? $periode : 30;
 		$chiffres = ueb_gestion_chiffres( $annee['code'], $focus );
 		$suivi    = ueb_suivi_paiements( $annee['code'], $focus, $periode );
-		$activite = ueb_gestion_activite( $annee['code'], $focus, $periode );
+		$activite = ueb_gestion_activite_par_type( $annee['code'], $focus, $periode );
 		$niveaux  = ueb_gestion_niveaux_par_etab( $annee['code'] );
 		$vide_niv = array_fill_keys( array_keys( UEB_NIVEAUX_INSCRIPTION ), 0 );
 	} elseif ( 'paiements' === $vue ) {
@@ -385,7 +385,7 @@ ueb_page_debut( array(
 						? array(
 							'fil'        => array( array( $url(), 'Tableau de bord' ), array( '', $focus ) ),
 							'titre'      => $e['fr'],
-							'sous_titre' => sprintf( '%s, à %s : %d quitus pour %s cette année.', $focus, $e['ville'], $chiffres['quitus'], ueb_suivi_etudiants( $chiffres['etudiants'] ) ),
+							'sous_titre' => sprintf( '%s, à %s : %s pour %s cette année.', $focus, $e['ville'], ueb_texte_quitus_par_type( $chiffres ), ueb_suivi_etudiants( $chiffres['etudiants'] ) ),
 							'actions'    => ueb_adm_action( $url( array( 'vue' => 'paiements', 'etab' => $focus ) ), 'Paiements de ' . $focus, 'banque', true ),
 						)
 						: array(
@@ -399,10 +399,13 @@ ueb_page_debut( array(
 					ueb_adm_dashboard( $chiffres, $suivi, $activite, $focus, $periode );
 					?>
 
-					<div class="adm-grille adm-grille--graphes adm-complements">
+					<?php /* Un établissement : son recouvrement par filière est la carte du bas. */ ?>
+					<div class="adm-grille adm-grille--graphes adm-complements<?php echo $focus ? ' adm-complements--duo' : ''; ?>">
 						<?php
 						ueb_adm_statistiques( $chiffres );
-						ueb_adm_comparaison( $suivi, $focus, $periode );
+						if ( ! $focus ) {
+							ueb_adm_comparaison( $suivi, $focus, $periode );
+						}
 						ueb_graphe_anneau( 'Répartition par sexe', 'Étudiants ayant au moins un quitus', array(
 							'Masculin' => array( 'valeur' => $chiffres['sexe']['M'], 'couleur' => 'var(--viz-id-1)' ),
 							'Féminin' => array( 'valeur' => $chiffres['sexe']['F'], 'couleur' => 'var(--viz-id-2)' ),
@@ -418,12 +421,16 @@ ueb_page_debut( array(
 							ueb_adm_filieres( ueb_gestion_par_filiere( $annee['code'], $focus ) );
 							?>
 						</div>
-						<?php ueb_graphe_filieres( 'Recouvrement par filière', 'Part encaissée des droits attendus, les plus gros montants d’abord', $suivi['filieres'], $url( array( 'vue' => 'paiements', 'etab' => $focus ) ) ); ?>
+						<?php ueb_graphe_filieres( 'Recouvrement par filière', 'Droits attendus et droits encaissés de chaque filière, en FCFA', $suivi['filieres'], $url( array( 'vue' => 'paiements', 'etab' => $focus ) ) ); ?>
 
 					<?php else : ?>
 
 						<?php
 						$stats          = ueb_gestion_stats( $annee['code'] );
+						$stats_types    = array(); // chaque type de quitus à part : jamais additionnés
+						foreach ( ueb_types_stats_visibles() ?: array( 'droits' ) as $type ) {
+							$stats_types[ $type ] = ueb_gestion_stats( $annee['code'], '', $type );
+						}
 						$etudiants_etab = ueb_gestion_etudiants_par_etab( $annee['code'] );
 						$lignes         = array();
 						$rang           = 0;
@@ -436,6 +443,7 @@ ueb_page_debut( array(
 								'niveaux'   => array_merge( $vide_niv, array_intersect_key( $niveaux[ $sigle ] ?? array(), $vide_niv ) ),
 								'statuts'   => $statuts,
 								'quitus'    => (int) array_sum( $statuts ),
+								'types'     => array_map( static fn( $st ) => $st['etabs'][ $sigle ] ?? array(), $stats_types ),
 								'suivi'     => $suivi['etabs'][ $sigle ] ?? null,
 								'url'       => $url( array( 'etab' => $sigle, 'periode' => $periode ) ),
 								'rang'      => $rang++,

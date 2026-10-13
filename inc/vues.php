@@ -248,7 +248,7 @@ function ueb_suivi_tableau( array $suivi, array $args ) {
 			<div class="paiements-filtres" data-paiements-filtres hidden>
 				<div class="paiements-recherche">
 					<label for="paiements-recherche"><?php echo $par_etab ? 'Rechercher un établissement' : 'Rechercher une filière'; ?></label>
-					<div><?php echo ueb_icone( 'loupe', 18 ); ?><input id="paiements-recherche" type="search" placeholder="<?php echo $par_etab ? 'Sigle ou nom de l’établissement' : 'Nom de la filière'; ?>" aria-controls="paiements-table" autocomplete="off" data-paiements-recherche></div>
+					<div><?php echo ueb_icone( 'loupe', 18 ); ?><input id="paiements-recherche" type="search" placeholder="<?php echo $par_etab ? 'Sigle ou nom de l’établissement' : 'Nom de la filière'; ?>" aria-controls="paiements-table" autocomplete="off" data-paiements-recherche data-suggestions-lignes="#paiements-table [data-paiement-ligne]"></div>
 				</div>
 				<div class="paiements-filtre">
 					<label for="paiements-situation">Recouvrement</label>
