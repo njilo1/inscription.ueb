@@ -1,0 +1,276 @@
+/* Comptes du personnel : le bandeau de l'équipe, le registre en pleine
+   largeur, la création dans un tiroir et, juste après une création, la
+   remise du mot de passe provisoire. Charte UEB : vert du bandeau à plat,
+   Source Serif 4 pour les titres, Source Sans 3 pour le texte. */
+.sco-personnel {
+	--personnel-filet: #e3e9e3;
+	--personnel-teinte: #eef4ee;
+	--personnel-tete: #f8faf7;
+	--personnel-sur-vert: #c6d9ca;
+	gap: 1.5rem;
+}
+.sco-personnel .btn--primaire, .sco-personnel .btn--primaire:hover { box-shadow: none; }
+.sco-personnel .btn--primaire:hover { --btn-fond: var(--foret-800); }
+
+.personnel { min-width: 0; display: grid; gap: 1.4rem; }
+.personnel [hidden] { display: none !important; }
+.personnel-registre, .personnel-creation, .personnel-remise { min-width: 0; background: var(--blanc); border: 1px solid var(--personnel-filet); border-radius: var(--r-carte); }
+
+/* Teintes des avatars, prises dans la charte : une par personne, stable. */
+.personnel-avatar { flex: none; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; background: var(--personnel-teinte); color: var(--foret-800); font: 600 .95rem/1 var(--f-titre); }
+.personnel-avatar--t0 { background: #e3efe5; color: #1d5a38; }
+.personnel-avatar--t1 { background: #e1eef5; color: #1f6f94; }
+.personnel-avatar--t2 { background: #fbefd2; color: #7f5800; }
+.personnel-avatar--t3 { background: #ebf3de; color: #46661c; }
+.personnel-avatar--t4 { background: #e7ecef; color: #3a4954; }
+
+/* ---------- Bandeau de l'équipe ---------- */
+.personnel-bandeau { position: relative; display: grid; gap: 1.35rem; padding: 1.6rem 1.75rem 1.4rem; overflow: hidden; border-radius: 20px; background: var(--vert-bandeau); color: var(--blanc); isolation: isolate; }
+.personnel-bandeau__haut { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 1.25rem 1.4rem; }
+.personnel-bandeau__sceau { display: grid; place-items: center; width: 68px; height: 68px; border-radius: 50%; background: var(--blanc); box-shadow: 0 0 0 6px rgba(255, 255, 255, .08); }
+.personnel-bandeau__sceau img { width: 50px; height: 50px; object-fit: contain; }
+.personnel-bandeau__texte { min-width: 0; }
+.personnel-bandeau__contexte { display: flex; align-items: center; flex-wrap: wrap; gap: .55rem; margin: 0 0 .5rem; font-size: .85rem; font-weight: 650; }
+.personnel-bandeau__annee { padding: .15rem .55rem; border-radius: 999px; background: rgba(255, 255, 255, .12); color: var(--personnel-sur-vert); font-weight: 600; }
+.personnel-bandeau h1 { margin: 0; color: var(--blanc); font: 600 clamp(1.85rem, 1.35rem + 1.2vw, 2.5rem)/1.1 var(--f-titre); letter-spacing: -.02em; }
+.personnel-bandeau__intro { max-width: 62ch; margin: .5rem 0 0; color: var(--personnel-sur-vert); font-size: .95rem; line-height: 1.55; }
+.personnel-bandeau__action { align-self: start; display: inline-flex; align-items: center; justify-content: center; gap: .5rem; min-height: 46px; padding: .65rem 1.1rem; border-radius: 12px; background: var(--blanc); color: var(--foret-900); font: 650 .94rem/1.2 var(--f-texte); text-decoration: none; white-space: nowrap; transition: background-color .16s, transform .16s; }
+.personnel-bandeau__action:hover { background: #e9f2ea; }
+.personnel-bandeau__action:active { transform: translateY(1px); }
+.personnel-bandeau__action:focus-visible { outline: 3px solid var(--or); outline-offset: 3px; }
+.personnel-bandeau__equipe { display: flex; align-items: center; flex-wrap: wrap; gap: .9rem 1.5rem; padding-top: 1.15rem; border-top: 1px solid rgba(255, 255, 255, .12); }
+.personnel-pile { display: inline-flex; padding-left: 5px; }
+.personnel-pile .personnel-avatar { width: 38px; height: 38px; margin-left: -5px; border-radius: 50%; box-shadow: 0 0 0 2.5px var(--vert-bandeau); font-size: .78rem; letter-spacing: -.02em; }
+.personnel-pile__reste { background: rgba(255, 255, 255, .14); color: var(--blanc); font-family: var(--f-texte); font-weight: 650; }
+.personnel-faits { display: flex; align-items: center; flex-wrap: wrap; gap: .4rem 1.5rem; margin: 0; color: var(--personnel-sur-vert); font-size: .9rem; }
+.personnel-faits > span { display: inline-flex; align-items: center; gap: .4rem; }
+.personnel-faits b { color: var(--blanc); font-size: 1rem; font-weight: 650; font-variant-numeric: tabular-nums; }
+.personnel-faits i { width: 7px; height: 7px; border-radius: 50%; }
+.personnel-faits__actifs i { background: var(--vert-clair); }
+.personnel-faits__suspendus i { background: #f28b82; }
+
+/* ---------- Registre ---------- */
+.personnel-registre { overflow: hidden; container: personnel / inline-size; }
+.personnel-registre__tete { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .9rem 1.5rem; min-height: 72px; padding: 1rem 1.5rem; }
+.personnel-registre__tete h2 { display: flex; align-items: center; gap: .6rem; margin: 0; font: 600 1.28rem/1.25 var(--f-titre); letter-spacing: -.01em; }
+.personnel-total { display: inline-block; min-width: 26px; height: 24px; padding: 0 .45rem; border-radius: 999px; background: var(--personnel-teinte); color: var(--foret-800); font: 650 .8rem/24px var(--f-texte); text-align: center; font-variant-numeric: tabular-nums; }
+
+.personnel-outils { display: flex; align-items: center; flex-wrap: wrap; gap: .6rem; }
+.personnel-recherche { position: relative; display: flex; align-items: center; flex: 1 1 220px; min-width: 0; max-width: 280px; }
+.personnel-recherche > .icone { position: absolute; left: .85rem; color: var(--gris-clair); pointer-events: none; }
+.personnel-recherche input { width: 100%; min-width: 0; min-height: 44px; padding: .55rem .8rem .55rem 2.45rem; border: 1px solid var(--personnel-filet); border-radius: 11px; background: var(--personnel-tete); color: var(--encre); font: 400 .93rem/1.4 var(--f-texte); transition: background-color .16s, border-color .16s; }
+.personnel-recherche input::placeholder { color: var(--gris-clair); opacity: 1; }
+.personnel-recherche input:hover { border-color: var(--filet-fort); }
+.personnel-recherche input:focus-visible { outline: 3px solid var(--or); outline-offset: 2px; border-color: var(--foret-700); background: var(--blanc); }
+.personnel-filtres { display: inline-flex; gap: 2px; padding: 3px; border: 1px solid var(--personnel-filet); border-radius: 12px; background: var(--personnel-tete); }
+.personnel-filtres button { display: inline-flex; align-items: center; gap: .45rem; min-height: 38px; padding: .4rem .75rem; border: 0; border-radius: 9px; background: transparent; color: var(--gris); font: 600 .87rem/1.2 var(--f-texte); cursor: pointer; transition: background-color .16s, color .16s, box-shadow .16s; }
+.personnel-filtres button span { color: var(--gris-clair); font-size: .78rem; font-variant-numeric: tabular-nums; }
+.personnel-filtres button:hover { color: var(--encre); }
+.personnel-filtres button[aria-pressed="true"] { background: var(--blanc); color: var(--foret-800); box-shadow: 0 1px 2px rgba(15, 44, 31, .1), 0 0 0 1px var(--personnel-filet); }
+.personnel-filtres button[aria-pressed="true"] span { color: var(--foret-700); }
+.personnel-filtres button:focus-visible { outline: 3px solid var(--or); outline-offset: 1px; }
+
+.personnel-table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: .94rem; }
+.personnel-table th { padding: .6rem .75rem; background: var(--personnel-tete); border-block: 1px solid var(--personnel-filet); color: var(--gris); font-size: .8rem; font-weight: 600; text-align: left; }
+.personnel-table th:nth-child(1) { width: 35%; padding-left: 1.5rem; }
+.personnel-table th:nth-child(2) { width: 35%; }
+.personnel-table th:nth-child(3) { width: 13%; }
+.personnel-table th:nth-child(4) { width: 17%; padding-right: 1.5rem; text-align: right; }
+.personnel-table td { padding: 1.05rem .75rem; vertical-align: middle; border-bottom: 1px solid var(--personnel-filet); }
+.personnel-table td:first-child { padding-left: 1.5rem; }
+.personnel-table td:last-child { padding-right: 1.5rem; }
+.personnel-table tbody tr:last-child td { border-bottom: 0; }
+
+.personnel-identite { display: flex; align-items: center; gap: .85rem; min-width: 0; }
+.personnel-identite > div { display: grid; gap: .1rem; min-width: 0; }
+.personnel-identite b { display: flex; align-items: center; flex-wrap: wrap; gap: .2rem .5rem; font-size: .98rem; font-weight: 650; line-height: 1.35; overflow-wrap: anywhere; }
+.personnel-identite__ligne { display: flex; align-items: center; gap: .35rem; min-width: 0; color: var(--gris); font-size: .82rem; line-height: 1.5; overflow-wrap: anywhere; }
+.personnel-identite__ligne > .icone { flex: none; color: var(--gris-clair); }
+.personnel-identite .personnel-avatar { width: 42px; height: 42px; }
+.personnel-neuf { padding: .1rem .45rem; border-radius: 6px; background: var(--alerte-fond); color: var(--or-fonce); font-size: .72rem; font-weight: 650; line-height: 1.4; }
+.personnel-table__role b { display: block; font-size: .9rem; font-weight: 600; line-height: 1.4; overflow-wrap: anywhere; }
+.personnel-acces { display: flex; flex-wrap: wrap; gap: .3rem; margin-top: .35rem; }
+.personnel-acces > span { display: inline-flex; align-items: center; gap: .3rem; padding: .16rem .5rem; border: 1px solid var(--personnel-filet); border-radius: 7px; background: var(--personnel-tete); color: var(--gris); font-size: .78rem; font-weight: 600; line-height: 1.4; }
+.personnel-acces .icone { flex: none; color: var(--foret-700); }
+.personnel-table__date { color: var(--gris); font-size: .86rem; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.personnel-table__statut { text-align: right; }
+.personnel-statut { display: inline-flex; align-items: center; gap: .4rem; padding: .22rem .6rem; border-radius: 999px; background: var(--succes-fond); color: var(--foret-700); font-size: .8rem; font-weight: 600; line-height: 1.4; white-space: nowrap; }
+.personnel-statut i { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.personnel-statut--suspendu { background: var(--danger-fond); color: var(--danger); }
+.personnel-table tr[data-statut="suspendu"] .personnel-identite .personnel-avatar { background: var(--papier); color: var(--gris-clair); }
+.personnel-table tr[data-statut="suspendu"] .personnel-identite b { color: var(--gris); }
+
+.personnel-registre__pied { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .5rem 1.25rem; padding: .85rem 1.5rem; border-top: 1px solid var(--personnel-filet); background: var(--personnel-tete); color: var(--gris); font-size: .82rem; line-height: 1.5; }
+.personnel-registre__pied p { margin: 0; }
+.personnel-registre__aide { display: flex; align-items: flex-start; gap: .45rem; max-width: 64ch; }
+.personnel-registre__aide > .icone { flex: none; margin-top: .15rem; color: var(--gris-clair); }
+
+.personnel-vide { display: grid; justify-items: start; gap: .6rem; padding: 2.2rem 1.5rem 2.4rem; border-top: 1px solid var(--personnel-filet); }
+.personnel-vide__illustration { display: grid; place-items: center; width: 52px; height: 52px; margin-bottom: .3rem; border-radius: 14px; background: var(--personnel-teinte); color: var(--foret-700); }
+.personnel-vide h3 { margin: 0; font: 600 1.3rem/1.25 var(--f-titre); }
+.personnel-vide p { margin: 0; max-width: 50ch; color: var(--gris); font-size: .93rem; line-height: 1.6; }
+.personnel-vide__action { margin-top: .5rem; gap: .5rem; border-radius: 11px; }
+.personnel-lien { display: inline-flex; align-items: center; gap: .45rem; min-height: 44px; padding: .4rem 0; border: 0; background: transparent; color: var(--foret-800); font: 600 .94rem/1.3 var(--f-texte); text-decoration: none; cursor: pointer; }
+.personnel-lien:hover { color: var(--foret-700); text-decoration: underline; text-underline-offset: .25em; }
+
+/* ---------- Création (dans la page sans JavaScript, dans le tiroir sinon) ---------- */
+.personnel-creation { padding: 1.5rem; scroll-margin-top: 1.25rem; }
+.personnel-creation__tete { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
+.personnel-creation__tete h2 { margin: 0 0 .35rem; font: 600 1.5rem/1.2 var(--f-titre); letter-spacing: -.02em; }
+.personnel-creation__tete p { display: flex; align-items: flex-start; gap: .45rem; margin: 0; color: var(--gris); font-size: .88rem; line-height: 1.45; }
+.personnel-creation__tete p > .icone { flex: none; margin-top: .1rem; color: var(--foret-700); }
+.personnel-fermer { flex: none; display: grid; place-items: center; width: 44px; height: 44px; margin: -.3rem -.4rem 0 0; border: 1px solid var(--personnel-filet); border-radius: 12px; background: var(--blanc); color: var(--gris); cursor: pointer; transition: background-color .16s, color .16s; }
+.personnel-fermer:hover { background: var(--papier); color: var(--encre); }
+.personnel-fermer:focus-visible { outline: 3px solid var(--or); outline-offset: 2px; }
+.personnel-formulaire { display: grid; gap: 1.05rem; margin-top: 1.3rem; }
+.personnel-formulaire .champ { gap: .4rem; }
+.personnel-formulaire .champ label { font-size: .91rem; }
+.personnel-formulaire .facultatif { font-size: .8rem; }
+.personnel-formulaire .champ input { min-height: 46px; padding: .6rem .85rem; border-width: 1px; border-color: var(--filet); border-radius: 10px; font-size: 1rem; }
+.personnel-formulaire .champ input:hover { border-color: var(--filet-fort); }
+.personnel-formulaire .champ input:focus-visible { border-color: var(--foret-700); outline: 3px solid var(--or); outline-offset: 2px; box-shadow: none; }
+.personnel-formulaire .champ--invalide input { border-color: var(--danger); }
+.personnel-formulaire .champ__aide { font-size: .8rem; }
+.personnel-erreur { display: flex; align-items: flex-start; gap: .55rem; margin: 0; padding: .75rem .85rem; border: 1px solid #f1c4bf; border-radius: 10px; background: var(--danger-fond); color: var(--danger); font-size: .88rem; font-weight: 600; line-height: 1.45; }
+.personnel-erreur > .icone { flex: none; margin-top: .05rem; }
+.personnel-erreur:focus-visible { outline: 3px solid var(--or); outline-offset: 2px; }
+
+/* Le rôle se choisit sur une carte qui montre ce qu'il permet. */
+.personnel-roles { display: grid; gap: .5rem; min-width: 0; margin: 0; padding: 0; border: 0; }
+.personnel-roles legend { margin-bottom: .45rem; padding: 0; font-size: .91rem; font-weight: 600; }
+.personnel-role-choix { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .6rem .75rem; padding: .85rem .95rem .9rem; border: 1px solid var(--filet); border-radius: 12px; background: var(--blanc); cursor: pointer; transition: border-color .16s, background-color .16s, box-shadow .16s; }
+.personnel-role-choix input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.personnel-role-choix:hover { border-color: var(--filet-fort); }
+.personnel-role-choix__nom { font-size: .95rem; font-weight: 650; line-height: 1.35; }
+.personnel-role-choix__repere { align-self: start; width: 18px; height: 18px; margin-top: .1rem; border: 1.5px solid var(--filet-fort); border-radius: 50%; background: var(--blanc); transition: border-color .16s, border-width .16s; }
+.personnel-role-choix__acces { grid-column: 1 / -1; display: grid; gap: .3rem; padding-top: .6rem; border-top: 1px solid var(--personnel-filet); }
+.personnel-role-choix__acces span { display: flex; align-items: flex-start; gap: .45rem; color: var(--gris); font-size: .85rem; line-height: 1.45; }
+.personnel-role-choix__acces .icone { flex: none; margin-top: .15rem; color: var(--foret-700); }
+.personnel-role-choix:has(input:checked) { border-color: var(--foret-700); background: #f6faf6; box-shadow: inset 0 0 0 1px var(--foret-700); }
+.personnel-role-choix:has(input:checked) .personnel-role-choix__repere { border-width: 5px; border-color: var(--foret-700); }
+.personnel-role-choix:has(input:checked) .personnel-role-choix__acces { border-top-color: #d5e4d7; }
+.personnel-role-choix:has(input:focus-visible) { outline: 3px solid var(--or); outline-offset: 2px; }
+
+.personnel-creation__pied { display: grid; gap: .9rem; }
+.personnel-creation__note { display: flex; align-items: flex-start; gap: .55rem; margin: 0; color: var(--gris); font-size: .84rem; line-height: 1.5; }
+.personnel-creation__note > .icone { flex: none; margin-top: .12rem; color: var(--foret-700); }
+.personnel-creation__envoi { width: 100%; min-height: 48px; justify-content: center; gap: .55rem; border-radius: 11px; font-size: .96rem; }
+
+/* Dans la page (sans JavaScript) : le rôle à gauche, l'identité du compte à droite. */
+@media (min-width: 721px) {
+	.personnel > .personnel-creation .personnel-formulaire { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "roles login" "roles nom" "roles email" "roles pied"; column-gap: 1.75rem; align-items: start; }
+	.personnel > .personnel-creation .personnel-formulaire:has(.personnel-erreur) { grid-template-areas: "erreur erreur" "roles login" "roles nom" "roles email" "roles pied"; }
+	.personnel > .personnel-creation .personnel-erreur { grid-area: erreur; }
+	.personnel > .personnel-creation .personnel-roles { grid-area: roles; }
+	.personnel > .personnel-creation .champ:nth-of-type(1) { grid-area: login; }
+	.personnel > .personnel-creation .champ:nth-of-type(2) { grid-area: nom; }
+	.personnel > .personnel-creation .champ:nth-of-type(3) { grid-area: email; }
+	.personnel > .personnel-creation .personnel-creation__pied { grid-area: pied; }
+}
+
+/* Le tiroir : il glisse depuis la droite, le bouton d'envoi reste en vue. */
+html:has(.personnel-tiroir[open]) { overflow: hidden; }
+.personnel-tiroir { position: fixed; inset: 0 0 0 auto; width: min(470px, 100vw); max-width: none; height: 100dvh; max-height: none; margin: 0 0 0 auto; padding: 0; overflow: hidden; border: 0; border-radius: 22px 0 0 22px; background: var(--blanc); color: var(--encre); box-shadow: -30px 0 80px -30px rgba(10, 31, 22, .5); }
+.personnel-tiroir::backdrop { background: rgba(10, 31, 22, .46); backdrop-filter: blur(2px); }
+.personnel-tiroir .personnel-creation { display: flex; flex-direction: column; height: 100%; padding: 0; border: 0; border-radius: 0; }
+.personnel-tiroir .personnel-creation__tete { padding: 1.45rem 1.5rem 1.2rem; border-bottom: 1px solid var(--personnel-filet); }
+.personnel-tiroir .personnel-formulaire { display: flex; flex-direction: column; flex: 1; gap: 1.1rem; min-height: 0; margin: 0; padding: 1.35rem 1.5rem 0; overflow-y: auto; overscroll-behavior: contain; }
+.personnel-tiroir .personnel-creation__pied { position: sticky; bottom: 0; margin: auto -1.5rem 0; padding: 1rem 1.5rem 1.3rem; border-top: 1px solid var(--personnel-filet); background: var(--blanc); }
+
+/* ---------- Remise du mot de passe provisoire ---------- */
+/* Le compte et le secret côte à côte tant qu'ils tiennent, l'un sous l'autre sinon. */
+.personnel-remise { display: flex; flex-wrap: wrap; align-items: center; gap: 1.1rem 2rem; padding: 1.25rem 1.25rem 1.25rem 1.5rem; }
+.personnel-remise__compte { display: flex; align-items: center; gap: 1rem; flex: 1 1 300px; min-width: 0; }
+.personnel-avatar--remise { position: relative; width: 52px; height: 52px; border-radius: 15px; font-size: 1.15rem; }
+.personnel-remise__fait { position: absolute; right: -5px; bottom: -5px; display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: var(--foret-700); color: var(--blanc); box-shadow: 0 0 0 2px var(--blanc); }
+.personnel-remise h2 { margin: 0 0 .35rem; font: 600 1.22rem/1.3 var(--f-titre); overflow-wrap: anywhere; }
+.personnel-remise__details { display: flex; flex-wrap: wrap; gap: .2rem 1.25rem; margin: 0; font-size: .88rem; line-height: 1.5; }
+.personnel-remise__details div { display: flex; gap: .4rem; min-width: 0; }
+.personnel-remise__details dt { color: var(--gris); }
+.personnel-remise__details dd { margin: 0; color: var(--encre); font-weight: 600; overflow-wrap: anywhere; }
+.personnel-remise__secret { display: grid; grid-template-columns: minmax(0, auto) auto; align-items: center; gap: .55rem 1rem; flex: 0 1 auto; min-width: 0; padding: .95rem 1rem 1rem 1.2rem; border-radius: 12px; background: var(--foret-900); color: var(--blanc); }
+.personnel-remise__libelle { grid-column: 1 / -1; margin: 0; color: #b6cdbd; font-size: .8rem; font-weight: 600; }
+.personnel-mdp { display: flex; gap: 4px; margin: 0; }
+.personnel-mdp__car { display: grid; place-items: center; flex: 1 1 0; min-width: 1.3rem; max-width: 1.9rem; width: 1.9rem; height: 2.35rem; border: 1px solid rgba(255, 255, 255, .14); border-radius: 7px; background: rgba(255, 255, 255, .07); font: 600 1.2rem/1 var(--f-texte); }
+.personnel-mdp__car--chiffre { color: var(--or); }
+.personnel-copier { display: inline-flex; align-items: center; justify-content: center; gap: .45rem; min-height: 44px; padding: .5rem .9rem; border: 1px solid rgba(255, 255, 255, .28); border-radius: 10px; background: transparent; color: var(--blanc); font: 600 .88rem/1.2 var(--f-texte); white-space: nowrap; cursor: pointer; transition: background-color .16s, border-color .16s, color .16s; }
+.personnel-copier:hover { border-color: rgba(255, 255, 255, .5); background: rgba(255, 255, 255, .08); }
+.personnel-copier:focus-visible { outline: 3px solid var(--or); outline-offset: 2px; }
+.personnel-copier__fait { display: none; }
+.personnel-copier.est-copie { border-color: var(--or); color: var(--or); }
+.personnel-copier.est-copie .personnel-copier__fait { display: block; }
+.personnel-copier.est-copie .personnel-copier__a-faire { display: none; }
+.personnel-remise__note { flex: 1 1 100%; display: flex; align-items: flex-start; gap: .5rem; margin: 0; padding-top: .95rem; border-top: 1px solid var(--personnel-filet); color: var(--gris); font-size: .85rem; line-height: 1.5; }
+.personnel-remise__note > .icone { flex: none; margin-top: .15rem; color: var(--foret-700); }
+
+/* Mouvements : l'équipe se range à l'arrivée ; le reste répond à une action
+   (tiroir, mot de passe qui se compose, nouvelle ligne qui s'éclaire). */
+@media (prefers-reduced-motion: no-preference) {
+	.personnel-pile .personnel-avatar { animation: personnel-pile .55s var(--ease-sortie) both; animation-delay: calc(.12s + var(--i, 0) * 65ms); }
+	.personnel-tiroir[open] { animation: personnel-tiroir .44s var(--ease-sortie); }
+	.personnel-tiroir[open]::backdrop { animation: personnel-voile .3s ease-out; }
+	.personnel-tiroir.est-fermeture { animation: personnel-tiroir-sortie .24s cubic-bezier(.4, 0, 1, 1) forwards; }
+	.personnel-tiroir.est-fermeture::backdrop { animation: personnel-voile-sortie .24s ease-in forwards; }
+	.personnel-remise__fait { animation: personnel-fait .45s var(--ease-sortie) .15s both; }
+	.personnel-mdp__car { animation: personnel-car .5s var(--ease-sortie) both; animation-delay: calc(.3s + var(--i, 0) * 45ms); }
+	.personnel-table tr.est-nouveau td { animation: personnel-repere 2.6s ease-out .9s both; }
+	@keyframes personnel-pile { from { opacity: 0; transform: translateX(-12px); } }
+	@keyframes personnel-tiroir { from { transform: translateX(100%); } }
+	@keyframes personnel-tiroir-sortie { to { transform: translateX(100%); } }
+	@keyframes personnel-voile { from { opacity: 0; } }
+	@keyframes personnel-voile-sortie { to { opacity: 0; } }
+	@keyframes personnel-fait { from { transform: scale(0); } }
+	@keyframes personnel-car { from { opacity: 0; transform: translateY(6px) scale(.94); } }
+	@keyframes personnel-repere { from { background-color: #fff1c7; } to { background-color: transparent; } }
+}
+
+/* ---------- Registre étroit : une fiche par compte ---------- */
+@container personnel (max-width: 640px) {
+	.personnel-table, .personnel-table tbody { display: block; }
+	.personnel-table tbody { border-top: 1px solid var(--personnel-filet); }
+	.personnel-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+	.personnel-table tbody tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: .65rem 1rem; padding: 1rem 1.25rem; border-bottom: 1px solid var(--personnel-filet); }
+	.personnel-table tbody tr:last-child { border-bottom: 0; }
+	.personnel-table td, .personnel-table td:first-child, .personnel-table td:last-child { display: block; padding: 0; border: 0; }
+	.personnel-table td:first-child { grid-column: 1 / -1; }
+	.personnel-table__role { padding-left: calc(42px + .85rem) !important; }
+	.personnel-table__date { display: none !important; }
+	.personnel-registre__tete { padding-inline: 1.25rem; }
+	.personnel-outils, .personnel-recherche { flex: 1 1 100%; max-width: none; }
+	.personnel-registre__pied { padding-inline: 1.25rem; }
+}
+
+@media (max-width: 760px) {
+	.personnel-bandeau__haut { grid-template-columns: auto minmax(0, 1fr); }
+	.personnel-bandeau__action { grid-column: 1 / -1; justify-self: start; }
+}
+@media (max-width: 600px) {
+	.sco-personnel { gap: 1.15rem; }
+	.personnel { gap: 1rem; }
+	.personnel-bandeau { gap: 1.1rem; padding: 1.25rem 1.15rem 1.15rem; border-radius: 18px; }
+	.personnel-bandeau__haut { grid-template-columns: minmax(0, 1fr); gap: 1rem; }
+	.personnel-bandeau__sceau { width: 56px; height: 56px; }
+	.personnel-bandeau__sceau img { width: 42px; height: 42px; }
+	.personnel-bandeau__action { width: 100%; }
+	.personnel-faits { gap: .35rem 1.1rem; font-size: .86rem; }
+	.personnel-creation { padding: 1.25rem 1.1rem 1.3rem; }
+	.personnel-creation__tete h2 { font-size: 1.35rem; }
+	.personnel-tiroir { width: 100vw; border-radius: 0; }
+	.personnel-tiroir .personnel-creation__tete { padding: 1.15rem 1.1rem 1rem; }
+	.personnel-tiroir .personnel-formulaire { padding: 1.15rem 1.1rem 0; }
+	.personnel-tiroir .personnel-creation__pied { margin-inline: -1.1rem; padding: .9rem 1.1rem 1.1rem; }
+	.personnel-vide { padding: 1.9rem 1.25rem 2.1rem; }
+	.personnel-vide h3 { font-size: 1.2rem; }
+	.personnel-remise { gap: 1rem; padding: 1.1rem; }
+	.personnel-remise__secret { flex: 1 1 100%; grid-template-columns: minmax(0, 1fr); padding: .9rem; }
+	.personnel-mdp__car { height: 2.2rem; font-size: 1.1rem; }
+	.personnel-copier { width: 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+	.sco-personnel *, .sco-personnel *::before, .sco-personnel *::after { scroll-behavior: auto; transition: none !important; animation: none !important; }
+}
+@media print {
+	.personnel-creation, .personnel-outils, .personnel-copier, .personnel-bandeau__action { display: none !important; }
+	.personnel-bandeau { background: none; color: var(--encre); border: 1px solid var(--filet); }
+	.personnel-bandeau h1, .personnel-faits b { color: var(--encre); }
+}

@@ -58,6 +58,11 @@ add_action( 'wp_enqueue_scripts', function () {
 	/* Vue affichée : celle de l'adresse, sinon la vue par défaut de l'espace (inc/espaces.php).
 	   L'espace affiché n'est jamais donné à un compte qui n'y a pas droit : pas d'autre contrôle. */
 	$vue_bo         = ueb_espace_courant() ? ueb_vue_courante() : sanitize_key( $_GET['vue'] ?? 'bord' ); // phpcs:ignore -- lecture seule
+	/* Comptes du personnel de la scolarité : bandeau d'équipe, registre et tiroir de création. */
+	if ( 'scolarite' === ueb_espace_courant() && 'cellule' === $vue_bo && ueb_peut( 'ueb_creer_agents' ) ) {
+		ueb_style( 'ueb-scolarite-personnel', 'assets/css/scolarite-personnel.css', array( 'ueb-pages' ) );
+		ueb_script( 'ueb-scolarite-personnel', 'assets/js/scolarite-personnel.js', array( 'ueb-app' ) );
+	}
 	$bord_scolarite = ( ( 'scolarite' === ueb_espace_courant() )
 			&& ( in_array( $vue_bo, array( 'bord', 'quitus', 'paiements' ), true ) || isset( $_GET['quitus'] ) ) ) // phpcs:ignore
 		|| ( $admin && in_array( $vue_bo, array( 'bord', 'paiements' ), true ) );
