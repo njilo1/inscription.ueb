@@ -744,6 +744,21 @@
 .bo-appbar__groupe { font-weight: 600; white-space: nowrap; }
 .bo-appbar__sep { flex: none; color: var(--gris-clair); }
 .bo-appbar__lieu b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; color: var(--encre); }
+.bo-appbar__outils { display: flex; align-items: center; gap: .6rem; flex: none; }
+/* Exercice consulté (super-administrateur) : pastille vers l'onglet Exercice ;
+   l'or signale un autre exercice que celui en cours, avec le retour à côté. */
+.bo-exercice { display: flex; align-items: center; gap: .25rem; }
+.bo-exercice form { margin: 0; }
+.bo-exercice__lien { display: inline-flex; align-items: center; gap: .45rem; min-height: 40px; padding: 0 .9rem; border: 1px solid var(--filet); border-radius: 999px; background: var(--papier); color: var(--encre); font-size: .86rem; text-decoration: none; white-space: nowrap; font-variant-numeric: tabular-nums; transition: border-color .15s var(--ease-sortie), background-color .15s var(--ease-sortie); }
+.bo-exercice__lien:hover { border-color: var(--filet-fort); color: var(--encre); }
+.bo-exercice__lien .icone { flex: none; color: var(--foret-700); }
+.bo-exercice__mot { color: var(--gris); }
+.bo-exercice__etat { font-weight: 700; color: var(--or-fonce); }
+.bo-exercice.est-hors-cours .bo-exercice__lien { border-color: color-mix(in srgb, var(--or) 65%, transparent); background: color-mix(in srgb, var(--or) 13%, var(--blanc)); }
+.bo-exercice.est-hors-cours .bo-exercice__lien .icone { color: var(--or-fonce); }
+.bo-exercice__retour { display: inline-flex; align-items: center; gap: .35rem; min-height: 40px; padding: 0 .75rem; border: 1px solid transparent; border-radius: 999px; background: transparent; color: var(--foret-700); font: 600 .84rem/1 var(--f-texte); white-space: nowrap; cursor: pointer; transition: border-color .15s var(--ease-sortie), background-color .15s var(--ease-sortie); }
+.bo-exercice__retour:hover { border-color: var(--filet); background: var(--adm-survol, #f5f8f4); }
+@media screen { .adm-tete .adm-annee.adm-annee--barre { display: none; } }
 /* Bascule : soleil et lune sur une piste, la pastille glisse sous le thème
    affiché. Sa place vient de html[data-theme] (posé avant l'affichage) : rien
    ne glisse au chargement, seulement au clic (administration.js). */
@@ -851,6 +866,10 @@
 	.bo-sidebar { grid-row: auto; }
 	.bo-appbar, .bo > .bo-contenu { grid-column: 1; grid-row: auto; }
 	.bo-appbar { min-height: 52px; }
+	.bo-exercice__mot, .bo-exercice__retour span { display: none; }
+	/* Place gardée pour le nom de la page à côté de la pastille d'exercice. */
+	.bo-appbar:has(.bo-exercice) :is(.bo-appbar__groupe, .bo-appbar__sep) { display: none; }
+	.bo-exercice__retour { width: 40px; justify-content: center; padding: 0; }
 	.bo-sidebar { position: static; height: auto; flex-direction: row; align-items: center; flex-wrap: wrap; gap: .8rem; padding: .8rem 1rem; }
 	.bo-marque { padding: 0; margin: 0; border: 0; flex: 0 0 auto; }
 	.bo-marque__texte { display: none; }

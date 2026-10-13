@@ -108,7 +108,7 @@ function ueb_ipes_reversement_etudiant( $e, $ipes = false ) {
  *                     vue d'une scolarité ; null pour l'IPES entier).
  */
 function ueb_ipes_hero( $ipes, array $o = array() ) {
-	$annee = ueb_annee_academique();
+	$annee = ueb_exercice_consulte();
 	$o     = array_merge( array( 'titre' => 'Reversements ' . $annee['libelle'], 'intro' => '', 'lien' => null, 'pour' => 'ueb', 'tutelles' => null ), $o );
 	$jauge = ueb_ipes_jauge( $ipes->id, null, $o['tutelles'] );
 	$du    = $jauge['du'];

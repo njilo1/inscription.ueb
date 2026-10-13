@@ -14,6 +14,25 @@ function ueb_adm_montant_court( $montant ) {
 }
 
 /**
+ * Ce que couvre le tableau de bord : l'exercice consulté, son statut et les
+ * jours de ses courbes. Plus de fenêtre de 7, 30 ou 90 jours : les courbes et
+ * les mini-cartes montrent tout l'exercice, depuis son premier quitus.
+ *
+ * @param string[] $jours Jours de l'historique (premier et dernier utilisés).
+ */
+function ueb_adm_contexte_exercice( array $jours ) {
+	$e      = ueb_exercice_consulte();
+	$statut = ueb_exercice_statut( $e['code'] );
+	$texte  = 'Exercice ' . $e['libelle'] . ( 'en_cours' === $statut ? ' en cours' : ( 'cloture' === $statut ? ', clôturé' : '' ) );
+	if ( count( $jours ) > 1 ) {
+		$date   = static fn( $jour ) => ueb_graphe_date_longue( $jour ) . ' ' . substr( $jour, 0, 4 );
+		$fin    = end( $jours );
+		$texte .= ', du ' . $date( $jours[0] ) . ( current_time( 'Y-m-d' ) === $fin ? ' à aujourd’hui' : ' au ' . $date( $fin ) );
+	}
+	return $texte;
+}
+
+/**
  * Évolution des quitus d'un type, en anneau double. L'anneau intérieur répartit
  * les quitus de l'année par statut ; l'anneau extérieur, plus fin, colore dans
  * chaque statut la part générée ces 7 derniers jours, le reste en piste.
@@ -118,7 +137,7 @@ function ueb_adm_anneau_quitus( array $t, $libelle, $entree = false ) {
  *                       reçus en attente de validation passe en tête, à la place
  *                       de « Reçus à vérifier » ; inc/attente-recus.php).
  */
-function ueb_adm_dashboard( array $c, array $suivi, array $activite, $focus, $periode, array $options = array() ) {
+function ueb_adm_dashboard( array $c, array $suivi, array $activite, $focus, array $options = array() ) {
 	$g       = $suivi['global'];
 	$taux    = ueb_suivi_taux( $g );
 	$reste   = max( 0, $g['attendu'] - $g['encaisse'] );
@@ -150,11 +169,10 @@ function ueb_adm_dashboard( array $c, array $suivi, array $activite, $focus, $pe
 	}
 	?>
 	<div class="adm-pilotage">
-		<div class="adm-pilotage__contexte"><span class="adm-pilotage__repere" aria-hidden="true"></span><b>Vue d’ensemble</b><span>Année académique en cours</span></div>
+		<div class="adm-pilotage__contexte"><span class="adm-pilotage__repere" aria-hidden="true"></span><b>Vue d’ensemble</b><span><?php echo esc_html( ueb_adm_contexte_exercice( $hist['jours'] ) ); ?></span></div>
 		<?php if ( $options['perimetre'] ) : ?>
 		<form class="adm-perimetre" method="get" action="<?php echo esc_url( ueb_url_administration() ); ?>">
 			<label for="adm-etablissement">Établissement</label>
-			<input type="hidden" name="periode" value="<?php echo (int) $periode; ?>">
 			<select id="adm-etablissement" name="etab">
 				<option value="">Toute l’université</option>
 				<?php foreach ( ueb_etablissements() as $sigle => $e ) : ?>
@@ -165,16 +183,8 @@ function ueb_adm_dashboard( array $c, array $suivi, array $activite, $focus, $pe
 		</form>
 		<?php endif; ?>
 	</div>
-	<div class="adm-tendances-tete">
-		<p>Évolution sur <b><?php echo (int) $periode; ?> jours</b></p>
-		<nav class="adm-periodes" aria-label="Période des graphiques">
-			<?php foreach ( array( 7, 30, 90 ) as $jours ) : ?>
-				<a href="<?php echo esc_url( $url( $args + array( 'periode' => $jours ) ) ); ?>" <?php echo $jours === $periode ? 'aria-current="true"' : ''; ?>><?php echo (int) $jours; ?> jours</a>
-			<?php endforeach; ?>
-		</nav>
-	</div>
-	<div class="adm-kpis" aria-label="Indicateurs de l’année académique">
-		<?php if ( $options['attente'] ) { ueb_carte_attente( $options['attente'], null, $periode ); } ?>
+	<div class="adm-kpis" aria-label="Indicateurs de l’exercice">
+		<?php if ( $options['attente'] ) { ueb_carte_attente( $options['attente'] ); } ?>
 		<?php foreach ( $cartes as $carte ) : ?>
 			<?php if ( isset( $carte['types'] ) ) : ?>
 				<?php ueb_adm_carte_types( $carte, $hist ); ?>
@@ -369,7 +379,7 @@ function ueb_adm_mini_courbe( $cle, array $jours, array $valeurs, $libelle = '',
 	$id = 'adm-spark-' . $cle;
 	?>
 	<figure class="adm-spark<?php echo $double ? ' adm-spark--double' : ''; ?>" data-mini-courbe="<?php echo esc_attr( wp_json_encode( $donnees ) ); ?>">
-		<figcaption><span><?php echo esc_html( $titre ); ?></span><b title="<?php echo esc_attr( 'depots' === $base ? 'Somme des dépôts quotidiens sur la période' : ( $double ? 'Variation de chaque type entre le premier et le dernier jour affichés' : 'Variation entre le premier et le dernier jour affichés' ) ); ?>"><?php echo esc_html( $variation ); ?></b></figcaption>
+		<figcaption><span><?php echo esc_html( $titre ); ?></span><b title="<?php echo esc_attr( 'depots' === $base ? 'Somme des dépôts quotidiens de l’exercice' : ( $double ? 'Variation de chaque type depuis le premier jour de l’exercice' : 'Variation depuis le premier jour de l’exercice' ) ); ?>"><?php echo esc_html( $variation ); ?></b></figcaption>
 		<div class="adm-spark__zone" tabindex="0" role="group" aria-label="<?php echo esc_attr( $titre . ( $double ? ' (' . implode( ', puis ', $seconde['noms'] ) . ')' : '' ) . ', du ' . $dates[0] . ' au ' . $dates[ $n - 1 ] . '. Flèches gauche et droite pour parcourir les jours.' ); ?>" aria-describedby="<?php echo esc_attr( $id . '-valeur' ); ?>">
 			<svg viewBox="0 0 240 62" preserveAspectRatio="none" aria-hidden="true">
 				<defs><linearGradient id="<?php echo esc_attr( $id ); ?>" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#b9e4b7" stop-opacity=".26"/><stop offset="100%" stop-color="#b9e4b7" stop-opacity=".015"/></linearGradient></defs>
@@ -409,7 +419,7 @@ function ueb_adm_donnees_courbes( array $historique, array $types = array( 'droi
 	<details class="adm-historique">
 		<summary>Données des mini-courbes<?php echo ueb_icone( 'chevron', 14 ); ?></summary>
 		<p>Les cumuls sont reconstitués à partir des quitus conservés, des dates de validation et des formations actuelles. Les anciennes décisions annulées et les pièces supprimées ne sont pas conservées dans cet historique. Les droits encaissés excluent les frais médicaux et les trop-perçus. Quitus et dépôts se comptent séparément pour les droits universitaires et pour les frais médicaux.</p>
-		<p>La courbe « Reçus à vérifier » indique les dépôts quotidiens, pas l’ancienne file d’attente : un quitus compte une fois par jour de dépôt, même avec plusieurs pièces. Les variations comparent le premier et le dernier jour affichés.</p>
+		<p>La courbe « Reçus à vérifier » indique les dépôts quotidiens, pas l’ancienne file d’attente : un quitus compte une fois par jour de dépôt, même avec plusieurs pièces. Les courbes couvrent tout l’exercice, depuis son premier quitus ; les variations comparent son premier et son dernier jour.</p>
 		<div class="adm-historique__table" tabindex="0" role="region" aria-label="Historique quotidien des indicateurs">
 			<table><caption class="sr">Valeurs des mini-courbes par jour</caption><thead><tr><th scope="col">Date</th><?php foreach ( $colonnes as $libelle ) : ?><th scope="col"><?php echo esc_html( $libelle ); ?></th><?php endforeach; ?></tr></thead><tbody>
 				<?php foreach ( $historique['jours'] as $i => $jour ) : ?><tr><th scope="row"><?php echo esc_html( ueb_graphe_date_courte( $jour ) ); ?></th><?php foreach ( array_keys( $colonnes ) as $cle ) : ?><td><?php echo esc_html( ueb_adm_valeur_historique( $cle, $historique[ $cle ][ $i ] ?? 0 ) ); ?></td><?php endforeach; ?></tr><?php endforeach; ?>
@@ -467,7 +477,7 @@ function ueb_adm_statistiques( array $c, $sous_titre = '' ) {
  * @param string|null $url_filieres Lien des filières (un établissement) ;
  *                                  null = suivi des paiements de l'administration.
  */
-function ueb_adm_comparaison( array $suivi, $focus, $periode, $url_filieres = null ) {
+function ueb_adm_comparaison( array $suivi, $focus, $url_filieres = null ) {
 	$lignes = array();
 	if ( $focus ) {
 		foreach ( array_slice( $suivi['filieres'], 0, 6, true ) as $f ) {
@@ -475,7 +485,7 @@ function ueb_adm_comparaison( array $suivi, $focus, $periode, $url_filieres = nu
 		}
 	} else {
 		foreach ( ueb_etablissements() as $sigle => $etab ) {
-			$lignes[] = array( 'nom' => $sigle, 'titre' => $etab['fr'], 'suivi' => $suivi['etabs'][ $sigle ] ?? ueb_suivi_vide(), 'url' => add_query_arg( array( 'etab' => $sigle, 'periode' => $periode ), ueb_url_administration() ) );
+			$lignes[] = array( 'nom' => $sigle, 'titre' => $etab['fr'], 'suivi' => $suivi['etabs'][ $sigle ] ?? ueb_suivi_vide(), 'url' => add_query_arg( array( 'etab' => $sigle ), ueb_url_administration() ) );
 		}
 	}
 	usort( $lignes, static fn( $a, $b ) => ueb_suivi_taux( $b['suivi'] ) <=> ueb_suivi_taux( $a['suivi'] ) ?: strcmp( $a['nom'], $b['nom'] ) );

@@ -20,6 +20,7 @@ function ueb_icone( $nom, $taille = 20, $classe = '' ) {
 		'fichier'     => '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h5"/>',
 		'bouclier'    => '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/>',
 		'cadenas'     => '<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
+		'cadenas-ouvert' => '<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/>',
 		'utilisateur' => '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
 		'telephone'   => '<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.8 19.8 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.18 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.1 9.9a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/>',
 		'discussion'  => '<path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/>',
@@ -959,11 +960,44 @@ function ueb_bo_barre( $espace, array $liens, array $pied = array(), array $marq
 					<b><?php echo esc_html( $espace ); ?></b>
 				<?php endif; ?>
 			</p>
-			<button type="button" class="bo-bascule" data-bascule-theme aria-pressed="false" aria-label="Mode sombre" title="Mode clair ou sombre">
-				<span class="bo-bascule__pouce"></span><?php echo ueb_icone( 'soleil', 16, 'bo-bascule__soleil' ) . ueb_icone( 'lune', 16, 'bo-bascule__lune' ); // phpcs:ignore -- SVG interne ?>
-			</button>
+			<div class="bo-appbar__outils">
+				<?php if ( ueb_est_admin_ueb() ) { ueb_bo_exercice(); } ?>
+				<button type="button" class="bo-bascule" data-bascule-theme aria-pressed="false" aria-label="Mode sombre" title="Mode clair ou sombre">
+					<span class="bo-bascule__pouce"></span><?php echo ueb_icone( 'soleil', 16, 'bo-bascule__soleil' ) . ueb_icone( 'lune', 16, 'bo-bascule__lune' ); // phpcs:ignore -- SVG interne ?>
+				</button>
+			</div>
 		</header>
 	<?php endif; ?>
+	<?php
+}
+
+/**
+ * Exercice consulté, dans la barre du haut du super-administrateur : il ouvre
+ * l'onglet Exercice. Hors de l'exercice en cours, la pastille passe à l'or et
+ * un bouton ramène à l'exercice en cours sur la même page.
+ */
+function ueb_bo_exercice() {
+	$e     = ueb_exercice_consulte();
+	$hors  = ueb_exercice_hors_cours();
+	$st    = ueb_exercice_statut( $e['code'] );
+	$cours = ueb_annee_academique();
+	?>
+	<div class="bo-exercice<?php echo $hors ? ' est-hors-cours' : ''; ?>">
+		<a class="bo-exercice__lien" href="<?php echo esc_url( ueb_url_exercices() ); ?>" title="Changer d’exercice">
+			<?php echo ueb_icone( 'cloture' === $st ? 'cadenas' : 'calendrier', 16 ); ?>
+			<span><span class="bo-exercice__mot">Exercice </span><b><?php echo esc_html( $e['libelle'] ); ?></b></span>
+			<?php if ( $hors ) : ?><span class="bo-exercice__etat"><?php echo esc_html( mb_strtolower( UEB_EXERCICE_STATUTS[ $st ]['libelle'] ) ); ?></span><?php endif; ?>
+		</a>
+		<?php if ( $hors ) : ?>
+			<form method="post" action="<?php echo esc_url( ueb_url_exercices() ); ?>">
+				<?php ueb_champ_csrf(); ?>
+				<input type="hidden" name="ueb_action" value="exercice_consulter">
+				<input type="hidden" name="exercice" value="<?php echo esc_attr( $cours['code'] ); ?>">
+				<input type="hidden" name="retour" value="<?php echo esc_url( ueb_url_courante() ); ?>">
+				<button class="bo-exercice__retour" type="submit" title="Revenir à l’exercice en cours"><?php echo ueb_icone( 'fleche-g', 15 ); ?><span>Revenir à <?php echo esc_html( $cours['libelle'] ); ?></span></button>
+			</form>
+		<?php endif; ?>
+	</div>
 	<?php
 }
 

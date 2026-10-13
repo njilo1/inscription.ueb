@@ -187,7 +187,7 @@ function ueb_adm_paiements( array $suivi, $focus, array $options = array() ) {
  $url_ligne = static fn( $sigle ) => in_array( $sigle, $o['etabs'], true ) ? add_query_arg( array( 'vue' => 'paiements', $o['champ'] => $sigle ), $o['action'] ) : '';
  $choix = count( $o['etabs'] ) + ( $o['tous'] ? 1 : 0 ) > 1;
  $g = $suivi['global']; $m = $suivi['medicaux'];
- $annee = ueb_annee_academique();
+ $annee = ueb_exercice_consulte();
  $verification = $g['verification'] + $m['verification'];
  $attendu = $g['attendu'] + $m['attendu'];
  $encaisse = $g['encaisse'] + $m['encaisse'];

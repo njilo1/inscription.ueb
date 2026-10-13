@@ -14,7 +14,7 @@ require_once ABSPATH . WPINC . '/general-template.php';
 add_filter( 'kses_allowed_protocols', static fn( $protocoles ) => array_merge( $protocoles, array( 'file' ) ) );
 define( 'UEB_INSC_DIR', dirname( __DIR__ ) );
 define( 'UEB_INSC_URI', 'file://' . UEB_INSC_DIR );
-foreach ( array( 'config', 'db-schema', 'comptes', 'nombres', 'inscription', 'quitus', 'profil', 'etudiants', 'quitus-pdf', 'recus', 'vues' ) as $module ) {
+foreach ( array( 'config', 'exercices', 'db-schema', 'comptes', 'nombres', 'inscription', 'quitus', 'profil', 'etudiants', 'quitus-pdf', 'recus', 'vues' ) as $module ) {
 	require UEB_INSC_DIR . '/inc/' . $module . '.php';
 }
 class TestRedirect extends RuntimeException {}
@@ -487,20 +487,30 @@ verifier( count( $activite['jours'] ) >= 4 && count( $activite['jours'] ) === co
 verifier( 4 === end( $activite['generes'] ) && 3 === end( $activite['envoyes'] ) && 2 === end( $activite['verifies'] ), 'activité : cumuls finaux 4 / 3 / 2 ' . json_encode( $activite ) );
 verifier( $croissant( $activite['generes'] ) && $croissant( $activite['envoyes'] ) && $croissant( $activite['verifies'] ), 'activité : cumuls jamais décroissants' );
 verifier( ! array_filter( array_keys( $activite['jours'] ), static fn( $i ) => $activite['envoyes'][ $i ] < $activite['verifies'][ $i ] || $activite['generes'][ $i ] < $activite['envoyes'][ $i ] ), 'activité : générés ⊇ envoyés ⊇ vérifiés chaque jour ' . json_encode( $activite ) );
-$fenetre = ueb_gestion_activite( $annee['code'], '', 2 );
-verifier( 2 === count( $fenetre['jours'] ) && 4 === end( $fenetre['generes'] ) && $fenetre['generes'][0] >= 3, 'activité : fenêtre de 2 jours, antérieur reporté au départ' );
+verifier( current_time( 'Y-m-d' ) === end( $activite['jours'] ) && $activite['generes'][0] >= 1, 'activité : tout l’exercice, du premier quitus à aujourd’hui' );
 verifier( array( 0 ) === ueb_gestion_activite( $annee['code'], 'ETAB-INCONNU' )['generes'], 'activité : établissement sans quitus = un jour à zéro' );
 // Tableaux de bord : droits universitaires et frais médicaux comptés à part, jamais additionnés.
-$wpdb->insert( 'ueb_insc_quitus', array( 'numero' => 'TYPE-MED', 'code_verif' => 'type-medical-0000000', 'compte_id' => 207, 'etablissement' => 'FS', 'annee_academique' => $annee['code'], 'type' => 'medicaux', 'situation' => 'ancien', 'identifiant' => '24TYP207', 'type_identifiant' => 'matricule', 'nom' => 'TYPE', 'prenom' => 'Medical', 'date_naissance' => '2003-01-01', 'lieu_naissance' => 'Ebolowa', 'sexe' => 'F', 'nationalite' => 'Camerounaise', 'departement' => 'x', 'parcours' => 'L1', 'montant' => 3000, 'tranche' => 0, 'statut' => 'recu_envoye' ) );
+$wpdb->insert( 'ueb_insc_quitus', array( 'numero' => 'TYPE-MED', 'code_verif' => 'type-medical-0000000', 'compte_id' => 207, 'etablissement' => 'FS', 'annee_academique' => $annee['code'], 'type' => 'medicaux', 'situation' => 'ancien', 'identifiant' => '24TYP207', 'type_identifiant' => 'matricule', 'nom' => 'TYPE', 'prenom' => 'Medical', 'date_naissance' => '2003-01-01', 'lieu_naissance' => 'Ebolowa', 'sexe' => 'F', 'nationalite' => 'Camerounaise', 'departement' => 'x', 'parcours' => 'L1', 'montant' => 3000, 'tranche' => 0, 'statut' => 'recu_envoye', 'date_creation' => current_time( 'mysql' ) ) );
 $par_type = ueb_gestion_chiffres( $annee['code'] );
 verifier( 4 === $par_type['types']['droits']['quitus'] && 1 === $par_type['types']['medicaux']['quitus'] && 1 === $par_type['types']['medicaux']['recu_envoye'], 'chiffres : quitus comptés par type ' . json_encode( $par_type['types'] ) );
 verifier( $par_type['quitus'] === array_sum( array_column( $par_type['types'], 'quitus' ) ) && $par_type['recus_envoyes'] === array_sum( array_column( $par_type['types'], 'recu_envoye' ) ), 'chiffres : les types se partagent les totaux sans se recouvrir' );
-$courbe_droits   = ueb_gestion_activite( $annee['code'], '', 45, 'droits' )['generes'];
-$courbe_medicaux = ueb_gestion_activite( $annee['code'], '', 45, 'medicaux' )['generes'];
+$courbe_droits   = ueb_gestion_activite( $annee['code'], '', 'droits' )['generes'];
+$courbe_medicaux = ueb_gestion_activite( $annee['code'], '', 'medicaux' )['generes'];
 verifier( 4 === end( $courbe_droits ) && 1 === end( $courbe_medicaux ), 'activité : une courbe par type de quitus' );
-$series = ueb_suivi_paiements( $annee['code'], '', 30 )['historique'];
+$series = ueb_suivi_paiements( $annee['code'], '', true )['historique'];
 verifier( end( $series['quitus_droits'] ) + end( $series['quitus_medicaux'] ) === end( $series['quitus'] ) && 1 === end( $series['quitus_medicaux'] ), 'mini-courbes : quitus de chaque type, sans double compte' );
 vider_quitus();
+
+// Avancement d'un exercice (onglet Exercice) : jours, mois de la frise, années bissextiles.
+$av = ueb_exercice_avancement( $annee['code'] );
+$centres = array_column( $av['mois'], 'centre' );
+verifier( 12 === count( $av['mois'] ) && $av['ecoules'] + $av['restants'] === $av['total'] && in_array( $av['total'], array( 365, 366 ), true ), 'avancement : jours écoulés + restants = durée de l’année ' . json_encode( array_diff_key( $av, array( 'mois' => 1 ) ) ) );
+verifier( $centres === array_values( array_unique( $centres ) ) && $centres == array_values( ( static function ( $c ) { sort( $c ); return $c; } )( $centres ) ) && $centres[0] > 0 && end( $centres ) < 100, 'avancement : noms des mois dans l’ordre, sur la frise' );
+verifier( 366 === ueb_exercice_avancement( '2027-2028' )['total'] && 365 === ueb_exercice_avancement( '2026-2027' )['total'], 'avancement : février 2028 compte 29 jours' );
+$passe = ueb_exercice_avancement( '2022-2023' );
+verifier( 1.0 === (float) $passe['progression'] && 0 === $passe['restants'] && array( 'passe' ) === array_values( array_unique( array_column( $passe['mois'], 'etat' ) ) ), 'avancement : un exercice passé est achevé' );
+verifier( 12 === substr_count( ueb_exercice_frise_repli( $passe ), 'var(--frise-piste)' ), 'avancement : la frise de repli compte douze mois' );
+verifier( abs( ueb_frise_position( 0 ) - 2.222 ) < .01 && abs( ueb_frise_position( 1 ) - 97.778 ) < .01, 'avancement : positions de la frise identiques à la composition Remotion' );
 
 // Étudiants UEB : dernier quitus de droits de l'année par compte, portée imposée, états du paiement.
 $ins = static function ( $compte_id, $etab, $nom, $prenom, $tranche, $montant, $statut, $extra = array() ) use ( $wpdb, $annee, $fs ) {

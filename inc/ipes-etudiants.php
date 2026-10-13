@@ -50,7 +50,7 @@ function ueb_ipes_etudiant( $ipes_id, $id ) {
  */
 function ueb_ipes_etudiants( $ipes_id, array $filtres = array() ) {
 	global $wpdb;
-	$annee  = (string) ( $filtres['annee'] ?? ueb_annee_academique()['code'] );
+	$annee  = (string) ( $filtres['annee'] ?? ueb_exercice_consulte()['code'] );
 	$where  = array( 'e.ipes_id = %d', 'e.annee_academique = %s' );
 	$params = array( $ipes_id, $annee );
 

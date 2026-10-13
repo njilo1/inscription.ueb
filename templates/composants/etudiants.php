@@ -19,7 +19,7 @@ $params  = $o['params'] ?? array();
 $f       = ueb_etudiants_filtres( $etabs );
 $r       = ueb_etudiants( $f, $etabs );
 $annees  = ueb_etudiants_annees();
-$courant = ueb_annee_academique()['code'];
+$courant = ueb_exercice_consulte()['code'];
 $libelle_annee = static fn( $code ) => str_replace( '-', ' – ', $code );
 
 /* Adresse d'un lien : filtres courants (année en cours et page 1 omises) modifiés par $changes. */

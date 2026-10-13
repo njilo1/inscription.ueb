@@ -183,6 +183,11 @@ function ueb_traiter_action( $action ) {
 		'comptes_plateforme_installer' => 'ueb_action_comptes_plateforme_installer',
 		'direction_role_enregistrer' => 'ueb_action_direction_role_enregistrer',
 		'profil_simuler'      => 'ueb_action_profil_simuler',
+		/* Exercices (inc/exercices.php), super-administrateur seul. */
+		'exercice_consulter'  => 'ueb_action_exercice_consulter',
+		'exercice_activer'    => 'ueb_action_exercice_activer',
+		'exercice_cloturer'   => 'ueb_action_exercice_cloturer',
+		'exercice_rouvrir'    => 'ueb_action_exercice_rouvrir',
 		'direction_role_dupliquer'   => 'ueb_action_direction_role_dupliquer',
 		'direction_role_supprimer'   => 'ueb_action_direction_role_supprimer',
 		'direction_compte_creer'     => 'ueb_action_direction_compte_creer',

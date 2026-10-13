@@ -32,7 +32,7 @@ function ueb_attente_recus( $type, $vu = '' ) {
 	if ( ! in_array( $type, ueb_types_quitus_visibles(), true ) ) {
 		return $vide;
 	}
-	list( $portee, $params ) = ueb_gestion_portee_sql( array( 'annee' => ueb_annee_academique()['code'], 'type' => $type ) );
+	list( $portee, $params ) = ueb_gestion_portee_sql( array( 'annee' => ueb_exercice_consulte()['code'], 'type' => $type ) );
 	$cle = UEB_SQL_CLE_DOSSIER;
 	$l   = $wpdb->get_row( $wpdb->prepare(
 		"SELECT COUNT(*) AS nombre, COUNT(DISTINCT t.cle) AS dossiers, MIN(t.date_modification) AS depuis, MAX(t.arrivee) AS dernier, SUM(t.arrivee > %s) AS nouveaux
@@ -57,27 +57,30 @@ function ueb_url_recus_attente( $type, $seulement_attente = true ) {
 }
 
 /**
- * Reçus d'un type déposés chaque jour sur la fenêtre affichée, dans la portée
- * du compte : la mini-courbe de la carte rouge.
+ * Reçus d'un type déposés chaque jour de l'exercice, dans la portée du
+ * compte : la mini-courbe de la carte rouge. Du premier quitus de la portée
+ * au dernier jour de l'historique, comme les autres cartes.
  *
  * @return array{jours: string[], depots: int[]}
  */
-function ueb_attente_depots( $type, $periode ) {
+function ueb_attente_depots( $type ) {
 	global $wpdb;
-	$aujourdhui = current_time( 'Y-m-d' );
-	$debut      = gmdate( 'Y-m-d', strtotime( $aujourdhui . ' -' . ( max( 2, (int) $periode ) - 1 ) . ' days' ) );
-	$par_jour   = array();
+	$code     = ueb_exercice_consulte()['code'];
+	$par_jour = array();
+	$premier  = '';
 	if ( in_array( $type, ueb_types_quitus_visibles(), true ) ) {
-		list( $portee, $params ) = ueb_gestion_portee_sql( array( 'annee' => ueb_annee_academique()['code'], 'type' => $type ) );
+		list( $portee, $params ) = ueb_gestion_portee_sql( array( 'annee' => $code, 'type' => $type ) );
+		$premier = (string) $wpdb->get_var( $wpdb->prepare( "SELECT MIN(q.date_creation) FROM ueb_insc_quitus q WHERE $portee", $params ) ); // phpcs:ignore -- portée préparée
 		foreach ( (array) $wpdb->get_results( $wpdb->prepare(
-			"SELECT DATE(r.date_envoi) AS jour, COUNT(DISTINCT r.quitus_id) AS n FROM ueb_insc_recus r JOIN ueb_insc_quitus q ON q.id = r.quitus_id WHERE $portee AND r.date_envoi >= %s GROUP BY jour", // phpcs:ignore -- portée préparée
-			array_merge( $params, array( $debut ) )
+			"SELECT DATE(r.date_envoi) AS jour, COUNT(DISTINCT r.quitus_id) AS n FROM ueb_insc_recus r JOIN ueb_insc_quitus q ON q.id = r.quitus_id WHERE $portee GROUP BY jour", // phpcs:ignore -- portée préparée
+			$params
 		) ) as $l ) {
 			$par_jour[ $l->jour ] = (int) $l->n;
 		}
 	}
+	list( $debut, $fin ) = ueb_exercice_bornes( $code, $premier, $par_jour ? max( array_keys( $par_jour ) ) : '' ) ?? array_fill( 0, 2, ueb_exercice_fin_historique( $code ) );
 	$h = array( 'jours' => array(), 'depots' => array() );
-	for ( $t = strtotime( $debut ); $t <= strtotime( $aujourdhui ); $t += DAY_IN_SECONDS ) {
+	for ( $t = strtotime( $debut ); $t <= strtotime( $fin ); $t += DAY_IN_SECONDS ) {
 		$h['jours'][]  = gmdate( 'Y-m-d', $t );
 		$h['depots'][] = $par_jour[ gmdate( 'Y-m-d', $t ) ] ?? 0;
 	}
@@ -92,17 +95,16 @@ function ueb_attente_depots( $type, $periode ) {
  *
  * @param string     $type    « droits » ou « medicaux ».
  * @param array|null $attente Résultat de ueb_attente_recus() (calculé sinon).
- * @param int        $periode Fenêtre de la mini-courbe (7, 30 ou 90 jours).
  */
-function ueb_carte_attente( $type, $attente = null, $periode = 30 ) {
+function ueb_carte_attente( $type, $attente = null ) {
 	/* Statistiques seules (Recteur, Chef CMS…) : pas de file ni de lien vers des reçus fermés. */
 	if ( ! in_array( $type, ueb_types_quitus_visibles(), true ) ) {
 		return;
 	}
 	$a      = $attente ?? ueb_attente_recus( $type );
 	$n      = $a['nombre'];
-	$h      = ueb_attente_depots( $type, $periode );
-	$source = add_query_arg( array( 'action' => 'ueb_attente_recus', 'type' => $type, 'periode' => (int) $periode, '_ajax_nonce' => wp_create_nonce( 'ueb_attente_recus' ) ), admin_url( 'admin-ajax.php' ) );
+	$h      = ueb_attente_depots( $type );
+	$source = add_query_arg( array( 'action' => 'ueb_attente_recus', 'type' => $type, '_ajax_nonce' => wp_create_nonce( 'ueb_attente_recus' ) ), admin_url( 'admin-ajax.php' ) );
 	$depuis = $a['depuis'] ? human_time_diff( strtotime( $a['depuis'] ), current_time( 'timestamp' ) ) : '';
 	?>
 	<article class="adm-kpi adm-attente" data-attente="<?php echo esc_attr( $type ); ?>" data-attente-source="<?php echo esc_url( $source ); ?>" data-attente-dernier="<?php echo esc_attr( $a['dernier'] ); ?>" data-attente-nombre="<?php echo (int) $n; ?>">
@@ -130,7 +132,7 @@ function ueb_file_attente( $type ) {
 	}
 	$a          = ueb_attente_recus( $type );
 	$n          = $a['nombre'];
-	$file       = ueb_gestion_liste_quitus( array( 'annee' => ueb_annee_academique()['code'], 'etab' => ueb_etab_agent(), 'statut' => 'recu_envoye', 'type' => $type ), 100 )['lignes'];
+	$file       = ueb_gestion_liste_quitus( array( 'annee' => ueb_exercice_consulte()['code'], 'etab' => ueb_etab_agent(), 'statut' => 'recu_envoye', 'type' => $type ), 100 )['lignes'];
 	$maintenant = current_time( 'timestamp' );
 	usort( $file, static fn( $x, $y ) => strcmp( $x->date_modification, $y->date_modification ) );
 	$fiche = static fn( $id ) => ueb_url_espace_admin( 'scolarite', array( 'quitus' => (int) $id, 'type' => $type ) );
@@ -183,10 +185,9 @@ add_action( 'wp_ajax_ueb_attente_recus', function () {
 	}
 	$vu      = sanitize_text_field( wp_unslash( $_GET['vu'] ?? '' ) );
 	$vu      = preg_match( '/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/', $vu ) ? $vu : '';
-	$periode = (int) ( $_GET['periode'] ?? 30 );
 	$a       = ueb_attente_recus( $type, $vu );
 	ob_start();
-	ueb_carte_attente( $type, $a, in_array( $periode, array( 7, 30, 90 ), true ) ? $periode : 30 );
+	ueb_carte_attente( $type, $a );
 	$carte = ob_get_clean();
 	ob_start();
 	ueb_file_attente( $type );
