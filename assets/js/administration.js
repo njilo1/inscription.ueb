@@ -118,3 +118,8 @@
 		});
 	});
 })();
+
+/* Bouton « Imprimer » des écrans de consultation (ueb_bouton_imprimer()). */
+document.addEventListener("click", (e) => {
+	if (e.target.closest("[data-imprimer]")) window.print();
+});

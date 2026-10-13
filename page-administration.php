@@ -16,8 +16,11 @@
  * Thème clair par défaut, sombre au choix (bascule mémorisée, voir
  * inc/administration.php et assets/js/administration.js).
  *
- * Accès : capacité « manage_options ». La connexion se fait ici ou par la
- * page de connexion WordPress.
+ * Interface unique du back-office (inc/espaces.php) : tout compte du
+ * personnel s'y connecte — super-administrateur, scolarité, Régisseur CMS,
+ * Direction, comptes étudiants, administrateur d'un IPES — et n'y voit que
+ * les onglets de ses permissions. Les écrans autres que le pilotage
+ * (espace « admin », ci-dessous) sont dans templates/espaces/.
  *
  * @package Inscription_UEB
  */
@@ -31,6 +34,10 @@ if ( isset( $_POST['ueb_connexion_admin'] ) ) {
 		$erreur_connexion = 'Ta session a expiré. Recommence.';
 	} else {
 		$identifiant = sanitize_text_field( wp_unslash( $_POST['identifiant'] ?? '' ) );
+		/* L'adresse e-mail du compte est acceptée à la place de l'identifiant. */
+		if ( is_email( $identifiant ) && ( $par_email = get_user_by( 'email', $identifiant ) ) ) {
+			$identifiant = $par_email->user_login;
+		}
 		$utilisateur = ueb_connexion_gestion_bloquee( $identifiant ) ? new WP_Error( 'ueb_rate_limited' ) : wp_signon( array(
 			'user_login'    => $identifiant,
 			'user_password' => (string) wp_unslash( $_POST['mot_de_passe'] ?? '' ),
@@ -38,19 +45,37 @@ if ( isset( $_POST['ueb_connexion_admin'] ) ) {
 		), is_ssl() );
 		if ( is_wp_error( $utilisateur ) ) {
 			ueb_noter_echec_gestion( $identifiant );
-			$erreur_connexion = 'Identifiant ou mot de passe incorrect.';
-		} elseif ( ! user_can( $utilisateur, 'manage_options' ) ) {
+			$erreur_connexion = ueb_message_echec_connexion( $utilisateur, 'Identifiant ou mot de passe incorrect.' );
+		} elseif ( ! ueb_espaces_du_compte( $utilisateur->ID ) ) {
 			wp_logout();
-			$erreur_connexion = "Ce compte n'est pas administrateur.";
+			$erreur_connexion = "Ce compte n'a accès à aucun espace de gestion.";
 		} else {
 			ueb_reinitialiser_echecs_gestion( $identifiant );
+			wp_set_current_user( $utilisateur->ID );
+			wp_set_auth_cookie( $utilisateur->ID, false, is_ssl() );
 			wp_safe_redirect( get_permalink() );
 			exit;
 		}
 	}
 }
 
-$autorise = ueb_est_admin_ueb();
+/* Compte connecté avec un espace autre que le pilotage : son écran. */
+$espace = ueb_espace_courant();
+
+/* Profil simulé qui n'ouvre aucun espace (rôle dont les permissions ne sont
+   plus reconnues) : le super-administrateur retomberait sur l'écran de
+   connexion à chaque essai. On le ramène à sa vue complète. */
+if ( ! $espace && ( $simule = ueb_profil_simule() ) ) {
+	delete_user_meta( get_current_user_id(), 'ueb_profil_simule' );
+	ueb_flash( 'alerte', 'Le profil « ' . ueb_libelle_profil( $simule ) . ' » n’ouvre aucun espace : ses permissions ne sont plus reconnues. Retour à ta vue complète d’administrateur.' );
+	ueb_rediriger( ueb_url_administration() );
+}
+if ( $espace && 'admin' !== $espace ) {
+	require UEB_INSC_DIR . '/templates/espaces/' . $espace . '.php';
+	return;
+}
+
+$autorise = 'admin' === $espace;
 $annee    = ueb_annee_academique();
 
 if ( $autorise ) {
@@ -68,7 +93,7 @@ if ( $autorise ) {
 		$periode  = in_array( $periode, array( 7, 30, 90 ), true ) ? $periode : 30;
 		$chiffres = ueb_gestion_chiffres( $annee['code'], $focus );
 		$suivi    = ueb_suivi_paiements( $annee['code'], $focus, $periode );
-		$activite = ueb_gestion_activite( $annee['code'], $focus, $periode );
+		$activite = ueb_gestion_activite_par_type( $annee['code'], $focus, $periode );
 		$niveaux  = ueb_gestion_niveaux_par_etab( $annee['code'] );
 		$vide_niv = array_fill_keys( array_keys( UEB_NIVEAUX_INSCRIPTION ), 0 );
 	} elseif ( 'paiements' === $vue ) {
@@ -97,18 +122,19 @@ ueb_page_debut( array(
 					<?php ueb_animation( 'embleme', ueb_props_embleme(), 'animation--embleme bo-connexion__embleme', 'Sceau de l’Université d’Ebolowa' ); ?>
 					<p class="bo-connexion__marque">Université d’Ebolowa</p>
 					<h1 id="titre-connexion">Administration</h1>
-					<p class="bo-connexion__intro">Le pilotage des inscriptions dans les neuf établissements.</p>
+					<p class="bo-connexion__intro">L’espace d’administration de la plateforme d’inscription de l’Université d’Ebolowa.</p>
 					<ul class="bo-connexion__points">
-						<li><?php echo ueb_icone( 'banque', 17 ); ?>Suivre le recouvrement des droits</li>
-						<li><?php echo ueb_icone( 'ecole', 17 ); ?>Comparer les établissements</li>
-						<li><?php echo ueb_icone( 'utilisateur', 17 ); ?>Gérer les comptes du personnel</li>
+						<li><?php echo ueb_icone( 'recu', 17 ); ?>Vérifier les reçus de paiement</li>
+						<li><?php echo ueb_icone( 'ecole', 17 ); ?>Suivre les IPES et leurs reversements</li>
+						<li><?php echo ueb_icone( 'utilisateur', 17 ); ?>Gérer les rôles et les comptes</li>
 					</ul>
 				</aside>
 				<section class="bo-connexion__formulaire" aria-labelledby="titre-connexion">
 					<h2>Connexion</h2>
-					<p class="bo-connexion__aide">Réservé aux administrateurs de la plateforme.</p>
+					<p class="bo-connexion__aide">Avec l’identifiant communiqué par l’administration de la plateforme.</p>
+					<?php ueb_afficher_flash(); /* ex. « Mot de passe modifié » : le changement déconnecte */ ?>
 					<?php if ( is_user_logged_in() ) : ?>
-						<?php ueb_alerte( 'erreur', "Ce compte n'est pas administrateur." ); ?>
+						<?php ueb_alerte( 'erreur', "Ce compte n'a accès à aucun espace de gestion." ); ?>
 					<?php endif; ?>
 					<?php if ( $erreur_connexion ) : ?>
 						<?php ueb_alerte( 'erreur', $erreur_connexion ); ?>
@@ -174,6 +200,45 @@ ueb_page_debut( array(
 						</div>
 					<?php endif; ?>
 
+					<?php $installation = $_SESSION['ueb_installation'] ?? null; unset( $_SESSION['ueb_installation'] ); ?>
+					<section class="adm-panneau adm-plateforme" aria-labelledby="adm-plateforme-titre">
+						<header class="adm-panneau__tete">
+							<div>
+								<h2 id="adm-plateforme-titre">Comptes de la plateforme</h2>
+								<p>Crée les rôles et les comptes de la liste des utilisateurs (Scolarité, Celinfo, Doyen / Directeur, Régie CMS, Chef CMS, Recteur, CF, DAAF). Rien n’est supprimé : un compte déjà présent est laissé tel quel.</p>
+							</div>
+							<?php echo ueb_icone( 'ajout-compte', 19 ); ?>
+						</header>
+						<form class="formulaire adm-plateforme__form" method="post" action="<?php echo esc_url( add_query_arg( 'vue', 'scolarites', ueb_url_administration() ) ); ?>" enctype="multipart/form-data">
+							<?php ueb_champ_csrf(); ?>
+							<input type="hidden" name="ueb_action" value="comptes_plateforme_installer">
+							<div class="champ">
+								<label for="adm-plateforme-mdp">Mots de passe déjà distribués (facultatif)</label>
+								<input id="adm-plateforme-mdp" type="file" name="mots_de_passe" accept=".csv,text/csv">
+								<p class="champ__aide">Le fichier credentials_temp.csv envoyé au chef : chaque compte reçoit le mot de passe qui y figure. Il est lu, jamais enregistré. Sans fichier, chaque nouveau compte reçoit un mot de passe aléatoire, affiché une seule fois.</p>
+							</div>
+							<label class="adm-plateforme__simulation"><input type="checkbox" name="simulation" value="1" checked> Simulation : montrer ce qui serait fait, sans rien écrire</label>
+							<button class="btn btn--primaire" type="submit"><?php echo ueb_icone( 'ajout-compte', 18 ); ?>Installer les comptes de la plateforme</button>
+						</form>
+						<?php if ( $installation ) : ?>
+							<div class="adm-plateforme__journal" role="status">
+								<p><b><?php echo $installation['simulation'] ? 'Simulation' : 'Installation'; ?></b> · <?php echo (int) $installation['repris']; ?> mot(s) de passe repris du fichier.</p>
+								<ul>
+									<?php foreach ( $installation['journal'] as $ligne ) : ?>
+										<li><?php echo esc_html( $ligne ); ?></li>
+									<?php endforeach; ?>
+								</ul>
+								<?php if ( $installation['nouveaux'] ) : ?>
+									<p><b>Nouveaux mots de passe, à noter maintenant :</b> ils ne seront plus affichés.</p>
+									<table class="tableau"><thead><tr><th>Identifiant</th><th>Mot de passe</th></tr></thead><tbody>
+										<?php foreach ( $installation['nouveaux'] as $n ) : ?>
+											<tr><td><?php echo esc_html( $n[0] ); ?></td><td><code><?php echo esc_html( $n[1] ); ?></code></td></tr>
+										<?php endforeach; ?>
+									</tbody></table>
+								<?php endif; ?>
+							</div>
+						<?php endif; ?>
+					</section>
 					<div class="adm-personnel">
 						<section class="adm-panneau adm-comptes" aria-labelledby="adm-comptes-titre">
 							<header class="adm-panneau__tete">
@@ -320,7 +385,7 @@ ueb_page_debut( array(
 						? array(
 							'fil'        => array( array( $url(), 'Tableau de bord' ), array( '', $focus ) ),
 							'titre'      => $e['fr'],
-							'sous_titre' => sprintf( '%s, à %s : %d quitus pour %s cette année.', $focus, $e['ville'], $chiffres['quitus'], ueb_suivi_etudiants( $chiffres['etudiants'] ) ),
+							'sous_titre' => sprintf( '%s, à %s : %s pour %s cette année.', $focus, $e['ville'], ueb_texte_quitus_par_type( $chiffres ), ueb_suivi_etudiants( $chiffres['etudiants'] ) ),
 							'actions'    => ueb_adm_action( $url( array( 'vue' => 'paiements', 'etab' => $focus ) ), 'Paiements de ' . $focus, 'banque', true ),
 						)
 						: array(
@@ -334,10 +399,13 @@ ueb_page_debut( array(
 					ueb_adm_dashboard( $chiffres, $suivi, $activite, $focus, $periode );
 					?>
 
-					<div class="adm-grille adm-grille--graphes adm-complements">
+					<?php /* Un établissement : son recouvrement par filière est la carte du bas. */ ?>
+					<div class="adm-grille adm-grille--graphes adm-complements<?php echo $focus ? ' adm-complements--duo' : ''; ?>">
 						<?php
 						ueb_adm_statistiques( $chiffres );
-						ueb_adm_comparaison( $suivi, $focus, $periode );
+						if ( ! $focus ) {
+							ueb_adm_comparaison( $suivi, $focus, $periode );
+						}
 						ueb_graphe_anneau( 'Répartition par sexe', 'Étudiants ayant au moins un quitus', array(
 							'Masculin' => array( 'valeur' => $chiffres['sexe']['M'], 'couleur' => 'var(--viz-id-1)' ),
 							'Féminin' => array( 'valeur' => $chiffres['sexe']['F'], 'couleur' => 'var(--viz-id-2)' ),
@@ -353,12 +421,16 @@ ueb_page_debut( array(
 							ueb_adm_filieres( ueb_gestion_par_filiere( $annee['code'], $focus ) );
 							?>
 						</div>
-						<?php ueb_graphe_filieres( 'Recouvrement par filière', 'Part encaissée des droits attendus, les plus gros montants d’abord', $suivi['filieres'], $url( array( 'vue' => 'paiements', 'etab' => $focus ) ) ); ?>
+						<?php ueb_graphe_filieres( 'Recouvrement par filière', 'Droits attendus et droits encaissés de chaque filière, en FCFA', $suivi['filieres'], $url( array( 'vue' => 'paiements', 'etab' => $focus ) ) ); ?>
 
 					<?php else : ?>
 
 						<?php
 						$stats          = ueb_gestion_stats( $annee['code'] );
+						$stats_types    = array(); // chaque type de quitus à part : jamais additionnés
+						foreach ( ueb_types_stats_visibles() ?: array( 'droits' ) as $type ) {
+							$stats_types[ $type ] = ueb_gestion_stats( $annee['code'], '', $type );
+						}
 						$etudiants_etab = ueb_gestion_etudiants_par_etab( $annee['code'] );
 						$lignes         = array();
 						$rang           = 0;
@@ -371,6 +443,7 @@ ueb_page_debut( array(
 								'niveaux'   => array_merge( $vide_niv, array_intersect_key( $niveaux[ $sigle ] ?? array(), $vide_niv ) ),
 								'statuts'   => $statuts,
 								'quitus'    => (int) array_sum( $statuts ),
+								'types'     => array_map( static fn( $st ) => $st['etabs'][ $sigle ] ?? array(), $stats_types ),
 								'suivi'     => $suivi['etabs'][ $sigle ] ?? null,
 								'url'       => $url( array( 'etab' => $sigle, 'periode' => $periode ) ),
 								'rang'      => $rang++,

@@ -94,7 +94,7 @@ function ueb_ipes_bordereau_pour_tutelle( $ipes, $bordereau_id ) {
 
 /* PDF : ?vue=ipes&ipes={id}&bordereau={id}&pdf=1 sur la Page de la scolarité. */
 add_action( 'template_redirect', function () {
-	if ( ! isset( $_GET['pdf'], $_GET['bordereau'], $_GET['ipes'] ) || ! is_page_template( 'page-scolarite.php' ) || ! ueb_est_scolarite() ) {
+	if ( ! isset( $_GET['pdf'], $_GET['bordereau'], $_GET['ipes'] ) || 'scolarite' !== ueb_espace_courant() || ! ueb_est_scolarite() ) {
 		return;
 	}
 	$ipes      = ueb_ipes_sous_tutelle_par_id( (int) $_GET['ipes'] );

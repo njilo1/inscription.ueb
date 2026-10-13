@@ -1,6 +1,7 @@
 <?php
 /**
- * Exports du suivi des paiements (administration, vue Paiements).
+ * Exports du suivi des paiements (vue Paiements de l'administration et de
+ * l'espace scolarité, qui exporte seulement l'établissement de l'agent).
  *
  *   - PDF et Word : rapport au format institutionnel, en A4 paysage.
  *     Il porte l'en-tête bilingue des actes de l'université (français à
@@ -23,29 +24,23 @@ const UEB_EXPORT_FORMATS = array( 'pdf', 'docx', 'xlsx' );
 /** Lien de téléchargement d'un format, pour le périmètre affiché (jeton anti-rejeu). */
 function ueb_adm_export_url( $format, $focus ) {
 	$args = array( 'vue' => 'paiements', 'export' => $format );
+	/* La scolarité n'a pas d'établissement dans le lien : c'est celui du compte. */
+	if ( 'scolarite' === ueb_espace_courant() ) {
+		return wp_nonce_url( add_query_arg( $args, ueb_url_scolarite() ), 'ueb_export_paiements', 'jeton' );
+	}
 	if ( $focus ) {
 		$args['etab'] = $focus;
 	}
 	return wp_nonce_url( add_query_arg( $args, ueb_url_administration() ), 'ueb_export_paiements', 'jeton' );
 }
 
-/**
- * Menu « Exporter » de l'en-tête de la vue Paiements (HTML échappé).
- * L'espace scolarité passe ses formats et l'adresse de ses liens
- * (inc/scolarite-paiements.php).
- *
- * @param string        $focus   Établissement suivi, vide pour toute l'université.
- * @param string[]|null $formats Formats proposés ; tous par défaut.
- * @param callable|null $url     Adresse d'un format ; celle de l'administration par défaut.
- */
-function ueb_adm_exports_menu( $focus, $formats = null, $url = null ) {
+/** Menu « Exporter » de l'en-tête de la vue Paiements (HTML échappé). */
+function ueb_adm_exports_menu( $focus ) {
 	$choix = array(
 		'pdf'  => array( 'PDF', 'Rapport PDF', 'Document officiel, prêt à imprimer' ),
 		'docx' => array( 'DOCX', 'Rapport Word', 'Document officiel modifiable' ),
 		'xlsx' => array( 'XLSX', 'Tableur Excel', 'Données brutes, sans en-tête' ),
 	);
-	$choix = $formats ? array_intersect_key( $choix, array_flip( $formats ) ) : $choix;
-	$url   = $url ?? static fn( $format ) => ueb_adm_export_url( $format, $focus );
 	ob_start();
 	?>
 	<div class="adm-export" data-export>
@@ -53,7 +48,7 @@ function ueb_adm_exports_menu( $focus, $formats = null, $url = null ) {
 		<div class="adm-export__menu" id="adm-export-menu" hidden>
 			<p class="adm-export__titre">Suivi des paiements<?php echo $focus ? ' de ' . esc_html( $focus ) : ''; ?></p>
 			<?php foreach ( $choix as $format => $c ) : ?>
-				<a class="adm-export__choix" href="<?php echo esc_url( $url( $format ) ); ?>" data-format="<?php echo esc_attr( $format ); ?>">
+				<a class="adm-export__choix" href="<?php echo esc_url( ueb_adm_export_url( $format, $focus ) ); ?>" data-format="<?php echo esc_attr( $format ); ?>">
 					<span class="adm-export__format adm-export__format--<?php echo esc_attr( $format ); ?>" aria-hidden="true"><?php echo esc_html( $c[0] ); ?></span>
 					<span class="adm-export__texte"><b><?php echo esc_html( $c[1] ); ?></b><small><?php echo esc_html( $c[2] ); ?></small></span>
 				</a>
@@ -64,13 +59,17 @@ function ueb_adm_exports_menu( $focus, $formats = null, $url = null ) {
 	return ob_get_clean();
 }
 
-/* Téléchargement : ?vue=paiements&export=pdf|docx|xlsx[&etab=FS]&jeton=… */
+/* Téléchargement : ?vue=paiements&export=pdf|docx|xlsx[&etab=FS]&jeton=…
+   Dans l'espace scolarité, l'établissement est celui de l'agent : un « etab »
+   ajouté à l'adresse est ignoré. */
 add_action( 'template_redirect', function () {
-	if ( ! isset( $_GET['export'] ) || ! is_page_template( 'page-administration.php' ) || 'etudiants' === sanitize_key( $_GET['vue'] ?? '' ) ) { // phpcs:ignore -- l'export de la liste des étudiants a son propre déclencheur (inc/etudiants.php)
+	$espace = ueb_espace_courant();
+	if ( ! isset( $_GET['export'] ) || ! in_array( $espace, array( 'admin', 'scolarite' ), true ) || 'paiements' !== sanitize_key( $_GET['vue'] ?? '' ) ) { // phpcs:ignore -- la liste des étudiants a son propre export (inc/etudiants.php)
 		return;
 	}
-	if ( ! ueb_est_admin_ueb() ) {
-		wp_die( 'Cet export est réservé à l’administration.', 'Accès refusé', array( 'response' => 403 ) );
+	$scolarite = 'scolarite' === $espace;
+	if ( $scolarite ? ! ( ueb_peut( 'ueb_voir_paiements' ) && UEB_AUCUN_ETAB !== ueb_etab_agent() ) : ! ueb_est_admin_ueb() ) {
+		wp_die( 'Cet export est réservé aux comptes qui suivent les paiements.', 'Accès refusé', array( 'response' => 403 ) );
 	}
 	if ( ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_GET['jeton'] ?? '' ) ), 'ueb_export_paiements' ) ) {
 		wp_die( 'Ce lien d’export a expiré. Recharge la page Paiements puis relance l’export.', 'Lien expiré', array( 'response' => 403 ) );
@@ -79,7 +78,7 @@ add_action( 'template_redirect', function () {
 	if ( ! in_array( $format, UEB_EXPORT_FORMATS, true ) ) {
 		wp_die( 'Format d’export inconnu.', 'Export', array( 'response' => 400 ) );
 	}
-	$focus = strtoupper( sanitize_text_field( wp_unslash( $_GET['etab'] ?? '' ) ) );
+	$focus = $scolarite ? ueb_etab_agent() : strtoupper( sanitize_text_field( wp_unslash( $_GET['etab'] ?? '' ) ) );
 	$focus = ueb_etablissement( $focus ) ? $focus : '';
 	$annee = ueb_annee_academique();
 	$d     = ueb_adm_rapport_donnees( ueb_suivi_paiements( $annee['code'], $focus, 366 ), $focus, $annee );
@@ -113,10 +112,11 @@ function ueb_adm_accord( $nombre, $singulier, $pluriel ) {
 /** Notes de lecture des rapports PDF et Word. */
 function ueb_adm_paiements_notes() {
 	return array(
-		array( 'Droits attendus', ueb_fcfa( UEB_DROITS_CLASSIQUES ) . ' par étudiant en formation classique ; en formation professionnelle, la somme des quitus préparés. La formation retenue est celle du dernier quitus.' ),
-		array( 'Frais médicaux', 'montants des quitus médicaux effectivement générés, versés au compte des services centraux. Ils ne représentent pas tous les frais potentiellement dus par les étudiants.' ),
-		array( 'Encaissé et reste', 'seuls les paiements vérifiés sont encaissés. Les droits sont plafonnés à l’attendu par étudiant et par établissement. Le reste inclut les montants en vérification : un reçu déposé ne vaut pas validation.' ),
-		array( 'Effectifs', 'les droits universitaires comptent les étudiants par établissement ; les frais médicaux comptent les quitus.' ),
+		array( 'Droits attendus', ueb_fcfa( UEB_DROITS_CLASSIQUES ) . ' par étudiant en formation classique ; somme des quitus préparés en formation professionnelle. La formation retenue est celle du dernier quitus.' ),
+		array( 'Frais médicaux', 'Montants des quitus médicaux effectivement générés, versés au compte des services centraux. Ils ne représentent pas tous les frais potentiellement dus par les étudiants.' ),
+		array( 'Encaissé et reste', 'Seuls les paiements vérifiés sont encaissés. Les droits sont plafonnés à l’attendu par étudiant et établissement. Le reste inclut les montants en vérification ; un reçu déposé ne vaut pas validation.' ),
+		array( 'Historique mensuel', 'Reconstitué avec les dates de validation des dossiers conservés et les formations actuelles. Les anciennes décisions annulées et les pièces supprimées ne sont pas conservées. Le mois en cours est incomplet.' ),
+		array( 'Effectifs et filtres', 'Les droits comptent les étudiants par établissement ; les frais médicaux comptent les quitus. La recherche et les filtres du registre ne modifient pas le bilan du périmètre affiché en haut.' ),
 	);
 }
 
@@ -205,7 +205,7 @@ function ueb_adm_rapport_donnees( array $suivi, $focus, array $annee ) {
 
 	$tableaux = array(
 		array(
-			'titre'    => $focus ? 'Suivi détaillé par filière' : 'Suivi par établissement',
+			'titre'    => $focus ? 'Suivi détaillé de ' . $focus : 'Suivi par établissement',
 			'feuille'  => $focus ? 'Filières' : 'Établissements',
 			'colonnes' => $colonnes_registre,
 			'lignes'   => $lignes,

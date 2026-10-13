@@ -59,13 +59,13 @@ $fmt = static fn( $n ) => ueb_formater_montant( (int) $n );
 		</div>
 	</header>
 
-	<form id="etu-form" class="etu-filtres" method="get" action="<?php echo esc_url( $o['url'] ); ?>" role="search" aria-label="Filtrer les étudiants" data-filtres-direct="etudiants-resultats" data-etudiants-filtres>
+	<form id="etu-form" class="etu-filtres" method="get" action="<?php echo esc_url( $o['url'] ); ?>" role="search" aria-label="Filtrer les étudiants" data-filtres-direct="etudiants-resultats" data-etudiants-filtres><?php ueb_champ_espace(); ?>
 		<?php foreach ( $params as $cle => $valeur ) : ?>
 			<input type="hidden" name="<?php echo esc_attr( $cle ); ?>" value="<?php echo esc_attr( $valeur ); ?>">
 		<?php endforeach; ?>
 		<input type="hidden" name="statut" value="<?php echo esc_attr( $f['statut'] ); ?>">
 		<input type="hidden" name="p" value="">
-		<label class="ipes-recherche etu-recherche"><span class="sr">Rechercher un étudiant</span><?php echo ueb_icone( 'loupe', 17 ); ?><input type="search" name="q" value="<?php echo esc_attr( $f['q'] ); ?>" placeholder="Nom, prénom ou matricule" enterkeyhint="search" autocomplete="off"></label>
+		<label class="ipes-recherche etu-recherche"><span class="sr">Rechercher un étudiant</span><?php echo ueb_icone( 'loupe', 17 ); ?><input type="search" name="q" value="<?php echo esc_attr( $f['q'] ); ?>" placeholder="Nom, prénom ou matricule" enterkeyhint="search" autocomplete="off"<?php echo ueb_attr_suggestions( 'etudiants', array( 'annee' => $f['annee'] ) ); // phpcs:ignore -- échappé ?>></label>
 		<?php if ( count( $annees ) > 1 ) : ?>
 			<label class="ipes-selecteur"><span class="sr">Année académique</span>
 				<select name="annee">

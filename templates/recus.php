@@ -18,8 +18,12 @@ $ouvert   = ueb_quitus_accepte_recus( $q );
 $dossier  = ueb_dossier_du_quitus( $q );
 /* Un seul reçu par paiement : dès qu'il est envoyé, le dépôt reste fermé. */
 $libre    = (bool) ueb_objets_recu_libres( $q, $recus );
-/* Sur cette page, le rappel « À payer » suit l'ordre réel : payer, envoyer le reçu, puis la scolarité. */
-$note     = 'genere' === $q->statut ? 'Une fois le paiement effectué, envoie le reçu ici, puis dirige-toi vers la scolarité de ton établissement pour finaliser ton inscription.' : UEB_STATUTS_QUITUS[ $q->statut ]['aide'];
+/* Sur cette page, le rappel « À payer » suit l'ordre réel : payer, envoyer le reçu, puis le
+   service qui vérifie (la scolarité pour les droits, le Centre médico-social pour les frais médicaux). */
+$service  = ueb_service_du_quitus( $q );
+$note     = 'genere' === $q->statut
+	? ( 'medicaux' === $q->type ? 'Une fois le paiement effectué, envoie le reçu ici, puis présente l’original au Centre médico-social.' : 'Une fois le paiement effectué, envoie le reçu ici, puis dirige-toi vers la scolarité de ton établissement pour finaliser ton inscription.' )
+	: ueb_aide_statut( $q->statut, array( $q->type ) );
 
 $titre = $ouvert ? ( 'rejete' === $q->statut ? 'Renvoyer mon reçu' : 'Envoyer mon reçu' ) : 'Reçus du quitus';
 
@@ -31,7 +35,7 @@ ueb_page_debut( array( 'titre' => $titre . ' ' . $q->numero, 'variante' => 'espa
 			<div>
 				<a class="fil fil--clair" href="<?php echo esc_url( add_query_arg( 'vue', 'quitus', ueb_url( 'mon-espace' ) ) ); ?>"><?php echo ueb_icone( 'fleche-g', 16 ); ?>Mes quitus</a>
 				<h1><?php echo esc_html( $titre ); ?></h1>
-				<p class="espace__etab espace__etab--texte"><?php echo $ouvert ? 'Après ton paiement ' . esc_html( ueb_moyens_paiement() ) . ', envoie une photo ou un scan de ton reçu. La scolarité le compare ensuite à l’original.' : 'Ce paiement est validé : tes reçus restent consultables ici.'; ?></p>
+				<p class="espace__etab espace__etab--texte"><?php echo $ouvert ? 'Après ton paiement ' . esc_html( ueb_moyens_paiement() ) . ', envoie une photo ou un scan de ton reçu. ' . esc_html( ucfirst( $service['nom'] ) ) . ' le compare ensuite à l’original.' : 'Ce paiement est validé : tes reçus restent consultables ici.'; ?></p>
 			</div>
 			<div class="ticket-quitus" style="--etab: <?php echo esc_attr( $etab['couleur'] ?? '#13351a' ); ?>">
 				<span class="ticket-quitus__logo"><img src="<?php echo esc_url( ueb_logo_url( $q->etablissement ) ); ?>" alt="" width="30" height="30"></span>
@@ -61,9 +65,9 @@ ueb_page_debut( array( 'titre' => $titre . ' ' . $q->numero, 'variante' => 'espa
 			</nav>
 		<?php endif; ?>
 		<?php if ( 'rejete' === $q->statut && $q->motif_rejet ) : ?>
-			<div class="alerte alerte--erreur"><?php echo ueb_icone( 'alerte', 20 ); ?><p><b>Motif de la scolarité :</b> <?php echo esc_html( $q->motif_rejet ); ?> Envoie un nouveau reçu lisible.</p></div>
+			<div class="alerte alerte--erreur"><?php echo ueb_icone( 'alerte', 20 ); ?><p><b>Motif <?php echo esc_html( $service['de'] ); ?> :</b> <?php echo esc_html( $q->motif_rejet ); ?> Envoie un nouveau reçu lisible.</p></div>
 		<?php elseif ( 'verifie' === $q->statut ) : ?>
-			<div class="alerte alerte--succes"><?php echo ueb_icone( 'check', 20 ); ?><p>Paiement vérifié par la scolarité. Ton inscription pour ce paiement est en règle.</p></div>
+			<div class="alerte alerte--succes"><?php echo ueb_icone( 'check', 20 ); ?><p>Paiement vérifié par <?php echo esc_html( $service['nom'] ); ?>. Ton inscription pour ce paiement est en règle.</p></div>
 		<?php endif; ?>
 
 		<div class="recus-grille<?php echo $ouvert ? '' : ' recus-grille--seule'; ?>">
@@ -107,7 +111,7 @@ ueb_page_debut( array( 'titre' => $titre . ' ' . $q->numero, 'variante' => 'espa
 					<ul class="conseils-photo">
 						<li><span><?php echo ueb_icone( 'appareil', 18 ); ?></span>Le reçu entier, à plat et bien éclairé</li>
 						<li><span><?php echo ueb_icone( 'tampon', 18 ); ?></span>Le montant et le cachet ou la référence lisibles</li>
-						<li><span><?php echo ueb_icone( 'recu', 18 ); ?></span>L’original gardé pour la scolarité</li>
+						<li><span><?php echo ueb_icone( 'recu', 18 ); ?></span>L’original gardé pour <?php echo esc_html( $service['nom'] ); ?></li>
 					</ul>
 				</section>
 			<?php endif; ?>

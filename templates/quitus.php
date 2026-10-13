@@ -291,18 +291,21 @@ ueb_page_debut( array( 'titre' => $edite ? 'Modifier le quitus' : 'Nouveau quitu
 						   calculées et verrouillées. */
 						$erreur_montant = $erreurs['montant'] ?? '';
 						$aide_montant   = $classique ? $aide_classique : ( $formation ? 'Pour une formation professionnelle, indique le montant communiqué par ton établissement.' : 'Choisis une filière pour connaître les modalités de paiement.' );
-						$etat_somme     = null !== $montant_fixe ? ' est-fixe' : ( $classique ? '' : ' est-libre' );
+						/* Sans niveau ni filière, le montant est entièrement bloqué (champ et boutons). */
+						$attente_somme  = ! $formation || '' === (string) ( $v['parcours'] ?? '' );
+						$etat_somme     = $attente_somme ? ' est-attente' : ( null !== $montant_fixe ? ' est-fixe' : ( $classique ? '' : ' est-libre' ) );
 						?>
 						<div class="champ champ-somme<?php echo $erreur_montant ? ' champ--invalide' : ''; ?><?php echo esc_attr( $etat_somme ); ?>" data-somme>
 							<label for="champ-montant">Droits universitaires<span class="sr"> en francs CFA</span></label>
+							<p class="champ__erreur champ-somme__attente" id="champ-montant-attente" data-montant-attente<?php echo $attente_somme ? '' : ' hidden'; ?>><?php echo ueb_icone( 'alerte', 16 ); ?>Choisis d’abord ton niveau et ta filière pour saisir le montant.</p>
 							<div class="champ-somme__boite">
 								<span class="champ-somme__verrou" aria-hidden="true"><?php echo ueb_icone( 'cadenas', 18 ); ?></span>
-								<button type="button" class="champ-somme__pas" data-pas="-1" aria-controls="champ-montant" aria-label="Retirer 5 000 FCFA"><?php echo ueb_icone( 'moins', 18 ); ?></button>
+								<button type="button" class="champ-somme__pas" data-pas="-1"<?php disabled( $attente_somme ); ?> aria-controls="champ-montant" aria-label="Retirer 5 000 FCFA"><?php echo ueb_icone( 'moins', 18 ); ?></button>
 								<input id="champ-montant" name="montant" type="text" inputmode="numeric" autocomplete="off" required data-montant
 									value="<?php echo esc_attr( $val( 'montant' ) ? ueb_formater_montant( $val( 'montant' ) ) : '' ); ?>" placeholder="25 000"
-									aria-describedby="champ-montant-lettres champ-montant-aide<?php echo $erreur_montant ? ' champ-montant-erreur' : ''; ?>"<?php echo $erreur_montant ? ' aria-invalid="true"' : ''; ?><?php echo ( ! $formation || null !== $montant_fixe ) ? ' readonly' : ''; ?>>
+									aria-describedby="<?php echo $attente_somme ? 'champ-montant-attente ' : ''; ?>champ-montant-lettres champ-montant-aide<?php echo $erreur_montant ? ' champ-montant-erreur' : ''; ?>"<?php echo $erreur_montant ? ' aria-invalid="true"' : ''; ?><?php echo ( $attente_somme || null !== $montant_fixe ) ? ' readonly' : ''; ?><?php echo $attente_somme ? ' aria-disabled="true"' : ''; ?>>
 								<span class="champ-somme__devise" aria-hidden="true">FCFA</span>
-								<button type="button" class="champ-somme__pas" data-pas="1" aria-controls="champ-montant" aria-label="Ajouter 5 000 FCFA"><?php echo ueb_icone( 'plus', 18 ); ?></button>
+								<button type="button" class="champ-somme__pas" data-pas="1"<?php disabled( $attente_somme ); ?> aria-controls="champ-montant" aria-label="Ajouter 5 000 FCFA"><?php echo ueb_icone( 'plus', 18 ); ?></button>
 							</div>
 							<p class="champ-somme__lettres" id="champ-montant-lettres" data-montant-lettres></p>
 							<p class="champ__aide" id="champ-montant-aide"><?php echo esc_html( $aide_montant ); ?></p>

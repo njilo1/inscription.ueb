@@ -231,8 +231,6 @@
 .gestion-provisoire__mdp { font: 700 1.5rem/1.2 var(--f-texte) !important; color: var(--encre) !important; user-select: all; }
 .gestion-provisoire .provisoire__copier.est-copie { border-color: var(--g-succes); color: var(--g-succes); }
 
-.gestion-securite { max-width: 640px; }
-.gestion-securite .force-mdp { margin: -.25rem 0 0; }
 
 /* ---------- 7. Connexion ----------
    Cadre flottant sur fond texturé, verre dépoli à droite : l'écran de

@@ -296,7 +296,9 @@ function ueb_action_envoyer_recus() {
 
 	if ( $acceptes ) {
 		$wpdb->update( 'ueb_insc_quitus', array( 'statut' => 'recu_envoye', 'motif_rejet' => null ), array( 'id' => $quitus->id ) );
-		ueb_flash( 'succes', 'Reçu envoyé. Présente l’original à la scolarité de ton établissement pour le faire tamponner.' );
+		ueb_flash( 'succes', 'medicaux' === ( $quitus->type ?? 'droits' )
+			? 'Reçu envoyé. Présente l’original au Centre médico-social pour le faire tamponner.'
+			: 'Reçu envoyé. Présente l’original à la scolarité de ton établissement pour le faire tamponner.' );
 	}
 	if ( $refus ) {
 		ueb_flash( 'erreur', 'Fichier(s) refusé(s) — ' . implode( ' ; ', $refus ) . '.' );
@@ -347,9 +349,10 @@ function ueb_peut_voir_recu( $recu, $compte ) {
 	if ( current_user_can( 'manage_options' ) ) {
 		return true;
 	}
-	/* Agent : capacité d'examiner les quitus ET portée couvrant l'établissement du quitus. */
+	/* Agent : permission sur le type du quitus (droits : scolarité, frais médicaux : CMS)
+	   ET portée couvrant son établissement. */
 	$quitus = ueb_quitus_par_id( (int) $recu->quitus_id );
-	if ( $quitus && ueb_peut( UEB_CAP_GESTION, $quitus->etablissement ) ) {
+	if ( ueb_peut_voir_quitus( $quitus ) ) {
 		return true;
 	}
 	return false;

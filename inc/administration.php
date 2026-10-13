@@ -27,11 +27,11 @@ require_once __DIR__ . '/administration-exports.php';
  *                 dernier élément étant la page courante), actions (HTML déjà échappé),
  *                 visuel (HTML posé à gauche du titre, ex. un logo), apres (HTML
  *                 sous la phrase, ex. des repères) — tous deux déjà échappés ;
- *                 theme (bool, vrai par défaut) : bascule clair / sombre, propre
- *                 à l'administration.
+ *                 theme (bool, faux par défaut) : bascule clair / sombre en plus
+ *                 de celle de la barre du haut.
  */
 function ueb_adm_tete( array $a ) {
-	$a     = array_merge( array( 'titre' => '', 'sous_titre' => '', 'fil' => array(), 'actions' => '', 'visuel' => '', 'apres' => '', 'theme' => true ), $a );
+	$a     = array_merge( array( 'titre' => '', 'sous_titre' => '', 'fil' => array(), 'actions' => '', 'visuel' => '', 'apres' => '', 'theme' => false ), $a ); // bascule clair / sombre : barre du haut (ueb_bo_barre)
 	$annee = ueb_annee_academique();
 	$n     = count( $a['fil'] );
 	?>
@@ -83,6 +83,11 @@ function ueb_adm_bascule_theme() {
 }
 
 /** Bouton-lien de la barre du haut. */
+/** Bouton « Imprimer » des écrans de consultation (assets/js/administration.js). */
+function ueb_bouton_imprimer() {
+	return '<button type="button" class="adm-bouton adm-imprimer" data-imprimer>' . ueb_icone( 'imprimer', 17 ) . 'Imprimer</button>';
+}
+
 function ueb_adm_action( $url, $libelle, $icone, $primaire = false ) {
 	return sprintf(
 		'<a class="adm-bouton%s" href="%s">%s%s</a>',
@@ -360,7 +365,8 @@ function ueb_adm_verifies( array $c ) {
 			</div>
 		</header>
 		<div class="adm-verifies__haut">
-			<p class="adm-verifies__montant"><b><?php echo esc_html( ueb_formater_montant( $c['montant_verifie'] ) ); ?><small>FCFA</small></b><span>encaissés et vérifiés</span></p>
+			<?php /* Les tranches sont celles des droits : le montant aussi, sans les frais médicaux. */ ?>
+			<p class="adm-verifies__montant"><b><?php echo esc_html( ueb_formater_montant( $c['types']['droits']['montant_verifie'] ?? $c['montant_verifie'] ) ); ?><small>FCFA</small></b><span>de droits encaissés et vérifiés</span></p>
 			<?php if ( $n ) : ?>
 				<p class="adm-verifies__constat"><?php echo ueb_icone( 'horloge', 18 ); ?><span><b><?php echo (int) $rien; ?></b> <?php echo 1 < $rien ? 'étudiants n’ont' : 'étudiant n’a'; ?> encore aucun paiement vérifié, sur <?php echo (int) $n; ?>.</span></p>
 			<?php endif; ?>
@@ -393,7 +399,11 @@ function ueb_adm_verifies( array $c ) {
  * l'établissement. Les établissements sans activité sont regroupés en pied.
  * Sous 980 px, chaque ligne devient une carte.
  *
- * @param array $lignes array( sigle, etab, etudiants, niveaux, statuts, quitus, suivi|null, url )
+ * Quitus de droits universitaires et de frais médicaux toujours séparés : une
+ * ligne par type dans la colonne des quitus, une colonne par type dans le tiroir.
+ *
+ * @param array $lignes array( sigle, etab, etudiants, niveaux, statuts, quitus,
+ *                      types (type => statut => nombre), suivi|null, url )
  */
 function ueb_adm_etablissements( array $lignes ) {
 	$statuts = array(
@@ -430,8 +440,7 @@ function ueb_adm_etablissements( array $lignes ) {
 				<tbody>
 					<?php foreach ( $actifs as $l ) :
 						$id      = 'adm-detail-' . sanitize_html_class( strtolower( $l['sigle'] ) );
-						$a_voir  = (int) ( $l['statuts']['recu_envoye'] ?? 0 );
-						$a_corr  = (int) ( $l['statuts']['rejete'] ?? 0 );
+						$par_type = $l['types'] ?? array( 'droits' => $l['statuts'] );
 						$max     = max( 1, (int) ( $l['niveaux'] ? max( $l['niveaux'] ) : 0 ) );
 						$resume  = array();
 						foreach ( $l['niveaux'] as $niv => $v ) {
@@ -448,10 +457,18 @@ function ueb_adm_etablissements( array $lignes ) {
 							</th>
 							<td class="num adm-registre__effectif" data-titre="Étudiants"><b><?php echo esc_html( ueb_formater_montant( $l['etudiants'] ) ); ?></b></td>
 							<td class="adm-registre__quitus" data-titre="Quitus de l’année">
-								<span class="adm-registre__total"><b><?php echo (int) $l['quitus']; ?></b> quitus</span>
-								<?php if ( $a_voir ) : ?><span class="adm-a-traiter adm-a-traiter--recu"><?php echo ueb_icone( 'envoyer', 13 ); ?><?php echo esc_html( $a_voir . ' à vérifier' ); ?></span><?php endif; ?>
-								<?php if ( $a_corr ) : ?><span class="adm-a-traiter adm-a-traiter--rejete"><?php echo ueb_icone( 'alerte', 13 ); ?><?php echo esc_html( $a_corr . ' à corriger' ); ?></span><?php endif; ?>
-								<?php if ( ! $a_voir && ! $a_corr && $l['quitus'] ) : ?><span class="adm-registre__calme">rien à vérifier</span><?php endif; ?>
+								<?php foreach ( $par_type as $t => $st ) :
+									$n      = (int) array_sum( $st );
+									$a_voir = (int) ( $st['recu_envoye'] ?? 0 );
+									$a_corr = (int) ( $st['rejete'] ?? 0 );
+									?>
+									<span class="adm-registre__type">
+										<span class="adm-registre__total"><i class="adm-type-cle adm-type-cle--<?php echo esc_attr( $t ); ?>" aria-hidden="true"></i><b><?php echo (int) $n; ?></b> <?php echo esc_html( 'medicaux' === $t ? 'médicaux' : 'droits' ); ?></span>
+										<?php if ( $a_voir ) : ?><span class="adm-a-traiter adm-a-traiter--recu"><?php echo ueb_icone( 'envoyer', 13 ); ?><?php echo esc_html( $a_voir . ' à vérifier' ); ?></span><?php endif; ?>
+										<?php if ( $a_corr ) : ?><span class="adm-a-traiter adm-a-traiter--rejete"><?php echo ueb_icone( 'alerte', 13 ); ?><?php echo esc_html( $a_corr . ' à corriger' ); ?></span><?php endif; ?>
+										<?php if ( ! $a_voir && ! $a_corr && $n ) : ?><span class="adm-registre__calme">rien à vérifier</span><?php endif; ?>
+									</span>
+								<?php endforeach; ?>
 							</td>
 							<td class="adm-registre__taux" data-titre="Recouvrement">
 								<span class="adm-registre__mesure">
@@ -484,11 +501,16 @@ function ueb_adm_etablissements( array $lignes ) {
 									</section>
 									<section class="adm-detail" aria-label="<?php echo esc_attr( 'Quitus de ' . $l['sigle'] ); ?>">
 										<h3 class="adm-detail__titre">Quitus de l’année</h3>
-										<ul class="adm-detail__liste">
+										<ul class="adm-detail__liste adm-detail__liste--types" style="--types: <?php echo count( $par_type ); ?>">
+											<?php if ( 1 < count( $par_type ) ) : ?>
+												<li class="adm-detail__entete" aria-hidden="true"><span></span><span></span><?php foreach ( array_keys( $par_type ) as $t ) : ?><span><?php echo esc_html( 'medicaux' === $t ? 'Médicaux' : 'Droits' ); ?></span><?php endforeach; ?></li>
+											<?php endif; ?>
 											<?php foreach ( $statuts as $cle => $st ) :
-												$v = (int) ( $l['statuts'][ $cle ] ?? 0 );
+												$total = array_sum( array_map( static fn( $x ) => (int) ( $x[ $cle ] ?? 0 ), $par_type ) );
 												?>
-												<li class="adm-detail__statut adm-detail__statut--<?php echo esc_attr( $cle ); ?><?php echo $v ? '' : ' est-nul'; ?>"><?php echo ueb_icone( $st[1], 15 ); ?><span><?php echo esc_html( $st[0] ); ?></span><b><?php echo (int) $v; ?></b></li>
+												<li class="adm-detail__statut adm-detail__statut--<?php echo esc_attr( $cle ); ?><?php echo $total ? '' : ' est-nul'; ?>"><?php echo ueb_icone( $st[1], 15 ); ?><span><?php echo esc_html( $st[0] ); ?></span>
+													<?php foreach ( $par_type as $t => $x ) : ?><b><span class="sr"><?php echo esc_html( UEB_TYPES_QUITUS[ $t ]['libelle'] . ' : ' ); ?></span><?php echo (int) ( $x[ $cle ] ?? 0 ); ?></b><?php endforeach; ?>
+												</li>
 											<?php endforeach; ?>
 										</ul>
 									</section>

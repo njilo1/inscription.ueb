@@ -1,6 +1,5 @@
 <?php
 /**
- * Template Name: Espace Direction
  *
  * Espace de gestion : rôles dynamiques et comptes du personnel. Même rendu
  * que l'espace de gestion de la préinscription (templates/access-portal.php),
@@ -432,11 +431,11 @@ ueb_page_debut( array(
 								</div>
 							<?php endif; ?>
 
-							<form method="get" action="<?php echo esc_url( ueb_url_direction() ); ?>" class="gestion-filtres">
+							<form method="get" action="<?php echo esc_url( ueb_url_direction() ); ?>" class="gestion-filtres"><?php ueb_champ_espace(); ?>
 								<input type="hidden" name="vue" value="personnel">
 								<label class="gestion-champ gestion-champ--large">
 									<span>Rechercher</span>
-									<span class="gestion-recherche"><?php echo ueb_icone( 'loupe', 16 ); ?><input type="search" name="q" value="<?php echo esc_attr( $recherche ); ?>" placeholder="Nom, identifiant ou e-mail"></span>
+									<span class="gestion-recherche"><?php echo ueb_icone( 'loupe', 16 ); ?><input type="search" name="q" value="<?php echo esc_attr( $recherche ); ?>" placeholder="Nom, identifiant ou e-mail" autocomplete="off"<?php echo ueb_attr_suggestions_liste( array_map( static fn( $u ) => array( $u->display_name ?: $u->user_login, $u->user_login, $u->user_login ), array_filter( ueb_agents(), static fn( $u ) => $totale || array_intersect( ueb_etabs_autorises( $u->ID ), $mes_etabs ) ) ) ); // phpcs:ignore -- échappé ?>></span>
 								</label>
 								<button class="adm-bouton" type="submit">Rechercher</button>
 							</form>
@@ -553,22 +552,13 @@ ueb_page_debut( array(
 
 				<?php else : ?>
 
-					<section class="gestion-panneau gestion-securite" aria-labelledby="titre-mdp-direction">
-						<div class="gestion-panneau__tete">
-							<h2 id="titre-mdp-direction">Modifier mon mot de passe</h2>
-							<p>Tu seras déconnecté ensuite : reconnecte-toi avec le nouveau.</p>
-						</div>
-						<form class="gestion-form" method="post" action="<?php echo esc_url( ueb_url_direction() ); ?>" data-formulaire novalidate>
-							<?php ueb_champ_csrf(); ?>
-							<input type="hidden" name="ueb_action" value="gestion_changer_mdp_personnel">
-							<label>Mot de passe actuel<span class="gestion-mdp"><input id="champ-mot_de_passe_actuel" name="mot_de_passe_actuel" type="password" autocomplete="current-password" required><button type="button" data-voir-mdp aria-label="Afficher le mot de passe" aria-pressed="false"><?php echo ueb_icone( 'oeil', 18 ); ?></button></span></label>
-							<label>Nouveau mot de passe<span class="gestion-mdp"><input id="champ-mot_de_passe_nouveau" name="mot_de_passe_nouveau" type="password" autocomplete="new-password" minlength="8" required><button type="button" data-voir-mdp aria-label="Afficher le mot de passe" aria-pressed="false"><?php echo ueb_icone( 'oeil', 18 ); ?></button></span></label>
-							<label>Confirmation<input id="champ-mot_de_passe_confirmation" name="mot_de_passe_confirmation" type="password" autocomplete="new-password" minlength="8" required data-identique-a="champ-mot_de_passe_nouveau"><span class="gestion-aide" data-identique-message aria-live="polite"></span></label>
-							<div class="force-mdp" data-force-mdp="champ-mot_de_passe_nouveau" data-niveau="0"><div class="force-mdp__jauge" aria-hidden="true"><i></i><i></i><i></i><i></i></div><p class="force-mdp__libelle" aria-live="polite">Solidité : <b data-force-libelle>à saisir</b></p></div>
-							<p class="gestion-aide">Au moins 8 caractères, avec une lettre et un chiffre, différent de tes autres comptes.</p>
-							<div class="gestion-form__actions"><button class="adm-bouton adm-bouton--primaire" type="submit"><?php echo ueb_icone( 'bouclier', 16 ); ?>Changer le mot de passe</button></div>
-						</form>
-					</section>
+					<?php
+					ueb_bloc_mot_de_passe( array(
+						'action'  => ueb_url_direction(),
+						'titre'   => 'Ton accès règle les droits des autres',
+						'conseil' => array( 'bouclier', 'Tu ne donnes jamais plus que tes propres droits', ' : chaque rôle reste dans les limites du tien.' ),
+					) );
+					?>
 
 				<?php endif; ?>
 
