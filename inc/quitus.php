@@ -20,6 +20,35 @@ const UEB_STATUTS_QUITUS = array(
 );
 
 /**
+ * Service qui vérifie un quitus, dans les phrases de l'étudiant : la scolarité
+ * de l'établissement pour les droits universitaires, le Centre médico-social
+ * pour les frais médicaux.
+ *
+ * @return array{nom: string, a: string, de: string} « la scolarité », « à la scolarité », « de la scolarité »
+ */
+function ueb_service_du_quitus( $quitus ) {
+	return 'medicaux' === ( $quitus->type ?? 'droits' )
+		? array( 'nom' => 'le Centre médico-social', 'a' => 'au Centre médico-social', 'de' => 'du Centre médico-social' )
+		: array( 'nom' => 'la scolarité', 'a' => 'à la scolarité', 'de' => 'de la scolarité' );
+}
+
+/**
+ * Aide d'un statut (UEB_STATUTS_QUITUS) dite pour le service qui vérifie les
+ * paiements concernés : $types, les types des quitus dans ce statut.
+ */
+function ueb_aide_statut( $statut, array $types = array( 'droits' ) ) {
+	$aide  = UEB_STATUTS_QUITUS[ $statut ]['aide'] ?? '';
+	$types = array_values( array_unique( $types ) );
+	if ( ! in_array( 'medicaux', $types, true ) ) {
+		return $aide;
+	}
+	$service = in_array( 'droits', $types, true )
+		? array( 'à la scolarité (droits universitaires) et au Centre médico-social (frais médicaux)', 'par la scolarité et le Centre médico-social', 'La scolarité ou le Centre médico-social' )
+		: array( 'au Centre médico-social', 'par le Centre médico-social', 'Le Centre médico-social' );
+	return str_replace( array( 'à la scolarité', 'par la scolarité', 'La scolarité' ), $service, $aide );
+}
+
+/**
  * Libellé d'une tranche payée : la valeur 3 couvre les deux tranches, la
  * valeur 0 signifie « sans tranche » (frais médicaux, paiement unique).
  */

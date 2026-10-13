@@ -43,7 +43,7 @@ $adresse = static fn( array $args = array() ) => add_query_arg( array_merge( arr
 				<p><?php echo esc_html( $tous ? ueb_ipes_pluriel( count( $tous ), 'IPES', 'IPES' ) . ' sous la tutelle de ton établissement.' : 'Aucun IPES sous la tutelle de ton établissement.' ); ?></p>
 			</div>
 			<?php if ( count( $tous ) > 1 || '' !== $recherche ) : ?>
-				<form class="ipes-outils" method="get" action="<?php echo esc_url( ueb_url_scolarite() ); ?>" role="search" aria-label="Filtrer les IPES" data-filtres-direct="scolarite-ipes-resultats">
+				<form class="ipes-outils" method="get" action="<?php echo esc_url( ueb_url_scolarite() ); ?>" role="search" aria-label="Filtrer les IPES" data-filtres-direct="scolarite-ipes-resultats"><?php ueb_champ_espace(); ?>
 					<input type="hidden" name="vue" value="ipes">
 					<label class="ipes-recherche"><span class="sr">Rechercher un IPES</span><?php echo ueb_icone( 'loupe', 17 ); ?><input type="search" name="q" value="<?php echo esc_attr( $recherche ); ?>" placeholder="Sigle ou nom" enterkeyhint="search" autocomplete="off"></label>
 					<button class="adm-bouton" type="submit" data-filtres-bouton><?php echo ueb_icone( 'loupe', 16 ); ?>Rechercher</button>
@@ -186,7 +186,7 @@ $adresse = static fn( array $args = array() ) => add_query_arg( array_merge( arr
 			<section id="etudiants" class="adm-panneau ipes-registre" aria-labelledby="sco-etudiants-titre">
 				<header class="adm-panneau__tete">
 					<div><h2 id="sco-etudiants-titre">Étudiants <?php echo esc_html( $annee['libelle'] ); ?></h2><p><?php echo esc_html( 'Ceux des filières rattachées à la ' . implode( ' et à la ', $vues ) . ', avec leur reversement.' ); ?></p></div>
-					<form class="ipes-outils" method="get" action="<?php echo esc_url( ueb_url_scolarite() ); ?>" role="search" aria-label="Rechercher un étudiant" data-filtres-direct="sco-ipes-etudiants">
+					<form class="ipes-outils" method="get" action="<?php echo esc_url( ueb_url_scolarite() ); ?>" role="search" aria-label="Rechercher un étudiant" data-filtres-direct="sco-ipes-etudiants"><?php ueb_champ_espace(); ?>
 						<input type="hidden" name="vue" value="ipes">
 						<input type="hidden" name="ipes" value="<?php echo (int) $ipes->id; ?>">
 						<label class="ipes-recherche"><span class="sr">Rechercher un étudiant</span><?php echo ueb_icone( 'loupe', 17 ); ?><input type="search" name="q" value="<?php echo esc_attr( $recherche ); ?>" placeholder="Matricule, nom ou prénom" enterkeyhint="search" autocomplete="off"></label>

@@ -96,7 +96,7 @@ $champs_etudiant = static function ( callable $valeur, array $erreurs, $garder =
 						<p><?php echo esc_html( $jauge['etudiants'] ? ueb_ipes_pluriel( $jauge['etudiants'], 'étudiant' ) . ', dont ' . $jauge['libres'] . ' encore à reverser.' : 'Aucun étudiant pour l’instant.' ); ?></p>
 					</div>
 					<?php if ( $jauge['etudiants'] ) : ?>
-						<form class="ipes-outils" method="get" action="<?php echo esc_url( ueb_url_espace_ipes() ); ?>" role="search" aria-label="Filtrer les étudiants" data-filtres-direct="ipes-etudiants-resultats">
+						<form class="ipes-outils" method="get" action="<?php echo esc_url( ueb_url_espace_ipes() ); ?>" role="search" aria-label="Filtrer les étudiants" data-filtres-direct="ipes-etudiants-resultats"><?php ueb_champ_espace(); ?>
 							<input type="hidden" name="vue" value="etudiants">
 							<label class="ipes-recherche"><span class="sr">Rechercher un étudiant</span><?php echo ueb_icone( 'loupe', 17 ); ?><input type="search" name="q" value="<?php echo esc_attr( $filtres['recherche'] ); ?>" placeholder="Matricule, nom ou prénom" enterkeyhint="search" autocomplete="off"></label>
 							<label class="ipes-selecteur"><span class="sr">Filière</span>

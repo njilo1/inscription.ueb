@@ -1,9 +1,9 @@
 <?php
 /**
- * Espace de l'administrateur d'un IPES : accès et page.
+ * Espace de l'administrateur d'un IPES : accès et actions.
  *
- * L'espace est une Page WordPress (gabarit page-ipes.php), créée une fois
- * si elle manque, comme l'espace Direction. Le compte y voit son IPES et
+ * L'espace s'ouvre dans l'Administration (?espace=ipes, écran
+ * templates/espaces/ipes.php ; voir inc/espaces.php). Le compte y voit son IPES et
  * rien d'autre : l'IPES vient toujours de la méta « ueb_ipes_id » du compte
  * connecté, jamais d'un paramètre envoyé par le navigateur.
  *
@@ -12,35 +12,9 @@
 
 defined( 'ABSPATH' ) || exit;
 
-/* ---------- Page de l'espace, créée une fois si elle manque ---------- */
-
-add_action( 'init', function () {
-	if ( get_option( 'ueb_page_ipes_creee' ) || ueb_page_par_gabarit( 'page-ipes.php' ) || ! ueb_insc_verrouiller( 'page_ipes' ) ) {
-		return;
-	}
-	/* Une autre requête a pu créer la Page pendant qu'on attendait. */
-	if ( ueb_insc_option_en_base( 'ueb_page_ipes_creee' ) ) {
-		ueb_insc_deverrouiller( 'page_ipes' );
-		return;
-	}
-	$id = wp_insert_post( array(
-		'post_title'  => 'Espace IPES',
-		'post_name'   => 'espace-ipes',
-		'post_status' => 'publish',
-		'post_type'   => 'page',
-		'meta_input'  => array( '_wp_page_template' => 'page-ipes.php' ),
-	) );
-	if ( $id && ! is_wp_error( $id ) ) {
-		update_option( 'ueb_page_ipes_creee', (int) $id );
-		delete_option( 'ueb_page_page-ipes' ); // recalcul de ueb_page_par_gabarit()
-	}
-	ueb_insc_deverrouiller( 'page_ipes' );
-}, 30 );
-
 /** Adresse de l'espace IPES. */
 function ueb_url_espace_ipes() {
-	$id = ueb_page_par_gabarit( 'page-ipes.php' );
-	return $id ? get_permalink( $id ) : home_url( '/espace-ipes/' );
+	return ueb_url_espace_admin( 'ipes' );
 }
 
 /* La barre d'outils de WordPress ne mène qu'à wp-admin, fermé à ces comptes. */
@@ -168,7 +142,7 @@ function ueb_action_ipes_bordereau_supprimer() {
 /* PDF d'un bordereau depuis l'espace : ?vue=bordereaux&bordereau={id}&pdf=1.
    Seulement un bordereau de l'IPES du compte, et déjà envoyé (numéro officiel). */
 add_action( 'template_redirect', function () {
-	if ( ! isset( $_GET['pdf'], $_GET['bordereau'] ) || ! is_page_template( 'page-ipes.php' ) ) {
+	if ( ! isset( $_GET['pdf'], $_GET['bordereau'] ) || 'ipes' !== ueb_espace_courant() ) {
 		return;
 	}
 	$ipes      = ueb_ipes_du_compte();

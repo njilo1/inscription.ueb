@@ -177,3 +177,31 @@
 }
 @media (prefers-reduced-motion:reduce) { .adm-barre i,.adm-spark__ligne { animation:none; } .adm-periodes a,.adm-spark__lecture { transition:none; } }
 @media print { .adm-pilotage,.adm-periodes,.adm-solde a { display:none; } .adm-kpi,.adm-solde { print-color-adjust:exact; -webkit-print-color-adjust:exact; } .adm-analyse,.adm-secondaire { break-inside:avoid; } .adm-barre i,.adm-spark__ligne { animation:none; } .adm-spark__lecture { display:none; } }
+
+/* ---------- Carte « Reçus en attente de validation » (inc/attente-recus.php) ----------
+   Première carte des tableaux de bord de la scolarité et du CMS : la même forme
+   que les autres, entièrement rouge (tampon « à corriger »), mini-courbe comprise.
+   Le titre est un lien étendu à toute la carte ; la mini-courbe reste explorable
+   au-dessus. attente-recus.js la redessine quand des reçus arrivent. */
+.adm-attente { background:#a3241c; box-shadow:0 12px 24px -15px rgba(92,14,8,.85); transition:translate .25s var(--ease-sortie), box-shadow .25s var(--ease-sortie); }
+.adm-attente:hover { translate:0 -2px; box-shadow:0 18px 30px -16px rgba(92,14,8,.9); }
+.adm-attente:has(.adm-attente__lien:focus-visible) { outline:3px solid var(--or); outline-offset:3px; }
+.adm-attente__lien { color:inherit; text-decoration:none; }
+.adm-attente__lien:hover { color:inherit; }
+.adm-attente__lien:focus-visible { outline:none; }
+.adm-attente__lien::after { content:""; position:absolute; inset:0; z-index:0; border-radius:inherit; }
+.adm-attente .adm-spark__zone { z-index:1; }
+.adm-attente .adm-kpi__note { color:rgba(255,255,255,.88); }
+.adm-attente .adm-spark, .adm-attente .adm-spark-vide { color:#ffd9d3; }
+.adm-attente .adm-spark figcaption b { color:#fff; }
+.adm-attente .adm-spark__base { stroke:rgba(255,255,255,.22); }
+.adm-attente .adm-spark__ligne { stroke:#ffd0c8; }
+.adm-attente .adm-spark stop { stop-color:#ffd0c8; }
+.adm-attente .adm-spark__fin { fill:#fff; }
+.adm-attente .adm-spark__point { stroke:#a3241c; }
+.adm-attente .adm-spark__lecture { border-color:rgba(255,255,255,.3); background:#5c0e08; }
+.adm-attente .adm-spark__dates { color:#f6c4bc; }
+/* Arrivée de reçus pendant que le tableau est ouvert. */
+.adm-attente__nouveaux { display:inline-block; margin-left:.55rem; padding:.12rem .5rem; border-radius:999px; background:#fff; color:#a3241c; font:700 .72rem/1.4 var(--f-texte); letter-spacing:0; vertical-align:.45em; white-space:nowrap; animation:adm-attente-arrivee .45s var(--ease-sortie); }
+@keyframes adm-attente-arrivee { from { scale:.6; opacity:0; } }
+@media (prefers-reduced-motion:reduce) { .adm-attente { transition:none; } .adm-attente__nouveaux { animation:none; } }

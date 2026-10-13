@@ -143,7 +143,7 @@ try {
 	/* ---------- Agent FS, « Voir » seul ---------- */
 	wp_set_current_user( $fs_voir );
 	verifier( ueb_est_scolarite(), 'fs.voir : accès à l’espace scolarité' );
-	verifier( ueb_url_scolarite() === ueb_url_espace_du_compte( $fs_voir ), 'fs.voir : redirigé vers la scolarité après connexion' );
+	verifier( ueb_url_administration() === ueb_url_espace_du_compte( $fs_voir ) && in_array( 'scolarite', ueb_espaces_du_compte( $fs_voir ), true ), 'fs.voir : redirigé vers l’Administration après connexion, avec l’espace scolarité' );
 	verifier( array( 'TEST-PORTEE-A', 'TEST-PORTEE-B' ) === sigles( ueb_ipes_sous_tutelle() ), 'fs.voir : voit les IPES de la FS, pas celui de la FALSH' );
 	verifier( null === ueb_ipes_sous_tutelle_par_id( $c ), 'fs.voir : IPES de la FALSH demandé par son identifiant, refusé' );
 	verifier( array( $b_fs ) === ids( ueb_ipes_bordereaux_pour_tutelle( $b ) ), 'fs.voir : seulement le bordereau adressé à la FS, jamais le brouillon' );

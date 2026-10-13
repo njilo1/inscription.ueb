@@ -59,7 +59,7 @@ $fmt = static fn( $n ) => ueb_formater_montant( (int) $n );
 		</div>
 	</header>
 
-	<form id="etu-form" class="etu-filtres" method="get" action="<?php echo esc_url( $o['url'] ); ?>" role="search" aria-label="Filtrer les étudiants" data-filtres-direct="etudiants-resultats" data-etudiants-filtres>
+	<form id="etu-form" class="etu-filtres" method="get" action="<?php echo esc_url( $o['url'] ); ?>" role="search" aria-label="Filtrer les étudiants" data-filtres-direct="etudiants-resultats" data-etudiants-filtres><?php ueb_champ_espace(); ?>
 		<?php foreach ( $params as $cle => $valeur ) : ?>
 			<input type="hidden" name="<?php echo esc_attr( $cle ); ?>" value="<?php echo esc_attr( $valeur ); ?>">
 		<?php endforeach; ?>

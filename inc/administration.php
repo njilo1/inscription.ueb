@@ -27,11 +27,11 @@ require_once __DIR__ . '/administration-exports.php';
  *                 dernier élément étant la page courante), actions (HTML déjà échappé),
  *                 visuel (HTML posé à gauche du titre, ex. un logo), apres (HTML
  *                 sous la phrase, ex. des repères) — tous deux déjà échappés ;
- *                 theme (bool, vrai par défaut) : bascule clair / sombre, propre
- *                 à l'administration.
+ *                 theme (bool, faux par défaut) : bascule clair / sombre en plus
+ *                 de celle de la barre du haut.
  */
 function ueb_adm_tete( array $a ) {
-	$a     = array_merge( array( 'titre' => '', 'sous_titre' => '', 'fil' => array(), 'actions' => '', 'visuel' => '', 'apres' => '', 'theme' => true ), $a );
+	$a     = array_merge( array( 'titre' => '', 'sous_titre' => '', 'fil' => array(), 'actions' => '', 'visuel' => '', 'apres' => '', 'theme' => false ), $a ); // bascule clair / sombre : barre du haut (ueb_bo_barre)
 	$annee = ueb_annee_academique();
 	$n     = count( $a['fil'] );
 	?>
@@ -83,6 +83,11 @@ function ueb_adm_bascule_theme() {
 }
 
 /** Bouton-lien de la barre du haut. */
+/** Bouton « Imprimer » des écrans de consultation (assets/js/administration.js). */
+function ueb_bouton_imprimer() {
+	return '<button type="button" class="adm-bouton adm-imprimer" data-imprimer>' . ueb_icone( 'imprimer', 17 ) . 'Imprimer</button>';
+}
+
 function ueb_adm_action( $url, $libelle, $icone, $primaire = false ) {
 	return sprintf(
 		'<a class="adm-bouton%s" href="%s">%s%s</a>',

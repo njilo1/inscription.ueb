@@ -24,7 +24,10 @@ function ueb_adm_montant_court( $montant ) {
  *                       échappée ; défaut : l'administration filtrée sur $focus),
  *                       perimetre (bool : choix de l'établissement),
  *                       paiements (URL du suivi des paiements ; '' = sans lien),
- *                       ipes (bool : panneau des IPES sous tutelle).
+ *                       ipes (bool : panneau des IPES sous tutelle),
+ *                       attente (type de reçus, « droits » : la carte rouge des
+ *                       reçus en attente de validation passe en tête, à la place
+ *                       de « Reçus à vérifier » ; inc/attente-recus.php).
  */
 function ueb_adm_dashboard( array $c, array $suivi, array $activite, $focus, $periode, array $options = array() ) {
 	$g       = $suivi['global'];
@@ -33,7 +36,7 @@ function ueb_adm_dashboard( array $c, array $suivi, array $activite, $focus, $pe
 	$propre  = isset( $options['url'] );
 	$url     = $propre ? $options['url'] : static fn( array $args = array() ) => add_query_arg( $args, ueb_url_administration() );
 	$args    = $focus && ! $propre ? array( 'etab' => $focus ) : array();
-	$options = array_merge( array( 'perimetre' => true, 'paiements' => $url( $args + array( 'vue' => 'paiements' ) ), 'ipes' => true ), $options );
+	$options = array_merge( array( 'perimetre' => true, 'paiements' => $url( $args + array( 'vue' => 'paiements' ) ), 'ipes' => true, 'attente' => '' ), $options );
 	$parts   = array(
 		'encaisse'     => array( 'Encaissé', 'var(--dash-foret)' ),
 		'verification' => array( 'En vérification', 'var(--dash-bleu)' ),
@@ -49,6 +52,10 @@ function ueb_adm_dashboard( array $c, array $suivi, array $activite, $focus, $pe
 	);
 	$hist = $suivi['historique'] ?? array( 'jours' => array() );
 	$cles = array( 'etudiants', 'encaisse', 'quitus', 'taux', 'depots' );
+	if ( $options['attente'] ) {
+		array_pop( $cartes );
+		array_pop( $cles );
+	}
 	?>
 	<div class="adm-pilotage">
 		<div class="adm-pilotage__contexte"><span class="adm-pilotage__repere" aria-hidden="true"></span><b>Vue d’ensemble</b><span>Année académique en cours</span></div>
@@ -75,6 +82,7 @@ function ueb_adm_dashboard( array $c, array $suivi, array $activite, $focus, $pe
 		</nav>
 	</div>
 	<div class="adm-kpis" aria-label="Indicateurs de l’année académique">
+		<?php if ( $options['attente'] ) { ueb_carte_attente( $options['attente'], null, $periode ); } ?>
 		<?php foreach ( $cartes as $i => $carte ) : ?>
 			<article class="adm-kpi adm-kpi--<?php echo esc_attr( $carte[4] ); ?>">
 				<div class="adm-kpi__entete"><h2><?php echo esc_html( $carte[0] ); ?></h2><?php echo ueb_icone( $carte[3], 18 ); ?></div>
@@ -154,9 +162,16 @@ function ueb_adm_valeur_historique( $cle, $valeur ) {
 	return 'taux' === $cle ? number_format( $valeur, 1, ',', ' ' ) . ' %' : ueb_formater_montant( $valeur ) . ( 'encaisse' === $cle ? ' FCFA' : '' );
 }
 
-/** Mini-courbe à base zéro, lisible sans JS, avec repère au survol et au clavier. */
-function ueb_adm_mini_courbe( $cle, array $jours, array $valeurs ) {
+/**
+ * Mini-courbe à base zéro, lisible sans JS, avec repère au survol et au clavier.
+ *
+ * @param string $libelle Légende propre (tableau du CMS) ; par défaut celle de la clé.
+ */
+function ueb_adm_mini_courbe( $cle, array $jours, array $valeurs, $libelle = '' ) {
 	$libelles = array( 'etudiants' => 'Étudiants · cumul', 'encaisse' => 'Encaissé · cumul', 'quitus' => 'Quitus · cumul', 'taux' => 'Taux de recouvrement', 'depots' => 'Quitus avec reçu déposé / jour' );
+	if ( $libelle ) {
+		$libelles[ $cle ] = $libelle;
+	}
 	$n = min( count( $jours ), count( $valeurs ) );
 	if ( $n < 2 ) {
 		echo '<p class="adm-spark-vide">Historique disponible dès deux jours.</p>';
@@ -227,10 +242,10 @@ function ueb_adm_donnees_courbes( array $historique ) {
 }
 
 /** Situation des quitus : total de l'année et barres par statut. */
-function ueb_adm_statistiques( array $c ) {
+function ueb_adm_statistiques( array $c, $sous_titre = 'Droits universitaires et frais médicaux' ) {
 	?>
 	<section class="adm-panneau adm-statistiques" aria-labelledby="adm-statistiques-titre">
-		<header class="adm-panneau__tete"><div><h2 id="adm-statistiques-titre">Situation des quitus</h2><p>Droits universitaires et frais médicaux</p></div></header>
+		<header class="adm-panneau__tete"><div><h2 id="adm-statistiques-titre">Situation des quitus</h2><p><?php echo esc_html( $sous_titre ); ?></p></div></header>
 		<p class="adm-statistiques__total"><b><?php echo esc_html( ueb_formater_montant( $c['quitus'] ) ); ?></b><span>quitus cette année</span></p>
 		<ul class="adm-barres-statut">
 			<?php foreach ( array(

@@ -56,7 +56,7 @@ function ueb_adm_exports_menu( $focus ) {
 
 /* Téléchargement : ?vue=paiements&export=pdf|docx|xlsx[&etab=FS]&jeton=… */
 add_action( 'template_redirect', function () {
-	if ( ! isset( $_GET['export'] ) || ! is_page_template( 'page-administration.php' ) || 'etudiants' === sanitize_key( $_GET['vue'] ?? '' ) ) { // phpcs:ignore -- l'export de la liste des étudiants a son propre déclencheur (inc/etudiants.php)
+	if ( ! isset( $_GET['export'] ) || 'admin' !== ueb_espace_courant() || 'etudiants' === sanitize_key( $_GET['vue'] ?? '' ) ) { // phpcs:ignore -- l'export de la liste des étudiants a son propre déclencheur (inc/etudiants.php)
 		return;
 	}
 	if ( ! ueb_est_admin_ueb() ) {

@@ -498,7 +498,8 @@ add_action( 'init', function () {
 /** Vrai si ce compte administre un IPES. */
 function ueb_est_admin_ipes( $user_id ) {
 	$user = get_userdata( $user_id );
-	return $user && in_array( UEB_ROLE_ADMIN_IPES, (array) $user->roles, true );
+	/* Profil choisi par un super-administrateur : inc/profil-simule.php. */
+	return (bool) apply_filters( 'ueb_est_admin_ipes', $user && in_array( UEB_ROLE_ADMIN_IPES, (array) $user->roles, true ), (int) $user_id );
 }
 
 /**

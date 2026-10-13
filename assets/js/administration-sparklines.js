@@ -1,7 +1,8 @@
-/* Tracés et valeurs existent côté serveur ; ce script ajoute leur exploration. */
+/* Tracés et valeurs existent côté serveur ; ce script ajoute leur exploration.
+   uebActiverMiniCourbe() sert aussi aux cartes redessinées en direct (attente-recus.js). */
 (() => {
  "use strict";
- document.querySelectorAll('[data-mini-courbe]').forEach((figure) => {
+ const activer = (figure) => {
   const data = JSON.parse(figure.dataset.miniCourbe);
   const zone = figure.querySelector('.adm-spark__zone');
   const output = figure.querySelector('output');
@@ -36,5 +37,7 @@
    event.preventDefault();
    afficher(event.key === 'Home' ? 0 : event.key === 'End' ? data.dates.length - 1 : index + (event.key === 'ArrowRight' ? 1 : -1));
   });
- });
+ };
+ document.querySelectorAll('[data-mini-courbe]').forEach(activer);
+ window.uebActiverMiniCourbe = activer;
 })();

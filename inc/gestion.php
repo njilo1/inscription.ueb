@@ -20,11 +20,76 @@ function ueb_est_gestionnaire() {
 	return ueb_peut( UEB_CAP_GESTION );
 }
 
-/** Décision sur un quitus : consulter ET décider ; l'établissement est contrôlé ensuite. */
-function ueb_exiger_gestionnaire() {
-	if ( ! ueb_peut( UEB_CAP_GESTION ) || ! ueb_peut( 'ueb_decider_quitus' ) ) {
-		wp_die( 'Action réservée aux comptes autorisés à rendre les décisions.', 'Accès refusé', array( 'response' => 403 ) );
+/* ---------- Qui voit et qui valide quel reçu ----------
+   Chaque étudiant envoie deux reçus : celui des droits universitaires va à la
+   scolarité (ueb_gerer_quitus, ueb_decider_quitus), celui des frais médicaux
+   au CMS (ueb_voir_cms, ueb_decider_cms). Chacun ne voit et ne valide que les
+   siens, dans sa portée ; l'administrateur voit tout. */
+
+/** Permissions de consultation et de décision de chaque type de quitus. */
+const UEB_PERMISSIONS_TYPE_QUITUS = array(
+	'droits'   => array( 'ueb_gerer_quitus', 'ueb_decider_quitus' ), // UEB_CAP_GESTION (inc/roles.php)
+	'medicaux' => array( 'ueb_voir_cms', 'ueb_decider_cms' ),
+);
+
+/**
+ * Type de reçus affiché par l'onglet ouvert : « droits » (Scolarité → Reçus)
+ * ou « medicaux » (CMS → Reçus CMS), jamais les deux mélangés. Celui de
+ * l'adresse (?type=) s'il est visible, sinon le seul type que le compte voit,
+ * sinon les droits universitaires.
+ */
+function ueb_type_recus_courant() {
+	$recus    = isset( $_GET['quitus'] ) || 'quitus' === sanitize_key( $_GET['vue'] ?? '' ); // phpcs:ignore -- lecture seule
+	$visibles = $recus ? ueb_types_quitus_visibles() : ueb_types_stats_visibles();
+	$demande  = sanitize_key( $_GET['type'] ?? '' ); // phpcs:ignore -- lecture seule
+	if ( in_array( $demande, $visibles, true ) ) {
+		return $demande;
 	}
+	return 1 === count( $visibles ) ? $visibles[0] : 'droits';
+}
+
+/* Statistiques de chaque type de quitus, en lecture seule (sans les reçus). */
+const UEB_STATS_TYPE_QUITUS = array(
+	'droits'   => 'ueb_voir_stats',
+	'medicaux' => 'ueb_voir_stats_cms',
+);
+
+/**
+ * Types dont le compte voit les statistiques (tableau de bord) : ceux dont il
+ * consulte les reçus, plus ceux de ses permissions de statistiques.
+ */
+function ueb_types_stats_visibles( $etab = null ) {
+	return array_keys( array_filter( UEB_PERMISSIONS_TYPE_QUITUS, static fn( $p, $type ) => ueb_peut( $p[0], $etab ) || ueb_peut( UEB_STATS_TYPE_QUITUS[ $type ], $etab ), ARRAY_FILTER_USE_BOTH ) );
+}
+
+/** Types de quitus que le compte consulte (« droits », « medicaux »). */
+function ueb_types_quitus_visibles( $etab = null ) {
+	return array_keys( array_filter( UEB_PERMISSIONS_TYPE_QUITUS, static fn( $p ) => ueb_peut( $p[0], $etab ) ) );
+}
+
+function ueb_type_du_quitus( $quitus ) {
+	return 'medicaux' === ( $quitus->type ?? 'droits' ) ? 'medicaux' : 'droits';
+}
+
+/** Le compte peut-il consulter ce quitus (son type et son établissement) ? */
+function ueb_peut_voir_quitus( $quitus ) {
+	return $quitus && ueb_peut( UEB_PERMISSIONS_TYPE_QUITUS[ ueb_type_du_quitus( $quitus ) ][0], $quitus->etablissement );
+}
+
+/** Le compte peut-il valider ou renvoyer le reçu de ce quitus ? */
+function ueb_peut_decider_quitus( $quitus ) {
+	$p = UEB_PERMISSIONS_TYPE_QUITUS[ ueb_type_du_quitus( $quitus ) ];
+	return $quitus && ueb_peut( $p[0], $quitus->etablissement ) && ueb_peut( $p[1], $quitus->etablissement );
+}
+
+/** Décision sur un quitus : consulter ET décider au moins un type ; le quitus est contrôlé ensuite. */
+function ueb_exiger_gestionnaire() {
+	foreach ( UEB_PERMISSIONS_TYPE_QUITUS as $p ) {
+		if ( ueb_peut( $p[0] ) && ueb_peut( $p[1] ) ) {
+			return;
+		}
+	}
+	wp_die( 'Action réservée aux comptes autorisés à rendre les décisions.', 'Accès refusé', array( 'response' => 403 ) );
 }
 
 function ueb_exiger_admin() {
@@ -34,8 +99,16 @@ function ueb_exiger_admin() {
 }
 
 /** Accès aux opérations réservées à la cellule informatique. */
+/** Réinitialisation d'un mot de passe étudiant : gestion des comptes, ou la seule réinitialisation (cellule). */
+function ueb_exiger_reinit() {
+	if ( ! ( ueb_peut( UEB_CAP_COMPTES ) || ueb_peut( 'ueb_reinit_mdp' ) ) || ( ! ueb_est_admin_ueb() && ueb_peut( 'ueb_creer_agents' ) ) ) {
+		wp_die( 'Action réservée aux comptes autorisés à réinitialiser les mots de passe des étudiants.', 'Accès refusé', array( 'response' => 403 ) );
+	}
+}
+
 function ueb_exiger_comptes() {
-	if ( ! ueb_peut( UEB_CAP_COMPTES ) ) {
+	/* La scolarité garde la permission pour la déléguer à sa cellule, sans s'en servir (inc/espaces.php). */
+	if ( ! ueb_peut( UEB_CAP_COMPTES ) || ( ! ueb_est_admin_ueb() && ueb_peut( 'ueb_creer_agents' ) ) ) {
 		wp_die( 'Action réservée aux comptes autorisés à gérer les comptes étudiants.', 'Accès refusé', array( 'response' => 403 ) );
 	}
 }
@@ -98,11 +171,16 @@ function ueb_exiger_etab( $sigle ) {
  * Nombre de quitus de l'année par statut et par établissement.
  * $etab limite le calcul à un établissement (agent de scolarité).
  */
-function ueb_gestion_stats( $annee_code, $etab = '' ) {
+function ueb_gestion_stats( $annee_code, $etab = '', $type = '' ) {
 	global $wpdb;
+	$types  = ueb_types_stats_visibles();
+	/* $type : un seul type de reçus (le tableau de bord de la scolarité compte les droits). */
+	if ( $type && in_array( $type, $types, true ) ) {
+		$types = array( $type );
+	}
 	$sql    = 'SELECT etablissement, statut, COUNT(*) AS n, SUM(montant) AS total
-		   FROM ueb_insc_quitus WHERE annee_academique = %s';
-	$params = array( $annee_code );
+		   FROM ueb_insc_quitus WHERE annee_academique = %s AND type IN (' . ( $types ? implode( ',', array_fill( 0, count( $types ), '%s' ) ) : "''" ) . ')';
+	$params = array_merge( array( $annee_code ), $types );
 	if ( $etab ) {
 		$sql     .= ' AND etablissement = %s';
 		$params[] = $etab;
@@ -564,24 +642,47 @@ function ueb_suivi_series_indicateurs( array $lignes, array $etudiants, array $d
 }
 
 /**
- * @return array{lignes: array, total: int, pages: int, page: int}
+ * Portée d'une lecture des quitus : l'année, et l'établissement de l'agent
+ * de scolarité quel que soit le filtre demandé.
+ *
+ * @return array{0: string, 1: array} Conditions SQL sur l'alias q, et leurs paramètres.
  */
-function ueb_gestion_liste_quitus( array $filtres, $par_page = 30 ) {
-	global $wpdb;
-	/* Un agent de scolarité ne voit que son établissement, quel que soit le filtre demandé. */
+function ueb_gestion_portee_sql( array $filtres ) {
 	$limite = ueb_etab_agent();
 	if ( $limite ) {
 		$filtres['etab'] = $limite;
 	}
 	$where  = array( 'q.annee_academique = %s' );
+	$params = array( $filtres['annee'] );
+	/* « stats » : comptages des tableaux de bord, ouverts aussi aux permissions de statistiques. */
+	$types  = empty( $filtres['stats'] ) ? ueb_types_quitus_visibles() : ueb_types_stats_visibles();
+	/* Filtre « type » (onglet Reçus CMS) : un seul type, parmi ceux que le compte voit. */
+	if ( ! empty( $filtres['type'] ) && in_array( $filtres['type'], $types, true ) ) {
+		$types = array( $filtres['type'] );
+	}
+	if ( ! $types ) {
+		$where[] = '1 = 0';
+	} elseif ( count( $types ) < count( UEB_PERMISSIONS_TYPE_QUITUS ) ) {
+		$where[]  = 'q.type = %s';
+		$params[] = $types[0];
+	}
 	if ( UEB_AUCUN_ETAB === $limite ) {
 		$where[] = '1 = 0'; // aucune portée : aucune ligne, jamais « tous »
 	}
-	$params = array( $filtres['annee'] );
 	if ( ! empty( $filtres['etab'] ) && ueb_etablissement( $filtres['etab'] ) ) {
 		$where[]  = 'q.etablissement = %s';
 		$params[] = $filtres['etab'];
 	}
+	return array( implode( ' AND ', $where ), $params );
+}
+
+/**
+ * @return array{lignes: array, total: int, pages: int, page: int}
+ */
+function ueb_gestion_liste_quitus( array $filtres, $par_page = 30 ) {
+	global $wpdb;
+	list( $portee, $params ) = ueb_gestion_portee_sql( $filtres );
+	$where = array( $portee );
 	if ( ! empty( $filtres['statut'] ) && isset( UEB_STATUTS_QUITUS[ $filtres['statut'] ] ) ) {
 		$where[]  = 'q.statut = %s';
 		$params[] = $filtres['statut'];
@@ -604,6 +705,217 @@ function ueb_gestion_liste_quitus( array $filtres, $par_page = 30 ) {
 		array_merge( $params, array( $par_page, ( $page - 1 ) * $par_page ) )
 	) );
 	return compact( 'lignes', 'total', 'pages', 'page' );
+}
+
+/* ---------- Dossiers : droits universitaires et frais médicaux ensemble ----------
+   Le quitus médical d'un premier paiement est rattaché au quitus des droits
+   (quitus_droits_id) : la scolarité les traite comme un seul dossier, sur une
+   ligne du registre et une seule fiche. Chaque paiement garde son statut. */
+
+/** Clé du dossier d'un quitus (alias q) : l'id des droits pour un quitus médical rattaché. */
+const UEB_SQL_CLE_DOSSIER = "(CASE WHEN q.type = 'medicaux' AND q.quitus_droits_id IS NOT NULL THEN q.quitus_droits_id ELSE q.id END)";
+
+/** Statut d'un dossier vu de la scolarité : ce qui attend une action passe d'abord. */
+const UEB_SQL_STATUT_DOSSIER = "(CASE WHEN SUM(q.statut = 'recu_envoye') > 0 THEN 'recu_envoye' WHEN SUM(q.statut = 'rejete') > 0 THEN 'rejete' WHEN SUM(q.statut = 'genere') > 0 THEN 'genere' ELSE 'verifie' END)";
+
+/**
+ * Paiements d'un dossier, droits d'abord : le quitus lui-même et le quitus qui
+ * lui est rattaché (frais médicaux d'un premier paiement, ou droits d'un
+ * quitus médical).
+ *
+ * @return array<int, object>
+ */
+function ueb_gestion_dossier( $quitus ) {
+	$principal = $quitus;
+	if ( 'medicaux' === ( $quitus->type ?? 'droits' ) && ! empty( $quitus->quitus_droits_id ) ) {
+		$parent = ueb_quitus_par_id( (int) $quitus->quitus_droits_id );
+		if ( $parent && 'droits' === $parent->type && (int) $parent->compte_id === (int) $quitus->compte_id && $parent->annee_academique === $quitus->annee_academique ) {
+			$principal = $parent;
+		}
+	}
+	$medical = 'droits' === ( $principal->type ?? 'droits' ) ? ueb_medical_du_dossier( $principal ) : null;
+	return array_values( array_filter( array( $principal, $medical ) ) );
+}
+
+/** Filtre « Paiements » du registre : conditions sur le dossier entier. */
+const UEB_FILTRES_PAIEMENTS = array(
+	'du_fm' => array( 'DU et FM', "SUM(q.type = 'droits') > 0 AND SUM(q.type = 'medicaux') > 0" ),
+	'du'    => array( 'DU seuls', "SUM(q.type = 'medicaux') = 0" ),
+	'fm'    => array( 'FM seuls', "SUM(q.type = 'droits') = 0" ),
+);
+
+/** Filtres du registre portant sur un quitus : clé du filtre => colonne. */
+const UEB_FILTRES_QUITUS = array(
+	'filiere' => 'q.departement',
+	'niveau'  => 'q.parcours',
+	'moyen'   => 'q.moyen_paiement',
+);
+
+/**
+ * Sélection des dossiers du registre : la portée, puis les filtres. Ceux qui
+ * portent sur un quitus (recherche, filière, niveau, moyen de paiement)
+ * retiennent tout son dossier ; le type de paiements et le statut portent sur
+ * le dossier entier (HAVING).
+ *
+ * @return array{0: string, 1: array, 2: string, 3: array} WHERE et ses valeurs, HAVING et ses valeurs.
+ */
+function ueb_gestion_selection_dossiers( array $filtres, $avec_statut = true ) {
+	global $wpdb;
+	list( $portee, $params ) = ueb_gestion_portee_sql( $filtres );
+	$cle        = UEB_SQL_CLE_DOSSIER;
+	$conditions = array();
+	$valeurs    = array();
+	if ( ! empty( $filtres['q'] ) ) {
+		$like         = '%' . $wpdb->esc_like( $filtres['q'] ) . '%';
+		$conditions[] = '( q.numero LIKE %s OR q.identifiant LIKE %s OR q.nom LIKE %s OR q.prenom LIKE %s )';
+		array_push( $valeurs, $like, $like, $like, $like );
+	}
+	foreach ( UEB_FILTRES_QUITUS as $filtre => $colonne ) {
+		if ( isset( $filtres[ $filtre ] ) && '' !== $filtres[ $filtre ] ) {
+			$conditions[] = "$colonne = %s";
+			$valeurs[]    = $filtres[ $filtre ];
+		}
+	}
+	$where = $portee;
+	if ( $conditions ) {
+		$where .= " AND $cle IN ( SELECT $cle FROM ueb_insc_quitus q WHERE $portee AND " . implode( ' AND ', $conditions ) . ' )';
+		$params = array_merge( $params, $params, $valeurs );
+	}
+	$ayant         = array();
+	$valeurs_ayant = array();
+	if ( isset( UEB_FILTRES_PAIEMENTS[ $filtres['paiements'] ?? '' ] ) ) {
+		$ayant[] = UEB_FILTRES_PAIEMENTS[ $filtres['paiements'] ][1];
+	}
+	if ( $avec_statut && ! empty( $filtres['statut'] ) && isset( UEB_STATUTS_QUITUS[ $filtres['statut'] ] ) ) {
+		$ayant[]         = UEB_SQL_STATUT_DOSSIER . ' = %s';
+		$valeurs_ayant[] = $filtres['statut'];
+	}
+	return array( $where, $params, $ayant ? 'HAVING ' . implode( ' AND ', $ayant ) : '', $valeurs_ayant );
+}
+
+/**
+ * Valeurs proposées par les filtres du registre : celles présentes dans les
+ * quitus de la portée (les anciennes saisies libres comprises).
+ *
+ * @return array{filiere: string[], niveau: string[], moyen: string[]}
+ */
+function ueb_gestion_options_dossiers( array $filtres ) {
+	global $wpdb;
+	list( $portee, $params ) = ueb_gestion_portee_sql( $filtres );
+	$options = array();
+	foreach ( UEB_FILTRES_QUITUS as $filtre => $colonne ) {
+		$options[ $filtre ] = $wpdb->get_col( $wpdb->prepare( "SELECT DISTINCT $colonne FROM ueb_insc_quitus q WHERE $portee AND $colonne <> '' ORDER BY $colonne", $params ) ); // phpcs:ignore -- colonne constante
+	}
+	return $options;
+}
+
+/**
+ * Registre de la scolarité : une ligne par dossier, selon les filtres de
+ * ueb_gestion_selection_dossiers().
+ *
+ * @return array{lignes: array<int, object>, total: int, pages: int, page: int}
+ *         Chaque ligne : cle, statut, paiements (quitus avec telephone et nb_recus), principal.
+ */
+function ueb_gestion_liste_dossiers( array $filtres, $par_page = 30 ) {
+	global $wpdb;
+	list( $where, $params, $ayant, $valeurs_ayant ) = ueb_gestion_selection_dossiers( $filtres );
+	$params  = array_merge( $params, $valeurs_ayant );
+	$cle     = UEB_SQL_CLE_DOSSIER;
+	$statut  = UEB_SQL_STATUT_DOSSIER;
+	$groupes = "SELECT $cle AS cle, $statut AS statut_dossier, MAX(q.date_modification) AS maj
+		FROM ueb_insc_quitus q WHERE $where GROUP BY cle $ayant";
+	$total = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM ( $groupes ) d", $params ) ); // phpcs:ignore -- assemblé ci-dessus, valeurs préparées
+	$pages = max( 1, (int) ceil( $total / $par_page ) );
+	$page  = min( max( 1, (int) ( $filtres['page'] ?? 1 ) ), $pages );
+	$cles  = $wpdb->get_results( $wpdb->prepare(
+		"SELECT * FROM ( $groupes ) d ORDER BY FIELD(d.statut_dossier, 'recu_envoye', 'rejete', 'genere', 'verifie'), d.maj DESC, d.cle DESC LIMIT %d OFFSET %d", // phpcs:ignore
+		array_merge( $params, array( $par_page, ( $page - 1 ) * $par_page ) )
+	) );
+	$lignes = array();
+	if ( $cles ) {
+		list( $portee_bis, $params_bis ) = ueb_gestion_portee_sql( $filtres );
+		$ids      = implode( ',', array_map( static fn( $c ) => (int) $c->cle, $cles ) );
+		$quitus   = $wpdb->get_results( $wpdb->prepare(
+			"SELECT q.*, c.telephone, $cle AS cle, (SELECT COUNT(*) FROM ueb_insc_recus r WHERE r.quitus_id = q.id) AS nb_recus
+			   FROM ueb_insc_quitus q LEFT JOIN ueb_insc_comptes c ON c.id = q.compte_id
+			  WHERE $portee_bis AND $cle IN ( $ids )", // phpcs:ignore -- ids entiers
+			$params_bis
+		) );
+		foreach ( $cles as $c ) {
+			$lignes[ (int) $c->cle ] = (object) array( 'cle' => (int) $c->cle, 'statut' => $c->statut_dossier, 'paiements' => array() );
+		}
+		foreach ( $quitus as $q ) {
+			$lignes[ (int) $q->cle ]->paiements[] = $q;
+		}
+		foreach ( $lignes as $ligne ) {
+			usort( $ligne->paiements, static fn( $a, $b ) => array( 'medicaux' === $a->type, (int) $a->id ) <=> array( 'medicaux' === $b->type, (int) $b->id ) );
+			$ligne->principal = $ligne->paiements[0] ?? null;
+		}
+		$lignes = array_values( array_filter( $lignes, static fn( $l ) => $l->principal ) );
+	}
+	return compact( 'lignes', 'total', 'pages', 'page' );
+}
+
+/**
+ * Compteurs du registre : dossiers par statut selon les filtres en cours
+ * (hors statut), et, pour l'alerte, les validations en attente dans toute
+ * la portée avec le reçu qui attend depuis le plus longtemps.
+ *
+ * @return array{total: int, statuts: array<string, int>, attente: object, plus_ancien: object|null}
+ */
+function ueb_gestion_stats_dossiers( array $filtres ) {
+	global $wpdb;
+	list( $portee, $params ) = ueb_gestion_portee_sql( $filtres );
+	list( $where, $params_selection, $ayant, $valeurs_ayant ) = ueb_gestion_selection_dossiers( $filtres, false );
+	$cle    = UEB_SQL_CLE_DOSSIER;
+	$statut = UEB_SQL_STATUT_DOSSIER;
+	$stats  = array( 'total' => 0, 'statuts' => array_fill_keys( array_keys( UEB_STATUTS_QUITUS ), 0 ) );
+	$lignes = $wpdb->get_results( $wpdb->prepare(
+		"SELECT statut_dossier, COUNT(*) AS n FROM ( SELECT $statut AS statut_dossier FROM ueb_insc_quitus q WHERE $where GROUP BY $cle $ayant ) d GROUP BY statut_dossier", // phpcs:ignore -- assemblé ci-dessus
+		array_merge( $params_selection, $valeurs_ayant )
+	) );
+	foreach ( $lignes as $l ) {
+		$stats['statuts'][ $l->statut_dossier ] = (int) $l->n;
+		$stats['total']                        += (int) $l->n;
+	}
+	$stats['attente'] = $wpdb->get_row( $wpdb->prepare(
+		"SELECT COUNT(*) AS paiements, COUNT(DISTINCT $cle) AS dossiers FROM ueb_insc_quitus q WHERE $portee AND q.statut = 'recu_envoye'", // phpcs:ignore
+		$params
+	) );
+	$stats['plus_ancien'] = $wpdb->get_row( $wpdb->prepare(
+		"SELECT q.id, q.date_modification FROM ueb_insc_quitus q WHERE $portee AND q.statut = 'recu_envoye' ORDER BY q.date_modification ASC, q.id ASC LIMIT 1", // phpcs:ignore
+		$params
+	) );
+	return $stats;
+}
+
+/**
+ * Dossier suivant à vérifier depuis la fiche d'un dossier : même
+ * établissement, même année, le reçu le plus ancien en attente d'abord.
+ *
+ * @param object $quitus Quitus principal du dossier affiché.
+ * @return array{id: int, reste: int}|null reste = dossiers en attente hors celui-ci.
+ */
+function ueb_gestion_quitus_suivant( $quitus ) {
+	global $wpdb;
+	$cle   = UEB_SQL_CLE_DOSSIER;
+	$where = $wpdb->prepare(
+		"q.statut = 'recu_envoye' AND q.annee_academique = %s AND q.etablissement = %s AND $cle <> %d", // phpcs:ignore -- expression constante
+		$quitus->annee_academique,
+		$quitus->etablissement,
+		$quitus->id
+	);
+	$types = array_values( array_intersect( ueb_types_quitus_visibles( $quitus->etablissement ), array( ueb_type_recus_courant() ) ) );
+	if ( ! $types ) {
+		return null;
+	}
+	$where .= $wpdb->prepare( ' AND q.type IN (' . implode( ',', array_fill( 0, count( $types ), '%s' ) ) . ')', $types ); // phpcs:ignore -- marqueurs générés
+	$reste = (int) $wpdb->get_var( "SELECT COUNT(DISTINCT $cle) FROM ueb_insc_quitus q WHERE $where" ); // phpcs:ignore -- préparé ci-dessus
+	if ( ! $reste ) {
+		return null;
+	}
+	$id = (int) $wpdb->get_var( "SELECT q.id FROM ueb_insc_quitus q WHERE $where ORDER BY q.date_modification ASC, q.id ASC LIMIT 1" ); // phpcs:ignore
+	return array( 'id' => $id, 'reste' => $reste );
 }
 
 /**
@@ -695,6 +1007,10 @@ function ueb_action_gestion_statut() {
 	}
 	ueb_exiger_etab( $quitus->etablissement );
 	$retour = add_query_arg( 'quitus', $quitus->id, ueb_url_scolarite() );
+	if ( ! ueb_peut_decider_quitus( $quitus ) ) {
+		ueb_flash( 'erreur', 'medicaux' === ueb_type_du_quitus( $quitus ) ? 'Le reçu des frais médicaux est validé par le CMS.' : 'Le reçu des droits universitaires est validé par la scolarité.' );
+		ueb_rediriger( $retour );
+	}
 	/* Rien à vérifier tant que l'étudiant n'a envoyé aucun reçu. */
 	if ( 'verifie' === $statut && ! ueb_recus_du_quitus( $quitus->id ) ) {
 		ueb_flash( 'erreur', "Aucun reçu envoyé pour ce quitus : le paiement ne peut pas encore être vérifié." );
@@ -719,6 +1035,64 @@ function ueb_action_gestion_statut() {
 	ueb_rediriger( $retour );
 }
 
+/**
+ * Validation depuis le registre : chaque paiement du dossier dont le reçu
+ * attend la vérification (droits universitaires et frais médicaux d'un même
+ * étudiant en un geste). Les paiements sans reçu, déjà vérifiés ou renvoyés
+ * à l'étudiant ne bougent pas. Retour au registre tel qu'il était affiché.
+ */
+function ueb_action_gestion_valider() {
+	global $wpdb;
+	ueb_exiger_gestionnaire();
+	$quitus = ueb_quitus_par_id( (int) ( $_POST['quitus_id'] ?? 0 ) );
+	if ( ! $quitus ) {
+		ueb_rediriger( ueb_url_scolarite() );
+	}
+	ueb_exiger_etab( $quitus->etablissement );
+	$retour_post = (array) wp_unslash( $_POST['retour'] ?? array() );
+	$texte       = static fn( $cle ) => sanitize_text_field( (string) ( $retour_post[ $cle ] ?? '' ) ) ?: null;
+	$filtre      = sanitize_key( $retour_post['statut'] ?? '' );
+	$paiements   = sanitize_key( $retour_post['paiements'] ?? '' );
+	$retour      = add_query_arg( array_filter( array(
+		'vue'       => 'quitus',
+		'statut'    => isset( UEB_STATUTS_QUITUS[ $filtre ] ) ? $filtre : null,
+		'paiements' => isset( UEB_FILTRES_PAIEMENTS[ $paiements ] ) ? $paiements : null,
+		'type'      => in_array( sanitize_key( $retour_post['type'] ?? '' ), array_keys( UEB_PERMISSIONS_TYPE_QUITUS ), true ) ? sanitize_key( $retour_post['type'] ) : null,
+		'q'         => $texte( 'q' ),
+		'filiere'   => $texte( 'filiere' ),
+		'niveau'    => $texte( 'niveau' ),
+		'moyen'     => $texte( 'moyen' ),
+		'p'         => max( 0, (int) ( $retour_post['p'] ?? 0 ) ) ?: null,
+	) ), ueb_url_scolarite() );
+
+	/* Le registre met en évidence la ligne du dossier validé. */
+	$paiements = ueb_gestion_dossier( $quitus );
+	$retour   .= '#dossier-' . (int) $paiements[0]->id;
+	$valides   = array();
+	foreach ( $paiements as $q ) {
+		if ( 'recu_envoye' !== $q->statut || ! ueb_peut_gerer_etab( $q->etablissement ) || ! ueb_peut_decider_quitus( $q ) || ! ueb_recus_du_quitus( $q->id ) ) {
+			continue;
+		}
+		/* La condition sur le statut écarte une décision prise entre-temps sur la fiche. */
+		$fait = $wpdb->update( 'ueb_insc_quitus', array(
+			'statut'            => 'verifie',
+			'motif_rejet'       => null,
+			'verifie_par'       => get_current_user_id(),
+			'date_verification' => current_time( 'mysql' ),
+		), array( 'id' => $q->id, 'statut' => 'recu_envoye' ) );
+		if ( $fait ) {
+			$valides[] = $q;
+		}
+	}
+	if ( ! $valides ) {
+		ueb_flash( 'info', 'Rien à valider dans ce dossier : aucun reçu n’attend la vérification.' );
+		ueb_rediriger( $retour );
+	}
+	$quoi = implode( ' et ', array_map( static fn( $q ) => mb_strtolower( ueb_libelle_type_quitus( $q->type ) ), $valides ) );
+	ueb_flash( 'succes', sprintf( '%s pour %s : %s.', count( $valides ) > 1 ? 'Paiements vérifiés' : 'Paiement vérifié', trim( $quitus->nom . ' ' . $quitus->prenom ), $quoi ) );
+	ueb_rediriger( $retour );
+}
+
 /** Mot de passe provisoire lisible (sans 0/O ni 1/l/I). */
 function ueb_mot_de_passe_provisoire() {
 	$lettres  = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ';
@@ -735,7 +1109,7 @@ function ueb_mot_de_passe_provisoire() {
 
 function ueb_action_gestion_reinit_mdp() {
 	global $wpdb;
-	ueb_exiger_comptes();
+	ueb_exiger_reinit();
 	$compte = ueb_compte_par_id( (int) ( $_POST['compte_id'] ?? 0 ) );
 	$retour = add_query_arg( array( 'vue' => 'comptes', 'qc' => sanitize_text_field( wp_unslash( $_POST['q'] ?? '' ) ) ), ueb_url_comptes() );
 	if ( ! $compte || ! ueb_compte_dans_etab( $compte->id, ueb_etab_agent() ) ) {
@@ -837,8 +1211,9 @@ function ueb_action_gestion_creer_agent() {
 
 /** Permet à un agent connecté de remplacer son mot de passe WordPress. */
 function ueb_action_gestion_changer_mdp_personnel() {
-	/* Personnel et administrateurs d'IPES : même formulaire, même règle. */
-	if ( ! is_user_logged_in() || ! ( ueb_est_agent( get_current_user_id() ) || ueb_est_admin_ipes( get_current_user_id() ) ) || ueb_agent_suspendu() ) {
+	/* Personnel, administrateurs d'IPES et super-administrateur (même en profil
+	   simulé) : même formulaire, même règle. */
+	if ( ! is_user_logged_in() || ! ( ueb_super_admin_reel() || ueb_est_agent( get_current_user_id() ) || ueb_est_admin_ipes( get_current_user_id() ) ) || ueb_agent_suspendu() ) {
 		wp_die( 'Action réservée aux personnels autorisés.', 'Accès refusé', array( 'response' => 403 ) );
 	}
 	/* Retour vers l'espace d'où vient le formulaire (Direction, scolarité ou comptes étudiants). */
@@ -951,11 +1326,11 @@ add_filter( 'login_redirect', function ( $url, $demande, $utilisateur ) {
 
 /* PDF d'un quitus depuis l'espace scolarité : ?quitus={id}&pdf=1 */
 add_action( 'template_redirect', function () {
-	if ( ! isset( $_GET['pdf'], $_GET['quitus'] ) || ! is_page_template( 'page-scolarite.php' ) || ! ueb_peut( UEB_CAP_GESTION ) ) {
+	if ( ! isset( $_GET['pdf'], $_GET['quitus'] ) || 'scolarite' !== ueb_espace_courant() || ! ueb_types_quitus_visibles() ) {
 		return;
 	}
 	$quitus = ueb_quitus_par_id( (int) $_GET['quitus'] );
-	if ( $quitus && ueb_peut( UEB_CAP_GESTION, $quitus->etablissement ) ) {
+	if ( ueb_peut_voir_quitus( $quitus ) ) {
 		ueb_envoyer_pdf_quitus( $quitus );
 	}
 }, 20 );
