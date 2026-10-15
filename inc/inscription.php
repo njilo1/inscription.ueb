@@ -20,13 +20,33 @@ function ueb_formations_inscription( $avec_pro = UEB_FORMATIONS_PRO_OUVERTES ) {
 		WHERE fi.actif = 1 ORDER BY f.code, fi.libelle'
 	) as $f ) {
 		$f->id                = (int) $f->id;
-		$f->niveaux           = $par_niveau ? array_values( array_filter( explode( ',', (string) $f->niveaux ) ) ) : array_keys( UEB_NIVEAUX_INSCRIPTION );
+		$f->niveaux           = $par_niveau ? array_values( array_filter( explode( ',', (string) $f->niveaux ) ) ) : UEB_NIVEAUX_LMD; // table vide : niveaux LMD seulement
 		$formations[ $f->id ] = $f;
 	}
 	if ( ! $avec_pro ) {
 		$formations = array_filter( $formations, static fn( $f ) => 'classique' === $f->type_formation );
 	}
 	return $formations;
+}
+
+/**
+ * Niveaux (code => libellé) ouverts par les filières actives de ces
+ * établissements : années d'études pour la FMSP, L1 à M2 ailleurs. Sans
+ * établissement, tous les niveaux. $garder : niveau toujours proposé (celui
+ * déjà enregistré).
+ */
+function ueb_niveaux_des_etablissements( array $sigles = array(), $garder = '' ) {
+	if ( ! $sigles ) {
+		return UEB_NIVEAUX_INSCRIPTION;
+	}
+	$ouverts = array();
+	foreach ( ueb_formations_inscription( true ) as $f ) {
+		if ( in_array( $f->etablissement, $sigles, true ) ) {
+			$ouverts = array_merge( $ouverts, $f->niveaux );
+		}
+	}
+	$ouverts = array_merge( $ouverts ?: UEB_NIVEAUX_LMD, array( (string) $garder ) );
+	return array_intersect_key( UEB_NIVEAUX_INSCRIPTION, array_flip( $ouverts ) );
 }
 
 /** Vrai si la filière (de ueb_formations_inscription()) est ouverte à ce niveau. */

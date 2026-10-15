@@ -535,8 +535,23 @@
 			const cible = $(selecteur);
 			if (cible && cible.textContent !== valeur) cible.textContent = valeur;
 		};
+		/* Niveaux proposés : ceux des filières de l'établissement (années d'études
+		   pour la FMSP, L1 à M2 ailleurs). Liste complète gardée pour la reconstruire. */
+		const champParcours = $("select[name=parcours]", formQuitus);
+		const tousNiveaux = champParcours ? [...champParcours.options] : [];
+		let derniersNiveaux;
+		const accorderNiveaux = (etablissement) => {
+			if (!champParcours || champParcours.disabled || etablissement === derniersNiveaux) return;
+			derniersNiveaux = etablissement;
+			const ouverts = new Set(config.formations.filter((f) => f.etablissement === etablissement).flatMap((f) => f.niveaux));
+			const choisi = champParcours.value;
+			const gardes = tousNiveaux.filter((o) => o.value === "" || !etablissement || ouverts.has(o.value) || o.value === choisi && !ouverts.size);
+			champParcours.replaceChildren(...gardes);
+			champParcours.value = gardes.some((o) => o.value === choisi) ? choisi : "";
+		};
 		const maj = () => {
 			const etablissement = $("input[name=etablissement]:checked", formQuitus)?.value || "";
+			accorderNiveaux(etablissement);
 			const niveau = $("[name=parcours]", formQuitus)?.value || "";
 			/* Filières de l'établissement ouvertes au niveau choisi. */
 			if (`${etablissement}|${niveau}` !== dernierEtab) {
