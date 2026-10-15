@@ -34,7 +34,7 @@ $champs_etudiant = static function ( callable $valeur, array $erreurs, $garder =
 			$carte[ $f->id ]   = $f->etablissement;
 		}
 	}
-	$niveaux = array_combine( array_keys( UEB_NIVEAUX_INSCRIPTION ), array_map( 'ueb_ipes_niveau', array_keys( UEB_NIVEAUX_INSCRIPTION ) ) );
+	$niveaux = array_combine( UEB_NIVEAUX_LMD, array_map( 'ueb_ipes_niveau', UEB_NIVEAUX_LMD ) ); // les IPES suivent le LMD
 	ueb_champ( array( 'nom' => 'matricule', 'libelle' => 'Matricule', 'icone' => 'qr', 'valeur' => $valeur( 'matricule' ), 'erreur' => $erreurs['matricule'] ?? '', 'aide' => 'Celui que l’IPES a attribué à l’étudiant.', 'attrs' => array_filter( array( 'maxlength' => 30, 'autocomplete' => 'off', 'autocapitalize' => 'characters', 'spellcheck' => 'false', 'autofocus' => $focus ) ) ) );
 	?>
 	<div class="formulaire__rangee">

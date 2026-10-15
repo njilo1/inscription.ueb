@@ -112,7 +112,7 @@ switch ( $a['partie'] ) :
 	case 'niveau':
 		?>
 		<div class="formulaire__rangee">
-			<?php ueb_champ( array( 'nom' => 'parcours', 'libelle' => 'Niveau', 'type' => 'select', 'valeur' => $val( 'parcours' ), 'erreur' => $erreurs['parcours'] ?? '', 'options' => UEB_NIVEAUX_INSCRIPTION, 'aide' => 'À mettre à jour à chaque nouvelle année, avant ton quitus.' ) ); ?>
+			<?php ueb_champ( array( 'nom' => 'parcours', 'libelle' => 'Niveau', 'type' => 'select', 'valeur' => $val( 'parcours' ), 'erreur' => $erreurs['parcours'] ?? '', 'options' => ueb_niveaux_des_etablissements( array_filter( array( $val( 'etablissement' ) ) ), $val( 'parcours' ) ), 'aide' => 'À mettre à jour à chaque nouvelle année, avant ton quitus.' ) ); ?>
 		</div>
 		<?php
 		break;

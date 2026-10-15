@@ -100,7 +100,7 @@ $fmt = static fn( $n ) => ueb_formater_montant( (int) $n );
 		<label class="ipes-selecteur"><span class="sr">Niveau</span>
 			<select name="niveau">
 				<option value="">Tous les niveaux</option>
-				<?php foreach ( UEB_NIVEAUX_INSCRIPTION as $code => $libelle ) : ?>
+				<?php foreach ( ueb_niveaux_des_etablissements( $etabs, $f['niveau'] ) as $code => $libelle ) : ?>
 					<option value="<?php echo esc_attr( $code ); ?>" <?php selected( $f['niveau'], $code ); ?>><?php echo esc_html( $code ); ?></option>
 				<?php endforeach; ?>
 			</select><?php echo ueb_icone( 'chevron', 16 ); ?>

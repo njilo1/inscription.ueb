@@ -89,7 +89,43 @@ function ueb_type_etablissement( $sigle ) {
 	return UEB_TYPES_ETABLISSEMENT[ $sigle ] ?? 'faculte';
 }
 
-const UEB_NIVEAUX_INSCRIPTION = array( 'L1' => 'L1 — Licence 1', 'L2' => 'L2 — Licence 2', 'L3' => 'L3 — Licence 3', 'M1' => 'M1 — Master 1', 'M2' => 'M2 — Master 2' );
+/* Niveaux du système LMD, puis années d'études des formations longues (FMSP :
+   médecine générale de la 1re à la 7e année, pharmacie de la 1re à la 6e). Une
+   filière dit à quels niveaux elle est ouverte (table ueb_filieres_niveaux) :
+   l'étudiant ne se voit proposer que les niveaux des filières de son établissement. */
+const UEB_NIVEAUX_INSCRIPTION = array(
+	'L1' => 'L1 — Licence 1',
+	'L2' => 'L2 — Licence 2',
+	'L3' => 'L3 — Licence 3',
+	'M1' => 'M1 — Master 1',
+	'M2' => 'M2 — Master 2',
+	'A1' => 'A1 — 1re année',
+	'A2' => 'A2 — 2e année',
+	'A3' => 'A3 — 3e année',
+	'A4' => 'A4 — 4e année',
+	'A5' => 'A5 — 5e année',
+	'A6' => 'A6 — 6e année',
+	'A7' => 'A7 — 7e année',
+);
+
+/* Niveaux LMD : toujours affichés dans les répartitions par niveau ; les années
+   d'études (A1…A7) seulement quand elles comptent des étudiants. */
+const UEB_NIVEAUX_LMD = array( 'L1', 'L2', 'L3', 'M1', 'M2' );
+
+/**
+ * Colonnes d'une répartition par niveau : les niveaux LMD, plus les années
+ * d'études présentes dans les données ($par_etab : établissement => niveau => effectif).
+ */
+function ueb_niveaux_repartition( array $par_etab = array() ) {
+	$presents = array();
+	foreach ( $par_etab as $effectifs ) {
+		foreach ( (array) $effectifs as $niveau => $nombre ) {
+			$presents[ $niveau ] = ( $presents[ $niveau ] ?? 0 ) + (int) $nombre;
+		}
+	}
+	$garder = array_filter( array_keys( UEB_NIVEAUX_INSCRIPTION ), static fn( $n ) => in_array( $n, UEB_NIVEAUX_LMD, true ) || ! empty( $presents[ $n ] ) );
+	return array_fill_keys( $garder, 0 );
+}
 
 /**
  * Les neuf établissements. « couleur » est la couleur d'identité utilisée

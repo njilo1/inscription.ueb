@@ -98,7 +98,7 @@ if ( $autorise ) {
 		$suivi    = ueb_suivi_paiements( $annee['code'], $focus, true );
 		$activite = ueb_gestion_activite_par_type( $annee['code'], $focus );
 		$niveaux  = ueb_gestion_niveaux_par_etab( $annee['code'] );
-		$vide_niv = array_fill_keys( array_keys( UEB_NIVEAUX_INSCRIPTION ), 0 );
+		$vide_niv = ueb_niveaux_repartition( $niveaux ); // niveaux LMD, plus les années d'études qui comptent des étudiants
 	} elseif ( 'paiements' === $vue ) {
 		$suivi = ueb_suivi_paiements( $annee['code'], $focus, true );
 	} elseif ( 'scolarites' === $vue ) {
@@ -425,7 +425,8 @@ ueb_page_debut( array(
 
 						<div class="adm-grille adm-grille--etab">
 							<?php
-							ueb_adm_niveaux( array_merge( $vide_niv, array_intersect_key( $niveaux[ $focus ] ?? array(), $vide_niv ) ), $chiffres['etudiants'] );
+							$niv_focus = ueb_niveaux_repartition( array( $niveaux[ $focus ] ?? array() ) );
+							ueb_adm_niveaux( array_merge( $niv_focus, array_intersect_key( $niveaux[ $focus ] ?? array(), $niv_focus ) ), $chiffres['etudiants'] );
 							ueb_adm_filieres( ueb_gestion_par_filiere( $annee['code'], $focus ) );
 							?>
 						</div>

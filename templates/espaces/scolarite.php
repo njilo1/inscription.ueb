@@ -395,7 +395,7 @@ ueb_page_debut( array(
 					<?php if ( $etab_agent ) : ?>
 						<?php
 						$niveaux  = ueb_gestion_niveaux_par_etab( $annee['code'] );
-						$vide_niv = array_fill_keys( array_keys( UEB_NIVEAUX_INSCRIPTION ), 0 );
+						$vide_niv = ueb_niveaux_repartition( array( $niveaux[ $etab_agent ] ?? array() ) ); // années d'études seulement si elles comptent des étudiants
 						?>
 						<div class="adm-grille adm-grille--etab">
 							<?php
