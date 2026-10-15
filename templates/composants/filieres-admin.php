@@ -32,6 +32,43 @@ $valeur = static function ( $champ, $defaut = '' ) use ( $saisie, $erreurs_form,
 	return (string) ( $modifiee->$champ ?? $defaut );
 };
 
+/* Cases « Niveaux ouverts » d'un formulaire : niveaux LMD, puis années d'études (FMSP). */
+$cases_niveaux = static function ( $id, array $coches, $erreur ) {
+	$groupes = array(
+		'Licence et master' => array_intersect_key( UEB_NIVEAUX_INSCRIPTION, array_flip( UEB_NIVEAUX_LMD ) ),
+		'Années d’études'   => array_diff_key( UEB_NIVEAUX_INSCRIPTION, array_flip( UEB_NIVEAUX_LMD ) ),
+	);
+	?>
+	<fieldset class="champ filiere-niveaux<?php echo $erreur ? ' champ--invalide' : ''; ?>" id="<?php echo esc_attr( $id ); ?>"<?php echo $erreur ? ' aria-describedby="' . esc_attr( $id ) . '-erreur"' : ''; ?>>
+		<legend>Niveaux ouverts</legend>
+		<?php foreach ( $groupes as $titre => $niveaux ) : ?>
+			<div class="filiere-niveaux__groupe" role="group" aria-label="<?php echo esc_attr( $titre ); ?>">
+				<span class="filiere-niveaux__titre"><?php echo esc_html( $titre ); ?></span>
+				<?php foreach ( $niveaux as $code => $libelle ) : ?>
+					<label class="filiere-niveaux__case" title="<?php echo esc_attr( $libelle ); ?>"><input type="checkbox" name="niveaux[]" value="<?php echo esc_attr( $code ); ?>" <?php checked( in_array( $code, $coches, true ) ); ?>><span><?php echo esc_html( preg_match( '/^A(\d)$/', $code, $m ) ? ( '1' === $m[1] ? '1re' : $m[1] . 'e' ) : $code ); ?></span></label>
+				<?php endforeach; ?>
+			</div>
+		<?php endforeach; ?>
+		<?php if ( $erreur ) : ?><p class="champ__erreur" id="<?php echo esc_attr( $id ); ?>-erreur"><?php echo esc_html( $erreur ); ?></p><?php endif; ?>
+		<p class="champ__aide">L’étudiant choisit son niveau, puis une filière ouverte à ce niveau.</p>
+	</fieldset>
+	<?php
+};
+/* Résumé d'une liste de niveaux : « L1, L2, L3 », années d'études en intervalle (« 1re à 7e année »). */
+$resume_niveaux = static function ( array $codes ) {
+	$lmd    = array_values( array_intersect( UEB_NIVEAUX_LMD, $codes ) );
+	$annees = array_map( static fn( $c ) => (int) substr( $c, 1 ), array_values( array_diff( $codes, UEB_NIVEAUX_LMD ) ) );
+	sort( $annees );
+	$rang   = static fn( $n ) => 1 === $n ? '1re' : $n . 'e';
+	if ( $annees ) {
+		$suivies = end( $annees ) - $annees[0] + 1 === count( $annees );
+		$lmd[]   = 1 === count( $annees ) ? $rang( $annees[0] ) . ' année' : ( $suivies ? $rang( $annees[0] ) . ' à ' . $rang( end( $annees ) ) . ' année' : implode( ', ', array_map( $rang, $annees ) ) . ' années' );
+	}
+	return implode( ', ', $lmd );
+};
+/* Niveaux d'une filière enregistrée (« L1, L2 » en base), ou ceux renvoyés avec une erreur. */
+$niveaux_de = static fn( $f ) => array_values( array_filter( array_map( 'trim', explode( ',', (string) ( $f->niveaux ?? '' ) ) ) ) );
+
 ueb_adm_tete( array(
 	'titre'      => 'Filières',
 	'sous_titre' => 'Le catalogue proposé aux étudiants dans le quitus. Une filière fermée n’est plus proposée ; les quitus déjà établis la gardent.',
@@ -106,7 +143,7 @@ ueb_afficher_flash();
 							<?php endif; ?>
 							<tr id="filiere-<?php echo $fid; ?>" class="ipes-ligne<?php echo $active ? '' : ' est-inactif'; ?><?php echo $modifiee && (int) $modifiee->id === $fid ? ' est-selectionnee' : ''; ?>">
 								<td class="ipes-c-qui"><span class="ipes-ligne__texte"><b><?php echo esc_html( $f->libelle ); ?></b><small><?php echo esc_html( $f->code ); ?></small></span></td>
-								<td data-titre="Type · niveaux"><span class="ipes-ligne__texte"><span><?php echo esc_html( UEB_TYPES_FORMATION[ $f->type_formation ] ?? $f->type_formation ); ?></span><small><?php echo esc_html( $f->niveaux ?: 'Aucun niveau : pas proposée au quitus' ); ?></small></span></td>
+								<td data-titre="Type · niveaux"><span class="ipes-ligne__texte"><span><?php echo esc_html( UEB_TYPES_FORMATION[ $f->type_formation ] ?? $f->type_formation ); ?></span><small><?php echo esc_html( $f->niveaux ? $resume_niveaux( $niveaux_de( $f ) ) : 'Aucun niveau : pas proposée au quitus' ); ?></small></span></td>
 								<td class="num ipes-ligne__nombre" data-titre="Quitus"><b><?php echo (int) $f->nb_quitus; ?></b></td>
 								<td data-titre="État"><?php echo $active ? '<span class="ipes-statut ipes-statut--verifie">' . ueb_icone( 'check', 14 ) . 'Ouverte</span>' : '<span class="ipes-statut ipes-statut--libre">' . ueb_icone( 'pause', 14 ) . 'Fermée</span>'; // phpcs:ignore -- SVG interne ?></td>
 								<td class="ipes-ligne__actions">
@@ -144,6 +181,7 @@ ueb_afficher_flash();
 						ueb_champ( array( 'nom' => 'code', 'libelle' => 'Code', 'valeur' => $valeur( 'code' ), 'erreur' => $erreurs_form['code'] ?? '', 'aide' => 'Lettres, chiffres, « _ » ou « - ».', 'attrs' => array( 'maxlength' => 30, 'autocomplete' => 'off', 'autocapitalize' => 'characters', 'spellcheck' => 'false' ) ) );
 						ueb_champ( array( 'nom' => 'type_formation', 'libelle' => 'Type de formation', 'type' => 'select', 'options' => UEB_TYPES_FORMATION, 'valeur' => $valeur( 'type_formation', 'classique' ), 'erreur' => $erreurs_form['type_formation'] ?? '', 'aide' => 'Classique : droits fixés par l’université. Professionnelle : montant communiqué par l’établissement.' ) );
 						ueb_champ( array( 'nom' => 'cycle', 'libelle' => 'Cycle', 'type' => 'select', 'options' => UEB_CYCLES_FILIERE, 'valeur' => $valeur( 'cycle', 'tous' ), 'erreur' => $erreurs_form['cycle'] ?? '' ) );
+						$cases_niveaux( 'champ-niveaux-modif', $erreurs_form ? (array) ( $saisie['niveaux'] ?? array() ) : $niveaux_de( $modifiee ), $erreurs_form['niveaux'] ?? '' );
 						?>
 						<div class="ipes-boutons">
 							<a class="adm-bouton" href="<?php echo esc_url( ueb_url_filieres( array_filter( array( 'q' => $filtres['recherche'], 'etab' => strtolower( $filtres['etablissement'] ), 'etat' => $filtres['etat'] ) ) ) ); ?>">Annuler</a>
@@ -171,6 +209,7 @@ ueb_afficher_flash();
 						ueb_champ( array( 'nom' => 'code', 'libelle' => 'Code', 'valeur' => $ajout( 'code' ), 'erreur' => $erreurs_ajout['code'] ?? '', 'aide' => 'Court et unique dans l’établissement, par exemple GL ou GL_M.', 'attrs' => array( 'maxlength' => 30, 'autocomplete' => 'off', 'autocapitalize' => 'characters', 'spellcheck' => 'false', 'placeholder' => 'GL' ) ) );
 						ueb_champ( array( 'nom' => 'type_formation', 'libelle' => 'Type de formation', 'type' => 'select', 'options' => UEB_TYPES_FORMATION, 'valeur' => $ajout( 'type_formation', 'classique' ), 'erreur' => $erreurs_ajout['type_formation'] ?? '', 'aide' => 'Classique : droits fixés par l’université. Professionnelle : montant communiqué par l’établissement.' ) );
 						ueb_champ( array( 'nom' => 'cycle', 'libelle' => 'Cycle', 'type' => 'select', 'options' => UEB_CYCLES_FILIERE, 'valeur' => $ajout( 'cycle', 'tous' ), 'erreur' => $erreurs_ajout['cycle'] ?? '' ) );
+						$cases_niveaux( 'champ-niveaux-ajout', $erreurs_ajout ? (array) ( $saisie['niveaux'] ?? array() ) : array(), $erreurs_ajout['niveaux'] ?? '' );
 						?>
 						<button class="adm-bouton adm-bouton--primaire ipes-bouton-large" type="submit"><?php echo ueb_icone( 'plus', 16 ); ?>Ajouter la filière</button>
 					</form>

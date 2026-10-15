@@ -343,6 +343,20 @@ body:not(.espace-admin) .ipes-zone {
 .ipes-bordereau { padding: 0; overflow: visible; }
 .ipes-bordereau > .adm-panneau__tete { margin: 0; padding: 1.1rem 1.4rem; border-bottom: 1px solid var(--filet); }
 .ipes-case { width: 3.25rem; text-align: center; }
+
+/* Onglet Filières : niveaux ouverts, en pastilles à cocher */
+.filiere-niveaux { display: grid; gap: .55rem; margin: 0; padding: 0; border: 0; min-width: 0; }
+.filiere-niveaux legend { margin-bottom: .35rem; padding: 0; font-weight: 600; font-size: .92rem; }
+.filiere-niveaux__groupe { display: flex; flex-wrap: wrap; align-items: center; gap: .35rem; }
+.filiere-niveaux__titre { flex-basis: 100%; color: var(--gris); font-size: .78rem; }
+.filiere-niveaux__case { position: relative; display: inline-flex; cursor: pointer; }
+.filiere-niveaux__case input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+.filiere-niveaux__case span { display: inline-grid; place-items: center; min-width: 2.9rem; min-height: 34px; padding: .2rem .6rem; border: 1px solid var(--filet-fort); border-radius: 999px; background: var(--blanc); font-size: .82rem; font-weight: 700; transition: background-color .15s var(--ease-sortie), border-color .15s var(--ease-sortie), color .15s var(--ease-sortie); }
+.filiere-niveaux__case:hover span { border-color: var(--foret-700); }
+.filiere-niveaux__case input:checked + span { border-color: var(--foret-700); background: var(--foret-700); color: #fff; }
+.filiere-niveaux__case input:focus-visible + span { outline: 2px solid var(--or); outline-offset: 2px; }
+.filiere-niveaux.champ--invalide .filiere-niveaux__case span { border-color: var(--danger); }
+@media (prefers-reduced-motion: reduce) { .filiere-niveaux__case span { transition: none; } }
 .adm-registre__table tr > .ipes-case:first-child { padding-left: 1.2rem; }
 .ipes-case input { width: 20px; height: 20px; margin: 0; accent-color: var(--foret-700); cursor: pointer; vertical-align: middle; }
 .ipes-table--selection tbody tr:has(input:checked) > * { background: var(--adm-survol); }

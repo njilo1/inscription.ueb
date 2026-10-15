@@ -14,6 +14,8 @@
  *   - son établissement ne change plus après sa création (les quitus portent
  *     l'établissement de leur filière) ;
  *   - le couple code + établissement + type est unique (clé de la table) ;
+ *   - une filière est ouverte à au moins un niveau (table ueb_filieres_niveaux) :
+ *     l'étudiant choisit son niveau, puis une filière ouverte à ce niveau ;
  *   - un établissement absent de ueb_facultes y est ajouté à la première
  *     filière, d'après la configuration (inc/config.php).
  *
@@ -97,7 +99,8 @@ function ueb_catalogue_filiere( $id ) {
 		return null;
 	}
 	return $wpdb->get_row( $wpdb->prepare(
-		'SELECT fi.*, fa.code AS etablissement, ( SELECT COUNT(*) FROM ueb_insc_quitus q WHERE q.filiere_id = fi.id ) AS nb_quitus
+		'SELECT fi.*, fa.code AS etablissement, ( SELECT COUNT(*) FROM ueb_insc_quitus q WHERE q.filiere_id = fi.id ) AS nb_quitus,
+			( SELECT GROUP_CONCAT( n.niveau ORDER BY n.niveau SEPARATOR \', \' ) FROM ueb_filieres_niveaux n WHERE n.filiere_id = fi.id ) AS niveaux
 		FROM ueb_filieres fi JOIN ueb_facultes fa ON fa.id = fi.faculte_id WHERE fi.id = %d',
 		$id
 	) );
@@ -154,6 +157,8 @@ function ueb_catalogue_normaliser( array $d ) {
 		'libelle'        => trim( preg_replace( '/\s+/u', ' ', (string) ( $d['libelle'] ?? '' ) ) ),
 		'type_formation' => (string) ( $d['type_formation'] ?? 'classique' ),
 		'cycle'          => (string) ( $d['cycle'] ?? 'tous' ),
+		/* Niveaux cochés, dans l'ordre de UEB_NIVEAUX_INSCRIPTION. */
+		'niveaux'        => array_values( array_intersect( array_keys( UEB_NIVEAUX_INSCRIPTION ), array_map( 'strtoupper', (array) ( $d['niveaux'] ?? array() ) ) ) ),
 	);
 }
 
@@ -181,6 +186,9 @@ function ueb_catalogue_valider( array $d, $existante = null ) {
 	}
 	if ( ! isset( UEB_CYCLES_FILIERE[ $d['cycle'] ] ) ) {
 		$erreurs['cycle'] = 'Choisis le cycle.';
+	}
+	if ( ! $d['niveaux'] ) {
+		$erreurs['niveaux'] = 'Coche au moins un niveau : sans niveau, la filière n’est pas proposée dans le quitus.';
 	}
 	if ( ! isset( $erreurs['code'] ) && ! isset( $erreurs['etablissement'] ) && ! isset( $erreurs['type_formation'] ) && $wpdb->get_var( $wpdb->prepare(
 		'SELECT fi.id FROM ueb_filieres fi JOIN ueb_facultes fa ON fa.id = fi.faculte_id
@@ -233,7 +241,13 @@ function ueb_catalogue_filiere_enregistrer( array $d, $id = 0 ) {
 		/* Deux saisies simultanées du même code : la clé unique tranche. */
 		return new WP_Error( 'ueb_catalogue', 'Corrige les champs signalés.', array( 'code' => 'Ce code existe déjà pour une filière de même type dans cet établissement.' ) );
 	}
-	return $existante ? (int) $id : (int) $wpdb->insert_id;
+	$filiere_id = $existante ? (int) $id : (int) $wpdb->insert_id;
+	/* Niveaux ouverts : remplacés par ceux cochés. Les quitus déjà établis gardent le leur. */
+	$wpdb->delete( 'ueb_filieres_niveaux', array( 'filiere_id' => $filiere_id ) );
+	foreach ( $d['niveaux'] as $niveau ) {
+		$wpdb->insert( 'ueb_filieres_niveaux', array( 'filiere_id' => $filiere_id, 'niveau' => $niveau ) );
+	}
+	return $filiere_id;
 }
 
 /** Ferme (retire du quitus) ou rouvre une filière. Vrai si elle existe. */
@@ -259,6 +273,7 @@ function ueb_action_catalogue_filiere_enregistrer() {
 	foreach ( array( 'etablissement', 'code', 'libelle', 'type_formation', 'cycle' ) as $champ ) {
 		$saisie[ $champ ] = sanitize_text_field( wp_unslash( $_POST[ $champ ] ?? '' ) );
 	}
+	$saisie['niveaux'] = array_map( 'sanitize_text_field', (array) wp_unslash( $_POST['niveaux'] ?? array() ) );
 	$resultat = ueb_catalogue_filiere_enregistrer( $saisie, $id );
 	if ( is_wp_error( $resultat ) ) {
 		$erreurs = $resultat->get_error_data();
