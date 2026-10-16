@@ -103,10 +103,12 @@ vider_quitus();
 $c = ueb_contexte_inscription( $compte );
 verifier( array_keys( $c['tranches'] ) === array( 1, 3 ), 'sans quitus : première tranche ou les deux' );
 verifier( ! array_filter( $c['formations'], static fn( $f ) => 'classique' !== $f->type_formation ), 'filières classiques seulement pour le moment' );
-foreach ( array( '20 000', '24 999', '27 500', '50 000', '55 000', '' ) as $montant ) {
+foreach ( array( '20 000', '24 999', '27 500', '55 000', '' ) as $montant ) {
 	list( $v, $e ) = ueb_valider_quitus( array_replace( $post, array( 'montant' => $montant, 'tranche' => 1 ) ), $c );
 	verifier( isset( $e['montant'] ) && ! isset( $e['tranche'] ), 'première tranche refusée : ' . $montant );
 }
+list( $v, $e ) = ueb_valider_quitus( array_replace( $post, array( 'montant' => '50 000', 'tranche' => 1 ) ), $c );
+verifier( ! $e && 3 === $v['tranche'] && 50000 === $v['montant'], '50 000 en première tranche : les deux tranches' );
 foreach ( array( '25 000', '35 000', '45 000' ) as $montant ) {
 	list( $v, $e ) = ueb_valider_quitus( array_replace( $post, array( 'montant' => $montant, 'tranche' => 1 ) ), $c );
 	verifier( ! $e && 1 === $v['tranche'] && (int) preg_replace( '/\D+/', '', $montant ) === $v['montant'], 'première tranche acceptée : ' . $montant );
