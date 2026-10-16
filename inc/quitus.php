@@ -216,6 +216,11 @@ function ueb_valider_quitus( array $post, array $contexte ) {
 			/* Formation classique : la deuxième tranche vaut le reste, les deux tranches
 			   50 000 ; seule la première se saisit. Le montant posté est ignoré sinon. */
 			$regle = ueb_regle_droits_classiques( $contexte );
+			/* 50 000 en première tranche, c'est l'année entière : « Les deux tranches »,
+			   comme le fait le formulaire (app.js). */
+			if ( 1 === $v['tranche'] && $regle['total'] === $v['montant'] && isset( $contexte['tranches'][3] ) ) {
+				$v['tranche'] = 3;
+			}
 			$fixe  = ueb_montant_tranche_classique( $v['tranche'], $regle );
 			if ( null !== $fixe ) {
 				$v['montant'] = $fixe;

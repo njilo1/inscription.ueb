@@ -104,7 +104,9 @@ $donnees_paiement = array(
 );
 $deja_prepare   = $regle_droits['total'] - $regle_droits['reste'];
 $aide_classique = array(
-	1 => '25 000 FCFA au moins, par multiples de 5 000, jusqu’à 45 000. Pour 50 000 FCFA, choisis « Les deux tranches ».',
+	1 => isset( $contexte['tranches'][3] )
+		? '25 000 FCFA au moins, par multiples de 5 000. À 50 000 FCFA, « Les deux tranches » se coche pour toi.'
+		: '25 000 FCFA au moins, par multiples de 5 000, jusqu’à 45 000 FCFA.',
 	2 => sprintf( 'Calculé pour toi : 50 000 − %s FCFA de première tranche.', ueb_formater_montant( $deja_prepare ) ),
 	3 => 'Les droits de l’année, en une seule fois.',
 )[ $v['tranche'] ] ?? '';
